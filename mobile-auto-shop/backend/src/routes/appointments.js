@@ -1,5 +1,9 @@
 const express = require('express');
 const db = require('../db');
+const { body, validationResult } = require('express-validator');
+const auth = require('../middleware/auth');
+const { createEvent } = require('ics');
+const nodemailer = require('nodemailer');
 
 const router = express.Router();
 
@@ -44,10 +48,61 @@ router.post('/', async (req, res) => {
         notes,
       ]
     );
-    res.status(201).json(rows[0]);
+    const appointment = rows[0];
+    try {
+      const customerRes = await db.query('SELECT email, name FROM customers WHERE id=$1', [appointment.customer_id]);
+      const customer = customerRes.rows[0];
+      const dateParts = appointment.scheduled_date.split('-').map(Number);
+      const timeParts = appointment.scheduled_time.split(':').map(Number);
+      const { error, value } = createEvent({
+        title: 'Auto Service Appointment',
+        start: [...dateParts, ...timeParts],
+        duration: { minutes: 30 },
+        description: appointment.notes || '',
+        location: appointment.location_address,
+      });
+      if (!error && customer && customer.email) {
+        const transporter = nodemailer.createTransport({ jsonTransport: true });
+        await transporter.sendMail({
+          from: 'no-reply@edgarsauto.com',
+          to: customer.email,
+          subject: 'Appointment Scheduled',
+          text: 'Your appointment has been scheduled.',
+          icalEvent: { content: value },
+        });
+      }
+    } catch (e) {
+      console.error('email error', e);
+    }
+    res.status(201).json(appointment);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to create appointment' });
+  }
+});
+
+router.patch('/:id', auth, [
+  body('scheduled_date').optional().isISO8601(),
+  body('scheduled_time').optional().notEmpty(),
+  body('status').optional().isString(),
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  const fields = [];
+  const values = [];
+  Object.entries(req.body).forEach(([key, value], idx) => {
+    fields.push(`${key}=$${idx + 1}`);
+    values.push(value);
+  });
+  try {
+    const { rows } = await db.query(
+      `UPDATE appointments SET ${fields.join(', ')} WHERE id=$${values.length + 1} RETURNING *`,
+      [...values, req.params.id]
+    );
+    res.json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update appointment' });
   }
 });
 
