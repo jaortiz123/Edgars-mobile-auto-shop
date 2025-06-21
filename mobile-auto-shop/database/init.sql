@@ -39,3 +39,7 @@ INSERT INTO services (name, description, duration_minutes, base_price) VALUES
 ('Brake Inspection', 'Complete brake system inspection', 45, 65.00),
 ('Battery Replacement', 'Replace car battery', 20, 120.00),
 ('Tire Rotation', 'Rotate and balance tires', 45, 50.00);
+
+-- Performance indexes
+CREATE INDEX idx_customers_email ON customers(email);
+CREATE INDEX idx_appointments_schedule ON appointments(scheduled_date, scheduled_time);

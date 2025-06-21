@@ -23,3 +23,17 @@ The API expects a PostgreSQL database configured per `docker-compose.yml`.
 - `POST /customers` – create a customer
 - `GET /appointments` – list appointments
 - `POST /appointments` – create an appointment
+
+## Infrastructure & Deployment
+
+Terraform files in `infra/terraform` create the AWS infrastructure including VPC, ECS, RDS, ALB, S3 and CloudFront. GitHub Actions workflows build and deploy the backend to ECS and the frontend to S3/CloudFront.
+
+To provision the infrastructure:
+
+```bash
+cd infra/terraform
+terraform init
+terraform apply -var="backend_image=<ECR image URI>" -var="db_username=<user>" -var="db_password=<pass>"
+```
+
+Workflows expect AWS credentials and resource names stored in repository secrets.
