@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './index.css'
 
 // Layouts and Pages
-import App from './App' // Optional if App still used
 import AdminLayout from './admin/AdminLayout'
 import Login from './admin/Login'
 import Dashboard from './admin/Dashboard'
