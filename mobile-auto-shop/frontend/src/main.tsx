@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './index.css'
+
+// Layouts and Pages
+import App from './App' // Optional if App still used
 import AdminLayout from './admin/AdminLayout'
 import Login from './admin/Login'
 import Dashboard from './admin/Dashboard'
