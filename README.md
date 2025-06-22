@@ -37,3 +37,18 @@ terraform apply -var="backend_image=<ECR image URI>" -var="db_username=<user>" -
 ```
 
 Workflows expect AWS credentials and resource names stored in repository secrets.
+
+## Launch Plan
+
+Detailed cutover steps are available in [docs/LAUNCH_PLAN.md](docs/LAUNCH_PLAN.md). Review the document prior to switching DNS to production endpoints.
+
+## Testing and Optimization
+
+Sample load test configuration is provided in `scripts/load-test.yaml`.
+Run it using Artillery:
+
+```bash
+npx artillery run scripts/load-test.yaml
+```
+
+Security review steps are in `docs/SECURITY_CHECKLIST.md`.
