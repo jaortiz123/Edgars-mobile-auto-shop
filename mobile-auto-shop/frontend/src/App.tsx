@@ -1,22 +1,32 @@
-import { useState } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import PublicLayout from './layout/PublicLayout'
+import Landing from './pages/Landing'
+import Booking from './pages/Booking'
+import Confirmation from './pages/Confirmation'
+import AdminLayout from './admin/AdminLayout'
+import Login from './admin/Login'
+import Dashboard from './admin/Dashboard'
 
+const queryClient = new QueryClient()
 
-function App() {
-  const [count, setCount] = useState(0)
-
+export default function App() {
   return (
-    <>
-      <h1 className="text-3xl font-bold">Vite + React</h1>
-      <div className="mt-4">
-        <button
-          className="rounded bg-blue-500 px-4 py-2 text-white"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          count is {count}
-        </button>
-      </div>
-    </>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<Landing />} />
+            <Route path="/booking" element={<Booking />} />
+            <Route path="/confirmation" element={<Confirmation />} />
+          </Route>
+          <Route path="/admin/login" element={<Login />} />
+          <Route path="/admin/*" element={<AdminLayout />}>
+            <Route index element={<Dashboard />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </BrowserRouter>
+    </QueryClientProvider>
   )
 }
-
-export default App
