@@ -28,6 +28,7 @@ export default function Booking() {
       return data
     },
   })
+
   const [step, setStep] = useState(1)
   const [serviceId, setServiceId] = useState<number | null>(null)
   const { register, handleSubmit } = useForm<FormValues>()
@@ -104,7 +105,7 @@ export default function Booking() {
           </div>
           <div>
             <label className="block text-sm font-medium">Notes</label>
-            <textarea {...register('notes')} className="mt-1 w-full w-full border p-2" />
+            <textarea {...register('notes')} className="mt-1 w-full border p-2" />
           </div>
           <div className="flex justify-between">
             <button type="button" className="rounded bg-gray-200 px-3 py-2" onClick={() => setStep(1)}>
