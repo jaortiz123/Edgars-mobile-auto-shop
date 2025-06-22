@@ -2,8 +2,12 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { getServices, createCustomer, createAppointment } from '../api'
-import type { Service } from '../api'
+import {
+  serviceAPI,
+  customerAPI,
+  appointmentAPI,
+  type Service,
+} from '../services/api'
 
 interface FormValues {
   name: string
@@ -19,7 +23,10 @@ export default function Booking() {
   const navigate = useNavigate()
   const { data: services } = useQuery<Service[]>({
     queryKey: ['services'],
-    queryFn: getServices,
+    queryFn: async () => {
+      const { data } = await serviceAPI.getAll()
+      return data
+    },
   })
   const [step, setStep] = useState(1)
   const [serviceId, setServiceId] = useState<number | null>(null)
@@ -27,13 +34,13 @@ export default function Booking() {
 
   const onSubmit = async (values: FormValues) => {
     if (!serviceId) return
-    const customer = await createCustomer({
+    const { data: customer } = await customerAPI.create({
       name: values.name,
       phone: values.phone,
       email: values.email,
       address: values.address,
     })
-    const appointment = await createAppointment({
+    const { data: appointment } = await appointmentAPI.create({
       customer_id: customer.id,
       vehicle_id: null,
       service_id: serviceId,

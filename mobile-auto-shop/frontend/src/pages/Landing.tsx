@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { getServices } from '../api'
-import type { Service } from '../api'
+import { serviceAPI, type Service } from '../services/api'
 
 export default function Landing() {
   const { data: services } = useQuery<Service[]>({
     queryKey: ['services'],
-    queryFn: getServices,
+    queryFn: async () => {
+      const { data } = await serviceAPI.getAll()
+      return data
+    },
   })
 
   return (

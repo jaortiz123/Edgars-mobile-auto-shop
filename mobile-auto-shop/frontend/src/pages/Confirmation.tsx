@@ -1,5 +1,5 @@
 import { useLocation, Link } from 'react-router-dom'
-import type { Appointment } from '../api'
+import type { Appointment } from '../services/api'
 
 export default function Confirmation() {
   const location = useLocation()
