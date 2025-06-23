@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import axios from 'axios'
+import api from '../services/api'
 import { useNavigate } from 'react-router-dom'
 
 export default function Login() {
@@ -9,8 +9,7 @@ export default function Login() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const { data } = await axios.post('/admin/login', { username, password })
-    localStorage.setItem('token', data.token)
+    await api.post('/admin/login', { username, password })
     navigate('/admin')
   }
 

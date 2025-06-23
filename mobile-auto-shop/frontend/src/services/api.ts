@@ -4,17 +4,10 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
-})
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken')
-  if (token && config.headers) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
 })
 
 export interface Service {
@@ -67,9 +60,9 @@ export const serviceAPI = {
 }
 
 export const authAPI = {
-  login: (credentials: { username: string; password: string }) => api.post('/api/admin/login', credentials),
-  logout: () => api.post('/api/admin/logout'),
-  getProfile: () => api.get('/api/admin/profile'),
+  login: (credentials: { username: string; password: string }) => api.post('/admin/login', credentials),
+  logout: () => api.post('/admin/logout'),
+  getProfile: () => api.get('/admin/me'),
 }
 
 export default api

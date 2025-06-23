@@ -1,15 +1,15 @@
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useState, useCallback } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import {
   serviceAPI,
   customerAPI,
   appointmentAPI,
   type Service,
-} from '../services/api'
+} from '../services/api';
 
 const schema = z.object({
   name: z.string().min(1, 'Required'),
@@ -19,39 +19,48 @@ const schema = z.object({
   date: z.string().min(1, 'Required'),
   time: z.string().min(1, 'Required'),
   notes: z.string().optional(),
-})
+});
 
-type FormValues = z.infer<typeof schema>
+type FormValues = z.infer<typeof schema>;
 
 export default function Booking() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   const { data: services } = useQuery<Service[]>({
     queryKey: ['services'],
     queryFn: async () => {
-      const { data } = await serviceAPI.getAll()
-      return data
+      const { data } = await serviceAPI.getAll();
+      return data;
     },
-  })
+  });
 
-  const [step, setStep] = useState(1)
-  const [serviceId, setServiceId] = useState<number | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [step, setStep] = useState(1);
+  const [serviceId, setServiceId] = useState<number | null>(null);
+  
+  // This is the correct, resolved code block
+  const selectService = useCallback((id: number) => {
+    setServiceId(id);
+    setStep(2);
+  }, []); // Empty dependency array is correct here
+
+  const goBack = useCallback(() => setStep(1), []); // Empty dependency array is correct here
+
+  const [isLoading, setIsLoading] = useState(false);
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) })
+  } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
-  const onSubmit = async (values: FormValues) => {
-    if (!serviceId) return
-    setIsLoading(true)
+  const onSubmit = useCallback(async (values: FormValues) => {
+    if (!serviceId) return;
+    setIsLoading(true);
     try {
       const { data: customer } = await customerAPI.create({
         name: values.name,
         phone: values.phone,
         email: values.email,
         address: values.address,
-      })
+      });
       const { data: appointment } = await appointmentAPI.create({
         customer_id: customer.id,
         vehicle_id: null,
@@ -60,14 +69,14 @@ export default function Booking() {
         scheduled_time: values.time,
         location_address: values.address,
         notes: values.notes,
-      })
-      navigate('/confirmation', { state: { appointment } })
+      });
+      navigate('/confirmation', { state: { appointment } });
     } catch (e) {
-      alert('An error occurred.')
+      alert('An error occurred.');
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  }, [serviceId, navigate]); // This is the correct dependency array
 
   return (
     <div className="max-w-xl mx-auto">
@@ -78,10 +87,7 @@ export default function Booking() {
             {services?.map((s: Service) => (
               <li key={s.id}>
                 <button
-                  onClick={() => {
-                    setServiceId(s.id)
-                    setStep(2)
-                  }}
+                  onClick={() => selectService(s.id)}
                   className="w-full rounded border p-3 text-left hover:bg-gray-100"
                 >
                   {s.name}
@@ -130,7 +136,7 @@ export default function Booking() {
             <textarea {...register('notes')} className="mt-1 w-full border p-2" />
           </div>
           <div className="flex justify-between">
-            <button type="button" className="rounded bg-gray-200 px-3 py-2" onClick={() => setStep(1)}>
+            <button type="button" className="rounded bg-gray-200 px-3 py-2" onClick={goBack}>
               Back
             </button>
             <button
@@ -144,5 +150,5 @@ export default function Booking() {
         </form>
       )}
     </div>
-  )
+  );
 }
