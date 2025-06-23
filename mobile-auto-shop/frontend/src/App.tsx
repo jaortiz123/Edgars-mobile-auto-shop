@@ -1,12 +1,14 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import PublicLayout from './layout/PublicLayout'
-import Landing from './pages/Landing'
-import Booking from './pages/Booking'
-import Confirmation from './pages/Confirmation'
+import { Suspense, lazy } from 'react'
 import AdminLayout from './admin/AdminLayout'
-import Login from './admin/Login'
-import Dashboard from './admin/Dashboard'
+
+const Landing = lazy(() => import('./pages/Landing'))
+const Booking = lazy(() => import('./pages/Booking'))
+const Confirmation = lazy(() => import('./pages/Confirmation'))
+const Login = lazy(() => import('./admin/Login'))
+const Dashboard = lazy(() => import('./admin/Dashboard'))
 
 const queryClient = new QueryClient()
 
@@ -16,13 +18,13 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route element={<PublicLayout />}>
-            <Route path="/" element={<Landing />} />
-            <Route path="/booking" element={<Booking />} />
-            <Route path="/confirmation" element={<Confirmation />} />
+            <Route path="/" element={<Suspense fallback={null}><Landing /></Suspense>} />
+            <Route path="/booking" element={<Suspense fallback={null}><Booking /></Suspense>} />
+            <Route path="/confirmation" element={<Suspense fallback={null}><Confirmation /></Suspense>} />
           </Route>
-          <Route path="/admin/login" element={<Login />} />
+          <Route path="/admin/login" element={<Suspense fallback={null}><Login /></Suspense>} />
           <Route path="/admin/*" element={<AdminLayout />}>
-            <Route index element={<Dashboard />} />
+            <Route index element={<Suspense fallback={null}><Dashboard /></Suspense>} />
           </Route>
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
