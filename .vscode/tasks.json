@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "Initialize Database",
+			"command": "docker cp ./database/init.sql edgars-mobile-auto-shop-db-1:/init.sql && docker exec edgars-mobile-auto-shop-db-1 psql -U user -d autoshop -f /init.sql",
+			"group": "build",
+			"isBackground": false
+		}
+	]
+}
