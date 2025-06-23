@@ -39,9 +39,9 @@ export default function Landing() {
   const servicesToRender = services && services.length > 0 ? services : mockServices
 
   return (
-    <div>
+    <div className="px-4 md:px-0">
       <section className="prose mx-auto text-center py-10">
-        <h2>Reliable Mobile Auto Repair</h2>
+        <h2 className="text-xl sm:text-2xl">Reliable Mobile Auto Repair</h2>
         <p>We come to you for all of your maintenance needs.</p>
         <Link
           to="/booking"

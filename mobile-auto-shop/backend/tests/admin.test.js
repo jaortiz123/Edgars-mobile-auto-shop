@@ -9,11 +9,11 @@ describe('admin login', () => {
     process.env.JWT_SECRET = 'testsecret';
   });
 
-  test('valid credentials return token', async () => {
+  test('valid credentials set auth cookie', async () => {
     const res = await request(app)
       .post('/admin/login')
       .send({ username: 'admin', password: 'secret' });
     expect(res.status).toBe(200);
-    expect(res.body.token).toBeDefined();
+    expect(res.headers['set-cookie']).toBeDefined();
   });
 });

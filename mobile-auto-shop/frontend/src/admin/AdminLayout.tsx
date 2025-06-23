@@ -1,9 +1,10 @@
 import { Link, Outlet, useNavigate } from 'react-router-dom'
+import { authAPI } from '../services/api'
 
 export default function AdminLayout() {
   const navigate = useNavigate()
-  const logout = () => {
-    localStorage.removeItem('token')
+  const logout = async () => {
+    await authAPI.logout()
     navigate('/admin/login')
   }
   return (
