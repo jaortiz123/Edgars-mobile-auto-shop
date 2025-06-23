@@ -5,13 +5,12 @@ const { body, validationResult } = require('express-validator');
 
 const router = express.Router();
 
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const { rows } = await db.query('SELECT * FROM customers ORDER BY id');
     res.json(rows);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch customers' });
+    next(err);
   }
 });
 
@@ -19,7 +18,7 @@ router.post(
   '/',
   auth,
   [body('name').trim().notEmpty(), body('email').isEmail().optional({ checkFalsy: true })],
-  async (req, res) => {
+  async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -32,8 +31,7 @@ router.post(
       );
       res.status(201).json(rows[0]);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Failed to create customer' });
+      next(err);
     }
   }
 );
