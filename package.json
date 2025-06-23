@@ -1,0 +1,21 @@
+{
+  "name": "mobile-auto-shop-monorepo",
+  "version": "1.0.0",
+  "description": "Master controller for the mobile auto shop project",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && npm install --prefix frontend && npm install --prefix backend",
+    "dev": "docker-compose up -d --build",
+    "stop": "docker-compose down -v",
+    "logs": "docker-compose logs -f",
+    "clean": "npm run stop && git clean -fdx",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "npm-run-all": "^4.1.5"
+  }
+}
