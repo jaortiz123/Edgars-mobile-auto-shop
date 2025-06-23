@@ -1,0 +1,20 @@
+{
+  "name": "edgars-mobile-auto-shop",
+  "version": "1.0.0",
+  "description": "This project contains a simple Express API and React frontend for a mobile auto repair service.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:e2e": "playwright test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.53.1"
+  }
+}

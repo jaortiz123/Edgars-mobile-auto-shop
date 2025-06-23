@@ -1,2 +1,4 @@
 .checkpoints/
 infra/terraform/.terraform/
+node_modules/
+test-results/

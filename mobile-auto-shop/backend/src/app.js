@@ -9,6 +9,7 @@ const customersRouter = require('./routes/customers');
 const appointmentsRouter = require('./routes/appointments');
 const adminRouter = require('./routes/admin');
 const analyticsRouter = require('./routes/analytics');
+const errorHandler = require('./middleware/errorHandler');
 const auth = require('./middleware/auth');
 const rateLimit = require('./middleware/rateLimit');
 const app = express();
@@ -36,7 +37,7 @@ async function seedIfEmpty() {
   }
 }
 app.use(helmet());
-app.use(cors({ origin: 'http://localhost:5173' }));
+app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use(morgan('combined'));
 app.use(express.json());
 app.use(rateLimit);
@@ -78,5 +79,7 @@ if (require.main === module) {
     await seedIfEmpty();
   });
 }
+
+app.use(errorHandler);
 
 module.exports = app;

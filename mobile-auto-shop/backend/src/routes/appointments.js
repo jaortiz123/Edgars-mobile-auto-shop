@@ -4,10 +4,12 @@ const { body, validationResult } = require('express-validator');
 const auth = require('../middleware/auth');
 const { createEvent } = require('ics');
 const nodemailer = require('nodemailer');
+const { appointmentSchema } = require('../validation/schemas');
+const validate = require('../middleware/validate');
 
 const router = express.Router();
 
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const { rows } = await db.query(
       `SELECT a.*, c.name AS customer_name, s.name AS service_name
@@ -18,12 +20,11 @@ router.get('/', async (req, res) => {
     );
     res.json(rows);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch appointments' });
+    next(err);
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', validate(appointmentSchema), async (req, res, next) => {
   const {
     customer_id,
     vehicle_id,
@@ -76,8 +77,7 @@ router.post('/', async (req, res) => {
     }
     res.status(201).json(appointment);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to create appointment' });
+    next(err);
   }
 });
 
@@ -85,7 +85,7 @@ router.patch('/:id', auth, [
   body('scheduled_date').optional().isISO8601(),
   body('scheduled_time').optional().notEmpty(),
   body('status').optional().isString(),
-], async (req, res) => {
+], async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   const fields = [];
@@ -101,8 +101,7 @@ router.patch('/:id', auth, [
     );
     res.json(rows[0]);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to update appointment' });
+    next(err);
   }
 });
 
