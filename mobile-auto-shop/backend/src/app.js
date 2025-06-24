@@ -10,13 +10,18 @@ const customersRouter = require('./routes/customers');
 const appointmentsRouter = require('./routes/appointments');
 const adminRouter = require('./routes/admin');
 const cookieParser = require('cookie-parser');
-const csrf = require('./middleware/csrf');
+const { doubleCsrf } = require('csrf-protection');
 const analyticsRouter = require('./routes/analytics');
 const errorHandler = require('./middleware/errorHandler');
 const auth = require('./middleware/auth');
 const docsRouter = require('./docs/swagger');
 const rateLimit = require('./middleware/rateLimit');
 const app = express();
+
+const { invalidCsrfTokenError, generateToken } = doubleCsrf({
+  getSecret: () => require('crypto').randomBytes(32).toString('hex'),
+  cookieName: 'XSRF-TOKEN',
+});
 
 async function checkDbConnection() {
   try {
@@ -46,19 +51,26 @@ app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use(morgan('combined', { stream: { write: msg => logger.info(msg.trim()) } }));
 app.use(express.json());
 app.use(cookieParser());
+
+// Attach CSRF token generator to every response
+app.use((req, res, next) => {
+  res.locals.csrfToken = generateToken(req, res);
+  next();
+});
+
 app.use(rateLimit);
 
 app.use('/services', servicesRouter);
-app.use('/customers', csrf, customersRouter);
-app.use('/appointments', csrf, appointmentsRouter);
-app.post('/admin/login', csrf, adminRouter);
+app.use('/customers', invalidCsrfTokenError, customersRouter);
+app.use('/appointments', invalidCsrfTokenError, appointmentsRouter);
+app.post('/admin/login', invalidCsrfTokenError, adminRouter);
 app.use('/admin', adminRouter);
 app.use('/analytics', auth, analyticsRouter);
 app.use('/docs', docsRouter);
 
-app.get('/csrf-token', csrf, (req, res) => {
-  const token = req.csrfToken();
-  res.cookie('XSRF-TOKEN', token);
+// Endpoint to expose CSRF token to the frontend
+app.get('/csrf-token', (req, res) => {
+  const token = generateToken(req, res);
   res.json({ csrfToken: token });
 });
 
