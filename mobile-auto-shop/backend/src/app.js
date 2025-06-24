@@ -40,12 +40,14 @@ async function seedIfEmpty() {
     logger.info('Seeded fallback services');
   }
 }
+
 app.use(helmet());
 app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use(morgan('combined', { stream: { write: msg => logger.info(msg.trim()) } }));
 app.use(express.json());
 app.use(cookieParser());
 app.use(rateLimit);
+
 app.use('/services', servicesRouter);
 app.use('/customers', csrf, customersRouter);
 app.use('/appointments', csrf, appointmentsRouter);
@@ -53,11 +55,13 @@ app.post('/admin/login', csrf, adminRouter);
 app.use('/admin', adminRouter);
 app.use('/analytics', auth, analyticsRouter);
 app.use('/docs', docsRouter);
+
 app.get('/csrf-token', csrf, (req, res) => {
   const token = req.csrfToken();
   res.cookie('XSRF-TOKEN', token);
   res.json({ csrfToken: token });
 });
+
 app.get('/', (req, res) =>
   res.json({ status: 'Backend is live', timestamp: new Date().toISOString() })
 );
@@ -104,6 +108,7 @@ app.post('/debug/seed', async (_req, res) => {
   await seedIfEmpty();
   res.json({ status: 'seeded' });
 });
+
 if (require.main === module) {
   app.listen(process.env.PORT || 3001, async () => {
     logger.info(`API listening on http://localhost:${process.env.PORT || 3001}`);
