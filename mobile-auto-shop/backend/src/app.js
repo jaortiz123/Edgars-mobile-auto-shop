@@ -9,9 +9,12 @@ const servicesRouter = require('./routes/services');
 const customersRouter = require('./routes/customers');
 const appointmentsRouter = require('./routes/appointments');
 const adminRouter = require('./routes/admin');
+const cookieParser = require('cookie-parser');
+const csrf = require('./middleware/csrf');
 const analyticsRouter = require('./routes/analytics');
 const errorHandler = require('./middleware/errorHandler');
 const auth = require('./middleware/auth');
+const docsRouter = require('./docs/swagger');
 const rateLimit = require('./middleware/rateLimit');
 const app = express();
 
@@ -41,12 +44,15 @@ app.use(helmet());
 app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use(morgan('combined', { stream: { write: msg => logger.info(msg.trim()) } }));
 app.use(express.json());
+app.use(cookieParser());
 app.use(rateLimit);
 app.use('/services', servicesRouter);
-app.use('/customers', customersRouter);
-app.use('/appointments', appointmentsRouter);
+app.use('/customers', csrf, customersRouter);
+app.use('/appointments', csrf, appointmentsRouter);
+app.post('/admin/login', csrf, adminRouter);
 app.use('/admin', adminRouter);
 app.use('/analytics', auth, analyticsRouter);
+app.use('/docs', docsRouter);
 app.get('/', (req, res) =>
   res.json({ status: 'Backend is live', timestamp: new Date().toISOString() })
 );

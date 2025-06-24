@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const API_BASE_URL = import.meta.env.VITE_PUBLIC_API_URL || 'http://localhost:3001'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -10,12 +10,14 @@ const api = axios.create({
   },
 })
 
-async function getWithRetry(url: string, retries = 3) {
+async function getWithRetry(url: string, retries = 3, delayMs = 300) {
   for (let i = 0; i < retries; i++) {
     try {
       return await api.get(url)
     } catch (err) {
       if (i === retries - 1) throw err
+      const wait = delayMs * 2 ** i
+      await new Promise((res) => setTimeout(res, wait))
     }
   }
 }
