@@ -17,7 +17,9 @@ export default function Landing() {
       </section>
       <section className="mt-8">
         <h3 className="text-xl font-semibold mb-4">Our Services</h3>
-        <ServiceListContainer />
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+          <ServiceListContainer />
+        </div>
       </section>
     </div>
   )

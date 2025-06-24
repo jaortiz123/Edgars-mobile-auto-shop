@@ -18,6 +18,14 @@ jobs:
           node-version: 18
       - run: npm ci
       - run: npm test --if-present
+      - run: npm ci
+        working-directory: ../../
+      - run: npm test:e2e
+        working-directory: ../../
+      - run: npm ci
+        working-directory: ../frontend
+      - run: npm test --if-present
+        working-directory: ../frontend
 
   docker-deploy:
     needs: backend
