@@ -16,7 +16,6 @@ router.get('/', async (req, res, next) => {
 
 router.post(
   '/',
-  auth,
   [body('name').trim().notEmpty(), body('email').isEmail().optional({ checkFalsy: true })],
   async (req, res, next) => {
     const errors = validationResult(req);

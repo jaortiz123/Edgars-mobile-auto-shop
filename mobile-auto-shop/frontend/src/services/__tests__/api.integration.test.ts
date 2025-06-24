@@ -1,6 +1,6 @@
 import { vi, test, expect } from 'vitest';
 
-let mockGet = vi.fn();
+const mockGet = vi.fn();
 
 vi.mock('axios', () => ({
   default: {

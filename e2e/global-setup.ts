@@ -1,12 +1,10 @@
 import axios from 'axios'
 import { execSync } from 'child_process'
 import wait from './wait-for-backend'
+import { ensureDockerRunning } from './check-docker'
 
-try {
-  execSync('docker info', { stdio: 'ignore' })
-} catch {
-  throw new Error('Docker is not running.')
-}
+// Check Docker availability before starting tests
+ensureDockerRunning()
 
 export default async function globalSetup() {
   await wait()
