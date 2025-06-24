@@ -73,7 +73,8 @@ router.post('/', validate(appointmentSchema), async (req, res, next) => {
         });
       }
     } catch (e) {
-      console.error('email error', e);
+      const logger = require('../logger');
+      logger.error('email error', e);
     }
     res.status(201).json(appointment);
   } catch (err) {

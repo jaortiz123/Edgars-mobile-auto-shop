@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.skip('user can navigate booking flow', async ({ page }) => {
+test('user can navigate booking flow', async ({ page }) => {
   await page.goto('http://localhost:5173');
   await page.getByRole('link', { name: /book now/i }).click();
   await expect(page).toHaveURL(/\/booking/);
