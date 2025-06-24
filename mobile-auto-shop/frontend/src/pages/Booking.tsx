@@ -78,7 +78,7 @@ const [serviceId, setServiceId] = useState<number | null>(null);
         notes: values.notes,
       });
       navigate('/confirmation', { state: { appointment } });
-    } catch (e) {
+    } catch {
       alert('An error occurred.');
     } finally {
       setIsLoading(false);
