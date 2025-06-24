@@ -10,9 +10,14 @@ describe('Appointments API', () => {
 
   test('should create an appointment with valid data', async () => {
     db.query.mockResolvedValueOnce({ rows: [{ id: 100 }] });
+    const tokenRes = await request(app).get('/csrf-token')
+    const csrfToken = tokenRes.body.csrfToken
+    const cookie = tokenRes.headers['set-cookie']
 
     const res = await request(app)
       .post('/appointments')
+      .set('Cookie', cookie)
+      .set('X-CSRF-Token', csrfToken)
       .send({
         customer_id: 1,
         service_id: 1,
@@ -28,8 +33,14 @@ describe('Appointments API', () => {
   });
 
   test('should reject invalid appointment data', async () => {
+    const tokenRes = await request(app).get('/csrf-token')
+    const csrfToken = tokenRes.body.csrfToken
+    const cookie = tokenRes.headers['set-cookie']
+
     const res = await request(app)
       .post('/appointments')
+      .set('Cookie', cookie)
+      .set('X-CSRF-Token', csrfToken)
       .send({
         customer_id: 'bad',
         service_id: 1,
