@@ -8,7 +8,8 @@ const router = express.Router();
 router.get('/', async (req, res, next) => {
   try {
     const { rows } = await db.query('SELECT * FROM services ORDER BY id');
-    if (rows.length === 0) console.warn('⚠️ No services available');
+    const logger = require('../logger');
+    if (rows.length === 0) logger.warn('No services available');
     res.json(rows);
   } catch (err) {
     next(err);

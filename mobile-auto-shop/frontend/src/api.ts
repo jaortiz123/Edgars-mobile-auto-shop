@@ -2,6 +2,7 @@ import axios from 'axios'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
+  withCredentials: true,
 })
 
 export interface Service {
@@ -32,22 +33,37 @@ export interface Appointment {
 }
 
 export const getServices = async (): Promise<Service[]> => {
-  const { data } = await api.get('/services')
-  return data
+  try {
+    const { data } = await api.get('/services')
+    return data
+  } catch (err) {
+    console.error(err)
+    throw err
+  }
 }
 
 export const createCustomer = async (
   customer: Omit<Customer, 'id'>
 ): Promise<Customer> => {
-  const { data } = await api.post('/customers', customer)
-  return data
+  try {
+    const { data } = await api.post('/customers', customer)
+    return data
+  } catch (err) {
+    console.error(err)
+    throw err
+  }
 }
 
 export const createAppointment = async (
   appointment: Omit<Appointment, 'id'>
 ): Promise<Appointment> => {
-  const { data } = await api.post('/appointments', appointment)
-  return data
+  try {
+    const { data } = await api.post('/appointments', appointment)
+    return data
+  } catch (err) {
+    console.error(err)
+    throw err
+  }
 }
 
 export default api
