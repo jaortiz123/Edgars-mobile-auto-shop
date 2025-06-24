@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,7 +34,13 @@ export default function Booking() {
   });
 
   const [step, setStep] = useState(1);
-  const [serviceId, setServiceId] = useState<number | null>(null);
+const [serviceId, setServiceId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handler = () => {};
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
   
   // This is the correct, resolved code block
   const selectService = useCallback((id: number) => {

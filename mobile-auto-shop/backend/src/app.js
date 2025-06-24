@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('./logger');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -17,9 +18,9 @@ const app = express();
 async function checkDbConnection() {
   try {
     await db.query('SELECT 1');
-    console.log('✅ Connected to Postgres');
+    logger.info('Connected to Postgres');
   } catch (err) {
-    console.error('❌ Postgres connection failed:', err);
+    logger.error('Postgres connection failed', err);
   }
 }
 
@@ -33,7 +34,7 @@ async function seedIfEmpty() {
        ('Brake Repair', 'Pads + fluid', 60, 120),
        ('Battery', 'Battery check + install', 45, 90)`
     );
-    console.log('🌱 Seeded fallback services');
+    logger.info('Seeded fallback services');
   }
 }
 app.use(helmet());
@@ -72,9 +73,16 @@ app.get('/debug/seed-status', async (req, res) => {
     appointments: Number(appointments[0].count),
   });
 });
+
+app.post('/debug/reset-db', async (_req, res) => {
+  await db.query('TRUNCATE appointments RESTART IDENTITY CASCADE');
+  await db.query('TRUNCATE customers RESTART IDENTITY CASCADE');
+  await db.query('TRUNCATE vehicles RESTART IDENTITY CASCADE');
+  res.json({ status: 'reset' });
+});
 if (require.main === module) {
   app.listen(process.env.PORT || 3001, async () => {
-    console.log(`🚀 API listening on http://localhost:${process.env.PORT || 3001}`);
+    logger.info(`API listening on http://localhost:${process.env.PORT || 3001}`);
     await checkDbConnection();
     await seedIfEmpty();
   });
