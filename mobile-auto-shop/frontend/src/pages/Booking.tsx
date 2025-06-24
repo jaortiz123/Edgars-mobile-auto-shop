@@ -106,40 +106,40 @@ const [serviceId, setServiceId] = useState<number | null>(null);
       {step === 2 && (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium">Name</label>
-            <input {...register('name')} className="mt-1 w-full border p-2" />
+            <label htmlFor="name" className="block text-sm font-medium">Name</label>
+            <input id="name" {...register('name')} className="mt-1 w-full border p-2" />
             {errors.name && <p className="text-sm text-red-600">{errors.name.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium">Phone</label>
-            <input {...register('phone')} className="mt-1 w-full border p-2" />
+            <label htmlFor="phone" className="block text-sm font-medium">Phone</label>
+            <input id="phone" {...register('phone')} className="mt-1 w-full border p-2" />
             {errors.phone && <p className="text-sm text-red-600">{errors.phone.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium">Email</label>
-            <input {...register('email')} className="mt-1 w-full border p-2" />
+            <label htmlFor="email" className="block text-sm font-medium">Email</label>
+            <input id="email" {...register('email')} className="mt-1 w-full border p-2" />
             {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium">Address</label>
-            <input {...register('address')} className="mt-1 w-full border p-2" />
+            <label htmlFor="address" className="block text-sm font-medium">Address</label>
+            <input id="address" {...register('address')} className="mt-1 w-full border p-2" />
             {errors.address && <p className="text-sm text-red-600">{errors.address.message}</p>}
           </div>
           <div className="flex gap-2">
             <div className="flex-1">
-              <label className="block text-sm font-medium">Date</label>
-              <input type="date" {...register('date')} className="mt-1 w-full border p-2" />
+              <label htmlFor="date" className="block text-sm font-medium">Date</label>
+              <input id="date" type="date" {...register('date')} className="mt-1 w-full border p-2" />
               {errors.date && <p className="text-sm text-red-600">{errors.date.message}</p>}
             </div>
             <div className="flex-1">
-              <label className="block text-sm font-medium">Time</label>
-              <input type="time" {...register('time')} className="mt-1 w-full border p-2" />
+              <label htmlFor="time" className="block text-sm font-medium">Time</label>
+              <input id="time" type="time" {...register('time')} className="mt-1 w-full border p-2" />
               {errors.time && <p className="text-sm text-red-600">{errors.time.message}</p>}
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium">Notes</label>
-            <textarea {...register('notes')} className="mt-1 w-full border p-2" />
+            <label htmlFor="notes" className="block text-sm font-medium">Notes</label>
+            <textarea id="notes" {...register('notes')} className="mt-1 w-full border p-2" />
           </div>
           <div className="flex justify-between">
             <button type="button" className="rounded bg-gray-200 px-3 py-2" onClick={goBack}>

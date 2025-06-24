@@ -10,6 +10,16 @@ const api = axios.create({
   },
 })
 
+async function getWithRetry(url: string, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await api.get(url)
+    } catch (err) {
+      if (i === retries - 1) throw err
+    }
+  }
+}
+
 export interface Service {
   id: number
   name: string
@@ -38,31 +48,31 @@ export interface Appointment {
 }
 
 export const customerAPI = {
-  getAll: () => api.get('/api/customers'),
-  getById: (id: number) => api.get(`/api/customers/${id}`),
+  getAll: () => getWithRetry('/api/customers'),
+  getById: (id: number) => getWithRetry(`/api/customers/${id}`),
   create: (data: Omit<Customer, 'id'>) => api.post('/api/customers', data),
   update: (id: number, data: Partial<Customer>) => api.put(`/api/customers/${id}`, data),
   delete: (id: number) => api.delete(`/api/customers/${id}`),
 }
 
 export const appointmentAPI = {
-  getAll: () => api.get('/api/appointments'),
-  getById: (id: number) => api.get(`/api/appointments/${id}`),
+  getAll: () => getWithRetry('/api/appointments'),
+  getById: (id: number) => getWithRetry(`/api/appointments/${id}`),
   create: (data: Omit<Appointment, 'id'>) => api.post('/api/appointments', data),
   update: (id: number, data: Partial<Appointment>) => api.put(`/api/appointments/${id}`, data),
   delete: (id: number) => api.delete(`/api/appointments/${id}`),
-  getAvailableSlots: (date: string) => api.get(`/api/appointments/available-slots?date=${date}`),
+  getAvailableSlots: (date: string) => getWithRetry(`/api/appointments/available-slots?date=${date}`),
 }
 
 export const serviceAPI = {
-  getAll: () => api.get('/api/services'),
-  getById: (id: number) => api.get(`/api/services/${id}`),
+  getAll: () => getWithRetry('/api/services'),
+  getById: (id: number) => getWithRetry(`/api/services/${id}`),
 }
 
 export const authAPI = {
   login: (credentials: { username: string; password: string }) => api.post('/admin/login', credentials),
   logout: () => api.post('/admin/logout'),
-  getProfile: () => api.get('/admin/me'),
+  getProfile: () => getWithRetry('/admin/me'),
 }
 
 export default api
