@@ -16,7 +16,7 @@ describe('Appointments API', () => {
       .send({
         customer_id: 1,
         service_id: 1,
-        vehicle_id: null,
+        vehicle_id: 1,
         scheduled_date: '2025-08-15',
         scheduled_time: '14:00',
         location_address: '123 Test Street',
@@ -26,4 +26,19 @@ describe('Appointments API', () => {
     expect(res.statusCode).toBe(201);
     expect(res.body).toHaveProperty('id');
   });
+
+  test('should reject invalid appointment data', async () => {
+    const res = await request(app)
+      .post('/appointments')
+      .send({
+        customer_id: 'bad',
+        service_id: 1,
+        vehicle_id: null,
+        scheduled_date: 'invalid',
+        scheduled_time: '99:99',
+        location_address: '',
+      })
+
+    expect(res.statusCode).toBe(400)
+  })
 });
