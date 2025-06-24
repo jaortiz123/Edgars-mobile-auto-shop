@@ -131,3 +131,10 @@
 - TEST-003: Integration tests for API
 - DOC-001: API documentation
 - PERF-004: Image optimization
+
+## Codex Setup Notes
+
+To run tests in this repository, ensure Docker and docker-compose are installed.
+Run `npm install` in the repository root as well as in `mobile-auto-shop/backend`
+and `mobile-auto-shop/frontend` before executing any test command. The E2E suite
+is triggered from the root via `npm test` which uses Playwright and Docker.

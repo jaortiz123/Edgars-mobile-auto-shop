@@ -10,6 +10,7 @@ import {
   appointmentAPI,
   type Service,
 } from '../services/api';
+import ErrorMessage from '../components/ErrorMessage';
 
 const schema = z.object({
   name: z.string().min(1, 'Required'),
@@ -77,7 +78,7 @@ const [serviceId, setServiceId] = useState<number | null>(null);
         notes: values.notes,
       });
       navigate('/confirmation', { state: { appointment } });
-    } catch (e) {
+    } catch {
       alert('An error occurred.');
     } finally {
       setIsLoading(false);
@@ -108,33 +109,33 @@ const [serviceId, setServiceId] = useState<number | null>(null);
           <div>
             <label htmlFor="name" className="block text-sm font-medium">Name</label>
             <input id="name" {...register('name')} className="mt-1 w-full border p-2" />
-            {errors.name && <p className="text-sm text-red-600">{errors.name.message}</p>}
+            <ErrorMessage message={errors.name?.message} />
           </div>
           <div>
             <label htmlFor="phone" className="block text-sm font-medium">Phone</label>
             <input id="phone" {...register('phone')} className="mt-1 w-full border p-2" />
-            {errors.phone && <p className="text-sm text-red-600">{errors.phone.message}</p>}
+            <ErrorMessage message={errors.phone?.message} />
           </div>
           <div>
             <label htmlFor="email" className="block text-sm font-medium">Email</label>
             <input id="email" {...register('email')} className="mt-1 w-full border p-2" />
-            {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
+            <ErrorMessage message={errors.email?.message} />
           </div>
           <div>
             <label htmlFor="address" className="block text-sm font-medium">Address</label>
             <input id="address" {...register('address')} className="mt-1 w-full border p-2" />
-            {errors.address && <p className="text-sm text-red-600">{errors.address.message}</p>}
+            <ErrorMessage message={errors.address?.message} />
           </div>
           <div className="flex gap-2">
             <div className="flex-1">
               <label htmlFor="date" className="block text-sm font-medium">Date</label>
               <input id="date" type="date" {...register('date')} className="mt-1 w-full border p-2" />
-              {errors.date && <p className="text-sm text-red-600">{errors.date.message}</p>}
+              <ErrorMessage message={errors.date?.message} />
             </div>
             <div className="flex-1">
               <label htmlFor="time" className="block text-sm font-medium">Time</label>
               <input id="time" type="time" {...register('time')} className="mt-1 w-full border p-2" />
-              {errors.time && <p className="text-sm text-red-600">{errors.time.message}</p>}
+              <ErrorMessage message={errors.time?.message} />
             </div>
           </div>
           <div>

@@ -9,9 +9,16 @@ const servicesRouter = require('./routes/services');
 const customersRouter = require('./routes/customers');
 const appointmentsRouter = require('./routes/appointments');
 const adminRouter = require('./routes/admin');
+const cookieParser = require('cookie-parser');
+const { doubleCsrf } = require('csrf-protection');
+const { invalidCsrfTokenError, generateToken } = doubleCsrf({
+  getSecret: () => require('crypto').randomBytes(32).toString('hex'),
+  cookieName: 'X-CSRF-Token',
+});
 const analyticsRouter = require('./routes/analytics');
 const errorHandler = require('./middleware/errorHandler');
 const auth = require('./middleware/auth');
+const docsRouter = require('./docs/swagger');
 const rateLimit = require('./middleware/rateLimit');
 const app = express();
 
@@ -41,12 +48,23 @@ app.use(helmet());
 app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use(morgan('combined', { stream: { write: msg => logger.info(msg.trim()) } }));
 app.use(express.json());
+app.use(cookieParser());
+app.use((req, res, next) => {
+  res.locals.csrfToken = generateToken(req, res);
+  next();
+});
 app.use(rateLimit);
 app.use('/services', servicesRouter);
-app.use('/customers', customersRouter);
-app.use('/appointments', appointmentsRouter);
+app.use('/customers', invalidCsrfTokenError, customersRouter);
+app.use('/appointments', invalidCsrfTokenError, appointmentsRouter);
+app.post('/admin/login', invalidCsrfTokenError, adminRouter);
 app.use('/admin', adminRouter);
 app.use('/analytics', auth, analyticsRouter);
+app.use('/docs', docsRouter);
+app.get('/csrf-token', (req, res) => {
+  const token = generateToken(req, res);
+  res.json({ csrfToken: token });
+});
 app.get('/', (req, res) =>
   res.json({ status: 'Backend is live', timestamp: new Date().toISOString() })
 );
@@ -79,6 +97,14 @@ app.post('/debug/reset-db', async (_req, res) => {
   await db.query('TRUNCATE customers RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE vehicles RESTART IDENTITY CASCADE');
   res.json({ status: 'reset' });
+});
+
+app.post('/debug/reset-and-seed', async (_req, res) => {
+  await db.query('TRUNCATE appointments RESTART IDENTITY CASCADE');
+  await db.query('TRUNCATE customers RESTART IDENTITY CASCADE');
+  await db.query('TRUNCATE vehicles RESTART IDENTITY CASCADE');
+  await seedIfEmpty();
+  res.json({ status: 'reset-seeded' });
 });
 
 app.post('/debug/seed', async (_req, res) => {
