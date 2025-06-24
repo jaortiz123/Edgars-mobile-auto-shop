@@ -19,8 +19,39 @@ jobs:
       - run: npm ci
       - run: npm test --if-present
 
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile-auto-shop/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm ci
+      - run: npm test --if-present -- --run
+
+  e2e:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm ci
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: ~/.docker
+          key: ${{ runner.os }}-docker-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-docker-
+      - run: docker-compose -f mobile-auto-shop/docker-compose.yml up -d --build
+      - run: npm test:e2e
+
   docker-deploy:
-    needs: backend
+    needs: [backend, frontend, e2e]
     runs-on: ubuntu-latest
     environment: production
     steps:

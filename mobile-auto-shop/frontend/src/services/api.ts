@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const API_BASE_URL = import.meta.env.VITE_PUBLIC_API_URL || 'http://localhost:3001'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -10,12 +10,31 @@ const api = axios.create({
   },
 })
 
-async function getWithRetry(url: string, retries = 3) {
+async function getWithRetry(url: string, retries = 3, delayMs = 300) {
   for (let i = 0; i < retries; i++) {
     try {
       return await api.get(url)
     } catch (err) {
       if (i === retries - 1) throw err
+      const wait = delayMs * 2 ** i
+      await new Promise((res) => setTimeout(res, wait))
+    }
+  }
+}
+
+async function postWithRetry(
+  url: string,
+  data: unknown,
+  retries = 3,
+  delayMs = 300
+) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await api.post(url, data)
+    } catch (err) {
+      if (i === retries - 1) throw err
+      const wait = delayMs * 2 ** i
+      await new Promise((res) => setTimeout(res, wait))
     }
   }
 }
@@ -50,7 +69,7 @@ export interface Appointment {
 export const customerAPI = {
   getAll: () => getWithRetry('/api/customers'),
   getById: (id: number) => getWithRetry(`/api/customers/${id}`),
-  create: (data: Omit<Customer, 'id'>) => api.post('/api/customers', data),
+  create: (data: Omit<Customer, 'id'>) => postWithRetry('/api/customers', data),
   update: (id: number, data: Partial<Customer>) => api.put(`/api/customers/${id}`, data),
   delete: (id: number) => api.delete(`/api/customers/${id}`),
 }
@@ -58,7 +77,8 @@ export const customerAPI = {
 export const appointmentAPI = {
   getAll: () => getWithRetry('/api/appointments'),
   getById: (id: number) => getWithRetry(`/api/appointments/${id}`),
-  create: (data: Omit<Appointment, 'id'>) => api.post('/api/appointments', data),
+  create: (data: Omit<Appointment, 'id'>) =>
+    postWithRetry('/api/appointments', data),
   update: (id: number, data: Partial<Appointment>) => api.put(`/api/appointments/${id}`, data),
   delete: (id: number) => api.delete(`/api/appointments/${id}`),
   getAvailableSlots: (date: string) => getWithRetry(`/api/appointments/available-slots?date=${date}`),
