@@ -10,8 +10,13 @@ describe('admin login', () => {
   });
 
   test('valid credentials set auth cookie', async () => {
+    const tokenRes = await request(app).get('/csrf-token')
+    const csrfToken = tokenRes.body.csrfToken
+    const cookie = tokenRes.headers['set-cookie']
     const res = await request(app)
       .post('/admin/login')
+      .set('Cookie', cookie)
+      .set('X-CSRF-Token', csrfToken)
       .send({ username: 'admin', password: 'secret' });
     expect(res.status).toBe(200);
     expect(res.headers['set-cookie']).toBeDefined();
