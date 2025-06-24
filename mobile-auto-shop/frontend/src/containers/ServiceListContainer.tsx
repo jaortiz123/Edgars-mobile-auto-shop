@@ -6,8 +6,8 @@ export default function ServiceListContainer() {
   const { data: services } = useQuery<Service[]>({
     queryKey: ['services'],
     queryFn: async () => {
-      const { data } = await serviceAPI.getAll()
-      return data
+      const response = await serviceAPI.getAll()
+      return response?.data || []
     },
   })
 

@@ -1,3 +1,133 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Custom theme values for Tailwind v4 */
+@theme {
+  --color-accent: #3b82f6;
+  --color-accent-dark: #2563eb;
+  --color-navy: #1e3a8a;
+  --color-gray: #6b7280;
+  --color-gray-light: #f3f4f6;
+  --color-light-blue: #38bdf8;
+  --color-text-dark: #374151;
+}
+
+/* Component layer with custom styles - Only classes used in Landing page */
+@layer components {
+  /* Modern button variants */
+  .btn-modern {
+    @apply px-6 py-3 font-semibold rounded-xl transition-all duration-300 shadow-lg
+           focus:ring-2 focus:ring-blue-500/50 focus:outline-none;
+  }
+  
+  .btn-accent {
+    @apply px-6 py-3 font-semibold rounded-xl transition-all duration-300 shadow-lg
+           focus:ring-2 focus:ring-blue-500/50 focus:outline-none
+           text-white hover:shadow-xl transform hover:-translate-y-0.5;
+    background-color: var(--color-accent);
+  }
+  .btn-accent:hover {
+    background-color: var(--color-accent-dark);
+  }
+  
+  .btn-outline-modern {
+    @apply px-6 py-3 font-semibold rounded-xl transition-all duration-300 shadow-lg
+           focus:ring-2 focus:ring-blue-500/50 focus:outline-none
+           border-2 hover:text-white;
+    border-color: var(--color-gray);
+    color: var(--color-gray);
+  }
+  .btn-outline-modern:hover {
+    background-color: var(--color-gray);
+  }
+
+  /* Card components */
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-white/20;
+  }
+  
+  .floating-card {
+    @apply bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl hover:-translate-y-1
+           transition-all duration-300 border border-gray-200/50;
+  }
+
+  /* Form inputs */
+  .input-modern {
+    @apply w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 
+           focus:ring-blue-500/50 transition-all duration-200 outline-none;
+  }
+  .input-modern:focus {
+    border-color: var(--color-accent);
+  }
+
+  /* Typography */
+  .hero-modern {
+    @apply text-4xl md:text-6xl font-extrabold leading-tight;
+    color: var(--color-navy);
+  }
+  
+  .heading-display {
+    @apply text-3xl md:text-4xl font-bold;
+    color: var(--color-navy);
+  }
+  
+  .text-body {
+    @apply text-lg leading-relaxed;
+    color: var(--color-text-dark);
+  }
+
+  /* Layout sections */
+  .section-divider {
+    @apply py-16 px-6;
+  }
+
+  /* Navigation */
+  .nav-modern {
+    @apply bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200/50;
+  }
+  
+  .nav-link-modern {
+    @apply transition-colors duration-200 font-medium;
+    color: var(--color-gray);
+  }
+  .nav-link-modern:hover {
+    color: var(--color-accent);
+  }
+
+  /* Stats and metrics */
+  .stats-modern {
+    @apply text-center p-6 rounded-xl bg-gradient-to-br from-blue-50 to-sky-50;
+  }
+  
+  .stats-number {
+    @apply text-3xl font-bold;
+    color: var(--color-accent);
+  }
+
+  /* Service cards */
+  .service-card {
+    @apply bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl hover:-translate-y-1
+           transition-all duration-300 border border-gray-200/50;
+  }
+  .service-card:hover {
+    border-color: rgb(56 189 248 / 0.3);
+  }
+  
+  .service-icon {
+    @apply w-12 h-12 transition-colors duration-300;
+    color: var(--color-accent);
+  }
+  .service-card:hover .service-icon {
+    color: var(--color-light-blue);
+  }
+
+  /* Testimonials */
+  .testimonial-card {
+    @apply bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-white/20
+           text-center hover:shadow-2xl transition-all duration-300;
+  }
+  
+  .testimonial-quote {
+    @apply text-lg italic leading-relaxed;
+    color: var(--color-text-dark);
+  }
+}
