@@ -39,7 +39,7 @@ async function seedIfEmpty() {
 }
 app.use(helmet());
 app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
-app.use(morgan('combined'));
+app.use(morgan('combined', { stream: { write: msg => logger.info(msg.trim()) } }));
 app.use(express.json());
 app.use(rateLimit);
 app.use('/services', servicesRouter);
@@ -79,6 +79,11 @@ app.post('/debug/reset-db', async (_req, res) => {
   await db.query('TRUNCATE customers RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE vehicles RESTART IDENTITY CASCADE');
   res.json({ status: 'reset' });
+});
+
+app.post('/debug/seed', async (_req, res) => {
+  await seedIfEmpty();
+  res.json({ status: 'seeded' });
 });
 if (require.main === module) {
   app.listen(process.env.PORT || 3001, async () => {
