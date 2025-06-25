@@ -44,7 +44,11 @@ export interface Service {
   name: string;
   description?: string;
   duration_minutes?: number;
+  duration?: string;
   base_price?: number;
+  category?: string;
+  popular?: boolean;
+  includes?: string[];
 }
 
 export interface Customer {
