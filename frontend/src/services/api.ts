@@ -47,7 +47,7 @@ export interface Service {
   duration_minutes?: number;
   duration?: string;
   base_price?: number;
-  category?: string;
+  category?: 'Emergency' | 'Diagnostics' | 'Maintenance' | 'Fleet'; // NEW: Category type
   popular?: boolean;
   includes?: string[];
 }

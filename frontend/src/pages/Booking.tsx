@@ -1,19 +1,28 @@
 import { useState, useCallback } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { z } from 'zod';
-import { ArrowLeft, CheckCircle, Calendar, Clock, MapPin, User, Phone, Mail, MessageSquare } from 'lucide-react';
+import type { Service } from '../services/api';
+import { serviceAPI } from '../services/api';
+import ServiceCard from '../components/ServiceCard';
+import ServiceList from '../components/ServiceList';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import ServiceCard from '../components/ServiceCard';
-import { serviceAPI, type Service } from '../services/api';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 
 const MOCK_SERVICES: Service[] = [
-  { id: 1, name: "Premium Oil Change", description: "Full synthetic oil change with comprehensive multi-point inspection", base_price: 75, duration_minutes: 45 },
-  { id: 2, name: "Brake System Service", description: "Complete brake inspection, pad replacement, and system maintenance", base_price: 150, duration_minutes: 90 },
-  { id: 3, name: "Tire Service", description: "Tire rotation, balancing, and pressure optimization", base_price: 65, duration_minutes: 60 },
+  // Emergency Services
+  { id: 1, name: "Emergency Battery Replacement", description: "On-site testing and replacement to get you started.", base_price: 180, category: 'Emergency' },
+  { id: 2, name: "Emergency Brake Service", description: "Critical brake pad and rotor replacement for safety.", base_price: 250, category: 'Emergency' },
+  // Diagnostics
+  { id: 3, name: "Check Engine Light Scan", description: "Advanced OBD-II diagnostics to identify the exact issue.", base_price: 95, category: 'Diagnostics' },
+  { id: 4, name: "AC System Diagnostics", description: "Full system check for leaks and performance issues.", base_price: 120, category: 'Diagnostics' },
+  // Maintenance
+  { id: 5, name: "Premium Oil Change", description: "Full synthetic oil change with multi-point inspection.", base_price: 75, category: 'Maintenance' },
+  // Fleet Services
+  { id: 6, name: "Fleet Vehicle Inspection", description: "Comprehensive inspection for your business vehicles.", base_price: 100, category: 'Fleet' },
 ];
 
 const schema = z.object({
@@ -27,27 +36,11 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
-// A simple Input component for the form
-const FormInput = ({ icon, label, id, error, ...props }: any) => {
-    const Icon = icon;
-    return (
-        <div>
-            <label htmlFor={id} className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                <Icon className="h-4 w-4 mr-2 text-primary" />
-                {label}
-            </label>
-            <input id={id} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" {...props} />
-            {error && <p className="text-red-500 text-xs mt-1">{error.message}</p>}
-        </div>
-    );
-};
-
-
 export default function Booking() {
   const navigate = useNavigate();
-  const { data: services, isLoading: servicesLoading } = useQuery<Service[]>({
+  const { data: services, isLoading } = useQuery<Service[]>({
     queryKey: ['services'],
-    queryFn: () => serviceAPI.getAll().then(res => res?.data ?? MOCK_SERVICES).catch(() => MOCK_SERVICES),
+    queryFn: () => serviceAPI.getAll().then(res => res?.data ?? []),
   });
 
   const [step, setStep] = useState(1);
@@ -55,100 +48,165 @@ export default function Booking() {
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({ resolver: zodResolver(schema) });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const selectService = useCallback((service: Service) => {
+  const handleSelectService = useCallback((service: Service) => {
     setSelectedService(service);
     setStep(2);
   }, []);
 
-  const goBack = useCallback(() => {
-    if (step === 2) {
-      setSelectedService(null);
-      setStep(1);
-    }
-  }, [step]);
-
+  const goBack = useCallback(() => setStep(1), []);
+  
   const onSubmit = useCallback(async (values: FormValues) => {
     if (!selectedService) return;
     setIsSubmitting(true);
     setTimeout(() => {
-      navigate('/confirmation', { state: { appointment: { ...values, service_name: selectedService.name } } });
+        navigate('/confirmation', { state: { appointment: { ...values, service_name: selectedService.name } } });
     }, 1500);
   }, [selectedService, navigate]);
 
+  // Group services by category for display (fix type error)
+  const servicesByCategory = (services || MOCK_SERVICES).reduce((acc: Record<string, Service[]>, service) => {
+      const category = service.category || 'Other';
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(service);
+      return acc;
+  }, {});
+
   return (
-    <div className="container mx-auto max-w-4xl py-12 px-4">
-      <header className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-gray-800">Configure Your Service</h1>
-        <p className="text-gray-600 mt-2">Professional automotive care delivered to your location.</p>
-      </header>
-      
-      {/* Progress Indicator */}
-      <nav className="flex items-center justify-center mb-16" aria-label="Booking progress">
-        {[ { num: 1, label: 'Select Service'}, { num: 2, label: 'Enter Details' } ].map((item, index, arr) => (
-          <>
-            <div className="flex items-center flex-col">
-              <div className={`flex items-center justify-center w-12 h-12 rounded-full font-bold transition-colors ${step >= item.num ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'}`}>
-                {step > item.num ? <CheckCircle /> : item.num}
-              </div>
-              <p className="mt-2 text-sm font-semibold">{item.label}</p>
+    <div className="container mx-auto max-w-5xl py-16 px-4">
+        {/* Progress Indicator - CRITICAL */}
+        <div className="mb-12">
+            <ol className="flex items-center w-full">
+                {/* Step 1 */}
+                <li className="flex w-full items-center text-accent after:content-[''] after:w-full after:h-1 after:border-b after:border-border after:border-4 after:inline-block">
+                    <div className="flex flex-col items-center text-center">
+                        <span className="flex items-center justify-center w-10 h-10 bg-accent text-accent-foreground rounded-full shrink-0">1</span>
+                        <span className="font-medium mt-2">Select Service</span>
+                    </div>
+                </li>
+                {/* Step 2 */}
+                <li className="flex w-full items-center after:content-[''] after:w-full after:h-1 after:border-b after:border-border after:border-4 after:inline-block">
+                    <div className="flex flex-col items-center text-center">
+                        <span className="flex items-center justify-center w-10 h-10 bg-secondary text-secondary-foreground rounded-full shrink-0">2</span>
+                        <span className="font-medium text-muted-foreground mt-2">Your Details</span>
+                    </div>
+                </li>
+                {/* Step 3 */}
+                <li className="flex items-center">
+                     <div className="flex flex-col items-center text-center">
+                        <span className="flex items-center justify-center w-10 h-10 bg-secondary text-secondary-foreground rounded-full shrink-0">3</span>
+                        <span className="font-medium text-muted-foreground mt-2">Confirmation</span>
+                    </div>
+                </li>
+            </ol>
+             <div className="grid grid-cols-3 mt-2 text-center text-sm font-medium text-primary">
+                <span>Select Service</span>
+                <span>Your Details</span>
+                <span>Confirmation</span>
             </div>
-            {index < arr.length - 1 && <div className={`flex-auto border-t-2 transition-colors mx-4 ${step > item.num ? 'border-primary' : 'border-gray-200'}`}></div>}
-          </>
-        ))}
-      </nav>
+        </div>
 
-      {/* Step Content */}
-      <div className="animate-fadeInUp">
+        {/* Step 1: Service Selection */}
         {step === 1 && (
-          <section>
-            <h2 className="text-2xl font-bold text-center mb-8">Choose Your Service</h2>
-            {servicesLoading ? <p className="text-center">Loading services...</p> : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {(services || MOCK_SERVICES).map(service => (
-                   <div key={service.id} onClick={() => selectService(service)} className="cursor-pointer">
-                       <ServiceCard service={service} />
-                   </div>
-                ))}
-              </div>
-            )}
-          </section>
+            <section>
+                {isLoading ? (
+                    <p className="text-center">Loading services...</p>
+                ) : (
+                    <div className="space-y-16">
+                        {Object.entries(servicesByCategory).map(([category, serviceItems]) => (
+                            <div key={category}>
+                                {/* RE-FORGED: Added text-center, border-b, and more spacing to give it authority */}
+                                <h2 className="text-center text-3xl font-bold text-primary mb-12 border-b pb-4">
+                                    {category} Services
+                                </h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                    {(services || MOCK_SERVICES).map(service => (
+                                        <div key={service.id} onClick={() => handleSelectService(service)} className="cursor-pointer">
+                                            <ServiceCard service={service} onSelect={handleSelectService} displayPrice={true} />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </section>
         )}
 
+        {/* Step 2: Details Form */}
         {step === 2 && selectedService && (
-          <section>
-            <button onClick={goBack} className="flex items-center text-sm font-semibold text-gray-600 hover:text-gray-800 mb-4">
-              <ArrowLeft className="h-4 w-4 mr-2"/> Change Service
-            </button>
-            <Card>
-              <CardHeader>
-                <CardTitle>Book: {selectedService.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormInput icon={User} label="Full Name *" id="name" {...register('name')} error={errors.name} />
-                    <FormInput icon={Phone} label="Phone Number" id="phone" {...register('phone')} error={errors.phone} />
-                    <FormInput icon={Mail} label="Email Address" id="email" {...register('email')} error={errors.email} />
-                    <FormInput icon={MapPin} label="Service Address *" id="address" {...register('address')} error={errors.address} />
-                    <FormInput icon={Calendar} label="Preferred Date *" id="date" type="date" {...register('date')} error={errors.date} />
-                    <FormInput icon={Clock} label="Preferred Time *" id="time" type="time" {...register('time')} error={errors.time} />
-                  </div>
-                  <div>
-                    <label htmlFor="notes" className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                        <MessageSquare className="h-4 w-4 mr-2 text-primary" />
-                        Additional Notes
-                    </label>
-                    <textarea id="notes" rows={4} {...register('notes')} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-                  </div>
-                  <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
-                    {isSubmitting ? 'Booking...' : `Confirm Booking for $${selectedService.base_price}`}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </section>
+            <section>
+                 <div className="text-center mb-12">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary text-primary-foreground mb-4">
+                        <span className="text-2xl font-bold">2</span>
+                    </div>
+                    <h2 className="text-3xl font-bold text-primary">Enter Your Details</h2>
+                </div>
+                
+                <Card className="max-w-3xl mx-auto">
+                    <CardHeader>
+                        <button onClick={goBack} className="flex items-center text-sm font-semibold text-muted-foreground hover:text-primary mb-4">
+                            <ArrowLeft className="h-4 w-4 mr-2"/> Change Service
+                        </button>
+                        <CardTitle>Book: {selectedService.name}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="flex items-center text-sm font-semibold text-foreground mb-2">
+                                        Full Name *
+                                    </label>
+                                    <input {...register('name')} className="w-full px-3 py-2 border rounded-md" />
+                                    {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
+                                </div>
+                                <div>
+                                    <label className="flex items-center text-sm font-semibold text-foreground mb-2">
+                                        Phone Number
+                                    </label>
+                                    <input {...register('phone')} className="w-full px-3 py-2 border rounded-md" />
+                                </div>
+                                <div>
+                                    <label className="flex items-center text-sm font-semibold text-foreground mb-2">
+                                        Email Address
+                                    </label>
+                                    <input {...register('email')} type="email" className="w-full px-3 py-2 border rounded-md" />
+                                </div>
+                                <div>
+                                    <label className="flex items-center text-sm font-semibold text-foreground mb-2">
+                                        Service Address *
+                                    </label>
+                                    <input {...register('address')} className="w-full px-3 py-2 border rounded-md" />
+                                    {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>}
+                                </div>
+                                <div>
+                                    <label className="flex items-center text-sm font-semibold text-foreground mb-2">
+                                        Preferred Date *
+                                    </label>
+                                    <input {...register('date')} type="date" className="w-full px-3 py-2 border rounded-md" />
+                                    {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date.message}</p>}
+                                </div>
+                                <div>
+                                    <label className="flex items-center text-sm font-semibold text-foreground mb-2">
+                                        Preferred Time *
+                                    </label>
+                                    <input {...register('time')} type="time" className="w-full px-3 py-2 border rounded-md" />
+                                    {errors.time && <p className="text-red-500 text-xs mt-1">{errors.time.message}</p>}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="flex items-center text-sm font-semibold text-foreground mb-2">
+                                    Additional Notes
+                                </label>
+                                <textarea {...register('notes')} rows={4} className="w-full px-3 py-2 border rounded-md" />
+                            </div>
+                            <Button type="submit" size="lg" className="w-full bg-accent text-accent-foreground" disabled={isSubmitting}>
+                                {isSubmitting ? 'Booking...' : `Confirm Booking for $${selectedService.base_price}`}
+                            </Button>
+                        </form>
+                    </CardContent>
+                </Card>
+            </section>
         )}
-      </div>
     </div>
   );
 }
