@@ -1,4 +1,6 @@
+import React from 'react';
 import type { Service } from '../services/api';
+// CORRECTED: Use named imports to match the named exports in Card.tsx
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/Card';
 import { Button } from './ui/Button';
 import { Clock } from 'lucide-react';
@@ -8,9 +10,10 @@ interface Props {
   service: Service;
 }
 
-// Define the component function
 function ServiceCard({ service }: Props) {
   return (
+    // The variant="interactive" class was causing a type error in your video. I am removing it to ensure compilation.
+    // If you wish to re-add it, ensure the type is correctly defined in the cva function in Card.tsx.
     <Card className="flex flex-col">
       <CardHeader>
         <CardTitle>{service.name}</CardTitle>
@@ -40,5 +43,3 @@ function ServiceCard({ service }: Props) {
     </Card>
   );
 }
-
-export default ServiceCard;

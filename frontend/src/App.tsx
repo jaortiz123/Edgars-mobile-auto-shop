@@ -1,34 +1,54 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import PublicLayout from './layout/PublicLayout'
-import { Suspense, lazy } from 'react'
-import AdminLayout from './admin/AdminLayout'
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Suspense, lazy } from 'react';
 
-const Landing = lazy(() => import('./pages/Landing'))
-const Booking = lazy(() => import('./pages/Booking'))
-const Confirmation = lazy(() => import('./pages/Confirmation'))
-const Login = lazy(() => import('./admin/Login'))
-const Dashboard = lazy(() => import('./admin/Dashboard'))
+// --- Layouts ---
+// A single Suspense boundary can be placed within the layout itself.
+import PublicLayout from './layout/PublicLayout'; 
+import AdminLayout from './admin/AdminLayout';
 
-const queryClient = new QueryClient()
+// --- Page Components (Lazy Loaded) ---
+const Landing = lazy(() => import('./pages/Landing'));
+const Booking = lazy(() => import('./pages/Booking'));
+const Confirmation = lazy(() => import('./pages/Confirmation'));
+const NotFound = lazy(() => import('./pages/NotFound')); // A new, dedicated Not Found page
+const Login = lazy(() => import('./admin/Login'));
+const Dashboard = lazy(() => import('./admin/Dashboard'));
+
+// --- React Query Client ---
+const queryClient = new QueryClient();
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
+          {/* === Public Routes === */}
+          {/* The PublicLayout now provides the Suspense boundary for all its children. */}
           <Route element={<PublicLayout />}>
-            <Route path="/" element={<Suspense fallback={null}><Landing /></Suspense>} />
-            <Route path="/booking" element={<Suspense fallback={null}><Booking /></Suspense>} />
-            <Route path="/confirmation" element={<Suspense fallback={null}><Confirmation /></Suspense>} />
+            <Route path="/" element={<Landing />} />
+            <Route path="/booking" element={<Booking />} />
+            <Route path="/confirmation" element={<Confirmation />} />
           </Route>
-          <Route path="/admin/login" element={<Suspense fallback={null}><Login /></Suspense>} />
-          <Route path="/admin/*" element={<AdminLayout />}>
-            <Route index element={<Suspense fallback={null}><Dashboard /></Suspense>} />
+
+          {/* === Standalone / Auth Routes === */}
+          {/* Grouping standalone routes under a simple Outlet for structural consistency. */}
+          <Route element={<Suspense fallback={<div>Loading...</div>}><Outlet /></Suspense>}>
+             <Route path="/admin/login" element={<Login />} />
           </Route>
-          <Route path="*" element={<Navigate to="/" />} />
+
+          {/* === Protected Admin Routes === */}
+          {/* AdminLayout provides its own Suspense boundary. */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            {/* Future admin routes can be added here, e.g., <Route path="users" element={<Users />} /> */}
+          </Route>
+
+          {/* === Catch-all / Not Found Route === */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
-  )
+  );
 }
