@@ -14,6 +14,9 @@ const Confirmation = lazy(() => import('./pages/Confirmation'));
 const NotFound = lazy(() => import('./pages/NotFound')); // A new, dedicated Not Found page
 const Login = lazy(() => import('./admin/Login'));
 const Dashboard = lazy(() => import('./admin/Dashboard'));
+const About = lazy(() => import('./pages/About'));
+const ServiceAreas = lazy(() => import('./pages/ServiceAreas'));
+import EmergencyService from './pages/EmergencyService';
 
 // --- React Query Client ---
 const queryClient = new QueryClient();
@@ -27,8 +30,11 @@ export default function App() {
           {/* The PublicLayout now provides the Suspense boundary for all its children. */}
           <Route element={<PublicLayout />}>
             <Route path="/" element={<Landing />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/service-areas" element={<ServiceAreas />} />
             <Route path="/booking" element={<Booking />} />
             <Route path="/confirmation" element={<Confirmation />} />
+            <Route path="/emergency" element={<EmergencyService />} />
           </Route>
 
           {/* === Standalone / Auth Routes === */}

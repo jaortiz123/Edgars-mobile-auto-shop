@@ -1,44 +1,40 @@
-import type { Service } from '../services/api';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/Card';
+import type { Service } from '../api';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from './ui/Card';
 import { Button } from './ui/Button';
-import { Clock } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Wrench } from 'lucide-react';
 
 interface Props {
   service: Service;
+  onSelect: (service: Service) => void;
+  displayPrice?: boolean;
 }
 
-// Define the component function
-function ServiceCard({ service }: Props) {
+export default function ServiceCard({ service, onSelect, displayPrice = false }: Props) {
   return (
-    <Card className="flex flex-col">
+    <Card 
+      className="flex flex-col h-full hover:shadow-xl transition-shadow duration-300 min-h-[320px] cursor-pointer" 
+      onClick={() => onSelect(service)}
+    >
       <CardHeader>
+        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary text-primary mb-4 border shadow-sm">
+            <Wrench className="h-6 w-6" />
+        </div>
         <CardTitle>{service.name}</CardTitle>
         <CardDescription>{service.description}</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow">
-        <div className="flex justify-between text-sm text-text-secondary">
-          {service.base_price && (
+        {displayPrice && (
             <div>
-              <span className="font-bold text-text-primary text-xl">${service.base_price}</span>
-              <span className="ml-1">starting</span>
+                <span className="text-sm text-muted-foreground">From</span>
+                <p className="text-4xl font-extrabold text-primary">${service.base_price}</p>
             </div>
-          )}
-          {service.duration_minutes && (
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              <span>{service.duration_minutes} min</span>
-            </div>
-          )}
-        </div>
+        )}
       </CardContent>
-      <div className="p-6 pt-0">
-          <Link to="/booking" state={{ serviceId: service.id }} className="w-full">
-            <Button variant="outline" className="w-full">Select Service</Button>
-          </Link>
-      </div>
+      <CardFooter>
+        <Button variant="outline" className="w-full font-bold">
+          Select & Continue →
+        </Button>
+      </CardFooter>
     </Card>
   );
 }
-
-export default ServiceCard;
