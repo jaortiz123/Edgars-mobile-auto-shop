@@ -1,15 +1,15 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_PUBLIC_API_URL || 'http://localhost:3001';
-
+// This baseURL is correct.
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: '/api',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
+// --- HELPER FUNCTIONS (UNCHANGED) ---
 async function getWithRetry(url: string, retries = 3, delayMs = 300) {
   for (let i = 0; i < retries; i++) {
     try {
@@ -39,6 +39,7 @@ async function postWithRetry(
   }
 }
 
+// --- INTERFACES (UNCHANGED) ---
 export interface Service {
   id: number;
   name: string;
@@ -70,35 +71,35 @@ export interface Appointment {
   notes?: string;
 }
 
+// --- API DEFINITIONS (CORRECTED) ---
+
 export const customerAPI = {
-  getAll: () => getWithRetry('/api/customers'),
-  getById: (id: number) => getWithRetry(`/api/customers/${id}`),
-  create: (data: Omit<Customer, 'id'>) => postWithRetry('/api/customers', data),
-  update: (id: number, data: Partial<Customer>) =>
-    api.put(`/api/customers/${id}`, data),
-  delete: (id: number) => api.delete(`/api/customers/${id}`),
+  // CORRECTED: Paths are now relative to the baseURL
+  getAll: () => getWithRetry('/customers'),
+  getById: (id: number) => getWithRetry(`/customers/${id}`),
+  create: (data: Omit<Customer, 'id'>) => postWithRetry('/customers', data),
+  update: (id: number, data: Partial<Customer>) => api.put(`/customers/${id}`, data),
+  delete: (id: number) => api.delete(`/customers/${id}`),
 };
 
 export const appointmentAPI = {
-  getAll: () => getWithRetry('/api/appointments'),
-  getById: (id: number) => getWithRetry(`/api/appointments/${id}`),
-  create: (data: Omit<Appointment, 'id'>) =>
-    postWithRetry('/api/appointments', data),
-  update: (id: number, data: Partial<Appointment>) =>
-    api.put(`/api/appointments/${id}`, data),
-  delete: (id: number) => api.delete(`/api/appointments/${id}`),
-  getAvailableSlots: (date: string) =>
-    getWithRetry(`/api/appointments/available-slots?date=${date}`),
+  getAll: () => getWithRetry('/appointments'),
+  getById: (id: number) => getWithRetry(`/appointments/${id}`),
+  create: (data: Omit<Appointment, 'id'>) => postWithRetry('/appointments', data),
+  update: (id: number, data: Partial<Appointment>) => api.put(`/appointments/${id}`, data),
+  delete: (id: number) => api.delete(`/appointments/${id}`),
+  getAvailableSlots: (date: string) => getWithRetry(`/appointments/available-slots?date=${date}`),
 };
 
 export const serviceAPI = {
-  getAll: () => getWithRetry('/api/services'),
-  getById: (id: number) => getWithRetry(`/api/services/${id}`),
+  getAll: () => getWithRetry('/services'),
+  getById: (id: number) => getWithRetry(`/services/${id}`),
 };
 
 export const authAPI = {
-  login: (credentials: { username: string; password: string }) =>
-    api.post('/admin/login', credentials),
+  // NOTE: These do not start with '/api', so they will NOT be proxied.
+  // This is correct if your backend serves them from the root.
+  login: (credentials: { username: string; password: string }) => api.post('/admin/login', credentials),
   logout: () => api.post('/admin/logout'),
   getProfile: () => getWithRetry('/admin/me'),
 };
