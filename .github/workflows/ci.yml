@@ -88,7 +88,7 @@ jobs:
           task-definition: infra/task-definition.json
           container-name: backend
           image: ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}
-          output: task-def.json
+          outputs: task-def.json
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
