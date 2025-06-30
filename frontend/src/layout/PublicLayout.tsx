@@ -22,7 +22,7 @@ export default function PublicLayout() {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-sm">
         <div className="container flex h-20 items-center justify-between">
           <Link to="/" className="text-2xl font-black text-primary">
-            Edgar's Mobile Auto
+            Edgar's Mobile Auto Shop Repair
           </Link>
           <nav className="hidden items-center gap-6 md:flex">
             <a href="tel:555-123-4567" className="text-base font-medium flex items-center gap-2 text-muted-foreground transition-colors hover:text-primary">
@@ -54,7 +54,7 @@ export default function PublicLayout() {
         <div className="container grid grid-cols-1 md:grid-cols-3 gap-8 py-16 text-center md:text-left">
           {/* Col 1: Brand */}
           <div className="md:col-span-1">
-            <h3 className="text-xl font-bold">Edgar's Mobile Auto</h3>
+            <h3 className="text-xl font-bold">Edgar's Mobile Auto Shop Repair</h3>
             <p className="mt-2 text-primary-foreground/80">Expert auto repair, delivered to your door.</p>
           </div>
           {/* Col 2: Navigation (Aligned) */}
@@ -77,7 +77,7 @@ export default function PublicLayout() {
         </div>
         <div className="border-t border-primary-foreground/10 py-6">
             <p className="text-center text-sm text-primary-foreground/60">
-                © {new Date().getFullYear()} Edgar's Mobile Auto. All Rights Reserved.
+                © {new Date().getFullYear()} Edgar's Mobile Auto Shop Repair. All Rights Reserved.
             </p>
         </div>
       </footer>
