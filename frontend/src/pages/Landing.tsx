@@ -38,7 +38,7 @@ export default function Landing() {
       <section className="bg-primary text-primary-foreground">
         <div className="container mx-auto px-4 py-24 md:py-32 text-center"> {/* Increased padding */}
           <h1 className="text-4xl md:text-6xl font-black tracking-tighter max-w-4xl mx-auto">
-            Edgars Mobile Auto Shop Repair: Your Trusted Woodland Mechanic, Delivered to Your Driveway.
+            Your Trusted Woodland Mechanic, Delivered to Your Driveway.
           </h1>
           <p className="max-w-3xl mx-auto mt-6 text-xl text-primary-foreground/80">
             Certified, dealership-quality repairs at your home or office. No waiting rooms, no wasted time.
