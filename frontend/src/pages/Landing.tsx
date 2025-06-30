@@ -25,9 +25,9 @@ const featuredServices = [
 ];
 
 const testimonial = { 
-    name: "David L., Woodland, CA", 
-    text: "My brakes started grinding on my way home. Edgar's team came out the SAME DAY and replaced everything in my driveway. Saved me a tow and a day off.",
-    headline: '"Unbelievably professional and convenient."'
+    name: "Jessica R., Davis, CA", 
+    text: "My car died suddenly on the freeway during my commute. I was sure I'd need a tow and a long wait at a shop. Edgar came out, diagnosed the dead alternator, and had the new part installed in under two hours. He really saved my day!",
+    headline: '"He fixed my car right on the side of the highway!"'
 };
 
 export default function Landing() {
