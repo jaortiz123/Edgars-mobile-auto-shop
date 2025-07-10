@@ -4,14 +4,14 @@ on:
   push:
     branches: [main]
     paths:
-      - 'mobile-auto-shop/frontend/**'
+      - 'frontend/**'
 
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: mobile-auto-shop/frontend
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

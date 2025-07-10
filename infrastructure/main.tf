@@ -1,5 +1,119 @@
 # /infrastructure/main.tf
 
+# --- NETWORK FOUNDATION (VPC) ---
+resource "aws_vpc" "edgar_vpc" {
+  cidr_block = "10.0.0.0/16"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+  tags = {
+    Name = "edgar-vpc"
+  }
+}
+
+# We need at least two private subnets in different Availability Zones for RDS
+resource "aws_subnet" "private_a" {
+  vpc_id            = aws_vpc.edgar_vpc.id
+  cidr_block        = "10.0.1.0/24"
+  availability_zone = "us-west-2a" # Change to your region's AZs
+  tags = {
+    Name = "edgar-private-a"
+  }
+}
+
+resource "aws_subnet" "private_b" {
+  vpc_id            = aws_vpc.edgar_vpc.id
+  cidr_block        = "10.0.2.0/24"
+  availability_zone = "us-west-2b" # Change to your region's AZs
+  tags = {
+    Name = "edgar-private-b"
+  }
+}
+
+# --- SECURITY GROUPS ---
+# Security group for our Lambda functions placed inside the VPC
+resource "aws_security_group" "lambda_sg" {
+  name        = "edgar-lambda-sg"
+  description = "Allow outbound traffic for Lambda functions"
+  vpc_id      = aws_vpc.edgar_vpc.id
+
+  ingress {
+    from_port = 443
+    to_port   = 443
+    protocol  = "tcp"
+    self      = true
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1" # Allow all outbound traffic
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "edgar-lambda-sg"
+  }
+}
+
+# Security group for the RDS Database
+resource "aws_security_group" "db_sg" {
+  name        = "edgar-db-sg"
+  description = "Allow inbound traffic from Lambda"
+  vpc_id      = aws_vpc.edgar_vpc.id
+
+  # Allow inbound PostgreSQL traffic ONLY from the Lambda's security group
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.lambda_sg.id]
+  }
+
+  tags = {
+    Name = "edgar-db-sg"
+  }
+}
+
+# --- DATABASE SECRET (from Day 11) ---
+resource "aws_secretsmanager_secret" "db_credentials" {
+  name = "edgar/rds/master-credentials"
+}
+
+resource "aws_secretsmanager_secret_version" "db_credentials_version" {
+  secret_id = aws_secretsmanager_secret.db_credentials.id
+  secret_string = jsonencode({
+    username = aws_db_instance.edgar_db.username,
+    password = aws_db_instance.edgar_db.password,
+    engine   = aws_db_instance.edgar_db.engine,
+    host     = aws_db_instance.edgar_db.address,
+    port     = aws_db_instance.edgar_db.port,
+    dbname   = aws_db_instance.edgar_db.db_name
+  })
+}
+
+# --- RDS DATABASE INSTANCE ---
+resource "aws_db_subnet_group" "edgar_db_subnets" {
+  name       = "edgar-db-subnet-group"
+  subnet_ids = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+  tags = {
+    Name = "Edgar DB Subnet Group"
+  }
+}
+
+resource "aws_db_instance" "edgar_db" {
+  identifier            = "edgar-auto-shop-db"
+  allocated_storage     = 20
+  engine                = "postgres"
+  engine_version        = "15"
+  instance_class        = "db.t3.micro"
+  db_name               = "edgarautoshop"
+  username              = "edgaradmin" # Define the username directly here.
+  password              = "a-very-secure-password-that-you-will-change" # Define the password directly here.
+  db_subnet_group_name  = aws_db_subnet_group.edgar_db_subnets.name
+  vpc_security_group_ids = [aws_security_group.db_sg.id]
+  skip_final_snapshot   = true
+}
+
 # Creates the DynamoDB table for storing quote requests and history.
 # We use a simple primary key (RequestID) for now.
 # PAY_PER_REQUEST billing mode is chosen for cost-efficiency at low traffic.
@@ -111,6 +225,123 @@ resource "aws_lambda_permission" "AllowAPIGatewayInvoke" {
   function_name = aws_lambda_function.QuoteFunction.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.QuoteAPI.execution_arn}/*/*"
+}
+
+# --- IAM FOR BOOKING LAMBDA ---
+resource "aws_iam_role" "BookingLambdaRole" {
+  name = "BookingLambdaRole"
+  assume_role_policy = jsonencode({
+    Version   = "2012-10-17",
+    Statement = [{
+      Effect    = "Allow",
+      Principal = { Service = "lambda.amazonaws.com" },
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "BookingVPCAccess" {
+  role       = aws_iam_role.BookingLambdaRole.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "BookingBasicLogs" {
+  role       = aws_iam_role.BookingLambdaRole.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_policy" "BookingSecretsPolicy" {
+  name        = "BookingSecretsPolicy"
+  description = "Allows Lambda to fetch RDS credentials from Secrets Manager"
+  policy = jsonencode({
+    Version   = "2012-10-17",
+    Statement = [
+      {
+        Effect   = "Allow",
+        Action   = "secretsmanager:GetSecretValue",
+        Resource = aws_secretsmanager_secret.db_credentials.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "BookingSecretsAttachment" {
+  role       = aws_iam_role.BookingLambdaRole.name
+  policy_arn = aws_iam_policy.BookingSecretsPolicy.arn
+}
+
+# --- ECR REPOSITORY FOR OUR LAMBDA IMAGE ---
+resource "aws_ecr_repository" "booking_function_repo" {
+  name                 = "edgar-auto-booking-function"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Project = "AutoRepairHub"
+  }
+}
+
+# --- BOOKING LAMBDA FUNCTION (CONTAINER DEPLOYMENT) ---
+resource "aws_lambda_function" "BookingFunction" {
+  function_name = "EdgarAutoBookingFunction"
+  role          = aws_iam_role.BookingLambdaRole.arn
+  package_type  = "Image"
+  timeout       = 30
+  memory_size   = 512
+
+  image_uri = "${aws_ecr_repository.booking_function_repo.repository_url}:latest"
+
+  environment {
+    variables = {
+      DB_SECRET_ARN = aws_secretsmanager_secret.db_credentials.arn
+      FORCE_REDEPLOY = timestamp() # Force redeploy on every apply
+    }
+  }
+
+  vpc_config {
+    subnet_ids         = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+    security_group_ids = [aws_security_group.lambda_sg.id]
+  }
+
+  depends_on = [
+    aws_db_instance.edgar_db,
+    aws_ecr_repository.booking_function_repo
+  ]
+}
+
+# --- API Gateway Route for Booking ---
+resource "aws_apigatewayv2_integration" "BookingAPIIntegration" {
+  api_id                 = aws_apigatewayv2_api.QuoteAPI.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.BookingFunction.invoke_arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "BookingAPIRoute_POST" {
+  api_id    = aws_apigatewayv2_api.QuoteAPI.id
+  route_key = "POST /appointments"
+  target    = "integrations/${aws_apigatewayv2_integration.BookingAPIIntegration.id}"
+}
+
+resource "aws_lambda_permission" "AllowAPIGatewayInvokeBooking" {
+  statement_id  = "AllowExecutionFromAPIGatewayBooking"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.BookingFunction.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.QuoteAPI.execution_arn}/*/*"
+}
+
+# --- VPC ENDPOINT FOR SECRETS MANAGER ---
+resource "aws_vpc_endpoint" "secrets_manager_endpoint" {
+  vpc_id            = aws_vpc.edgar_vpc.id
+  service_name      = "com.amazonaws.us-west-2.secretsmanager"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+  security_group_ids = [aws_security_group.lambda_sg.id]
+  private_dns_enabled = true
 }
 
 # Output the API endpoint URL
