@@ -1,18 +1,55 @@
-.checkpoints/
-infra/terraform/.terraform/
+# .gitignore
+
+### DEPENDENCIES ###
+# Ignore local dependency directories.
 node_modules/
+
+### BUILD & CACHE ###
+# Ignore compiled output, distribution folders, and caches.
+/dist
+/build
+.vite/
+.cache/
+.next/
+
+### INFRASTRUCTURE ###
+# Ignore Terraform state, plans, and provider binaries.
+# These can contain sensitive information and are environment-specific.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfplan
+# Ignore variable definition files which may contain secrets.
+*.tfvars
+*.tfvars.json
+
+### DEVELOPMENT TOOLS ###
+# Ignore IDE and editor specific configuration.
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore test results and temporary checkpoints.
 test-results/
+.checkpoints/
+
+### ENVIRONMENT & SECRETS ###
+# Ignore all local environment files.
 .env
+.env.*
+!.env.example
 
-# Build outputs
-dist/
-build/
+### LOGS ###
+# Ignore log files from various tools.
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Cache directories
-frontend/.vite/
-backend/.cache/
-
-# OS generated files
+### OPERATING SYSTEM FILES ###
+# Ignore macOS, Windows, and Linux generated files.
 .DS_Store
 .DS_Store?
 ._*
@@ -20,23 +57,3 @@ backend/.cache/
 .Trashes
 ehthumbs.db
 Thumbs.db
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Log files
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Terraform
-**/.terraform/
-*.tfstate
-*.tfstate.*
-crash.log
-*.tfvars
-*.tfplan

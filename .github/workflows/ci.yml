@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: mobile-auto-shop/backend
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: mobile-auto-shop/frontend
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -55,7 +55,7 @@ jobs:
           path: ~/.docker
           key: ${{ runner.os }}-docker-${{ github.sha }}
           restore-keys: ${{ runner.os }}-docker-
-      - run: docker-compose -f mobile-auto-shop/docker-compose.yml up -d --build
+      - run: docker-compose up -d --build
       - run: npm test:e2e
 
   docker-deploy:
@@ -79,7 +79,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: ./mobile-auto-shop/backend
+          context: ./backend
           push: true
           tags: ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}
       - name: Render task definition
