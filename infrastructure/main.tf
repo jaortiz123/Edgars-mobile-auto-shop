@@ -194,6 +194,14 @@ resource "aws_lambda_function" "QuoteFunction" {
 resource "aws_apigatewayv2_api" "QuoteAPI" {
   name          = "AutoQuote API"
   protocol_type = "HTTP"
+
+  # --- FORGED: CORS Configuration for Frontend Access ---
+  cors_configuration {
+    allow_origins = ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"] # Frontend development server origins
+    allow_methods = ["POST", "GET", "OPTIONS"] # OPTIONS is crucial for preflight requests
+    allow_headers = ["Content-Type", "X-Amz-Date", "Authorization", "X-Api-Key", "X-Amz-Security-Token"] # Standard headers
+    max_age       = 300 # How long preflight request results can be cached (in seconds)
+  }
 }
 
 # Creates the integration between API Gateway and the Lambda function.
@@ -323,6 +331,24 @@ resource "aws_apigatewayv2_integration" "BookingAPIIntegration" {
 resource "aws_apigatewayv2_route" "BookingAPIRoute_POST" {
   api_id    = aws_apigatewayv2_api.QuoteAPI.id
   route_key = "POST /appointments"
+  target    = "integrations/${aws_apigatewayv2_integration.BookingAPIIntegration.id}"
+}
+
+resource "aws_apigatewayv2_route" "BookingAPIRoute_GET" {
+  api_id    = aws_apigatewayv2_api.QuoteAPI.id
+  route_key = "GET /appointments"
+  target    = "integrations/${aws_apigatewayv2_integration.BookingAPIIntegration.id}"
+}
+
+resource "aws_apigatewayv2_route" "BookingAPIRoute_GET_AVAILABILITY" {
+  api_id    = aws_apigatewayv2_api.QuoteAPI.id
+  route_key = "GET /availability"
+  target    = "integrations/${aws_apigatewayv2_integration.BookingAPIIntegration.id}"
+}
+
+resource "aws_apigatewayv2_route" "BookingAPIRoute_INIT_DB" {
+  api_id    = aws_apigatewayv2_api.QuoteAPI.id
+  route_key = "GET /init-db"
   target    = "integrations/${aws_apigatewayv2_integration.BookingAPIIntegration.id}"
 }
 

@@ -17,6 +17,7 @@ const Dashboard = lazy(() => import('./admin/Dashboard'));
 const About = lazy(() => import('./pages/About'));
 const ServiceAreas = lazy(() => import('./pages/ServiceAreas'));
 import EmergencyService from './pages/EmergencyService';
+import AdminAppointments from './pages/AdminAppointments';
 
 // --- React Query Client ---
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
+            <Route path="appointments" element={<AdminAppointments />} />
             {/* Future admin routes can be added here, e.g., <Route path="users" element={<Users />} /> */}
           </Route>
 
