@@ -5,6 +5,7 @@ RUN pip install psycopg2-binary==2.9.5
 
 # Copy your function code
 COPY booking_function.py ${LAMBDA_TASK_ROOT}
+COPY init.sql /var/task/init.sql
 
 # Set the handler
 CMD ["booking_function.lambda_handler"]
