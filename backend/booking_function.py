@@ -151,6 +151,83 @@ def lambda_handler(event, context):
         finally:
             conn.close()
     
+    # GET /admin/appointments/today - List today's appointments (admin)
+    elif route_key == "GET /admin/appointments/today":
+        logger.info(">>> ENTERED GET /admin/appointments/today BRANCH")
+        try:
+            today = datetime.utcnow().date()
+            conn = get_db_connection()
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT a.id, a.customer_id, a.service_id, a.scheduled_date, a.scheduled_time, a.status,
+                           a.location_address, a.notes, a.created_at,
+                           c.name as customer_name, c.email as customer_email, c.phone as customer_phone
+                    FROM appointments a
+                    LEFT JOIN customers c ON a.customer_id = c.id
+                    WHERE a.scheduled_date = %s
+                    ORDER BY a.scheduled_time ASC
+                """, (today,))
+                rows = cur.fetchall()
+                for row in rows:
+                    if row.get('scheduled_date') and row.get('scheduled_time'):
+                        ts = datetime.combine(row['scheduled_date'], row['scheduled_time'])
+                        row['scheduled_at'] = ts.isoformat()
+                        del row['scheduled_date'], row['scheduled_time']
+                    if row.get('created_at'):
+                        row['created_at'] = row['created_at'].isoformat()
+            return {
+                "statusCode": 200,
+                "headers": {
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*"
+                },
+                "body": json.dumps({"appointments": rows, "count": len(rows)})
+            }
+        except Exception as e:
+            logger.error(f"Error in GET /admin/appointments/today: {e}")
+            return {
+                "statusCode": 500,
+                "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+                "body": json.dumps({"error": str(e)})
+            }
+        finally:
+            if 'conn' in locals():
+                conn.close()
+                logger.info("Database connection closed.")
+
+    # PUT /admin/appointments/{id} - Update appointment (admin)
+    elif route_key.startswith("PUT /admin/appointments/"):
+        logger.info(">>> ENTERED PUT /admin/appointments/{{id}} BRANCH")
+        try:
+            # Extract ID from route
+            parts = route_key.split("/")
+            appointment_id = parts[-1]
+            body = json.loads(event.get('body', '{}'))
+            allowed_fields = {'status', 'notes', 'scheduled_date', 'scheduled_time', 'location_address'}
+            update_fields = {k: v for k, v in body.items() if k in allowed_fields}
+            if not update_fields:
+                return {"statusCode": 400, "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}, "body": json.dumps({"error": "No valid fields to update."})}
+            set_clause = ", ".join([f"{k} = %s" for k in update_fields.keys()])
+            values = list(update_fields.values())
+            values.append(appointment_id)
+            conn = get_db_connection()
+            with conn.cursor() as cur:
+                cur.execute(f"""
+                    UPDATE appointments SET {set_clause}
+                    WHERE id = %s RETURNING id
+                """, values)
+                if cur.rowcount == 0:
+                    return {"statusCode": 404, "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}, "body": json.dumps({"error": "Appointment not found."})}
+                conn.commit()
+            return {"statusCode": 200, "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}, "body": json.dumps({"message": "Appointment updated successfully."})}
+        except Exception as e:
+            logger.error(f"Error in PUT /admin/appointments/{{id}}: {e}")
+            return {"statusCode": 500, "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}, "body": json.dumps({"error": str(e)})}
+        finally:
+            if 'conn' in locals():
+                conn.close()
+                logger.info("Database connection closed.")
+    
     # No route matched
     else:
         return {

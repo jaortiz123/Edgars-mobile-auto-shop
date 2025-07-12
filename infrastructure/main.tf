@@ -420,6 +420,18 @@ resource "aws_apigatewayv2_route" "BookingAPIRoute_GET_AVAILABILITY" {
   target    = "integrations/${aws_apigatewayv2_integration.BookingAPIIntegration.id}"
 }
 
+resource "aws_apigatewayv2_route" "BookingAPIRoute_GET_ADMIN_TODAY" {
+  api_id    = aws_apigatewayv2_api.QuoteAPI.id
+  route_key = "GET /admin/appointments/today"
+  target    = "integrations/${aws_apigatewayv2_integration.BookingAPIIntegration.id}"
+}
+
+resource "aws_apigatewayv2_route" "BookingAPIRoute_PUT_ADMIN_APPT" {
+  api_id    = aws_apigatewayv2_api.QuoteAPI.id
+  route_key = "PUT /admin/appointments/{id}"
+  target    = "integrations/${aws_apigatewayv2_integration.BookingAPIIntegration.id}"
+}
+
 # NOTE: init-db route removed for production security
 # Use a one-time migration script or manual DB setup instead
 

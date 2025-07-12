@@ -17,13 +17,28 @@ export interface AppointmentPayload {
   requested_time: string; // ISO 8601 format string (e.g., "2024-09-01T13:00:00Z")
 }
 
+// Define a minimal type for admin appointment (expand as needed)
+export interface AdminAppointment {
+  id: string;
+  customer_id: string;
+  service_id: string;
+  scheduled_at?: string;
+  scheduled_time?: string;
+  location_address: string;
+  status: string;
+  notes?: string;
+  customer_name?: string;
+  customer_email?: string;
+  customer_phone?: string;
+}
+
 /**
  * Sends a request to the backend to create a new appointment.
  * @param appointmentData The data for the new appointment.
  * @returns The JSON response from the server.
  * @throws An error with a user-friendly message if the request fails.
  */
-export async function createAppointment(appointmentData: AppointmentPayload): Promise<any> {
+export async function createAppointment(appointmentData: AppointmentPayload): Promise<unknown> {
   const response = await fetch(`${API_BASE_URL}/appointments`, {
     method: 'POST',
     headers: {
@@ -40,7 +55,7 @@ export async function createAppointment(appointmentData: AppointmentPayload): Pr
       // Attempt to parse a structured error message from the API.
       const errorBody = await response.json();
       errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
-    } catch (e) {
+    } catch {
       // If the body isn't JSON, fall back to the raw text response.
       errorMessage = await response.text();
     }
@@ -56,7 +71,7 @@ export async function createAppointment(appointmentData: AppointmentPayload): Pr
  * @returns An array of appointments.
  * @throws An error with a user-friendly message if the request fails.
  */
-export async function getAppointments(): Promise<any[]> {
+export async function getAppointments(): Promise<AdminAppointment[]> {
   const response = await fetch(`${API_BASE_URL}/appointments`, {
     method: 'GET',
     headers: {
@@ -69,7 +84,7 @@ export async function getAppointments(): Promise<any[]> {
     try {
       const errorBody = await response.json();
       errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
-    } catch (e) {
+    } catch {
       errorMessage = await response.text();
     }
     throw new Error(errorMessage);
@@ -77,4 +92,56 @@ export async function getAppointments(): Promise<any[]> {
 
   const data = await response.json();
   return data.appointments || [];
+}
+
+/**
+ * Fetches today's appointments for admin dashboard.
+ * @returns An array of today's appointments.
+ */
+export async function getAdminAppointmentsToday(): Promise<AdminAppointment[]> {
+  const response = await fetch(`${API_BASE_URL}/admin/appointments/today`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  if (!response.ok) {
+    let errorMessage = 'Failed to fetch today\'s appointments.';
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
+    } catch {
+      errorMessage = await response.text();
+    }
+    throw new Error(errorMessage);
+  }
+  const data = await response.json();
+  return data.appointments || [];
+}
+
+/**
+ * Updates an appointment by ID (admin).
+ * @param id Appointment ID
+ * @param updateData Fields to update (e.g., { status, notes })
+ * @returns The updated appointment or success message.
+ */
+export async function updateAppointment(id: string, updateData: Partial<AdminAppointment>): Promise<{ message: string }> {
+  const response = await fetch(`${API_BASE_URL}/admin/appointments/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(updateData),
+  });
+  if (!response.ok) {
+    let errorMessage = 'Failed to update appointment.';
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
+    } catch {
+      errorMessage = await response.text();
+    }
+    throw new Error(errorMessage);
+  }
+  return response.json();
 }
