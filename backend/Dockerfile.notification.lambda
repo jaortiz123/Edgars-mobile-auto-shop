@@ -1,0 +1,10 @@
+FROM public.ecr.aws/lambda/python:3.9
+
+# Copy function code
+COPY notification_function.py ./
+
+# Install boto3 (if not present in base image)
+RUN pip install boto3
+
+# Set the CMD to your handler (filename.handler_function)
+CMD ["notification_function.lambda_handler"]

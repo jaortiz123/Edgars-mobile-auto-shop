@@ -1,5 +1,11 @@
 # /infrastructure/main.tf
 
+# Data source to get current AWS account ID
+data "aws_caller_identity" "current" {}
+
+# Data source for current AWS region
+data "aws_region" "current" {}
+
 # --- NETWORK FOUNDATION (VPC) ---
 resource "aws_vpc" "edgar_vpc" {
   cidr_block = "10.0.0.0/16"
@@ -131,6 +137,68 @@ resource "aws_dynamodb_table" "QuotesTable" {
     Project     = "AutoRepairHub"
     Environment = "Dev"
   }
+}
+
+# --- SNS TOPIC FOR NOTIFICATIONS ---
+resource "aws_sns_topic" "appointment_notifications" {
+  name = "edgar-appointment-notifications"
+  
+  tags = {
+    Project     = "AutoRepairHub"
+    Environment = "Dev"
+  }
+}
+
+resource "aws_sns_topic_policy" "appointment_notifications_policy" {
+  arn = aws_sns_topic.appointment_notifications.arn
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          AWS = "*"
+        }
+        Action = [
+          "SNS:GetTopicAttributes",
+          "SNS:SetTopicAttributes",
+          "SNS:AddPermission",
+          "SNS:RemovePermission",
+          "SNS:DeleteTopic",
+          "SNS:Subscribe",
+          "SNS:ListSubscriptionsByTopic",
+          "SNS:Publish"
+        ]
+        Resource = aws_sns_topic.appointment_notifications.arn
+        Condition = {
+          StringEquals = {
+            "AWS:SourceOwner" = data.aws_caller_identity.current.account_id
+          }
+        }
+      }
+    ]
+  })
+}
+
+# IAM policy for Lambda to publish to SNS
+resource "aws_iam_policy" "lambda_sns_policy" {
+  name        = "LambdaSNSPolicy"
+  description = "Allows Lambda functions to publish to SNS topics"
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sns:Publish",
+          "sns:GetTopicAttributes"
+        ]
+        Resource = aws_sns_topic.appointment_notifications.arn
+      }
+    ]
+  })
 }
 
 # IAM Role for the Quote Function Lambda
@@ -278,6 +346,11 @@ resource "aws_iam_role_policy_attachment" "BookingSecretsAttachment" {
   policy_arn = aws_iam_policy.BookingSecretsPolicy.arn
 }
 
+resource "aws_iam_role_policy_attachment" "BookingSNSAttachment" {
+  role       = aws_iam_role.BookingLambdaRole.name
+  policy_arn = aws_iam_policy.lambda_sns_policy.arn
+}
+
 # --- ECR REPOSITORY FOR OUR LAMBDA IMAGE ---
 resource "aws_ecr_repository" "booking_function_repo" {
   name                 = "edgar-auto-booking-function"
@@ -300,12 +373,13 @@ resource "aws_lambda_function" "BookingFunction" {
   timeout       = 30
   memory_size   = 512
 
-  image_uri = "${aws_ecr_repository.booking_function_repo.repository_url}:latest"
+  image_uri     = "588738589514.dkr.ecr.us-west-2.amazonaws.com/edgar-auto-booking-function:${var.lambda_image_tag}"
 
   environment {
     variables = {
       DB_SECRET_ARN = aws_secretsmanager_secret.db_credentials.arn
       FORCE_REDEPLOY = timestamp() # Force redeploy on every apply
+      NOTIFY_TOPIC_ARN = aws_sns_topic.appointment_notifications.arn
     }
   }
 
@@ -346,11 +420,8 @@ resource "aws_apigatewayv2_route" "BookingAPIRoute_GET_AVAILABILITY" {
   target    = "integrations/${aws_apigatewayv2_integration.BookingAPIIntegration.id}"
 }
 
-resource "aws_apigatewayv2_route" "BookingAPIRoute_INIT_DB" {
-  api_id    = aws_apigatewayv2_api.QuoteAPI.id
-  route_key = "GET /init-db"
-  target    = "integrations/${aws_apigatewayv2_integration.BookingAPIIntegration.id}"
-}
+# NOTE: init-db route removed for production security
+# Use a one-time migration script or manual DB setup instead
 
 resource "aws_lambda_permission" "AllowAPIGatewayInvokeBooking" {
   statement_id  = "AllowExecutionFromAPIGatewayBooking"
@@ -370,8 +441,186 @@ resource "aws_vpc_endpoint" "secrets_manager_endpoint" {
   private_dns_enabled = true
 }
 
+# --- VPC ENDPOINT FOR SNS ---
+resource "aws_vpc_endpoint" "sns_endpoint" {
+  vpc_id            = aws_vpc.edgar_vpc.id
+  service_name      = "com.amazonaws.${data.aws_region.current.name}.sns"
+  vpc_endpoint_type = "Interface"
+  
+  subnet_ids        = [
+    aws_subnet.private_a.id,
+    aws_subnet.private_b.id,
+  ]
+  
+  security_group_ids = [
+    aws_security_group.lambda_sg.id,
+  ]
+  
+  private_dns_enabled = true
+  
+  tags = {
+    Name = "edgar-sns-endpoint"
+    Project = "AutoRepairHub"
+  }
+}
+
+# --- REMINDER LAMBDA FUNCTION ---
+resource "aws_lambda_function" "ReminderFunction" {
+  function_name = "EdgarAutoReminderFunction"
+  role          = aws_iam_role.BookingLambdaRole.arn
+  handler       = "reminder_function.lambda_handler"
+  runtime       = "python3.9"
+  filename      = "${path.module}/lambda_packages/reminder_function.zip"
+  source_code_hash = filebase64sha256("${path.module}/lambda_packages/reminder_function.zip")
+
+  environment {
+    variables = {
+      SNS_TOPIC_ARN = aws_sns_topic.appointment_notifications.arn
+    }
+  }
+
+  vpc_config {
+    subnet_ids         = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+    security_group_ids = [aws_security_group.lambda_sg.id]
+  }
+
+  tags = {
+    Project = "AutoRepairHub"
+  }
+}
+
+resource "aws_cloudwatch_event_rule" "Reminder24hRule" {
+  name                = "Edgar24hReminderRule"
+  schedule_expression = "cron(0 12 * * ? *)" # Every day at noon UTC
+  description         = "Trigger 24h appointment reminders"
+}
+
+resource "aws_cloudwatch_event_target" "ReminderTarget" {
+  rule      = aws_cloudwatch_event_rule.Reminder24hRule.name
+  arn       = aws_lambda_function.ReminderFunction.arn
+}
+
+resource "aws_lambda_permission" "AllowEventBridgeInvokeReminder" {
+  statement_id  = "AllowExecutionFromEventBridgeReminder"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.ReminderFunction.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.Reminder24hRule.arn
+}
+
+# --- COGNITO USER POOL FOR ADMIN ---
+resource "aws_cognito_user_pool" "admin_pool" {
+  name = "edgar-admin-user-pool"
+  auto_verified_attributes = ["email"]
+  mfa_configuration = "OFF"
+  admin_create_user_config {
+    allow_admin_create_user_only = true
+  }
+}
+
+resource "aws_cognito_user_pool_client" "admin_client" {
+  name         = "edgar-admin-client"
+  user_pool_id = aws_cognito_user_pool.admin_pool.id
+  generate_secret = false
+  explicit_auth_flows = ["ALLOW_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"]
+}
+
+resource "aws_apigatewayv2_authorizer" "AdminJWTAuthorizer" {
+  api_id = aws_apigatewayv2_api.QuoteAPI.id
+  authorizer_type = "JWT"
+  identity_sources = ["$request.header.Authorization"]
+  name = "EdgarAdminJWTAuthorizer"
+  jwt_configuration {
+    audience = [aws_cognito_user_pool_client.admin_client.id]
+    issuer   = "https://cognito-idp.us-west-2.amazonaws.com/${aws_cognito_user_pool.admin_pool.id}"
+  }
+}
+
 # Output the API endpoint URL
 output "api_endpoint" {
   description = "The invoke URL for the API Gateway"
   value       = aws_apigatewayv2_api.QuoteAPI.api_endpoint
+}
+
+resource "aws_apigatewayv2_route" "AdminAppointmentsToday" {
+  api_id    = aws_apigatewayv2_api.QuoteAPI.id
+  route_key = "GET /admin/appointments/today"
+  target    = "integrations/${aws_apigatewayv2_integration.BookingAPIIntegration.id}"
+  authorizer_id = aws_apigatewayv2_authorizer.AdminJWTAuthorizer.id
+}
+
+resource "aws_apigatewayv2_route" "AdminAppointmentsUpdate" {
+  api_id    = aws_apigatewayv2_api.QuoteAPI.id
+  route_key = "PUT /admin/appointments/{id}"
+  target    = "integrations/${aws_apigatewayv2_integration.BookingAPIIntegration.id}"
+  authorizer_id = aws_apigatewayv2_authorizer.AdminJWTAuthorizer.id
+}
+
+# --- NOTIFICATION LAMBDA FUNCTION ---
+resource "aws_ecr_repository" "NotifyRepo" {
+  name = "edgar-notify-function"
+  image_tag_mutability = "MUTABLE"
+  
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+  
+  tags = {
+    Project = "AutoRepairHub"
+  }
+}
+
+resource "aws_iam_role" "NotifyLambdaRole" {
+  name = "NotifyLambdaRole"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = { Service = "lambda.amazonaws.com" },
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "NotifyVPCAccess" {
+  role       = aws_iam_role.NotifyLambdaRole.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "NotifyBasicLogs" {
+  role       = aws_iam_role.NotifyLambdaRole.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "NotifySNSAttachment" {
+  role       = aws_iam_role.NotifyLambdaRole.name
+  policy_arn = aws_iam_policy.lambda_sns_policy.arn
+}
+
+resource "aws_lambda_function" "NotificationFunction" {
+  function_name = "EdgarNotificationFunction"
+  package_type  = "Image"
+  image_uri     = "${var.notify_ecr_repo_uri}:${var.notify_image_tag}"
+  role          = aws_iam_role.NotifyLambdaRole.arn
+  timeout       = 15
+  memory_size   = 256
+  environment {
+    variables = {
+      SNS_TOPIC_ARN = aws_sns_topic.appointment_notifications.arn
+    }
+  }
+  # Temporarily removed VPC config for testing
+  # vpc_config {
+  #   subnet_ids         = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+  #   security_group_ids = [aws_security_group.lambda_sg.id]
+  # }
+  depends_on = [aws_ecr_repository.NotifyRepo]
+}
+
+resource "aws_lambda_permission" "AllowSNSInvokeNotification" {
+  statement_id  = "AllowExecutionFromSNSNotification"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.NotificationFunction.function_name
+  principal     = "sns.amazonaws.com"
+  source_arn    = aws_sns_topic.appointment_notifications.arn
 }
