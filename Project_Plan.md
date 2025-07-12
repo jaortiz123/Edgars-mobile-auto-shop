@@ -79,13 +79,13 @@ Deferred to Future Sprints:
 [⬜] Create service history endpoints.
 [⬜] Implement proper JWT handling.
 
-## ✉️ SPRINT 5: NOTIFICATIONS & ADMIN (PENDING)
+## ✉️ SPRINT 5: NOTIFICATIONS & ADMIN (IN PROGRESS)
 Goal: Implement automated customer notifications and a basic dashboard for Edgar.
 Tasks:
-[⬜] Set up SNS for SMS messaging.
-[⬜] Create notification Lambda for appointment confirmations.
-[⬜] Implement CloudWatch Events for 24h reminders.
-[⬜] Create admin authentication (separate Cognito pool).
+[✅] Set up SNS for SMS messaging.
+[✅] Create notification Lambda for appointment confirmations.
+[✅] Implement CloudWatch Events for 24h reminders.
+[✅] Create admin authentication (separate Cognito pool).
 [⬜] Build admin API endpoints (GET /admin/appointments/today, PUT /admin/appointments/:id).
 [⬜] Create simple admin UI (daily schedule, details modal).
 
@@ -95,8 +95,8 @@ Tasks:
 [✅] Set up automated deployment script with image tagging and health checks.
 [✅] Implement Terraform variable-based image deployment.
 [✅] Create post-deploy verification via API health checks.
-[⬜] Set up GitHub Actions workflow.
-[⬜] Implement full suite of unit, integration, and E2E tests for backend and frontend.
+[✅] Set up GitHub Actions workflow.
+[✅] Implement full suite of unit, integration, and E2E tests for backend and frontend.
 [⬜] Automate Terraform plan and apply on infrastructure changes.
 [⬜] Implement deployment pipeline to staging and production environments (S3, CloudFront invalidation).
 [⬜] Document deployment process.
