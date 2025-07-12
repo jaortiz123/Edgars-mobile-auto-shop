@@ -123,6 +123,19 @@ def lambda_handler(event, context):
                 ))
                 appointment_id = cur.fetchone()[0]
                 conn.commit()
+                
+                # Publish notification to SNS
+                if os.environ.get("NOTIFY_TOPIC_ARN"):
+                    sns = boto3.client("sns")
+                    sns.publish(
+                        TopicArn=os.environ["NOTIFY_TOPIC_ARN"],
+                        Message=json.dumps({
+                            "appointment_id": appointment_id,
+                            "customer_phone": body["customer_phone"],
+                            "service": body["service"],
+                            "scheduled_at": body["scheduled_at"]
+                        })
+                    )
             
             return {
                 "statusCode": 201,

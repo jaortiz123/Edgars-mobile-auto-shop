@@ -55,11 +55,21 @@ Achievements:
 [✅] Enhanced Confirmation.tsx for human-readable date/time display.
 [✅] Cleaned Git repository (.gitignore canonicalization and file purge).
 
-## 🛡️ SPRINT 4: API EXPANSION & AUTHENTICATION (PENDING)
-Goal: Implement full data retrieval APIs and customer authentication.
-Tasks:
-[⬜] GET /appointments - List appointments (with filtering).
-[⬜] GET /availability - Check available time slots (business hours, conflicts, travel buffers).
+## 🛡️ SPRINT 4: API EXPANSION & PRODUCTION INFRASTRUCTURE (COMPLETED)
+Goal: Implement full data retrieval APIs and establish production-grade infrastructure.
+Achievements:
+[✅] GET /appointments - List appointments with JSON response format.
+[✅] GET /availability - Basic availability endpoint implementation.
+[✅] Database schema initialization with production-ready SQL (customers, services, appointments tables).
+[✅] Migrated Lambda to container-based deployment using Docker and ECR.
+[✅] Implemented API Gateway routes for all booking endpoints.
+[✅] Database initialization via temporary /init-db endpoint (later removed for security).
+[✅] Production-grade infrastructure with VPC, private subnets, and security groups.
+[✅] Secrets Manager integration for secure database credentials.
+[✅] End-to-end verification of booking API functionality.
+[✅] CI/CD improvements with image tagging and automated deployment script.
+[✅] Admin dashboard frontend for viewing appointments.
+Deferred to Future Sprints:
 [⬜] Integrate Cognito with Lambda authorizer.
 [⬜] POST /customers/register - Customer signup.
 [⬜] POST /customers/login - Authentication.
@@ -79,10 +89,13 @@ Tasks:
 [⬜] Build admin API endpoints (GET /admin/appointments/today, PUT /admin/appointments/:id).
 [⬜] Create simple admin UI (daily schedule, details modal).
 
-## ⚙️ SPRINT 6: CI/CD & COMPREHENSIVE TESTING (PENDING)
+## ⚙️ SPRINT 6: CI/CD & COMPREHENSIVE TESTING (IN PROGRESS)
 Goal: Automate deployment, ensure quality, and establish robust testing.
 Tasks:
-[✅] Set up GitHub Actions workflow (conceptualized).
+[✅] Set up automated deployment script with image tagging and health checks.
+[✅] Implement Terraform variable-based image deployment.
+[✅] Create post-deploy verification via API health checks.
+[⬜] Set up GitHub Actions workflow.
 [⬜] Implement full suite of unit, integration, and E2E tests for backend and frontend.
 [⬜] Automate Terraform plan and apply on infrastructure changes.
 [⬜] Implement deployment pipeline to staging and production environments (S3, CloudFront invalidation).
@@ -107,15 +120,18 @@ This project demonstrates key SA skills through practical implementation and str
 Skill Area	How Demonstrated	Interview Talking Point
 Business Acumen	Prioritized MVP features for immediate value, deferred complex features.	"Focused on Edgar's core pain (manual booking) to deliver value quickly, deferring less critical features to future sprints."
 Cost Optimization	Chosen serverless architecture for low operational costs.	"Delivered a functional platform at an estimated cloud cost under $50/month, significantly reducing Edgar's overhead."
-Architectural Thinking	Designed serverless-first, with a clear, demonstrated path for container migration at scale.	"Architected for current needs (serverless efficiency) while proving readiness for future scale (containerization)."
+Architectural Thinking	Designed serverless-first with production container deployment, demonstrating clear migration path for scale.	"Architected for current needs (serverless efficiency) while implementing container readiness and production infrastructure."
 Security Best Practices	Implemented secure secrets management, network isolation, explicit IAM roles.	"Ensured database credentials and network access were secure by design using AWS native security services."
 Operational Excellence	Utilized Infrastructure as Code (Terraform) for repeatable deployments, CloudWatch for runtime visibility.	"Maintained a single source of truth for infrastructure and leveraged AWS logging for efficient debugging."
-Complex Problem Solving	Diagnosed and resolved multi-layered issues (dependency hell, VPC networking, data schema mismatch, CORS).	"Successfully debugged and fixed intricate cross-service integration challenges, proving deep technical insight."
+Complex Problem Solving	Diagnosed and resolved multi-layered issues (dependency hell, VPC networking, data schema mismatch, CORS, Lambda container deployment).	"Successfully debugged and fixed intricate cross-service integration challenges, including containerized Lambda deployment and database schema alignment."
 Documentation	Maintained a living project plan, updated Git history, canonical .gitignore.	"Ensured project clarity and maintainability through comprehensive documentation."
 
 Key Deliverables for Portfolio (Current Status):
 [✅] GitHub Repository: Clean code, detailed commit history, canonical .gitignore, and a comprehensive README.
 [✅] Architecture Decision Record (ADR): Documenting the serverless vs. container decision.
+[✅] Production Infrastructure: VPC, RDS, Lambda containers, API Gateway, and Secrets Manager.
+[✅] End-to-end API Implementation: POST/GET appointments, database integration, and admin dashboard.
+[✅] CI/CD Automation: Deployment script with image tagging and health checks.
 [⬜] Demo Video: 2-3 minute walk-through of the end-to-end booking flow.
 [⬜] Blog Post Draft: "Why I Chose Serverless for Edgar's Auto Shop (And When I'd Use Containers)."
 [⬜] Cost Analysis Document: Detailed breakdown of AWS costs for the MVP.
