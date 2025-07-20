@@ -13,3 +13,15 @@ variable "notify_image_tag" {
   description = "Tag for the notification Lambda container image"
   type        = string
 }
+
+variable "env" {
+  description = "Deployment environment (dev | staging | prod)"
+  type        = string
+  default     = "dev"
+}
+
+variable "profile_lambda_image_tag" {
+  description = "Image tag for ProfileFunction Lambda in ECR"
+  type        = string
+  default     = "latest"
+}

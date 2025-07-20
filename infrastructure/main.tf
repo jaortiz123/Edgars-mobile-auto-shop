@@ -1,5 +1,10 @@
 # /infrastructure/main.tf
 
+// Declare environment local
+locals {
+  env = var.env
+}
+
 # Data source to get current AWS account ID
 data "aws_caller_identity" "current" {}
 
@@ -589,7 +594,7 @@ resource "aws_iam_role" "NotifyLambdaRole" {
     Statement = [{
       Effect = "Allow",
       Principal = { Service = "lambda.amazonaws.com" },
-      Action = "sts:AssumeRole"
+      Action    = "sts:AssumeRole"
     }]
   })
 }
@@ -635,4 +640,337 @@ resource "aws_lambda_permission" "AllowSNSInvokeNotification" {
   function_name = aws_lambda_function.NotificationFunction.function_name
   principal     = "sns.amazonaws.com"
   source_arn    = aws_sns_topic.appointment_notifications.arn
+}
+
+# Task: Provision AWS Cognito User Pool and User Pool Client
+resource "aws_cognito_user_pool" "EdgarCustomersUserPool" {
+  name                     = "EdgarCustomers-${local.env}"
+  auto_verified_attributes = ["email"]
+
+  email_configuration {
+    email_sending_account = "COGNITO_DEFAULT"
+  }
+
+  verification_message_template {
+    email_subject = "Verify your Edgar Auto Shop account"
+  }
+
+  account_recovery_setting {
+    recovery_mechanism {
+      name     = "verified_email"
+      priority = 1
+    }
+  }
+
+  lambda_config {
+    pre_sign_up = local.env == "dev" ? aws_lambda_function.auto_confirm.arn : null
+  }
+
+  tags = {
+    Project = "AutoRepairHub"
+  }
+}
+
+resource "aws_cognito_user_pool_client" "EdgarCustomerAppClient" {
+  name               = "EdgarCustomerAppClient"
+  user_pool_id       = aws_cognito_user_pool.EdgarCustomersUserPool.id
+  generate_secret    = false
+  explicit_auth_flows = [
+    "ALLOW_ADMIN_USER_PASSWORD_AUTH",
+    "ALLOW_USER_PASSWORD_AUTH",
+    "ALLOW_REFRESH_TOKEN_AUTH"
+  ]
+  read_attributes               = ["email", "email_verified"]
+  write_attributes              = ["email"]
+  supported_identity_providers  = ["COGNITO"]
+  callback_urls  = ["http://localhost:5173"]
+  logout_urls    = ["http://localhost:5173"]
+}
+
+output "cognito_user_pool_id" {
+  description = "ID of the Cognito user pool for customer sign-up"
+  value       = aws_cognito_user_pool.EdgarCustomersUserPool.id
+}
+
+output "cognito_app_client_id" {
+  description = "App client ID for customer authentication"
+  value       = aws_cognito_user_pool_client.EdgarCustomerAppClient.id
+}
+
+# Task: Provision IAM Role for new Authentication Lambda function
+resource "aws_iam_role" "AuthLambdaRole" {
+  name = "AuthLambdaRole"
+  assume_role_policy = jsonencode({
+    Version   = "2012-10-17",
+    Statement = [{
+      Effect    = "Allow",
+      Principal = { Service = "lambda.amazonaws.com" },
+      Action    = "sts:AssumeRole"
+    }]
+  })
+  tags = {
+    Project = "AutoRepairHub"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "AuthLambdaBasicExecution" {
+  role       = aws_iam_role.AuthLambdaRole.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_policy" "AuthCognitoAccessPolicy" {
+  name        = "AuthCognitoAccessPolicy"
+  description = "Policy granting Cognito actions for Auth Lambda"
+  policy      = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Action = [
+        "cognito-idp:SignUp",
+        "cognito-idp:ConfirmSignUp",
+        "cognito-idp:InitiateAuth",
+        "cognito-idp:RespondToAuthChallenge"
+      ],
+      Resource = aws_cognito_user_pool.EdgarCustomersUserPool.arn
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "AuthCognitoAccessAttachment" {
+  role       = aws_iam_role.AuthLambdaRole.name
+  policy_arn = aws_iam_policy.AuthCognitoAccessPolicy.arn
+}
+
+# Task: Provision Auth Lambda Function Resource
+resource "aws_ecr_repository" "auth_function_repo" {
+  name                 = "edgar-auth-function"
+  image_tag_mutability = "MUTABLE"
+  image_scanning_configuration { scan_on_push = true }
+  tags = { Project = "AutoRepairHub" }
+}
+
+variable "auth_lambda_image_tag" {
+  description = "Image tag for AuthFunction Lambda in ECR"
+  type        = string
+  default     = "latest"
+}
+
+resource "aws_lambda_function" "AuthFunction" {
+  function_name = "EdgarAuthFunction"
+  role          = aws_iam_role.AuthLambdaRole.arn
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.auth_function_repo.repository_url}:${var.auth_lambda_image_tag}"
+  timeout       = 30
+  environment {
+    variables = {
+      COGNITO_USER_POOL_ID = aws_cognito_user_pool.EdgarCustomersUserPool.id
+      COGNITO_CLIENT_ID    = aws_cognito_user_pool_client.EdgarCustomerAppClient.id
+    }
+  }
+  tags = { Project = "AutoRepairHub" }
+}
+
+output "auth_function_name" {
+  description = "Name of the Auth Lambda function"
+  value       = aws_lambda_function.AuthFunction.function_name
+}
+
+output "auth_function_arn" {
+  description = "ARN of the Auth Lambda function"
+  value       = aws_lambda_function.AuthFunction.arn
+}
+
+# Task: Define API Gateway Routes for Authentication Endpoints
+resource "aws_apigatewayv2_integration" "AuthAPIIntegration" {
+  api_id                  = aws_apigatewayv2_api.QuoteAPI.id
+  integration_type        = "AWS_PROXY"
+  integration_uri         = aws_lambda_function.AuthFunction.invoke_arn
+  payload_format_version  = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "AuthRoute_Register" {
+  api_id    = aws_apigatewayv2_api.QuoteAPI.id
+  route_key = "POST /customers/register"
+  target    = "integrations/${aws_apigatewayv2_integration.AuthAPIIntegration.id}"
+}
+
+resource "aws_apigatewayv2_route" "AuthRoute_Login" {
+  api_id    = aws_apigatewayv2_api.QuoteAPI.id
+  route_key = "POST /customers/login"
+  target    = "integrations/${aws_apigatewayv2_integration.AuthAPIIntegration.id}"
+}
+
+resource "aws_lambda_permission" "AuthPermission_Register" {
+  statement_id  = "AllowAPIGatewayInvokeRegister"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.AuthFunction.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_apigatewayv2_api.QuoteAPI.id}/*/POST/customers/register"
+}
+
+resource "aws_lambda_permission" "AuthPermission_Login" {
+  statement_id  = "AllowAPIGatewayInvokeLogin"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.AuthFunction.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_apigatewayv2_api.QuoteAPI.id}/*/POST/customers/login"
+}
+
+# Pre-sign-up auto-confirm Lambda (dev only)
+resource "aws_lambda_function" "auto_confirm" {
+  function_name     = "EdgarAutoConfirm-${local.env}"
+  package_type      = "Zip"
+  filename          = "${path.module}/../backend/auto_confirm_function.zip"
+  source_code_hash  = filebase64sha256("${path.module}/../backend/auto_confirm_function.zip")
+  handler           = "auto_confirm_function.lambda_handler"
+  runtime           = "python3.9"
+  role              = aws_iam_role.auto_confirm_lambda_role.arn
+  timeout           = 5
+  memory_size       = 128
+}
+ 
+# Grant invocation permission from Cognito for pre-sign-up trigger
+resource "aws_lambda_permission" "AllowCognitoPreSignupInvoke" {
+  statement_id  = "AllowCognitoPreSignupInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.auto_confirm.function_name
+  principal     = "cognito-idp.amazonaws.com"
+  source_arn    = aws_cognito_user_pool.EdgarCustomersUserPool.arn
+}
+
+# IAM Role for auto-confirm Lambda (dev only)
+resource "aws_iam_role" "auto_confirm_lambda_role" {
+  name = "AutoConfirmLambdaRole-${local.env}"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = { Service = "lambda.amazonaws.com" },
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "auto_confirm_basic_execution" {
+  role       = aws_iam_role.auto_confirm_lambda_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# DynamoDB table for customer profiles
+resource "aws_dynamodb_table" "customers" {
+  name         = "${var.env}-customers"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "pk"
+  range_key    = "sk"
+
+  attribute {
+    name = "pk"
+    type = "S"
+  }
+  attribute {
+    name = "sk"
+    type = "S"
+  }
+  tags = {
+    Environment = var.env
+    Project     = "AutoRepairHub"
+  }
+}
+
+# ECR repository for ProfileFunction
+resource "aws_ecr_repository" "profile_function_repo" {
+  name                 = "edgar-profile-function"
+  image_tag_mutability = "MUTABLE"
+  image_scanning_configuration { scan_on_push = true }
+  tags = { Project = "AutoRepairHub" }
+}
+
+# IAM policy document for ProfileFunction DynamoDB access
+data "aws_iam_policy_document" "profile_lambda" {
+  statement {
+    actions   = ["dynamodb:Query", "dynamodb:PutItem", "dynamodb:UpdateItem"]
+    resources = [aws_dynamodb_table.customers.arn, "${aws_dynamodb_table.customers.arn}/*"]
+  }
+}
+
+resource "aws_iam_policy" "profile_dynamo_policy" {
+  name        = "ProfileDynamoPolicy-${var.env}"
+  description = "DynamoDB access for ProfileFunction"
+  policy      = data.aws_iam_policy_document.profile_lambda.json
+}
+
+# IAM role and attachments for ProfileFunction
+resource "aws_iam_role" "ProfileLambdaRole" {
+  name = "ProfileLambdaRole-${var.env}"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = { Service = "lambda.amazonaws.com" },
+      Action   = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ProfileBasicExecution" {
+  role       = aws_iam_role.ProfileLambdaRole.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "ProfileDynamoPolicyAttachment" {
+  role       = aws_iam_role.ProfileLambdaRole.name
+  policy_arn = aws_iam_policy.profile_dynamo_policy.arn
+}
+
+# Lambda function for customer profile management
+resource "aws_lambda_function" "ProfileFunction" {
+  function_name = "EdgarProfileFunction"
+  role          = aws_iam_role.ProfileLambdaRole.arn
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.profile_function_repo.repository_url}:${var.profile_lambda_image_tag}"
+  timeout       = 30
+  environment {
+    variables = {
+      CUSTOMERS_TABLE = aws_dynamodb_table.customers.name
+    }
+  }
+  tags = { Project = "AutoRepairHub" }
+}
+
+# API Gateway integration and routes for Profile endpoints
+resource "aws_apigatewayv2_integration" "ProfileIntegration" {
+  api_id                 = aws_apigatewayv2_api.QuoteAPI.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.ProfileFunction.invoke_arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "ProfileRoute_GET" {
+  api_id       = aws_apigatewayv2_api.QuoteAPI.id
+  route_key    = "GET /customers/profile"
+  target       = "integrations/${aws_apigatewayv2_integration.ProfileIntegration.id}"
+  authorizer_id = aws_apigatewayv2_authorizer.JWT.id
+}
+
+resource "aws_apigatewayv2_route" "ProfileRoute_PUT" {
+  api_id       = aws_apigatewayv2_api.QuoteAPI.id
+  route_key    = "PUT /customers/profile"
+  target       = "integrations/${aws_apigatewayv2_integration.ProfileIntegration.id}"
+  authorizer_id = aws_apigatewayv2_authorizer.JWT.id
+}
+
+resource "aws_lambda_permission" "AllowAPIGatewayInvokeProfile_GET" {
+  statement_id  = "AllowAPIGatewayInvokeProfile_GET"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.ProfileFunction.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_apigatewayv2_api.QuoteAPI.id}/*/GET/customers/profile"
+}
+
+resource "aws_lambda_permission" "AllowAPIGatewayInvokeProfile_PUT" {
+  statement_id  = "AllowAPIGatewayInvokeProfile_PUT"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.ProfileFunction.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_apigatewayv2_api.QuoteAPI.id}/*/PUT/customers/profile"
 }
