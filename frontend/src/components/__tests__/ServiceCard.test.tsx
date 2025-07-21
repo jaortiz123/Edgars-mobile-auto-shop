@@ -10,7 +10,8 @@ test('shows service name and description', () => {
     name: 'Oil Change',
     description: 'Synthetic',
   }
-  render(<ServiceCard service={service} />)
+  const mockOnSelect = () => {}
+  render(<ServiceCard service={service} onSelect={mockOnSelect} />)
   expect(screen.getByText('Oil Change')).toBeInTheDocument()
   expect(screen.getByText('Synthetic')).toBeInTheDocument()
 })

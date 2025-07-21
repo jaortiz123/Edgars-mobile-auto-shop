@@ -1,15 +1,15 @@
-import type { Service } from '../api';
+import type { Service as BaseService } from '../api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from './ui/Card';
 import { Button } from './ui/Button';
 import { Wrench } from 'lucide-react';
 
-interface Props {
-  service: Service;
-  onSelect: (service: Service) => void;
+interface Props<T extends BaseService = BaseService> {
+  service: T;
+  onSelect: (service: T) => void;
   displayPrice?: boolean;
 }
 
-export default function ServiceCard({ service, onSelect, displayPrice = false }: Props) {
+export default function ServiceCard<T extends BaseService = BaseService>({ service, onSelect, displayPrice = false }: Props<T>) {
   return (
     <Card 
       className="flex flex-col h-full hover:shadow-xl transition-shadow duration-300 min-h-[320px] cursor-pointer" 
