@@ -5,10 +5,8 @@ locals {
   env = var.env
 }
 
-# Data source to get current AWS account ID
+# Data sources for AWS context
 data "aws_caller_identity" "current" {}
-
-# Data source for current AWS region
 data "aws_region" "current" {}
 
 # --- NETWORK FOUNDATION (VPC) ---
@@ -879,7 +877,7 @@ resource "aws_dynamodb_table" "customers" {
 
 # ECR repository for ProfileFunction
 resource "aws_ecr_repository" "profile_function_repo" {
-  name                 = "edgar-profile-function"
+  name                 = "${var.env}-profile-function"
   image_tag_mutability = "MUTABLE"
   image_scanning_configuration { scan_on_push = true }
   tags = { Project = "AutoRepairHub" }
@@ -949,14 +947,14 @@ resource "aws_apigatewayv2_route" "ProfileRoute_GET" {
   api_id       = aws_apigatewayv2_api.QuoteAPI.id
   route_key    = "GET /customers/profile"
   target       = "integrations/${aws_apigatewayv2_integration.ProfileIntegration.id}"
-  authorizer_id = aws_apigatewayv2_authorizer.JWT.id
+  authorizer_id = aws_apigatewayv2_authorizer.CustomerJWTAuthorizer.id
 }
 
 resource "aws_apigatewayv2_route" "ProfileRoute_PUT" {
   api_id       = aws_apigatewayv2_api.QuoteAPI.id
   route_key    = "PUT /customers/profile"
   target       = "integrations/${aws_apigatewayv2_integration.ProfileIntegration.id}"
-  authorizer_id = aws_apigatewayv2_authorizer.JWT.id
+  authorizer_id = aws_apigatewayv2_authorizer.CustomerJWTAuthorizer.id
 }
 
 resource "aws_lambda_permission" "AllowAPIGatewayInvokeProfile_GET" {
@@ -973,4 +971,16 @@ resource "aws_lambda_permission" "AllowAPIGatewayInvokeProfile_PUT" {
   function_name = aws_lambda_function.ProfileFunction.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_apigatewayv2_api.QuoteAPI.id}/*/PUT/customers/profile"
+}
+
+# Cognito JWT authorizer for customer pool
+resource "aws_apigatewayv2_authorizer" "CustomerJWTAuthorizer" {
+  api_id         = aws_apigatewayv2_api.QuoteAPI.id
+  authorizer_type = "JWT"
+  name            = "CustomerJWTAuthorizer-${var.env}"
+  identity_sources = ["$request.header.Authorization"]
+  jwt_configuration {
+    issuer   = "https://cognito-idp.${data.aws_region.current.name}.amazonaws.com/${aws_cognito_user_pool.EdgarCustomersUserPool.id}"
+    audience = [aws_cognito_user_pool_client.EdgarCustomerAppClient.id]
+  }
 }

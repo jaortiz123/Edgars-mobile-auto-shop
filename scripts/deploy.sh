@@ -1,6 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Edgar Auto Shop CI/CD Deploy Script
 
+export DOCKER_CLI_EXPERIMENTAL=enabled
+export DOCKER_BUILDKIT=1
+export DOCKER_DEFAULT_PLATFORM=linux/amd64
 set -e
 
 # Configuration
@@ -14,17 +17,21 @@ echo "🚀 Starting Edgar Auto Shop deployment..."
 echo "Image tag: ${IMAGE_TAG}"
 
 # Step 1: Build and push Lambda container
-echo "📦 Building Lambda container..."
+echo "📦 Building and pushing Lambda container..."
 cd backend
-docker buildx build --platform linux/amd64 -f Dockerfile.lambda -t "${ECR_REPO}:${IMAGE_TAG}" .
+# Ensure Buildx builder is available
+docker buildx create --use --name lambda_builder || true
+docker buildx build \
+  --platform linux/amd64 \
+  --tag "${ECR_REPO}:${IMAGE_TAG}" \
+  --push \
+  -f Dockerfile.lambda \
+  .
 
 echo "🔐 Logging into ECR..."
 aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}
 
-echo "⬆️ Pushing image to ECR..."
-docker push "${ECR_REPO}:${IMAGE_TAG}"
-
-# Step 2: Update infrastructure with new image
+# Step 2: Update infrastructure with new image (uses push from buildx)
 echo "🏗️ Updating infrastructure..."
 cd ../infrastructure
 terraform apply -auto-approve -var="lambda_image_tag=${IMAGE_TAG}"
