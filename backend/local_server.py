@@ -6,11 +6,13 @@ This provides a simple Flask API that mimics the Lambda functions for local test
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import psycopg2
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
+import jwt
+import bcrypt
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -19,26 +21,165 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 
-def get_db_connection():
-    """Get a connection to the PostgreSQL database."""
-    return psycopg2.connect(
-        host=os.getenv('POSTGRES_HOST', 'db'),
-        database=os.getenv('POSTGRES_DB', 'autoshop'),
-        user=os.getenv('POSTGRES_USER', 'user'),
-        password=os.getenv('POSTGRES_PASSWORD', 'password'),
-        port=5432
-    )
+# In-memory storage for local development
+users_db = {}
+appointments_db = []
+customers_db = {}
+
+# JWT secret for local development
+JWT_SECRET = os.getenv('JWT_SECRET', 'your-secret-key-for-local-dev')
+
+def validate_email(email):
+    """Validate email format."""
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+def validate_password(password):
+    """Validate password strength."""
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long"
+    if not re.search(r'[A-Z]', password):
+        return False, "Password must contain at least one uppercase letter"
+    if not re.search(r'[a-z]', password):
+        return False, "Password must contain at least one lowercase letter"
+    if not re.search(r'\d', password):
+        return False, "Password must contain at least one number"
+    return True, "Password is valid"
+
+def hash_password(password):
+    """Hash password using bcrypt."""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(password, hashed):
+    """Verify password against hash."""
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+
+def generate_jwt_token(email):
+    """Generate JWT token for user."""
+    payload = {
+        'email': email,
+        'exp': datetime.utcnow() + timedelta(hours=24),
+        'iat': datetime.utcnow()
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+
+def verify_jwt_token(token):
+    """Verify JWT token and return email."""
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        return payload['email']
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
 
 @app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint."""
+    return jsonify({'status': 'ok', 'db': 'in-memory'})
+
+# Authentication endpoints
+@app.route('/customers/register', methods=['POST'])
+def register():
+    """Register a new customer."""
     try:
-        conn = get_db_connection()
-        conn.close()
-        return jsonify({'status': 'ok', 'db': 'connected'})
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        
+        if not email or not password:
+            return jsonify({'message': 'Email and password are required'}), 400
+            
+        if not validate_email(email):
+            return jsonify({'message': 'Invalid email format'}), 400
+            
+        is_valid, message = validate_password(password)
+        if not is_valid:
+            return jsonify({'message': message}), 400
+            
+        if email in users_db:
+            return jsonify({'message': 'User already exists'}), 409
+            
+        # Store user with hashed password
+        users_db[email] = {
+            'email': email,
+            'password_hash': hash_password(password),
+            'created_at': datetime.utcnow().isoformat(),
+            'profile': {
+                'vehicles': []
+            }
+        }
+        
+        logger.info(f"User registered: {email}")
+        return jsonify({'message': 'User registered successfully'}), 201
+        
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        return jsonify({'status': 'error', 'db': 'disconnected', 'error': str(e)}), 500
+        logger.error(f"Registration error: {e}")
+        return jsonify({'message': 'Internal server error'}), 500
+
+@app.route('/customers/login', methods=['POST'])
+def login():
+    """Login customer."""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        
+        if not email or not password:
+            return jsonify({'message': 'Email and password are required'}), 400
+            
+        user = users_db.get(email)
+        if not user:
+            return jsonify({'message': 'Invalid credentials'}), 401
+            
+        if not verify_password(password, user['password_hash']):
+            return jsonify({'message': 'Invalid credentials'}), 401
+            
+        token = generate_jwt_token(email)
+        logger.info(f"User logged in: {email}")
+        return jsonify({'token': token}), 200
+        
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        return jsonify({'message': 'Internal server error'}), 500
+
+@app.route('/customers/profile', methods=['GET', 'PUT'])
+def profile():
+    """Get or update customer profile."""
+    try:
+        # Get token from Authorization header
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({'message': 'Authorization token required'}), 401
+            
+        token = auth_header.split(' ')[1]
+        email = verify_jwt_token(token)
+        if not email:
+            return jsonify({'message': 'Invalid or expired token'}), 401
+            
+        user = users_db.get(email)
+        if not user:
+            return jsonify({'message': 'User not found'}), 404
+            
+        if request.method == 'GET':
+            return jsonify({
+                'email': user['email'],
+                'vehicles': user['profile'].get('vehicles', [])
+            }), 200
+            
+        elif request.method == 'PUT':
+            data = request.get_json()
+            
+            # Update vehicles if provided
+            if 'vehicles' in data:
+                user['profile']['vehicles'] = data['vehicles']
+                
+            logger.info(f"Profile updated for: {email}")
+            return jsonify({'message': 'Profile updated successfully'}), 200
+            
+    except Exception as e:
+        logger.error(f"Profile error: {e}")
+        return jsonify({'message': 'Internal server error'}), 500
 
 @app.route('/api/appointments', methods=['GET', 'POST'])
 def appointments():
@@ -234,5 +375,6 @@ def root():
     })
 
 if __name__ == '__main__':
-    logger.info("Starting Edgar's Auto Shop Local API Server...")
-    app.run(host='0.0.0.0', port=3001, debug=True)
+    port = int(os.getenv("FLASK_RUN_PORT", 5000))
+    logger.info(f"Starting Edgar's Auto Shop Local API Server on port {port}...")
+    app.run(host='0.0.0.0', port=port, debug=True)

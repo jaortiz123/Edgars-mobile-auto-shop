@@ -1,13 +1,13 @@
 import { Link, Outlet } from 'react-router-dom';
-import { Suspense, useState } from 'react';
+import { Suspense } from 'react';
 import { Button } from '../components/ui/Button';
 import { Phone, MessageSquare } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import UserMenu from '../components/UserMenu';
+import MobileMenu from '../components/MobileMenu';
 
 export default function PublicLayout() {
-  const [isChatOpen, setIsChatOpen] = useState(false);
-
-  // Mock data for urgency banner
-  const nextAppointment = "in 2 Hours"; 
+  const { user } = useAuth();
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -24,6 +24,8 @@ export default function PublicLayout() {
           <Link to="/" className="text-2xl font-black text-primary">
             Edgar's Mobile Auto Shop Repair
           </Link>
+          
+          {/* Desktop Navigation */}
           <nav className="hidden items-center gap-6 md:flex">
             <a href="tel:555-123-4567" className="text-base font-medium flex items-center gap-2 text-muted-foreground transition-colors hover:text-primary">
                 <Phone size={16} />
@@ -31,6 +33,19 @@ export default function PublicLayout() {
             </a>
             <Link to="/about" className="text-base font-medium text-muted-foreground transition-colors hover:text-primary">About</Link>
             <Link to="/service-areas" className="text-base font-medium text-muted-foreground transition-colors hover:text-primary">Service Areas</Link>
+            
+            {/* Authentication-dependent navigation */}
+            {user ? (
+              <UserMenu />
+            ) : (
+              <>
+                <Link to="/login" className="text-base font-medium text-muted-foreground transition-colors hover:text-primary">Sign In</Link>
+                <Button asLink to="/register" variant="outline">
+                  Sign Up
+                </Button>
+              </>
+            )}
+            
             {/* The dual funnel is now in the main navigation */}
             <Button asLink to="/booking" variant="outline">
               Schedule Service
@@ -39,6 +54,9 @@ export default function PublicLayout() {
               Emergency Help
             </Button>
           </nav>
+
+          {/* Mobile Navigation */}
+          <MobileMenu />
         </div>
       </header>
 

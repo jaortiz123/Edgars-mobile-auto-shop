@@ -15,22 +15,19 @@ import { createAppointment, AppointmentPayload } from '../services/apiService';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import ServiceCard from '../components/ServiceCard'; // Assuming ServiceCard is still needed for rendering
+import type { Service as BaseService } from '../api';
 
 // --- MOCKED DATA: Defined here directly, as we are no longer fetching from an API ---
-export interface Service {
-  id: number;
-  name: string;
-  description: string;
-  base_price: number;
+export interface Service extends BaseService {
   category: string;
 }
 const MOCK_SERVICES: Service[] = [
-  { id: 1, name: "Emergency Battery Replacement", description: "On-site testing and replacement.", base_price: 180, category: 'Emergency' },
-  { id: 2, name: "Emergency Brake Service", description: "Critical brake pad and rotor replacement for safety.", base_price: 250, category: 'Emergency' },
-  { id: 3, name: "Check Engine Light Scan", description: "Advanced OBD-II diagnostics.", base_price: 95, category: 'Diagnostics' },
-  { id: 4, name: "AC System Diagnostics", description: "Full system check for leaks and performance issues.", base_price: 120, category: 'Diagnostics' },
-  { id: 5, name: "Premium Oil Change", description: "Full synthetic oil change.", base_price: 75, category: 'Maintenance' },
-  { id: 6, name: "Fleet Vehicle Inspection", description: "Comprehensive inspection for your business vehicles.", base_price: 100, category: 'Fleet' },
+  { id: 1, name: "Emergency Battery Replacement", description: "On-site testing and replacement.", base_price: 180, category: 'Emergency', duration_minutes: 60 },
+  { id: 2, name: "Emergency Brake Service", description: "Critical brake pad and rotor replacement for safety.", base_price: 250, category: 'Emergency', duration_minutes: 120 },
+  { id: 3, name: "Check Engine Light Scan", description: "Advanced OBD-II diagnostics.", base_price: 95, category: 'Diagnostics', duration_minutes: 30 },
+  { id: 4, name: "AC System Diagnostics", description: "Full system check for leaks and performance issues.", base_price: 120, category: 'Diagnostics', duration_minutes: 45 },
+  { id: 5, name: "Premium Oil Change", description: "Full synthetic oil change.", base_price: 75, category: 'Maintenance', duration_minutes: 30 },
+  { id: 6, name: "Fleet Vehicle Inspection", description: "Comprehensive inspection for your business vehicles.", base_price: 100, category: 'Fleet', duration_minutes: 90 },
 ];
 
 
