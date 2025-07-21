@@ -69,25 +69,25 @@ Achievements:
 [✅] End-to-end verification of booking API functionality.
 [✅] CI/CD improvements with image tagging and automated deployment script.
 [✅] Admin dashboard frontend for viewing appointments.
+[✅] Integrate Cognito with Lambda authorizer.
+[✅] POST /customers/register - Customer signup.
+[✅] POST /customers/login - Authentication.
 Deferred to Future Sprints:
-[⬜] Integrate Cognito with Lambda authorizer.
-[⬜] POST /customers/register - Customer signup.
-[⬜] POST /customers/login - Authentication.
 [⬜] GET /customers/profile - View profile.
 [⬜] PUT /customers/profile - Update profile.
 [⬜] Add vehicle information to customer profiles.
 [⬜] Create service history endpoints.
 [⬜] Implement proper JWT handling.
 
-## ✉️ SPRINT 5: NOTIFICATIONS & ADMIN (IN PROGRESS)
+## ✉️ SPRINT 5: NOTIFICATIONS & ADMIN (COMPLETED)
 Goal: Implement automated customer notifications and a basic dashboard for Edgar.
 Tasks:
 [✅] Set up SNS for SMS messaging.
 [✅] Create notification Lambda for appointment confirmations.
 [✅] Implement CloudWatch Events for 24h reminders.
 [✅] Create admin authentication (separate Cognito pool).
-[⬜] Build admin API endpoints (GET /admin/appointments/today, PUT /admin/appointments/:id).
-[⬜] Create simple admin UI (daily schedule, details modal).
+[✅] Build admin API endpoints (GET /admin/appointments/today, PUT /admin/appointments/:id).
+[✅] Create simple admin UI (daily schedule, details modal).
 
 ## ⚙️ SPRINT 6: CI/CD & COMPREHENSIVE TESTING (IN PROGRESS)
 Goal: Automate deployment, ensure quality, and establish robust testing.
@@ -97,6 +97,12 @@ Tasks:
 [✅] Create post-deploy verification via API health checks.
 [✅] Set up GitHub Actions workflow.
 [✅] Implement full suite of unit, integration, and E2E tests for backend and frontend.
+[✅] Set up customer authentication with Cognito and JWT.
+[✅] Implement auto-confirmation for dev environment.
+[✅] Design customer profile data structure in DynamoDB.
+[✅] Implement GET /customers/profile endpoint.
+[✅] Implement PUT /customers/profile endpoint.
+[✅] Add vehicle information management to profiles.
 [⬜] Automate Terraform plan and apply on infrastructure changes.
 [⬜] Implement deployment pipeline to staging and production environments (S3, CloudFront invalidation).
 [⬜] Document deployment process.
@@ -132,6 +138,7 @@ Key Deliverables for Portfolio (Current Status):
 [✅] Production Infrastructure: VPC, RDS, Lambda containers, API Gateway, and Secrets Manager.
 [✅] End-to-end API Implementation: POST/GET appointments, database integration, and admin dashboard.
 [✅] CI/CD Automation: Deployment script with image tagging and health checks.
+[✅] Customer Authentication & Profile Management: Cognito, JWT, DynamoDB, Lambda, API Gateway.
 [⬜] Demo Video: 2-3 minute walk-through of the end-to-end booking flow.
 [⬜] Blog Post Draft: "Why I Chose Serverless for Edgar's Auto Shop (And When I'd Use Containers)."
 [⬜] Cost Analysis Document: Detailed breakdown of AWS costs for the MVP.
@@ -142,13 +149,13 @@ High-Risk Areas (Current View):
 Risk	Probability	Impact	Mitigation Strategy (Current / Future Sprint)
 Cold starts/Latency	MEDIUM	LOW (for MVP)	Monitor CloudWatch; Provisioned Concurrency in Sprint 7.
 DB Connection Exhaustion	MEDIUM	HIGH	Connection pooling in Lambda; RDS Proxy in Sprint 7.
-Security (Auth, Rate Limiting)	HIGH	HIGH	Cognito auth, API Gateway rate limiting in Sprint 4/7.
+Security (Auth, Rate Limiting)	MEDIUM	MEDIUM	Cognito auth, API Gateway rate limiting in Sprint 4/7.
 Customer Complexity	MEDIUM	HIGH	Continuous feedback loop with Edgar (ongoing).
 Technical Debt Log:
 Shortcut Taken	Impact	Remediation Plan (Future Sprint)
 Single AZ RDS	No High Availability	Add Multi-AZ deployment in production (Sprint 7).
 Basic Error Handling (UI)	Poor UX for non-API errors	Comprehensive error messages and UI feedback (Sprint 4/5).
-No MFA/Advanced Auth	Security vulnerability	Add MFA via Cognito (Sprint 4).
+Basic Auth Only	Some security risk	Add MFA via Cognito (Sprint 7).
 No Design System	Inconsistent UI	Implement UI component library (Sprint 5/6).
 No SMS Notifications	Missed engagement	Integrate SNS for SMS (Sprint 5).
 
