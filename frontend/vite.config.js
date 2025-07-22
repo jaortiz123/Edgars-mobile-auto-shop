@@ -21,6 +21,13 @@ export default defineConfig({
     build: {
         rollupOptions: {
             plugins: [visualizer({ filename: 'dist/stats.html', open: false })],
+            output: {
+                manualChunks: {
+                    vendor: ['react', 'react-dom', 'react-router-dom'],
+                    forms: ['react-hook-form', '@hookform/resolvers', 'zod'],
+                    ui: ['lucide-react', 'class-variance-authority'],
+                },
+            },
         },
     },
 });

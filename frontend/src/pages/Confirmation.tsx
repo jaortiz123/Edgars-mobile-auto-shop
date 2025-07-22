@@ -4,7 +4,7 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Calendar, Clock, MapPin, User, Mail, Phone, List } from 'lucide-react'; // Import icons for better display
+import { Calendar, Clock, MapPin, Mail, Phone, List } from 'lucide-react'; // Import icons for better display
 
 // Define the expected shape of the appointment data passed via state
 interface AppointmentConfirmationState {

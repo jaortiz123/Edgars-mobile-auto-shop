@@ -39,7 +39,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     if (asLink && to) {
       return (
-        <Link to={to} className={classNames} {...(props as any)} />
+        <Link to={to} className={classNames} />
       );
     }
 

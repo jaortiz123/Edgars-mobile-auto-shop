@@ -1,10 +1,16 @@
 import json
 import boto3
 import os
+import re
 from datetime import datetime
+import logging
 
 # Initialize SNS client
 sns = boto3.client('sns')
+
+# Set up logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
     """
@@ -18,12 +24,23 @@ def lambda_handler(event, context):
         if not topic_arn:
             raise ValueError("SNS_TOPIC_ARN environment variable not set")
         
+        logger.info(f"Processing notification event: {json.dumps(event)}")
+        
         # Parse the event
         if 'Records' in event:
-            # Handle EventBridge/CloudWatch Events
+            # Handle EventBridge/CloudWatch Events or SQS
             for record in event['Records']:
-                body = json.loads(record['body']) if 'body' in record else record
-                send_notification(topic_arn, body)
+                if 'body' in record:
+                    # SQS record
+                    notification_data = json.loads(record['body'])
+                elif 'Sns' in record:
+                    # SNS record
+                    notification_data = json.loads(record['Sns']['Message'])
+                else:
+                    # Direct record
+                    notification_data = record
+                
+                send_notification(topic_arn, notification_data)
         else:
             # Handle direct invocation
             send_notification(topic_arn, event)
@@ -37,18 +54,18 @@ def lambda_handler(event, context):
         }
         
     except Exception as e:
-        print(f"Error sending notification: {str(e)}")
+        logger.error(f"Error sending notification: {str(e)}")
         return {
             'statusCode': 500,
             'body': json.dumps({
-                'error': 'Failed to send notification',
-                'message': str(e)
+                'error': str(e),
+                'timestamp': datetime.utcnow().isoformat()
             })
         }
 
 def send_notification(topic_arn, notification_data):
     """
-    Send notification via SNS
+    Send notification via SNS with enhanced SMS capabilities
     """
     
     # Extract notification details
@@ -57,69 +74,152 @@ def send_notification(topic_arn, notification_data):
     customer_phone = notification_data.get('customer_phone')
     appointment_time = notification_data.get('appointment_time')
     service = notification_data.get('service', 'Auto Service')
+    location_address = notification_data.get('location_address', '')
+    appointment_id = notification_data.get('appointment_id')
+    
+    logger.info(f"Sending {notification_type} notification to {customer_phone} for appointment {appointment_id}")
     
     # Format the message based on type
     if notification_type == 'appointment_confirmation':
-        message = format_confirmation_message(customer_name, appointment_time, service)
+        message = format_confirmation_message(customer_name, appointment_time, service, location_address)
     elif notification_type == 'reminder_24h':
-        message = format_reminder_message(customer_name, appointment_time, service)
+        message = format_reminder_message(customer_name, appointment_time, service, location_address)
     elif notification_type == 'appointment_cancelled':
         message = format_cancellation_message(customer_name, appointment_time)
     else:
         message = f"Hello {customer_name}, you have an update regarding your appointment with Edgar's Auto Shop."
     
-    # Prepare SNS message attributes for SMS
-    message_attributes = {}
+    # Validate and format phone number
     if customer_phone:
-        # If phone number provided, send SMS to specific number
-        # For now, we'll use the topic and let subscribers receive it
-        # In production, you might want to use SNS.publish() with PhoneNumber parameter
-        message_attributes['customer_phone'] = {
-            'DataType': 'String',
-            'StringValue': customer_phone
-        }
-    
-    # Publish to SNS topic
-    response = sns.publish(
-        TopicArn=topic_arn,
-        Message=message,
-        MessageAttributes=message_attributes,
-        Subject=f'Edgar Auto Shop - {notification_type.replace("_", " ").title()}'
-    )
-    
-    print(f"SNS message sent. MessageId: {response['MessageId']}")
-    return response
+        formatted_phone = validate_and_format_phone(customer_phone)
+        if formatted_phone:
+            try:
+                # Send direct SMS to the phone number
+                response = sns.publish(
+                    PhoneNumber=formatted_phone,
+                    Message=message,
+                    MessageAttributes={
+                        'AWS.SNS.SMS.SenderID': {
+                            'DataType': 'String',
+                            'StringValue': 'Edgar Auto'
+                        },
+                        'AWS.SNS.SMS.SMSType': {
+                            'DataType': 'String',
+                            'StringValue': 'Transactional'
+                        }
+                    }
+                )
+                logger.info(f"SMS sent successfully to {formatted_phone}. MessageId: {response['MessageId']}")
+                return response
+                
+            except Exception as e:
+                logger.error(f"Failed to send SMS to {formatted_phone}: {str(e)}")
+                # Fallback to topic publishing
+                return publish_to_topic(topic_arn, message, notification_data)
+        else:
+            logger.warning(f"Invalid phone number format: {customer_phone}")
+            # Fallback to topic publishing
+            return publish_to_topic(topic_arn, message, notification_data)
+    else:
+        logger.warning("No phone number provided, publishing to topic only")
+        return publish_to_topic(topic_arn, message, notification_data)
 
-def format_confirmation_message(customer_name, appointment_time, service):
+def publish_to_topic(topic_arn, message, notification_data):
+    """Fallback method to publish to SNS topic"""
+    try:
+        message_attributes = {}
+        
+        # Add metadata as message attributes
+        if notification_data.get('customer_phone'):
+            message_attributes['customer_phone'] = {
+                'DataType': 'String',
+                'StringValue': notification_data['customer_phone']
+            }
+        
+        if notification_data.get('appointment_id'):
+            message_attributes['appointment_id'] = {
+                'DataType': 'String',
+                'StringValue': str(notification_data['appointment_id'])
+            }
+            
+        notification_type = notification_data.get('type', 'notification')
+        
+        response = sns.publish(
+            TopicArn=topic_arn,
+            Message=message,
+            MessageAttributes=message_attributes,
+            Subject=f'Edgar Auto Shop - {notification_type.replace("_", " ").title()}'
+        )
+        
+        logger.info(f"Message published to topic. MessageId: {response['MessageId']}")
+        return response
+        
+    except Exception as e:
+        logger.error(f"Failed to publish to topic: {str(e)}")
+        raise
+
+def validate_and_format_phone(phone_number):
+    """
+    Validate and format phone number for SMS
+    Returns E.164 format or None if invalid
+    """
+    if not phone_number:
+        return None
+    
+    # Remove all non-digit characters
+    digits_only = re.sub(r'\D', '', phone_number)
+    
+    # Handle different formats
+    if len(digits_only) == 10:
+        # US number without country code
+        return f"+1{digits_only}"
+    elif len(digits_only) == 11 and digits_only.startswith('1'):
+        # US number with country code
+        return f"+{digits_only}"
+    elif len(digits_only) > 11:
+        # International number
+        return f"+{digits_only}"
+    else:
+        # Invalid length
+        logger.warning(f"Invalid phone number length: {digits_only}")
+        return None
+
+def format_confirmation_message(customer_name, appointment_time, service, location_address=''):
     """Format appointment confirmation message"""
     formatted_time = format_appointment_time(appointment_time)
+    location_text = f"\n📍 Location: {location_address}" if location_address else "\n📍 Location: We'll come to you!"
+    
     return f"""Hello {customer_name}! 
 
 Your appointment with Edgar's Mobile Auto Shop has been confirmed:
 
 🔧 Service: {service}
-📅 Date & Time: {formatted_time}
-📍 Location: We'll come to you!
+📅 Date & Time: {formatted_time}{location_text}
 
 We'll send a reminder 24 hours before your appointment. If you need to reschedule, please call us.
 
-Thank you for choosing Edgar's Auto Shop!"""
+Thank you for choosing Edgar's Auto Shop!
 
-def format_reminder_message(customer_name, appointment_time, service):
+Reply STOP to opt out of SMS notifications."""
+
+def format_reminder_message(customer_name, appointment_time, service, location_address=''):
     """Format 24-hour reminder message"""
     formatted_time = format_appointment_time(appointment_time)
+    location_text = f"\n📍 Address: {location_address}" if location_address else "\n📍 We'll come to your location"
+    
     return f"""Hi {customer_name}! 
 
 This is a friendly reminder about your appointment tomorrow:
 
 🔧 Service: {service}
-📅 Time: {formatted_time}
-📍 We'll come to your location
+📅 Time: {formatted_time}{location_text}
 
 Please ensure someone is available and the vehicle is accessible. 
 
 See you tomorrow!
-Edgar's Mobile Auto Shop"""
+Edgar's Mobile Auto Shop
+
+Reply STOP to opt out."""
 
 def format_cancellation_message(customer_name, appointment_time):
     """Format cancellation message"""

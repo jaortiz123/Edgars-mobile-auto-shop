@@ -15,6 +15,12 @@ export interface AppointmentPayload {
   customer_id: string;
   service: string;
   requested_time: string; // ISO 8601 format string (e.g., "2024-09-01T13:00:00Z")
+  customer_phone?: string;
+  customer_email?: string;
+  location_address?: string;
+  notes?: string;
+  sms_consent?: boolean;
+  sms_consent_ip?: string;
 }
 
 // Define a minimal type for admin appointment (expand as needed)
