@@ -137,6 +137,7 @@ export function Calendar({
           size="sm"
           onClick={() => navigateMonth('prev')}
           className="h-8 w-8 p-0"
+          aria-label="Previous month"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
@@ -150,6 +151,7 @@ export function Calendar({
           size="sm"
           onClick={() => navigateMonth('next')}
           className="h-8 w-8 p-0"
+          aria-label="Next month"
         >
           <ChevronRight className="h-4 w-4" />
         </Button>

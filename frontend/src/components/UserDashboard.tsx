@@ -67,6 +67,42 @@ const UserDashboard: React.FC = () => {
     }
   };
 
+  const handleAddVehicle = () => {
+    // Navigate to profile page with vehicles tab active
+    window.location.href = '/profile#vehicles';
+  };
+
+  const handleScheduleService = () => {
+    // Navigate to booking page
+    window.location.href = '/booking';
+  };
+
+  const handleViewServiceHistory = () => {
+    // For now, show informative message about upcoming feature
+    const hasVehicles = (user?.profile?.vehicles?.length || 0) > 0;
+    
+    if (!hasVehicles) {
+      if (window.confirm(
+        '🚗 No Vehicles Found\n\n' +
+        'To view service history, you need to add your vehicles first.\n\n' +
+        'Would you like to add a vehicle now?'
+      )) {
+        window.location.href = '/profile#vehicles';
+      }
+    } else {
+      alert(
+        '📋 Service History\n\n' +
+        'Service history feature coming soon!\n\n' +
+        '🔧 This will show:\n' +
+        '• Past service appointments\n' +
+        '• Maintenance records\n' +
+        '• Upcoming scheduled services\n' +
+        '• Vehicle-specific service history\n\n' +
+        '📞 For now, call (555) 123-4567 for service records.'
+      );
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -187,7 +223,10 @@ const UserDashboard: React.FC = () => {
         <div className="bg-white rounded-lg border p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
           <div className="space-y-3">
-            <button className="w-full flex items-center justify-between p-3 text-left bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <button 
+              onClick={handleAddVehicle}
+              className="w-full flex items-center justify-between p-3 text-left bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
               <div className="flex items-center space-x-3">
                 <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -199,7 +238,10 @@ const UserDashboard: React.FC = () => {
               </svg>
             </button>
 
-            <button className="w-full flex items-center justify-between p-3 text-left bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <button 
+              onClick={handleScheduleService}
+              className="w-full flex items-center justify-between p-3 text-left bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
               <div className="flex items-center space-x-3">
                 <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -211,7 +253,10 @@ const UserDashboard: React.FC = () => {
               </svg>
             </button>
 
-            <button className="w-full flex items-center justify-between p-3 text-left bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <button 
+              onClick={handleViewServiceHistory}
+              className="w-full flex items-center justify-between p-3 text-left bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
               <div className="flex items-center space-x-3">
                 <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

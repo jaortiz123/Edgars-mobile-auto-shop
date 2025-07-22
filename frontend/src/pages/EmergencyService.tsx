@@ -1,4 +1,3 @@
-import { Button } from '../components/ui/Button';
 import { Phone, AlertTriangle, Zap, Car } from 'lucide-react';
 
 export default function EmergencyService() {

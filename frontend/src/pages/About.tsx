@@ -1,5 +1,4 @@
 import { Award, Shield, Wrench } from 'lucide-react';
-import { Button } from '../components/ui/Button';
 
 export default function About() {
   return (

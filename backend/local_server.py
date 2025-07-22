@@ -361,6 +361,117 @@ def init_db():
         logger.error(f"Database initialization failed: {e}")
         return jsonify({'error': str(e)}), 500
 
+# Admin notification tracking endpoints
+@app.route('/api/admin/notifications', methods=['GET'])
+def get_notifications():
+    """Get SMS notification tracking records for admin dashboard."""
+    try:
+        # Mock data for local development
+        # In production, this would query DynamoDB
+        mock_notifications = [
+            {
+                'appointment_id': '123',
+                'notification_type': '24h_reminder',
+                'status': 'sent',
+                'timestamp': (datetime.utcnow() - timedelta(hours=2)).isoformat(),
+                'customer_name': 'John Doe',
+                'customer_phone': '+15551234567'
+            },
+            {
+                'appointment_id': '124',
+                'notification_type': '24h_reminder',
+                'status': 'failed',
+                'timestamp': (datetime.utcnow() - timedelta(hours=1)).isoformat(),
+                'customer_name': 'Jane Smith',
+                'customer_phone': '+15559876543',
+                'error_message': 'Phone number not reachable'
+            },
+            {
+                'appointment_id': '125',
+                'notification_type': '1h_reminder',
+                'status': 'sent',
+                'timestamp': (datetime.utcnow() - timedelta(minutes=30)).isoformat(),
+                'customer_name': 'Bob Johnson',
+                'customer_phone': '+15555551111'
+            }
+        ]
+        
+        # Apply filters from query parameters
+        appointment_id = request.args.get('appointment_id')
+        status_filter = request.args.get('status')
+        
+        filtered_notifications = mock_notifications
+        
+        if appointment_id:
+            filtered_notifications = [n for n in filtered_notifications if n['appointment_id'] == appointment_id]
+        
+        if status_filter and status_filter != 'all':
+            filtered_notifications = [n for n in filtered_notifications if n['status'] == status_filter]
+        
+        return jsonify({
+            'notifications': filtered_notifications,
+            'count': len(filtered_notifications)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching notifications: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/notifications/<appointment_id>/retry', methods=['POST'])
+def retry_notification(appointment_id):
+    """Retry a failed notification."""
+    try:
+        # Mock retry for local development
+        logger.info(f"Retry notification triggered for appointment: {appointment_id}")
+        
+        # In production, this would trigger the Lambda function
+        return jsonify({
+            'message': f'Retry triggered for appointment {appointment_id}',
+            'appointment_id': appointment_id,
+            'status': 'triggered'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error retrying notification: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/notifications/stats', methods=['GET'])
+def get_notification_stats():
+    """Get aggregated notification statistics."""
+    try:
+        # Mock stats for local development
+        hours = int(request.args.get('hours', 24))
+        
+        mock_stats = {
+            'total': 15,
+            'sent': 12,
+            'failed': 2,
+            'pending': 1,
+            'success_rate': 85.7,
+            'by_type': {
+                '24h_reminder': {'total': 10, 'sent': 8, 'failed': 2},
+                '1h_reminder': {'total': 5, 'sent': 4, 'failed': 0}
+            },
+            'recent_failures': [
+                {
+                    'appointment_id': '124',
+                    'notification_type': '24h_reminder',
+                    'timestamp': (datetime.utcnow() - timedelta(hours=1)).isoformat(),
+                    'error_message': 'Phone number not reachable'
+                }
+            ]
+        }
+        
+        return jsonify({
+            'stats': mock_stats,
+            'period_hours': hours,
+            'generated_at': datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting notification stats: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/', methods=['GET'])
 def root():
     """Root endpoint."""
@@ -370,7 +481,10 @@ def root():
             '/health',
             '/api/appointments',
             '/api/customers',
-            '/api/init-db'
+            '/api/init-db',
+            '/api/admin/notifications',
+            '/api/admin/notifications/stats',
+            '/api/admin/notifications/{id}/retry'
         ]
     })
 

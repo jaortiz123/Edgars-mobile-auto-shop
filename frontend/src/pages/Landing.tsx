@@ -1,5 +1,5 @@
 import { Button } from '../components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../components/ui/Card';
 import { Star, Shield, Award, CheckCircle, Wrench } from 'lucide-react';
 
 // Single source of truth for the services we want to showcase

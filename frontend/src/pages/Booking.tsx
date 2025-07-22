@@ -31,7 +31,7 @@ const MOCK_SERVICES: Service[] = [
 ];
 
 
-// Form schema remains the same
+// Form schema updated to include SMS consent
 const schema = z.object({
   name: z.string().min(1, 'Full Name is required'), // Changed label to match UI
   phone: z.string().optional(),
@@ -40,6 +40,7 @@ const schema = z.object({
   date: z.string().min(1, 'Date is required'),
   time: z.string().min(1, 'Time is required'),
   notes: z.string().optional(),
+  smsConsent: z.boolean().default(false).optional(),
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -48,11 +49,16 @@ export default function Booking() {
   
   // --- PURGED: useQuery hook and isLoading state from old API ---
   const services = MOCK_SERVICES; // Use mock data directly
-  const isLoading = false; // Always false as services are hardcoded
+  // const _isLoading = false; // Always false as services are hardcoded
 
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({ 
+    resolver: zodResolver(schema),
+    defaultValues: {
+      smsConsent: false
+    }
+  });
   
   // States for API interaction
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,10 +82,20 @@ export default function Booking() {
     try {
       // 1. Data Transformation: Create the correct payload for the API.
       const requested_time = new Date(`${values.date}T${values.time}`).toISOString();
+      
+      // Get client IP for audit trail (simplified for demo)
+      const clientIP = '0.0.0.0'; // In production, this would come from server
+      
       const appointmentPayload: AppointmentPayload = {
         customer_id: values.name, // Using customer name as a temporary ID for the backend
         service: selectedService.name,
         requested_time: requested_time,
+        customer_phone: values.phone || '',
+        customer_email: values.email || '',
+        location_address: values.address,
+        notes: values.notes || '',
+        sms_consent: values.smsConsent || false,
+        sms_consent_ip: values.smsConsent ? clientIP : undefined,
       };
 
       // 2. API Call: Send the payload to our live, hardened service.
@@ -152,7 +168,7 @@ export default function Booking() {
             <section>
                 {/* --- PURGED: isLoading check. Services load instantly now. --- */}
                 <div className="space-y-16">
-                    {Object.entries(servicesByCategory).map(([category, serviceItems]) => (
+                    {Object.entries(servicesByCategory).map(([category]) => (
                         <div key={category}>
                             <h2 className="text-center text-3xl font-bold text-primary mb-12 border-b pb-4">
                                 {category} Services
@@ -236,6 +252,30 @@ export default function Booking() {
                                     Additional Notes
                                 </label>
                                 <textarea {...register('notes')} rows={4} className="w-full px-3 py-2 border rounded-md" />
+                            </div>
+                            
+                            {/* SMS Consent Checkbox */}
+                            <div className="border rounded-md p-4 bg-gray-50">
+                                <div className="flex items-start space-x-3">
+                                    <input
+                                        type="checkbox"
+                                        id="smsConsent"
+                                        {...register('smsConsent')}
+                                        className="mt-1 h-4 w-4 text-accent border-gray-300 rounded focus:ring-accent"
+                                    />
+                                    <div className="flex-1">
+                                        <label htmlFor="smsConsent" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                            📱 Receive SMS notifications and reminders
+                                        </label>
+                                        <p className="text-xs text-gray-600 mt-1">
+                                            We'll send you appointment confirmations and reminders via text message. 
+                                            Message and data rates may apply. Reply STOP to opt out at any time.
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            By checking this box, you consent to receive SMS messages from Edgar's Mobile Auto Shop.
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                             {apiError && (
                                 <div className="p-3 text-center bg-destructive text-destructive-foreground rounded-md">

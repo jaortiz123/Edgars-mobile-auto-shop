@@ -23,8 +23,8 @@ const AdminLogin = lazy(() => import('./admin/Login'));
 const Dashboard = lazy(() => import('./admin/Dashboard'));
 const About = lazy(() => import('./pages/About'));
 const ServiceAreas = lazy(() => import('./pages/ServiceAreas'));
-import EmergencyService from './pages/EmergencyService';
-import AdminAppointments from './pages/AdminAppointments';
+const EmergencyService = lazy(() => import('./pages/EmergencyService'));
+const AdminAppointments = lazy(() => import('./pages/AdminAppointments'));
 
 // --- React Query Client ---
 const queryClient = new QueryClient();

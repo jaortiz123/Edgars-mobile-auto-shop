@@ -142,6 +142,35 @@ resource "aws_dynamodb_table" "QuotesTable" {
   }
 }
 
+# --- NOTIFICATION TRACKING TABLE ---
+resource "aws_dynamodb_table" "notification_tracking" {
+  name           = "edgar-notification-tracking"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "appointment_id"
+  range_key      = "notification_type"
+
+  attribute {
+    name = "appointment_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "notification_type"
+    type = "S"
+  }
+
+  # TTL attribute for automatic cleanup
+  ttl {
+    attribute_name = "ttl"
+    enabled        = true
+  }
+
+  tags = {
+    Project     = "AutoRepairHub"
+    Environment = "Dev"
+  }
+}
+
 # --- SNS TOPIC FOR NOTIFICATIONS ---
 resource "aws_sns_topic" "appointment_notifications" {
   name = "edgar-appointment-notifications"
@@ -354,6 +383,34 @@ resource "aws_iam_role_policy_attachment" "BookingSNSAttachment" {
   policy_arn = aws_iam_policy.lambda_sns_policy.arn
 }
 
+# IAM policy for DynamoDB notification tracking access
+resource "aws_iam_policy" "notification_tracking_policy" {
+  name        = "NotificationTrackingPolicy"
+  description = "Allows Lambda functions to access notification tracking DynamoDB table"
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:Query",
+          "dynamodb:Scan"
+        ]
+        Resource = aws_dynamodb_table.notification_tracking.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "BookingNotificationTrackingAttachment" {
+  role       = aws_iam_role.BookingLambdaRole.name
+  policy_arn = aws_iam_policy.notification_tracking_policy.arn
+}
+
 # --- ECR REPOSITORY FOR OUR LAMBDA IMAGE ---
 resource "aws_ecr_repository" "booking_function_repo" {
   name                 = "edgar-auto-booking-function"
@@ -491,6 +548,8 @@ resource "aws_lambda_function" "ReminderFunction" {
   environment {
     variables = {
       SNS_TOPIC_ARN = aws_sns_topic.appointment_notifications.arn
+      DB_SECRET_ARN = aws_secretsmanager_secret.db_credentials.arn
+      NOTIFICATION_TRACKING_TABLE = aws_dynamodb_table.notification_tracking.name
     }
   }
 
@@ -506,7 +565,7 @@ resource "aws_lambda_function" "ReminderFunction" {
 
 resource "aws_cloudwatch_event_rule" "Reminder24hRule" {
   name                = "Edgar24hReminderRule"
-  schedule_expression = "cron(0 12 * * ? *)" # Every day at noon UTC
+  schedule_expression = "cron(30 13 * * ? *)" # Every day at 1:30 PM UTC
   description         = "Trigger 24h appointment reminders"
 }
 

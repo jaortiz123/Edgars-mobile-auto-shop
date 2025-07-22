@@ -100,12 +100,41 @@ export default function PublicLayout() {
         </div>
       </footer>
 
-      {/* NEW: Live Chat / Text Us Widget */}
+      {/* ENHANCED: Live Chat / Text Us Widget */}
       <div className="fixed bottom-4 right-4 z-50">
         <Button 
             size="lg" 
             className="rounded-full h-16 w-16 shadow-2xl bg-accent hover:bg-accent/90 transform transition-transform hover:scale-110"
-            onClick={() => alert('Text us at (555) 123-4567 for immediate help!')}
+            onClick={() => {
+              const userChoice = window.confirm(
+                '💬 Contact Edgar\'s Mobile Auto Shop\n\n' +
+                '📱 Text us directly: (555) 123-4567\n' +
+                '📞 Call us now: (555) 123-4567\n' +
+                '🚨 Emergency? Click OK for emergency service!\n\n' +
+                'Click OK to call now, or Cancel to text us.'
+              );
+              
+              if (userChoice) {
+                // User chose to call
+                window.open('tel:555-123-4567');
+              } else {
+                // User chose to text - open SMS on mobile devices
+                const message = encodeURIComponent('Hi! I need help with auto service. Can you assist me?');
+                const smsLink = `sms:555-123-4567?body=${message}`;
+                
+                // Try to open SMS app, fallback to showing instructions
+                try {
+                  window.open(smsLink);
+                } catch (error) {
+                  alert(
+                    '📱 Text us at: (555) 123-4567\n\n' +
+                    'Send: "Hi! I need help with auto service."\n\n' +
+                    '⚡ We typically respond within 5 minutes!\n' +
+                    '🚨 For emergencies, please call instead.'
+                  );
+                }
+              }
+            }}
         >
             <MessageSquare className="h-8 w-8 text-accent-foreground" />
         </Button>
