@@ -45,7 +45,7 @@ export interface AdminAppointment {
  * @throws An error with a user-friendly message if the request fails.
  */
 export async function createAppointment(appointmentData: AppointmentPayload): Promise<unknown> {
-  const response = await fetch(`${API_BASE_URL}/appointments`, {
+  const response = await fetch(`${API_BASE_URL}/api/appointments`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -78,7 +78,7 @@ export async function createAppointment(appointmentData: AppointmentPayload): Pr
  * @throws An error with a user-friendly message if the request fails.
  */
 export async function getAppointments(): Promise<AdminAppointment[]> {
-  const response = await fetch(`${API_BASE_URL}/appointments`, {
+  const response = await fetch(`${API_BASE_URL}/api/appointments`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -105,7 +105,7 @@ export async function getAppointments(): Promise<AdminAppointment[]> {
  * @returns An array of today's appointments.
  */
 export async function getAdminAppointmentsToday(): Promise<AdminAppointment[]> {
-  const response = await fetch(`${API_BASE_URL}/admin/appointments/today`, {
+  const response = await fetch(`${API_BASE_URL}/api/admin/appointments/today`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -132,7 +132,7 @@ export async function getAdminAppointmentsToday(): Promise<AdminAppointment[]> {
  * @returns The updated appointment or success message.
  */
 export async function updateAppointment(id: string, updateData: Partial<AdminAppointment>): Promise<{ message: string }> {
-  const response = await fetch(`${API_BASE_URL}/admin/appointments/${id}`, {
+  const response = await fetch(`${API_BASE_URL}/api/admin/appointments/${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',

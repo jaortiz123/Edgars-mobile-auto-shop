@@ -1,5 +1,5 @@
 // API utilities for Edgar's Mobile Auto Shop
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_ENDPOINT_URL || 'http://localhost:3001';
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -17,6 +17,8 @@ export interface Appointment {
   status: 'scheduled' | 'in-progress' | 'completed' | 'canceled';
   phone?: string;
   address?: string;
+  estimatedDuration?: string;
+  reminderStatus?: 'sent' | 'failed' | 'pending';
 }
 
 export interface DashboardStats {
@@ -26,6 +28,16 @@ export interface DashboardStats {
   totalCustomers: number;
   partsOrdered: number;
   todayRevenue: number;
+}
+
+export interface CarOnPremises {
+  id: string;
+  make: string;
+  model: string;
+  owner: string;
+  arrivalTime: string;
+  status: string;
+  pickupTime: string;
 }
 
 class ApiClient {
@@ -39,15 +51,24 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.log(`⏰ Request timeout for ${endpoint}`);
+      controller.abort();
+    }, 8000); // 8 second timeout
+    
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         headers: {
           'Content-Type': 'application/json',
           ...options.headers,
         },
+        signal: controller.signal,
         ...options,
       });
 
+      clearTimeout(timeoutId);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -55,10 +76,11 @@ class ApiClient {
       const data = await response.json();
       return { success: true, data };
     } catch (error) {
+      clearTimeout(timeoutId);
       console.error('API request failed:', error);
       return { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   }
@@ -67,6 +89,10 @@ class ApiClient {
   async getAppointments(date?: string): Promise<ApiResponse<Appointment[]>> {
     const params = date ? `?date=${date}` : '';
     return this.request<Appointment[]>(`/api/appointments${params}`);
+  }
+
+  async getTodaysAppointments(): Promise<ApiResponse<Appointment[]>> {
+    return this.request<Appointment[]>(`/api/admin/appointments/today`);
   }
 
   async updateAppointmentStatus(
@@ -91,12 +117,16 @@ class ApiClient {
     return this.request<DashboardStats>('/api/admin/dashboard/stats');
   }
 
+  async getCarsOnPremises(): Promise<ApiResponse<CarOnPremises[]>> {
+    return this.request<CarOnPremises[]>('/api/admin/cars-on-premises');
+  }
+
   // Notification API methods
-  async getNotificationStats(): Promise<ApiResponse<any>> {
+  async getNotificationStats(): Promise<ApiResponse<unknown>> {
     return this.request('/api/admin/notifications/stats');
   }
 
-  async retryNotification(appointmentId: string): Promise<ApiResponse<any>> {
+  async retryNotification(appointmentId: string): Promise<ApiResponse<unknown>> {
     return this.request(`/api/admin/notifications/${appointmentId}/retry`, {
       method: 'POST',
     });
@@ -111,7 +141,7 @@ export function useApi() {
 }
 
 // Utility functions for handling API responses
-export function handleApiError(response: ApiResponse<any>, defaultMessage = 'An error occurred') {
+export function handleApiError(response: ApiResponse<unknown>, defaultMessage = 'An error occurred') {
   if (!response.success) {
     console.error('API Error:', response.error);
     alert(response.error || defaultMessage);
