@@ -37,44 +37,62 @@ export const CalendarView: React.FC = () => {
     fetchAppointments();
   }, [currentDate, viewMode]);
 
+  // Auto-refresh appointments every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!loading) {
+        console.log('🔄 Auto-refreshing calendar appointments...');
+        fetchAppointments();
+      }
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [loading]);
+
   const fetchAppointments = async () => {
     setLoading(true);
     try {
-      // Mock data for demonstration
-      const mockAppointments: Appointment[] = [
-        {
-          id: '1',
-          customer_name: 'John Doe',
-          service: 'Oil Change',
-          scheduled_at: new Date().toISOString(),
-          status: 'confirmed',
-          customer_phone: '+15551234567',
-          location_address: '123 Main St, City',
-          notes: 'Customer prefers morning appointments'
-        },
-        {
-          id: '2',
-          customer_name: 'Jane Smith',
-          service: 'Brake Inspection',
-          scheduled_at: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
-          status: 'pending',
-          customer_phone: '+15559876543',
-          location_address: '456 Oak Ave, Town'
-        },
-        {
-          id: '3',
-          customer_name: 'Bob Johnson',
-          service: 'Tire Rotation',
-          scheduled_at: new Date(Date.now() + 2 * 86400000).toISOString(), // Day after tomorrow
-          status: 'completed',
-          customer_phone: '+15555551111',
-          location_address: '789 Pine St, Village'
+      // Fetch real appointments from backend
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/admin/appointments/today`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data && Array.isArray(data.data.appointments)) {
+          const realAppointments: Appointment[] = data.data.appointments.map((apt: any) => ({
+            id: apt.id.toString(),
+            customer_name: apt.customer_name || 'Unknown Customer',
+            service: `Service ${apt.service_id || 'N/A'}`,
+            scheduled_at: apt.scheduled_at || apt.scheduled_date + 'T' + apt.scheduled_time,
+            status: apt.status || 'pending',
+            customer_phone: apt.customer_phone || '',
+            location_address: apt.location_address || '',
+            notes: apt.notes || ''
+          }));
+          setAppointments(realAppointments);
+        } else {
+          console.warn('Invalid appointments data structure:', data);
+          setAppointments([]);
         }
-      ];
-      
-      setAppointments(mockAppointments);
+      } else {
+        console.error('Failed to fetch appointments:', response.statusText);
+        // Fall back to mock data if API fails
+        const mockAppointments: Appointment[] = [
+          {
+            id: '1',
+            customer_name: 'John Doe',
+            service: 'Oil Change',
+            scheduled_at: new Date().toISOString(),
+            status: 'confirmed',
+            customer_phone: '+15551234567',
+            location_address: '123 Main St, City',
+            notes: 'Customer prefers morning appointments'
+          }
+        ];
+        setAppointments(mockAppointments);
+      }
     } catch (error) {
       console.error('Failed to fetch appointments:', error);
+      // Fall back to empty appointments on error
+      setAppointments([]);
     } finally {
       setLoading(false);
     }

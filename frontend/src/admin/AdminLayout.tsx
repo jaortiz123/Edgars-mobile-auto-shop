@@ -1,5 +1,6 @@
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { authAPI } from '../services/api';
+import { AppointmentProvider } from '../contexts/AppointmentContext';
 import { 
   LayoutDashboard, 
   Calendar, 
@@ -28,12 +29,6 @@ export default function AdminLayout() {
       current: location.pathname === '/admin/dashboard' || location.pathname === '/admin'
     },
     {
-      name: 'Appointments',
-      href: '/admin/appointments',
-      icon: Calendar,
-      current: location.pathname === '/admin/appointments'
-    },
-    {
       name: 'Customers',
       href: '/admin/customers',
       icon: Users,
@@ -54,60 +49,62 @@ export default function AdminLayout() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white shadow-sm border-r border-gray-200">
-        <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h1 className="text-xl font-bold text-gray-900">Edgar's Admin</h1>
-            <p className="text-sm text-gray-500">Mobile Auto Shop</p>
-          </div>
+    <AppointmentProvider>
+      <div className="flex min-h-screen bg-gray-50 text-gray-800">
+        {/* Sidebar */}
+        <aside className="w-64 bg-white shadow-sm border-r border-gray-200">
+          <div className="flex flex-col h-full">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h1 className="text-lg font-bold text-gray-900">Edgar's Admin</h1>
+              <p className="text-xs text-gray-500">Mobile Auto Shop</p>
+            </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-1">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={`
-                  group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  ${item.current
-                    ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }
-                `}
-              >
-                <item.icon
+            {/* Navigation */}
+            <nav className="flex-1 px-4 py-6 space-y-1">
+              {navigation.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
                   className={`
-                    mr-3 h-5 w-5 flex-shrink-0
-                    ${item.current ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-500'}
+                    group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                    ${item.current
+                      ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }
                   `}
-                />
-                {item.name}
-              </Link>
-            ))}
-          </nav>
+                >
+                  <item.icon
+                    className={`
+                      mr-3 h-5 w-5 flex-shrink-0
+                      ${item.current ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-500'}
+                    `}
+                  />
+                  {item.name}
+                </Link>
+              ))}
+            </nav>
 
-          {/* Footer */}
-          <div className="px-4 py-4 border-t border-gray-200">
-            <button
-              onClick={logout}
-              className="group flex items-center w-full px-3 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900 transition-colors"
-            >
-              <LogOut className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
-              Sign out
-            </button>
+            {/* Footer */}
+            <div className="px-4 py-4 border-t border-gray-200">
+              <button
+                onClick={logout}
+                className="group flex items-center w-full px-3 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900 transition-colors"
+              >
+                <LogOut className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
+                Sign out
+              </button>
+            </div>
           </div>
-        </div>
-      </aside>
+        </aside>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-auto">
-        <div className="px-8 py-6">
-          <Outlet />
-        </div>
-      </main>
-    </div>
+        {/* Main content */}
+        <main className="flex-1 overflow-auto">
+          <div className="px-8 py-6">
+            <Outlet />
+          </div>
+        </main>
+      </div>
+    </AppointmentProvider>
   );
 }

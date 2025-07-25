@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { visualizer } from 'rollup-plugin-visualizer';
 // https://vite.dev/config/
@@ -7,11 +7,13 @@ export default defineConfig({
     server: {
         host: '0.0.0.0',
         port: 5173,
+        strictPort: true,
         proxy: {
             '/api': {
-                target: 'http://backend:3001',
+                target: 'http://localhost:3001',
                 changeOrigin: true,
                 secure: false,
+                rewrite: function (path) { return path.replace(/^\/api/, ''); },
             },
         },
     },
