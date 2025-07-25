@@ -13,6 +13,12 @@ import logging
 import jwt
 import bcrypt
 import re
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -23,11 +29,71 @@ CORS(app)
 
 # In-memory storage for local development
 users_db = {}
-appointments_db = []
+appointments_db = [
+    {
+        'id': '1',
+        'customer_id': 'john_smith',
+        'service_id': 1,
+        'scheduled_date': '2025-07-22',
+        'scheduled_time': '09:00:00',
+        'location_address': '123 Main St, Anytown',
+        'notes': 'Oil change and inspection',
+        'status': 'scheduled',
+        'created_at': '2025-07-22T09:00:00'
+    },
+    {
+        'id': '2',
+        'customer_id': 'jane_doe',
+        'service_id': 2,
+        'scheduled_date': '2025-07-22',
+        'scheduled_time': '14:00:00',
+        'location_address': '456 Oak Ave, Anytown',
+        'notes': 'Brake inspection',
+        'status': 'scheduled',
+        'created_at': '2025-07-22T14:00:00'
+    },
+    {
+        'id': '3',
+        'customer_id': 'bob_wilson',
+        'service_id': 3,
+        'scheduled_date': '2025-07-22',
+        'scheduled_time': '16:30:00',
+        'location_address': '789 Pine St, Anytown',
+        'notes': 'Tire rotation and alignment',
+        'status': 'in-progress',
+        'created_at': '2025-07-22T16:30:00'
+    }
+]
 customers_db = {}
 
 # JWT secret for local development
 JWT_SECRET = os.getenv('JWT_SECRET', 'your-secret-key-for-local-dev')
+
+def get_db_connection():
+    """Get database connection for local development."""
+    try:
+        # Use environment variables from .env file
+        db_config = {
+            'host': os.getenv('POSTGRES_HOST', 'localhost'),
+            'port': int(os.getenv('POSTGRES_PORT', 5432)),
+            'database': os.getenv('POSTGRES_DB', 'autoshop'),
+            'user': os.getenv('POSTGRES_USER', 'user'),
+            'password': os.getenv('POSTGRES_PASSWORD', 'password')
+        }
+        
+        logger.info(f"Connecting to database at {db_config['host']}:{db_config['port']}/{db_config['database']}")
+        conn = psycopg2.connect(**db_config)
+        logger.info("Database connection successful.")
+        return conn
+    except Exception as e:
+        logger.error(f"Database connection failed: {e}")
+        # Only fall back to in-memory mode if explicitly requested
+        if os.getenv('FALLBACK_TO_MEMORY', 'false').lower() == 'true':
+            logger.warning("Falling back to in-memory database mode")
+            return None
+        else:
+            # Re-raise the exception to make database issues visible
+            raise e
 
 def validate_email(email):
     """Validate email format."""
@@ -187,22 +253,66 @@ def appointments():
     if request.method == 'GET':
         try:
             conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute('SELECT * FROM appointments ORDER BY created_at DESC')
+            if conn is None:
+                # Fallback to in-memory storage
+                date_filter = request.args.get('date')
+                filtered_appointments = appointments_db
+                
+                if date_filter:
+                    # Filter appointments by date
+                    filtered_appointments = [
+                        apt for apt in appointments_db 
+                        if apt.get('scheduled_date') == date_filter
+                    ]
+                
+                return jsonify({'appointments': filtered_appointments})
+            
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            
+            # Check if date filter is provided
+            date_filter = request.args.get('date')
+            if date_filter:
+                cur.execute("""
+                    SELECT a.id, a.customer_id, a.vehicle_id, a.service_id, a.scheduled_date, 
+                           a.scheduled_time, a.location_address, a.status, a.notes, a.created_at, a.estimated_duration, a.reminder_status,
+                           c.name as customer_name, c.email as customer_email, c.phone as customer_phone
+                    FROM appointments a
+                    LEFT JOIN customers c ON a.customer_id = c.id
+                    WHERE a.scheduled_date = %s 
+                    ORDER BY a.created_at DESC
+                """, (date_filter,))
+            else:
+                cur.execute("""
+                    SELECT a.id, a.customer_id, a.vehicle_id, a.service_id, a.scheduled_date, 
+                           a.scheduled_time, a.location_address, a.status, a.notes, a.created_at, a.estimated_duration, a.reminder_status,
+                           c.name as customer_name, c.email as customer_email, c.phone as customer_phone
+                    FROM appointments a
+                    LEFT JOIN customers c ON a.customer_id = c.id
+                    ORDER BY a.created_at DESC
+                """)
+            
             appointments = []
             for row in cur.fetchall():
                 try:
-                    # Convert all values to JSON serializable formats
-                    appointment = {
-                        'id': row[0],
-                        'customer_id': str(row[1]) if row[1] else None,
-                        'service_id': int(row[2]) if row[2] else None,
-                        'scheduled_date': str(row[3]) if row[3] else None,
-                        'scheduled_time': str(row[4]) if row[4] else None,
-                        'location_address': str(row[5]) if row[5] else None,
-                        'notes': str(row[6]) if row[6] else None,
-                        'created_at': str(row[7]) if row[7] else None
-                    }
+                    # Convert the dict row to proper format
+                    appointment = dict(row)
+                    
+                    # Convert dates and times to strings for JSON serialization
+                    if appointment.get('scheduled_date'):
+                        appointment['scheduled_date'] = str(appointment['scheduled_date'])
+                    if appointment.get('scheduled_time'):
+                        appointment['scheduled_time'] = str(appointment['scheduled_time'])
+                    if appointment.get('created_at'):
+                        appointment['created_at'] = appointment['created_at'].isoformat()
+                    
+                    # Ensure proper types
+                    if appointment.get('customer_id'):
+                        appointment['customer_id'] = str(appointment['customer_id'])
+                    if appointment.get('service_id'):
+                        appointment['service_id'] = int(appointment['service_id'])
+                    if appointment.get('vehicle_id'):
+                        appointment['vehicle_id'] = int(appointment['vehicle_id'])
+                    
                     appointments.append(appointment)
                 except Exception as field_error:
                     logger.error(f"Error processing row {row}: {field_error}")
@@ -220,21 +330,96 @@ def appointments():
             logger.info(f"Creating appointment with data: {data}")
             
             conn = get_db_connection()
+            if conn is None:
+                # Fallback to in-memory storage
+                appointment_id = str(len(appointments_db) + 1)
+                
+                # Handle both 'requested_time' and 'scheduled_time' keys
+                time_field = data.get('requested_time') or data.get('scheduled_time', '')
+                if time_field:
+                    try:
+                        parsed_time = datetime.fromisoformat(time_field.replace('Z', '+00:00'))
+                        scheduled_date = str(parsed_time.date())
+                        scheduled_time = str(parsed_time.time())
+                    except ValueError:
+                        scheduled_date = str(datetime.now().date())
+                        scheduled_time = '12:00:00'
+                else:
+                    scheduled_date = str(datetime.now().date())
+                    scheduled_time = '12:00:00'
+                
+                new_appointment = {
+                    'id': appointment_id,
+                    'customer_id': data.get('customer_id', 'Unknown'),
+                    'service_id': 1,
+                    'scheduled_date': scheduled_date,
+                    'scheduled_time': scheduled_time,
+                    'location_address': data.get('location_address') or data.get('address', 'Not provided'),
+                    'notes': data.get('notes', ''),
+                    'status': 'in-progress' if data.get('appointmentType') == 'emergency' else 'scheduled',
+                    'created_at': datetime.now().isoformat(),
+                    'customer_phone': data.get('customer_phone', ''),
+                    'customer_email': data.get('customer_email', ''),
+                    'service': data.get('service', 'General Service'),
+                    'estimated_duration': data.get('estimated_duration', '1 hour')
+                }
+                appointments_db.append(new_appointment)
+                logger.info(f"Created appointment in memory with ID: {appointment_id}")
+                return jsonify({'id': appointment_id, 'message': 'Appointment created successfully'})
+            
             cur = conn.cursor()
             
-            # Parse the requested_time
-            requested_time = datetime.fromisoformat(data['requested_time'].replace('Z', '+00:00'))
+            # Handle both 'requested_time' and 'scheduled_time' keys for compatibility
+            time_field = data.get('requested_time') or data.get('scheduled_time')
+            if not time_field:
+                return jsonify({'error': 'scheduled_time or requested_time is required'}), 400
+            
+            # Parse the time
+            try:
+                requested_time = datetime.fromisoformat(time_field.replace('Z', '+00:00'))
+            except ValueError:
+                return jsonify({'error': 'Invalid date format. Use ISO format (YYYY-MM-DDTHH:MM:SS)'}), 400
+            
+            # Handle customer creation/lookup
+            customer_name = data.get('customer_id', 'Unknown Customer')  # Frontend sends name as customer_id
+            customer_phone = data.get('customer_phone', '')
+            customer_email = data.get('customer_email', '')
+            
+            # Try to find existing customer by phone or email
+            customer_id = None
+            if customer_phone:
+                cur.execute('SELECT id FROM customers WHERE phone = %s', (customer_phone,))
+                result = cur.fetchone()
+                if result:
+                    customer_id = result[0]
+            
+            if not customer_id and customer_email:
+                cur.execute('SELECT id FROM customers WHERE email = %s', (customer_email,))
+                result = cur.fetchone()
+                if result:
+                    customer_id = result[0]
+            
+            # Create new customer if not found
+            if not customer_id:
+                cur.execute('''
+                    INSERT INTO customers (name, phone, email)
+                    VALUES (%s, %s, %s) RETURNING id
+                ''', (customer_name, customer_phone, customer_email))
+                customer_id = cur.fetchone()[0]
+                logger.info(f"Created new customer with ID: {customer_id}")
             
             cur.execute('''
-                INSERT INTO appointments (customer_id, service_id, scheduled_date, scheduled_time, location_address, notes)
-                VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
+                INSERT INTO appointments (customer_id, service_id, scheduled_date, scheduled_time, location_address, notes, status, estimated_duration)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
             ''', (
-                data.get('customer_id', 'Unknown'),
+                customer_id,
                 1,  # Default service_id
                 requested_time.date(),
                 requested_time.time(),
-                data.get('address', 'Not provided'),
-                data.get('notes', '')
+                data.get('location_address') or data.get('address', 'Not provided'),
+                data.get('notes', ''),
+                'in-progress' if data.get('appointmentType') == 'emergency' else 'scheduled',
+                data.get('estimated_duration', '1 hour')
             ))
             
             appointment_id = cur.fetchone()[0]
@@ -261,9 +446,10 @@ def customers():
                 customers.append({
                     'id': row[0],
                     'name': str(row[1]) if row[1] else None,
-                    'email': str(row[2]) if row[2] else None,
-                    'phone': str(row[3]) if row[3] else None,
-                    'created_at': str(row[4]) if row[4] else None
+                    'phone': str(row[2]) if row[2] else None,
+                    'email': str(row[3]) if row[3] else None,
+                    'address': str(row[4]) if row[4] else None,
+                    'created_at': str(row[5]) if row[5] else None
                 })
             cur.close()
             conn.close()
@@ -300,6 +486,255 @@ def customers():
             logger.error(f"Failed to create customer: {e}")
             return jsonify({'error': str(e)}), 500
 
+@app.route('/api/admin/appointments/today', methods=['GET'])
+def get_admin_appointments_today():
+    """Get today's appointments for admin dashboard."""
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            # Fallback to mock data for development
+            today = datetime.now().date()
+            mock_appointments = [
+                {
+                    'id': '1',
+                    'customer_name': 'John Smith',
+                    'customer_email': 'john@example.com',
+                    'customer_phone': '(555) 123-4567',
+                    'service_id': 1,
+                    'scheduled_date': str(today),
+                    'scheduled_time': '09:00:00',
+                    'status': 'scheduled',
+                    'location_address': '123 Main St, Anytown',
+                    'notes': 'Oil change and inspection',
+                    'created_at': datetime.now().isoformat()
+                },
+                {
+                    'id': '2',
+                    'customer_name': 'Jane Doe',
+                    'customer_email': 'jane@example.com',
+                    'customer_phone': '(555) 987-6543',
+                    'service_id': 2,
+                    'scheduled_date': str(today),
+                    'scheduled_time': '14:00:00',
+                    'status': 'scheduled',
+                    'location_address': '456 Oak Ave, Anytown',
+                    'notes': 'Brake inspection',
+                    'created_at': datetime.now().isoformat()
+                }
+            ]
+            return jsonify({'appointments': mock_appointments, 'count': len(mock_appointments)})
+        
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        today = datetime.now().date()
+        
+        cur.execute("""
+            SELECT a.id, a.customer_id, a.service_id, a.scheduled_date, a.scheduled_time, a.status,
+                   a.location_address, a.notes, a.created_at,
+                   c.name as customer_name, c.email as customer_email, c.phone as customer_phone
+            FROM appointments a
+            LEFT JOIN customers c ON a.customer_id = c.id
+            WHERE a.scheduled_date = %s
+            ORDER BY a.scheduled_time ASC
+        """, (today,))
+        
+        rows = cur.fetchall()
+        appointments = []
+        
+        for row in rows:
+            appointment = dict(row)
+            
+            # Convert dates and times to strings for JSON serialization
+            if appointment.get('scheduled_date'):
+                appointment['scheduled_date'] = str(appointment['scheduled_date'])
+            if appointment.get('scheduled_time'):
+                appointment['scheduled_time'] = str(appointment['scheduled_time'])
+            if appointment.get('created_at'):
+                appointment['created_at'] = appointment['created_at'].isoformat()
+            
+            # Create combined datetime field if both date and time exist
+            if appointment.get('scheduled_date') and appointment.get('scheduled_time'):
+                # Parse back the string date and time to create combined datetime
+                from datetime import datetime as dt
+                scheduled_date = dt.strptime(appointment['scheduled_date'], '%Y-%m-%d').date()
+                scheduled_time = dt.strptime(appointment['scheduled_time'], '%H:%M:%S').time()
+                ts = dt.combine(scheduled_date, scheduled_time)
+                appointment['scheduled_at'] = ts.isoformat()
+            
+            # Ensure proper types for other fields
+            if appointment.get('customer_id'):
+                appointment['customer_id'] = str(appointment['customer_id'])
+            if appointment.get('service_id'):
+                appointment['service_id'] = int(appointment['service_id'])
+            
+            appointments.append(appointment)
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({'appointments': appointments, 'count': len(appointments)})
+        
+    except Exception as e:
+        logger.error(f"Failed to fetch today's appointments: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/appointments/<appointment_id>', methods=['PUT'])
+def update_appointment(appointment_id):
+    """Update an appointment (admin)."""
+    try:
+        data = request.get_json()
+        conn = get_db_connection()
+        
+        if conn is None:
+            # Mock success for development
+            logger.info(f"Mock update appointment {appointment_id} with data: {data}")
+            return jsonify({'message': 'Appointment updated successfully (mock)'})
+        
+        cur = conn.cursor()
+        
+        # Build dynamic update query
+        allowed_fields = {'status', 'notes', 'scheduled_date', 'scheduled_time', 'location_address'}
+        update_fields = {k: v for k, v in data.items() if k in allowed_fields}
+        
+        if not update_fields:
+            return jsonify({'error': 'No valid fields to update'}), 400
+        
+        set_clause = ", ".join([f"{k} = %s" for k in update_fields.keys()])
+        values = list(update_fields.values())
+        values.append(appointment_id)
+        
+        cur.execute(f"""
+            UPDATE appointments SET {set_clause}
+            WHERE id = %s RETURNING id
+        """, values)
+        
+        if cur.rowcount == 0:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Appointment not found'}), 404
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'message': 'Appointment updated successfully'})
+        
+    except Exception as e:
+        logger.error(f"Failed to update appointment {appointment_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/dashboard/stats', methods=['GET'])
+def get_dashboard_stats():
+    """Get dashboard statistics for admin."""
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            # Mock stats for development
+            return jsonify({
+                'success': True,
+                'data': {
+                    'todayAppointments': 4,
+                    'pendingAppointments': 2,
+                    'completedToday': 1,
+                    'totalCustomers': 127,
+                    'partsOrdered': 12,
+                    'todayRevenue': 350
+                }
+            })
+        
+        cur = conn.cursor()
+        today = datetime.now().date()
+        
+        # Get today's appointments count
+        cur.execute("SELECT COUNT(*) FROM appointments WHERE scheduled_date = %s", (today,))
+        today_appointments = cur.fetchone()[0]
+        
+        # Get pending appointments
+        cur.execute("SELECT COUNT(*) FROM appointments WHERE status = 'scheduled' AND scheduled_date = %s", (today,))
+        pending_appointments = cur.fetchone()[0]
+        
+        # Get completed today
+        cur.execute("SELECT COUNT(*) FROM appointments WHERE status = 'completed' AND scheduled_date = %s", (today,))
+        completed_today = cur.fetchone()[0]
+        
+        # Get total customers
+        cur.execute("SELECT COUNT(*) FROM customers")
+        total_customers = cur.fetchone()[0]
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'todayAppointments': today_appointments,
+                'pendingAppointments': pending_appointments,
+                'completedToday': completed_today,
+                'totalCustomers': total_customers,
+                'partsOrdered': 0,  # Would need parts table
+                'todayRevenue': completed_today * 150  # Estimated revenue
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to get dashboard stats: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/cars-on-premises', methods=['GET'])
+def get_cars_on_premises():
+    """Get a list of cars currently on premises (in-progress appointments)."""
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            # Fallback to in-memory storage
+            cars_on_premises = []
+            for apt in appointments_db:
+                if apt['status'] == 'in-progress':
+                    cars_on_premises.append({
+                        'id': apt['id'],
+                        'make': 'Mock Make', # Placeholder as vehicle info not in appointments_db
+                        'model': 'Mock Model', # Placeholder
+                        'owner': apt['customer_id'],
+                        'arrivalTime': apt['scheduled_time'],
+                        'status': apt['status'],
+                        'pickupTime': 'N/A' # Placeholder
+                    })
+            return jsonify({'cars_on_premises': cars_on_premises})
+
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("""
+            SELECT a.id, a.scheduled_time as arrival_time, a.status,
+                   c.name as owner_name,
+                   v.make, v.model, v.year,
+                   s.name as service_name
+            FROM appointments a
+            JOIN customers c ON a.customer_id = c.id
+            LEFT JOIN vehicles v ON a.vehicle_id = v.id -- Assuming vehicles table exists and is linked
+            LEFT JOIN services s ON a.service_id = s.id -- Assuming services table exists and is linked
+            WHERE a.status = 'in-progress'
+            ORDER BY a.scheduled_time ASC
+        """)
+        
+        cars_on_premises = []
+        for row in cur.fetchall():
+            car = dict(row)
+            cars_on_premises.append({
+                'id': car['id'],
+                'make': car.get('make', 'N/A'),
+                'model': car.get('model', 'N/A'),
+                'owner': car.get('owner_name', 'N/A'),
+                'arrivalTime': str(car['arrival_time']),
+                'status': car['status'],
+                'pickupTime': 'N/A' # This would ideally be calculated or stored
+            })
+        
+        cur.close()
+        conn.close()
+        return jsonify({'cars_on_premises': cars_on_premises})
+    except Exception as e:
+        logger.error(f"Failed to get cars on premises: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/init-db', methods=['GET'])
 def init_db():
     """Initialize the database with required tables."""
@@ -328,6 +763,9 @@ def init_db():
                 scheduled_time TIME,
                 location_address TEXT,
                 notes TEXT,
+                status VARCHAR(50) DEFAULT 'scheduled',
+                estimated_duration TEXT,
+                reminder_status VARCHAR(50) DEFAULT 'pending',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
@@ -489,6 +927,6 @@ def root():
     })
 
 if __name__ == '__main__':
-    port = int(os.getenv("FLASK_RUN_PORT", 5000))
+    port = int(os.getenv("FLASK_RUN_PORT", 3001))
     logger.info(f"Starting Edgar's Auto Shop Local API Server on port {port}...")
     app.run(host='0.0.0.0', port=port, debug=True)
