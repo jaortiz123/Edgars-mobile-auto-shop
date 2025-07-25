@@ -75,6 +75,18 @@ export default function AdminAppointments() {
     fetchAppointments();
   }, []);
 
+  // Auto-refresh appointments every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!loading) {
+        console.log('🔄 Auto-refreshing appointments...');
+        fetchAppointments();
+      }
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [loading]);
+
   const fetchAppointments = async () => {
     setLoading(true);
     try {

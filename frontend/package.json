@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "lsof -ti tcp:5173 | xargs kill -9 || true",
     "dev": "vite",
+    "dev:clean": "npx kill-port 5173 && vite",
+    "kill-port": "npx kill-port 5173",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -46,6 +49,7 @@
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
     "jsdom": "^26.1.0",
+    "kill-port": "^2.0.1",
     "postcss": "^8.5.6",
     "rollup-plugin-visualizer": "^6.0.3",
     "tailwindcss": "^3.4.16",
