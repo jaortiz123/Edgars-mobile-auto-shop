@@ -1,21 +1,32 @@
 {
   "name": "edgars-mobile-auto-shop",
   "version": "1.0.0",
-  "description": "This project contains a simple Express API and React frontend for a mobile auto repair service.",
-  "main": "index.js",
+  "private": true,
+  "description": "Monorepo root for Edgar’s Mobile Auto Shop — backend (Flask) + frontend (Vite React).",
+  "type": "commonjs",
   "directories": {
     "doc": "docs"
   },
   "scripts": {
+    "dev": "echo \"Use: npm run dev:frontend or npm run dev:backend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:frontend:free": "cd frontend && npm run dev:free",
+    "dev:backend": "cd backend && python local_server.py",
+    "psql": "docker compose exec db psql -U $POSTGRES_USER -d $POSTGRES_DB",
+    "migrate": "docker compose exec -T db psql -U $POSTGRES_USER -d $POSTGRES_DB < backend/migrations/20250725_001_add_appt_status_and_lite_tables.sql",
+    "seed": "docker compose exec -T db psql -U $POSTGRES_USER -d $POSTGRES_DB < backend/seeds/seed_s1.sql",
+    "verify:db": "docker compose exec db psql -U $POSTGRES_USER -d $POSTGRES_DB -c \"select enum_range(null::appointment_status);\"",
     "test": "playwright test",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:backend": "pytest -q || true",
+    "test:frontend": "cd frontend && npm test -- --run"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "devDependencies": {
-    "@playwright/test": "^1.53.1"
+    "@playwright/test": "^1.53.1",
+    "jest-axe": "^10.0.0"
   },
   "dependencies": {
     "axios": "^1.10.0"

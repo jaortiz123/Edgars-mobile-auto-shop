@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { authAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import { AppointmentProvider } from '../contexts/AppointmentContext';
 import { 
   LayoutDashboard, 
