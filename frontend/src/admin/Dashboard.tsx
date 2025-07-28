@@ -4,7 +4,7 @@ import { Badge } from '../components/ui/Badge';
 import { AppointmentCalendar } from '../components/admin/AppointmentCalendar';
 // import { AppointmentDetailModal } from '../components/admin/AppointmentDetailModal';
 import { AppointmentFormModal } from '../components/admin/AppointmentFormModal';
-import { CarsOnPremisesWidget } from '../components/admin/CarsOnPremisesWidget';
+import CarsOnPremisesWidget from '../components/admin/CarsOnPremisesWidget';
 import { DashboardSidebar } from '../components/admin/DashboardSidebar';
 import type { AppointmentFormData } from '../components/admin/AppointmentFormModal';
 import { useAppointmentContext } from '../contexts/AppointmentContext';
@@ -23,7 +23,11 @@ import {
   handleApiError, 
   isOnline, 
   type Appointment,
-  type DashboardStats 
+  type DashboardStats,
+  getAppointments,
+  getDashboardStats,
+  createAppointment,
+  updateAppointmentStatus
 } from '../lib/api';
 import { parseDurationToMinutes } from '../lib/utils';
 import { format } from 'date-fns';
@@ -159,7 +163,7 @@ export function Dashboard() {
      let fetchedStats: StatsApi | undefined;
      try {
       console.log("📡 Making API calls to backend...");
-       const [aptRes, statsRes] = await Promise.all([api.getTodaysAppointments(), api.getDashboardStats()]);
+       const [aptRes, statsRes] = await Promise.all([getAppointments(), getDashboardStats()]);
       console.log("✅ API calls completed", { aptRes: aptRes.success, statsRes: statsRes.success });
       
        if (aptRes.success && aptRes.data && isAppointmentsResponse(aptRes.data)) {
@@ -219,7 +223,12 @@ export function Dashboard() {
         // Compute next appointment and derived stats
         const todayStr = new Date().toDateString();
         const todayList = fetchedApts.filter(a => a.dateTime.toDateString() === todayStr);
-        const next = todayList.filter(a => a.status === 'scheduled' || a.status === 'in-progress')
+        
+        // Find next appointment from ALL appointments (not just today's) that are scheduled or in-progress
+        const now = new Date();
+        const next = fetchedApts
+          .filter(a => a.status === 'scheduled' || a.status === 'in-progress')
+          .filter(a => a.dateTime >= now) // Only consider future/current appointments
           .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime())[0];
         setNextAppointment(next || null);
         // Compute next available slot
@@ -320,7 +329,7 @@ export function Dashboard() {
       console.log('📤 Sending appointment data:', appointmentData);
 
       if (isOnline()) {
-        const response = await api.createAppointment(appointmentData);
+        const response = await createAppointment(appointmentData);
         console.log('📥 API response:', response);
         
         if (response.success) {
@@ -418,7 +427,7 @@ export function Dashboard() {
       
       // Try to update backend if online
       if (isOnline()) {
-        const response = await api.updateAppointmentStatus(appointmentId, 'in-progress');
+        const response = await updateAppointmentStatus(appointmentId, 'IN_PROGRESS');
         if (!handleApiError(response, 'Failed to start job')) {
           // Revert on failure
           setAppointments(prev => prev.map((apt: Appointment) => 
@@ -445,7 +454,16 @@ export function Dashboard() {
       ));
       
       if (nextAppointment?.id === appointmentId) {
-        setNextAppointment(null);
+        // Recalculate next appointment instead of setting to null
+        const now = new Date();
+        const updatedAppointments = appointments.map((apt: Appointment) => 
+          apt.id === appointmentId ? { ...apt, status: 'completed' as const } : apt
+        );
+        const nextAvailable = updatedAppointments
+          .filter(a => a.status === 'scheduled' || a.status === 'in-progress')
+          .filter(a => a.dateTime >= now)
+          .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime())[0];
+        setNextAppointment(nextAvailable || null);
       }
       
       setStats(prev => ({
@@ -459,7 +477,7 @@ export function Dashboard() {
       
       // Try to update backend if online
       if (isOnline()) {
-        const response = await api.updateAppointmentStatus(appointmentId, 'completed');
+        const response = await updateAppointmentStatus(appointmentId, 'COMPLETED');
         if (!handleApiError(response, 'Failed to complete job')) {
           // Revert on failure
           setAppointments(prev => prev.map((apt: Appointment) => 

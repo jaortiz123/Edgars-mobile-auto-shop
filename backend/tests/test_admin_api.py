@@ -1,0 +1,30 @@
+import pytest
+from backend.local_server import app
+
+@pytest.fixture
+def client():
+    app.config['TESTING'] = True
+    with app.test_client() as client:
+        yield client
+
+def test_get_admin_appointments(client):
+    """Test the GET /api/admin/appointments endpoint."""
+    response = client.get('/api/admin/appointments')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert 'appointments' in data
+    assert 'nextCursor' in data
+
+def test_get_admin_appointments_with_filters(client):
+    """Test the GET /api/admin/appointments endpoint with filters."""
+    response = client.get('/api/admin/appointments?status=scheduled&limit=10')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert 'appointments' in data
+    assert len(data['appointments']) <= 10
+
+def test_error_handler(client):
+    """Test the global error handler."""
+    # This endpoint does not exist, so it should trigger the error handler
+    response = client.get('/api/non_existent_endpoint')
+    assert response.status_code == 404

@@ -37,7 +37,7 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   onCallCustomer
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<'day' | 'week' | 'month'>('week');
+  const [view, setView] = useState<'day' | 'week' | 'month'>('day');
   
   // Generate days for week view
   const startOfTheWeek = startOfWeek(currentDate);

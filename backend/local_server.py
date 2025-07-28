@@ -720,7 +720,7 @@ def stats():
             # counts by status
             cur.execute("SELECT status::text, COUNT(*) FROM appointments GROUP BY status")
             results = cur.fetchall()
-            counts = {r[0]: int(r[1]) for r in results if len(r) >= 2}
+            counts = {r['status']: int(r['count']) for r in results}
 
             # cars on premises
             cur.execute("SELECT COUNT(*) FROM appointments WHERE check_in_at IS NOT NULL AND check_out_at IS NULL")
