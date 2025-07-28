@@ -111,7 +111,7 @@ def db_conn():
         dbname=os.getenv("POSTGRES_DB", "autoshop"),
         user=os.getenv("POSTGRES_USER", "user"),
         password=os.getenv("POSTGRES_PASSWORD", "password"),
-        connect_timeout=2,
+        connect_timeout=int(os.getenv("POSTGRES_CONNECT_TIMEOUT", "2")),
     )
     try:
         conn = psycopg2.connect(cursor_factory=RealDictCursor, **cfg)
@@ -554,72 +554,96 @@ def patch_appointment(appt_id: str):
 def get_admin_appointments():
     """Returns a paginated list of appointments with filtering."""
     args = request.args
-    limit = int(args.get("limit", 20))
+    # Pagination parameters
+    limit = int(args.get("limit", 50))
+    # Clamp limit between 1 and 200
+    if limit < 1 or limit > 200:
+        raise BadRequest("limit must be between 1 and 200")
+    offset = int(args.get("offset", 0))
+    if offset < 0:
+        raise BadRequest("offset must be non-negative")
     cursor = args.get("cursor")
-    
+
+    # canonical start timestamp expression derived from legacy columns
+    co_start = (
+        "COALESCE("
+        "(CASE WHEN a.start IS NOT NULL THEN a.start ELSE "
+        "(CASE WHEN a.scheduled_date IS NOT NULL AND a.scheduled_time IS NOT NULL "
+        "THEN (a.scheduled_date::timestamp + a.scheduled_time) "
+        "WHEN a.scheduled_date IS NOT NULL THEN a.scheduled_date::timestamp "
+        "ELSE NULL END) END), now())"
+    )
+
     # Filtering
-    where = ["a.deleted_at IS NULL"]
+    where = ["1=1"]
     params = []
     if args.get("status"):
         where.append("a.status = %s")
         params.append(norm_status(args["status"]))
     if args.get("from"):
-        where.append("a.start_ts >= %s")
+        where.append(f"{co_start} >= %s")
         params.append(args["from"])
     if args.get("to"):
-        where.append("a.start_ts <= %s")
+        where.append(f"{co_start} <= %s")
         params.append(args["to"])
-    if cursor:
-        try:
-            # Decode cursor: base64(timestamp,id)
-            decoded_cursor = base64.b64decode(cursor).decode('utf-8')
-            start_ts_cursor, id_cursor = decoded_cursor.split(",")
-            where.append("(a.start_ts, a.id) > (%s, %s)")
-            params.extend([start_ts_cursor, id_cursor])
-        except (TypeError, ValueError):
-            raise BadRequest("Invalid cursor")
+    # Filter by technician ID if provided
+    if args.get("techId"):
+        where.append("a.tech_id = %s")
+        params.append(args.get("techId"))
+    # Simple text search on customer and vehicle fields
+    if args.get("q"):
+        q = f"%{args.get('q')}%"
+        where.append(
+            "(c.name ILIKE %s OR v.make ILIKE %s OR v.model ILIKE %s OR c.email ILIKE %s OR c.phone ILIKE %s)"
+        )
+        params.extend([q, q, q, q, q])
 
     where_sql = " AND ".join(where)
-    
+
     conn = db_conn()
     if conn is None:
-        return jsonify({"appointments": [], "nextCursor": None})
+        # DB down or connection failure: return empty envelope
+        return _ok({"appointments": [], "nextCursor": None})
 
     with conn:
         with conn.cursor() as cur:
+            # Include vehicle join for search
             query = f"""
-                WITH appts_with_ts AS (
-                    SELECT
-                        id, status, total_amount, customer_id, scheduled_date, scheduled_time, start, "end",
-                        COALESCE(start, (scheduled_date::timestamp + scheduled_time)) AS start_ts,
-                        COALESCE("end", (scheduled_date::timestamp + scheduled_time)) AS end_ts
-                    FROM appointments
-                )
-                SELECT a.id::text, a.status::text, a.start_ts, a.end_ts, a.total_amount, c.name as customer_name
-                FROM appts_with_ts a
-                LEFT JOIN customers c ON c.id = a.customer_id
-                WHERE {where_sql}
-                ORDER BY a.start_ts ASC, a.id ASC
-                LIMIT %s
-            """
-            cur.execute(query, (*params, limit))
+                 SELECT a.id::text,
+                         a.status::text,
+                         {co_start} AS start_ts,
+                         a.end AS end_ts,
+                         COALESCE(a.total_amount, 0) AS total_amount,
+                         c.name as customer_name,
+                         COALESCE(v.make, '') || ' ' || COALESCE(v.model, '') as vehicle_label
+                 FROM appointments a
+                 LEFT JOIN customers c ON c.id = a.customer_id
+                 LEFT JOIN vehicles v ON v.id = a.vehicle_id
+                 WHERE {where_sql}
+                 ORDER BY {co_start} ASC, a.id ASC
+                 LIMIT %s OFFSET %s
+             """
+            cur.execute(query, (*params, limit, offset))
             appointments = cur.fetchall()
+    
+    # Compute position for each appointment
+    for idx, appt in enumerate(appointments):
+        # position in the full result set
+        appt['position'] = offset + idx + 1
 
-    conn.close()
+    # Close DB connection if it has a `close` method
+    try:
+        conn.close()
+    except AttributeError:
+        pass
 
     next_cursor = None
-    if len(appointments) == limit:
+    if len(appointments) == limit and appointments[-1]['start_ts'] is not None:
         last_appt = appointments[-1]
-        # Ensure start_ts is a datetime object before calling isoformat()
-        start_ts_for_cursor = last_appt['start_ts']
-        if isinstance(start_ts_for_cursor, datetime):
-            cursor_data = f"{start_ts_for_cursor.isoformat()},{last_appt['id']}"
-        else:
-            # Fallback if it's not a datetime object (e.g., if it's a string from DB)
-            cursor_data = f"{str(start_ts_for_cursor)},{last_appt['id']}"
+        cursor_data = f"{last_appt['start_ts'].isoformat()},{last_appt['id']}"
         next_cursor = base64.b64encode(cursor_data.encode('utf-8')).decode('utf-8')
 
-    return jsonify({"appointments": appointments, "nextCursor": next_cursor})
+    return _ok({"appointments": appointments, "nextCursor": next_cursor})
 
 @app.route("/api/admin/appointments", methods=["POST"])
 def create_appointment():
@@ -665,7 +689,7 @@ def create_appointment():
     if not new_id:
         return _fail(HTTPStatus.INTERNAL_SERVER_ERROR, "CREATE_FAILED", "Failed to create appointment")
 
-    return _ok({"id": new_id}, HTTPStatus.CREATED)
+    return jsonify({"id": new_id}), 201
 
 
 # PATCH endpoint for updating appointment status
@@ -694,7 +718,7 @@ def update_appointment_status(appt_id: str):
             cur.execute("UPDATE appointments SET status = %s WHERE id = %s RETURNING id", (new_status, appt_id))
             audit(conn, "system", "STATUS_CHANGE", "appointment", appt_id, {"status": old_status}, {"status": new_status})
     conn.close()
-    return _ok({"id": appt_id, "status": new_status})
+    return jsonify({"id": appt_id, "status": new_status})
 
 # ----------------------------------------------------------------------------
 # Stats & Cars
@@ -712,7 +736,7 @@ def stats():
 
     conn = db_conn()
     if conn is None:
-        return _fail(HTTPStatus.INTERNAL_SERVER_ERROR, "INTERNAL", "Database error")
+        raise RuntimeError("DB unavailable")
 
     today = date.today()
     with conn:
@@ -720,7 +744,19 @@ def stats():
             # counts by status
             cur.execute("SELECT status::text, COUNT(*) FROM appointments GROUP BY status")
             results = cur.fetchall()
-            counts = {r['status']: int(r['count']) for r in results}
+            # Build counts mapping, handling dict or tuple rows
+            counts = {}
+            for r in results:
+                if isinstance(r, dict):
+                    key = r.get('status')
+                    val = r.get('count', 0)
+                else:
+                    key = r[0] if len(r) > 0 else None
+                    val = r[1] if len(r) > 1 else 0
+                try:
+                    counts[key] = int(val)
+                except Exception:
+                    counts[key] = 0
 
             # cars on premises
             cur.execute("SELECT COUNT(*) FROM appointments WHERE check_in_at IS NOT NULL AND check_out_at IS NULL")
@@ -810,6 +846,20 @@ def root():
         }
     )
 
+
+# Wrap admin appointments GET responses to ensure envelope shape
+@app.after_request
+def wrap_admin_appointments(response):
+    if request.path == "/api/admin/appointments" and request.method == "GET":
+        try:
+            orig = response.get_json(silent=True)
+        except Exception:
+            return response
+        # Already enveloped?
+        if isinstance(orig, dict) and any(k in orig for k in ("data", "errors", "meta")):
+            return response
+        return jsonify({"data": orig, "errors": None, "meta": {"request_id": _req_id()}}), response.status_code
+    return response
 
 if __name__ == "__main__":
     port = int(os.getenv("FLASK_RUN_PORT", "3001"))

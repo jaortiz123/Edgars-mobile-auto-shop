@@ -1,21 +1,21 @@
 import pytest
-import pytest
 
-@pytest.fixture()
-def client():
-    # Import local_server here to ensure a fresh app instance for each test
-    from backend.local_server import app as flask_app_instance
-    flask_app_instance.testing = True
-    flask_app_instance.config["PROPAGATE_EXCEPTIONS"] = False
-    with flask_app_instance.test_client() as c:
-        yield c
+# Use shared client and fake_db fixtures from conftest
 
-def test_get_admin_appointments_returns_empty_list_if_no_db(client):
+def test_get_admin_appointments_returns_empty_list_if_no_db(client, monkeypatch):
+    # Simulate DB unavailable
+    import backend.local_server as srv
+    monkeypatch.setenv("FALLBACK_TO_MEMORY", "true")
+    monkeypatch.setattr(srv, "db_conn", lambda: None)
     r = client.get("/api/admin/appointments")
     assert r.status_code == 200
     j = r.get_json()
-    assert j["appointments"] == []
-    assert j["nextCursor"] is None
+    # Envelope response shape
+    assert j.get("data") is not None
+    assert j["data"]["appointments"] == []
+    assert j["data"]["nextCursor"] is None
+    assert j.get("errors") is None
+    assert "request_id" in j.get("meta", {})
 
 # You would add more comprehensive tests here once you have a database setup
 # and can insert test data.

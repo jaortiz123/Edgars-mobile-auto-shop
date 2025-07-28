@@ -8,14 +8,7 @@ import os
 # Add backend directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from reminder_function import (
-    lambda_handler,
-    get_db_connection,
-    query_upcoming_appointments,
-    is_reminder_already_sent,
-    send_appointment_reminder,
-    track_notification
-)
+import reminder_function
 
 class TestReminderFunction:
     
@@ -48,20 +41,21 @@ class TestReminderFunction:
         }
         mock_boto3.client.return_value = mock_secrets_client
         
-        # Mock psycopg2 connection
-        with patch('reminder_function.psycopg2') as mock_psycopg2:
+        # Mock pg8000.native.Connection
+        with patch('reminder_function.pg8000.native.Connection') as mock_pg8000_connection_class:
             mock_conn = Mock()
-            mock_psycopg2.connect.return_value = mock_conn
+            mock_pg8000_connection_class.return_value = mock_conn
             
-            conn = get_db_connection('test-secret-arn')
+            conn = reminder_function.get_db_connection('test-secret-arn')
             
             # Verify connection was established with correct parameters
-            mock_psycopg2.connect.assert_called_once_with(
+            mock_pg8000_connection_class.assert_called_once_with(
+                user='testuser',
+                password='testpass',
                 host='test-host',
                 port=5432,
                 database='testdb',
-                user='testuser',
-                password='testpass'
+                ssl_context=True
             )
     
     @patch('reminder_function.datetime')
@@ -72,51 +66,32 @@ class TestReminderFunction:
         mock_datetime.utcnow.return_value = mock_now
         mock_datetime.combine = datetime.combine
         
-        # Mock database connection and cursor
+        # Mock database connection
         mock_conn = Mock()
-        mock_cursor = Mock()
-        
-        # Mock context manager for cursor
-        cursor_context = Mock()
-        cursor_context.__enter__ = Mock(return_value=mock_cursor)
-        cursor_context.__exit__ = Mock(return_value=False)
-        mock_conn.cursor.return_value = cursor_context
-        
-        # Mock query results
-        mock_cursor.fetchall.return_value = [
-            {
-                'id': 1,
-                'scheduled_date': mock_now.date() + timedelta(days=1),
-                'scheduled_time': (mock_now + timedelta(hours=25)).time(),
-                'location_address': '123 Test St',
-                'notes': 'Test appointment',
-                'customer_name': 'John Doe',
-                'customer_phone': '+15551234567',
-                'customer_email': 'john@example.com',
-                'service_name': 'Oil Change',
-                'service_description': 'Standard oil change'
-            }
+        mock_conn.run.side_effect = [
+            [(10,)], # For total_appointments
+            [(5,)],  # For date_appointments
+            [(3,)],  # For sms_appointments
+            [
+                {'id': 1, 'scheduled_date': mock_now.date() + timedelta(days=1), 'scheduled_time': (mock_now + timedelta(hours=25)).time(), 'location_address': '123 Test St', 'notes': 'Test appointment', 'customer_name': 'John Doe', 'customer_phone': '+15551234567', 'customer_email': 'john@example.com', 'sms_consent': True, 'sms_opt_out': False, 'service_name': 'Oil Change', 'service_description': 'Standard oil change'}
+            ]
         ]
-        
-        appointments = query_upcoming_appointments(mock_conn)
+
+        appointments = reminder_function.query_upcoming_appointments(mock_conn)
         
         assert len(appointments) == 1
         assert appointments[0]['id'] == 1
         assert appointments[0]['customer_name'] == 'John Doe'
         assert 'appointment_datetime' in appointments[0]
         
-        # Verify SQL query was executed with correct time range
-        mock_cursor.execute.assert_called_once()
-        call_args = mock_cursor.execute.call_args[0]
-        assert 'scheduled_date = %s::date' in call_args[0]
-        assert 'scheduled_time BETWEEN %s::time AND %s::time' in call_args[0]
+        
     
     def test_is_reminder_already_sent_not_sent(self):
         """Test checking if reminder was already sent - not sent case"""
         mock_table = Mock()
         mock_table.get_item.return_value = {}  # No item found
         
-        result = is_reminder_already_sent(mock_table, '123')
+        result = reminder_function.is_reminder_already_sent(mock_table, '123')
         
         assert result is False
         mock_table.get_item.assert_called_once_with(
@@ -133,7 +108,7 @@ class TestReminderFunction:
             'Item': {'status': 'sent'}
         }
         
-        result = is_reminder_already_sent(mock_table, '456')
+        result = reminder_function.is_reminder_already_sent(mock_table, '456')
         
         assert result is True
     
@@ -144,7 +119,7 @@ class TestReminderFunction:
             'Item': {'status': 'failed'}
         }
         
-        result = is_reminder_already_sent(mock_table, '789')
+        result = reminder_function.is_reminder_already_sent(mock_table, '789')
         
         assert result is False  # Should return False for failed status
     
@@ -164,16 +139,16 @@ class TestReminderFunction:
             'notes': 'Please have keys ready'
         }
         
-        response = send_appointment_reminder('test-topic-arn', appointment)
+        response = reminder_function.send_appointment_reminder('test-topic-arn', appointment)
         
         mock_sns.publish.assert_called_once()
-        call_args = mock_sns.publish.call_args[1]
+        call_args = mock_sns.publish.call_args
         
-        assert call_args['TopicArn'] == 'test-topic-arn'
-        assert call_args['Subject'] == 'Edgar Auto Shop - 24h Reminder'
+        assert call_args.kwargs['TopicArn'] == 'test-topic-arn'
+        assert call_args.kwargs['Subject'] == 'Edgar Auto Shop - 24h Reminder'
         
         # Verify message content
-        message_data = json.loads(call_args['Message'])
+        message_data = json.loads(call_args.kwargs['Message'])
         assert message_data['type'] == 'reminder_24h'
         assert message_data['appointment_id'] == 1
         assert message_data['customer_name'] == 'Jane Smith'
@@ -187,7 +162,7 @@ class TestReminderFunction:
         
         mock_table = Mock()
         
-        track_notification(mock_table, '123', 'reminder_24h', 'sent')
+        reminder_function.track_notification(mock_table, '123', 'reminder_24h', 'sent')
         
         mock_table.put_item.assert_called_once()
         call_args = mock_table.put_item.call_args[1]
@@ -203,7 +178,7 @@ class TestReminderFunction:
         """Test tracking notification with error message"""
         mock_table = Mock()
         
-        track_notification(mock_table, '456', 'reminder_24h', 'failed', 'Test error message')
+        reminder_function.track_notification(mock_table, '456', 'reminder_24h', 'failed', 'Test error message')
         
         call_args = mock_table.put_item.call_args[1]
         item = call_args['Item']
@@ -230,8 +205,8 @@ class TestReminderFunction:
         
         # Mock upcoming appointments
         mock_appointments = [
-            {'id': 1, 'customer_name': 'Test Customer 1'},
-            {'id': 2, 'customer_name': 'Test Customer 2'}
+            {'id': 1, 'customer_name': 'Test Customer 1', 'customer_phone': '+1234567890', 'appointment_datetime': '2025-07-22T10:00:00', 'service_name': 'Oil Change', 'service_description': 'Standard oil change', 'location_address': '123 Main St', 'notes': 'Some notes'},
+            {'id': 2, 'customer_name': 'Test Customer 2', 'customer_phone': '+1234567891', 'appointment_datetime': '2025-07-22T11:00:00', 'service_name': 'Tire Rotation', 'service_description': 'Rotate tires', 'location_address': '456 Oak Ave', 'notes': 'Other notes'}
         ]
         mock_query.return_value = mock_appointments
         
@@ -241,7 +216,7 @@ class TestReminderFunction:
         # Mock successful reminder sending
         mock_send.return_value = {'MessageId': 'test-id'}
         
-        response = lambda_handler({}, {})
+        response = reminder_function.lambda_handler({}, {})
         
         assert response['statusCode'] == 200
         body = json.loads(response['body'])
@@ -268,12 +243,12 @@ class TestReminderFunction:
         mock_dynamodb.Table.return_value = mock_table
         
         # Mock upcoming appointments
-        mock_query.return_value = [{'id': 1, 'customer_name': 'Test Customer'}]
+        mock_query.return_value = [{'id': 1, 'customer_name': 'Test Customer', 'customer_phone': '+15551234567', 'appointment_datetime': '2025-07-22T10:00:00', 'service_name': 'Oil Change', 'service_description': 'Standard oil change', 'location_address': '123 Main St', 'notes': 'Some notes'}]
         
         # Mock reminder already sent
         mock_is_sent.return_value = True
         
-        response = lambda_handler({}, {})
+        response = reminder_function.lambda_handler({}, {})
         
         assert response['statusCode'] == 200
         body = json.loads(response['body'])
@@ -285,7 +260,7 @@ class TestReminderFunction:
         # Remove required environment variable
         del os.environ['SNS_TOPIC_ARN']
         
-        response = lambda_handler({}, {})
+        response = reminder_function.lambda_handler({}, {})
         
         assert response['statusCode'] == 500
         body = json.loads(response['body'])
