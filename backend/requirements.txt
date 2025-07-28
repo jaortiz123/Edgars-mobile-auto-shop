@@ -1,2 +1,5 @@
 pg8000
 python-json-logger
+alembic
+SQLAlchemy
+psycopg2-binary
