@@ -1,7 +1,8 @@
 import axios from 'axios';
 import type {
   Appointment, AppointmentService, AppointmentStatus,
-  BoardCard, BoardColumn, DashboardStats, DrawerPayload
+  BoardCard, BoardColumn, DashboardStats, DrawerPayload,
+  CarOnPremises
 } from '../types/models';
 
 // Re-export types for components
@@ -22,10 +23,22 @@ const http = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-http.interceptors.response.use(r => r, e => {
-  const msg = e?.response?.data?.error || e.message || 'Request failed';
-  return Promise.reject(new Error(msg));
-});
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Unwrap API envelopes ({ data, errors, meta }) and throw on errors
+http.interceptors.response.use(
+  r => r,
+  e => {
+    const d = e.response?.data;
+    if (d && typeof d === 'object' && 'errors' in d && Array.isArray((d as any).errors)) {
+      const err = (d as { errors: Array<{ detail?: string; code?: string }> }).errors[0];
+      return Promise.reject(new Error(err.detail || err.code || 'Request failed'));
+    }
+    const msg = (d && typeof d === 'object' && 'error' in d ? (d as { error?: string }).error : undefined)
+      || e.message || 'Request failed';
+    return Promise.reject(new Error(msg));
+  }
+);
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 // Standard API response envelope
 export interface Envelope<T> {
@@ -45,47 +58,67 @@ export async function getBoard(params: { from?: string; to?: string; techId?: st
   }
   return data;
 }
-export async function moveAppointment(id: string, body: { status: AppointmentStatus; position: number }) {
-  const { data } = await http.patch<Appointment>(`/admin/appointments/${id}/move`, body);
-  return data;
+
+export async function getAppointments(): Promise<{ appointments: Appointment[]; nextCursor: string | null }> {
+  const resp = await http.get<Envelope<{ appointments: Appointment[]; nextCursor: string | null }>>(
+    '/admin/appointments'
+  );
+  return resp.data.data;
 }
+
+export async function createAppointment(
+  appointmentData: Partial<Appointment>
+): Promise<string> {
+  const resp = await http.post<{ id: string }>(
+    '/admin/appointments',
+    appointmentData
+  );
+  return resp.data.id;
+}
+
+export async function moveAppointment(
+  id: string,
+  body: { status: AppointmentStatus; position: number }
+): Promise<{ id: string; status: AppointmentStatus; position: number }> {
+  const resp = await http.patch<{ id: string; status: AppointmentStatus; position: number }>(
+    `/admin/appointments/${id}/move`,
+    body
+  );
+  return resp.data;
+}
+
+export async function updateAppointmentStatus(
+  id: string,
+  status: AppointmentStatus
+): Promise<{ id: string; status: AppointmentStatus }> {
+  const resp = await http.patch<{ id: string; status: AppointmentStatus }>(
+    `/admin/appointments/${id}/status`,
+    { status }
+  );
+  return resp.data;
+}
+
+export async function getStats(
+  params: { from?: string; to?: string } = {}
+): Promise<DashboardStats> {
+  const resp = await http.get<DashboardStats>('/admin/dashboard/stats', { params });
+  return resp.data;
+}
+
+export async function getCarsOnPremises(): Promise<CarOnPremises[]> {
+  const resp = await http.get<{ cars_on_premises: CarOnPremises[] }>(
+    '/admin/cars-on-premises'
+  );
+  return resp.data.cars_on_premises;
+}
+
+// Additional methods expected by Dashboard.tsx
 export async function getDrawer(id: string) {
   const { data } = await http.get<DrawerPayload>(`/appointments/${id}`);
   return data;
 }
 export async function patchAppointment(id: string, body: Partial<Appointment>) {
   const { data } = await http.patch<Appointment>(`/appointments/${id}`, body);
-  return data;
-}
-export async function getStats(params: { from?: string; to?: string } = {}) {
-  const { data } = await http.get<DashboardStats>('/admin/dashboard/stats', { params });
-  return data;
-}
-export async function getCarsOnPremises() {
-  const { data } = await http.get<{ cars_on_premises: any[] }>('/admin/cars-on-premises');
-  return data.cars_on_premises;
-}
-
-// Additional methods expected by Dashboard.tsx
-export async function getAppointments() {
-  // GET /api/admin/appointments returns Envelope<{ appointments, nextCursor }>
-  const response = await http.get<Envelope<{ appointments: Appointment[]; nextCursor: string | null }>>(
-    '/admin/appointments'
-  );
-  return response.data.data;
-}
-
-export async function getDashboardStats() {
-  return getStats();
-}
-
-export async function createAppointment(appointmentData: any) {
-  const { data } = await http.post<Appointment>('/admin/appointments', appointmentData);
-  return data;
-}
-
-export async function updateAppointmentStatus(id: string, status: AppointmentStatus) {
-  const { data } = await http.patch<Appointment>(`/admin/appointments/${id}/status`, { status });
   return data;
 }
 

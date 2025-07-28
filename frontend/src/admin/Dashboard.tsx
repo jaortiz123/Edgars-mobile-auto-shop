@@ -7,7 +7,7 @@ import { AppointmentFormModal } from '../components/admin/AppointmentFormModal';
 import CarsOnPremisesWidget from '../components/admin/CarsOnPremisesWidget';
 import { DashboardSidebar } from '../components/admin/DashboardSidebar';
 import type { AppointmentFormData } from '../components/admin/AppointmentFormModal';
-import { useAppointmentContext } from '../contexts/AppointmentContext';
+import { useAppointments } from '../contexts/AppointmentContext';
 import { 
   Calendar,
   CheckCircle,
@@ -113,7 +113,7 @@ function isStatsResponse(obj: unknown): obj is StatsApi {
 }
 
 export function Dashboard() {
-  const { refreshTrigger, triggerRefresh, isRefreshing, setRefreshing } = useAppointmentContext();
+  const { refreshTrigger, triggerRefresh, isRefreshing, setRefreshing } = useAppointments();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>();
   const [nextAppointment, setNextAppointment] = useState<Appointment | null>(null);
