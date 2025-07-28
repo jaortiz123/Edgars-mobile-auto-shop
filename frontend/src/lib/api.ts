@@ -27,6 +27,13 @@ http.interceptors.response.use(r => r, e => {
   return Promise.reject(new Error(msg));
 });
 
+// Standard API response envelope
+export interface Envelope<T> {
+  data: T;
+  errors: null;
+  meta: { request_id: string; [key: string]: unknown };
+}
+
 export async function getBoard(params: { from?: string; to?: string; techId?: string }) {
   const { data } = await http.get<{ columns: BoardColumn[]; cards: BoardCard[] }>('/admin/appointments/board', { params });
   // JSON parse guard
@@ -61,8 +68,11 @@ export async function getCarsOnPremises() {
 
 // Additional methods expected by Dashboard.tsx
 export async function getAppointments() {
-  const { data } = await http.get<{ appointments: Appointment[] }>('/admin/appointments');
-  return data;
+  // GET /api/admin/appointments returns Envelope<{ appointments, nextCursor }>
+  const response = await http.get<Envelope<{ appointments: Appointment[]; nextCursor: string | null }>>(
+    '/admin/appointments'
+  );
+  return response.data.data;
 }
 
 export async function getDashboardStats() {

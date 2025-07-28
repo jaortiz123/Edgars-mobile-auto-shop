@@ -51,7 +51,7 @@ def lambda_handler(event, context):
         for i, apt in enumerate(upcoming_appointments):
             logger.info(f"   Appointment {i+1}: ID={apt['id']}, Customer={apt['customer_name']}, "
                        f"Phone={apt['customer_phone']}, Service={apt['service_name']}, "
-                       f"Time={apt['scheduled_datetime']}")
+                       f"Time={apt['appointment_datetime']}")
         
         reminders_sent = 0
         
@@ -180,20 +180,35 @@ def query_upcoming_appointments(conn):
         # Convert to list of dicts and add combined datetime
         appointments = []
         for row in results:
-            apt_dict = {
-                'id': row[0],
-                'scheduled_date': row[1],
-                'scheduled_time': row[2],
-                'location_address': row[3],
-                'notes': row[4],
-                'customer_name': row[5],
-                'customer_phone': row[6],
-                'customer_email': row[7],
-                'service_name': row[10],        # ✅ Fixed: was row[8]
-                'service_description': row[11]  # ✅ Fixed: was row[9]
-            }
-            
-            if apt_dict['scheduled_date'] and apt_dict['scheduled_time']:
+            # Support both tuple and dict rows
+            if isinstance(row, dict):
+                apt_dict = {
+                    'id': row.get('id'),
+                    'scheduled_date': row.get('scheduled_date'),
+                    'scheduled_time': row.get('scheduled_time'),
+                    'location_address': row.get('location_address'),
+                    'notes': row.get('notes'),
+                    'customer_name': row.get('customer_name'),
+                    'customer_phone': row.get('customer_phone'),
+                    'customer_email': row.get('customer_email'),
+                    'service_name': row.get('service_name'),
+                    'service_description': row.get('service_description')
+                }
+            else:
+                apt_dict = {
+                    'id': row[0],
+                    'scheduled_date': row[1],
+                    'scheduled_time': row[2],
+                    'location_address': row[3],
+                    'notes': row[4],
+                    'customer_name': row[5],
+                    'customer_phone': row[6],
+                    'customer_email': row[7],
+                    'service_name': row[10],
+                    'service_description': row[11]
+                }
+         
+            if apt_dict.get('scheduled_date') and apt_dict.get('scheduled_time'):
                 apt_datetime = datetime.combine(apt_dict['scheduled_date'], apt_dict['scheduled_time'])
                 apt_dict['appointment_datetime'] = apt_datetime.isoformat()
             appointments.append(apt_dict)

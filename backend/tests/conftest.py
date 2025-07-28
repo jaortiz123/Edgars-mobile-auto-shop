@@ -1,3 +1,7 @@
+import os
+# Set FALLBACK_TO_MEMORY before importing local_server
+os.environ.setdefault("FALLBACK_TO_MEMORY", "true")
+
 import pytest
 from backend.local_server import app as flask_app
 

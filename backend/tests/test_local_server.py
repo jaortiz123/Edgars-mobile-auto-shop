@@ -25,7 +25,7 @@ def test_get_board_empty_dataset(client, mocker):
     assert data['cards'] == []
     assert len(data['columns']) > 0
 
-def test_get_stats_happy_path(client):
+def test_get_stats_happy_path(client, fake_db):
     """Test the /api/admin/dashboard/stats endpoint with a valid request."""
     response = client.get('/api/admin/dashboard/stats')
     assert response.status_code == 200

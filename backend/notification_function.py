@@ -158,31 +158,26 @@ def publish_to_topic(topic_arn, message, notification_data):
         logger.error(f"Failed to publish to topic: {str(e)}")
         raise
 
-def validate_and_format_phone(phone_number):
-    """
-    Validate and format phone number for SMS
-    Returns E.164 format or None if invalid
-    """
-    if not phone_number:
+def validate_and_format_phone(raw: str) -> str:
+    # Normalize and validate phone; return None for invalid
+    if not raw:
         return None
-    
-    # Remove all non-digit characters
-    digits_only = re.sub(r'\D', '', phone_number)
-    
-    # Handle different formats
-    if len(digits_only) == 10:
-        # US number without country code
-        return f"+1{digits_only}"
-    elif len(digits_only) == 11 and digits_only.startswith('1'):
-        # US number with country code
-        return f"+{digits_only}"
-    elif len(digits_only) > 11:
-        # International number
-        return f"+{digits_only}"
-    else:
-        # Invalid length
-        logger.warning(f"Invalid phone number length: {digits_only}")
+
+    digits = ''.join(ch for ch in raw if ch.isdigit())
+    # E.164 with + prefix
+    if raw.strip().startswith('+'):
+        if len(digits) >= 10:
+            return '+' + digits
         return None
+
+    # Handle 1XXXXXXXXXX
+    if len(digits) == 11 and digits.startswith('1'):
+        return '+' + digits
+    # Handle 10-digit US number
+    if len(digits) == 10:
+        return '+1' + digits
+
+    return None
 
 def format_confirmation_message(customer_name, appointment_time, service, location_address=''):
     """Format appointment confirmation message"""
