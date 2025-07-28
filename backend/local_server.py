@@ -279,11 +279,11 @@ def get_board():
     where = ["1=1"]
     params: list[Any] = []
     if frm:
-        where.append("(a.start >= %s OR a.scheduled_date >= %s)")
-        params.extend([frm, frm])
+        where.append("a.start_ts >= %s")
+        params.append(frm)
     if to:
-        where.append("(a.end <= %s OR a.scheduled_date <= %s)")
-        params.extend([to, to])
+        where.append("a.end_ts <= %s")
+        params.append(to)
     if tech_id:
         where.append("a.tech_id = %s")
         params.append(tech_id)
@@ -297,26 +297,19 @@ def get_board():
                 f"""
                 SELECT a.id::text,
                        a.status::text,
-                       COALESCE(
-                         (CASE WHEN a.start IS NOT NULL THEN a.start ELSE
-                               (CASE WHEN a.scheduled_date IS NOT NULL AND a.scheduled_time IS NOT NULL
-                                     THEN (a.scheduled_date::timestamp + a.scheduled_time)
-                                     WHEN a.scheduled_date IS NOT NULL THEN a.scheduled_date::timestamp
-                                     ELSE NULL END)
-                          END),
-                         now()) AS start_ts,
-                       a.end,
-                       COALESCE(a.total_amount, 0) AS price,
-                       c.name AS customer_name,
-                       CONCAT_WS(' ', v.year::text, v.make, v.model) AS vehicle_label,
-                       SUBSTRING((SELECT STRING_AGG(sv.name, ', ')
-                                 FROM appointment_services sv WHERE sv.appointment_id = a.id)::text FROM 1 FOR 120) AS services_summary,
-                       ROW_NUMBER() OVER(PARTITION BY a.status ORDER BY COALESCE(a.start, a.scheduled_date, now())) AS position
+                       a.start_ts AS start_ts,
+                       a.end_ts AS end_ts,
+                        COALESCE(a.total_amount, 0) AS price,
+                        c.name AS customer_name,
+                        CONCAT_WS(' ', v.year::text, v.make, v.model) AS vehicle_label,
+                        SUBSTRING((SELECT STRING_AGG(sv.name, ', ')
+                                  FROM appointment_services sv WHERE sv.appointment_id = a.id)::text FROM 1 FOR 120) AS services_summary,
+                       ROW_NUMBER() OVER(PARTITION BY a.status ORDER BY a.start_ts) AS position
                 FROM appointments a
                 LEFT JOIN customers c ON c.id = a.customer_id
                 LEFT JOIN vehicles v  ON v.id = a.vehicle_id
                 WHERE {where_sql}
-                ORDER BY a.status, start_ts
+                ORDER BY a.status, a.start_ts
                 """,
                 params,
             )
@@ -325,7 +318,7 @@ def get_board():
             cards = []
             for r in rows:
                 start_iso = r["start_ts"].astimezone(timezone.utc).isoformat() if r["start_ts"] else None
-                end_iso = r["end"].astimezone(timezone.utc).isoformat() if r.get("end") else None
+                end_iso = r.get("end_ts") and r["end_ts"].astimezone(timezone.utc).isoformat() or None
                 cards.append(
                     {
                         "id": r["id"],
@@ -564,15 +557,8 @@ def get_admin_appointments():
         raise BadRequest("offset must be non-negative")
     cursor = args.get("cursor")
 
-    # canonical start timestamp expression derived from legacy columns
-    co_start = (
-        "COALESCE("
-        "(CASE WHEN a.start IS NOT NULL THEN a.start ELSE "
-        "(CASE WHEN a.scheduled_date IS NOT NULL AND a.scheduled_time IS NOT NULL "
-        "THEN (a.scheduled_date::timestamp + a.scheduled_time) "
-        "WHEN a.scheduled_date IS NOT NULL THEN a.scheduled_date::timestamp "
-        "ELSE NULL END) END), now())"
-    )
+    # Use canonical start_ts and end_ts columns directly
+    co_start = "a.start_ts"
 
     # Filtering
     where = ["1=1"]
@@ -581,10 +567,10 @@ def get_admin_appointments():
         where.append("a.status = %s")
         params.append(norm_status(args["status"]))
     if args.get("from"):
-        where.append(f"{co_start} >= %s")
+        where.append("a.start_ts >= %s")
         params.append(args["from"])
     if args.get("to"):
-        where.append(f"{co_start} <= %s")
+        where.append("a.end_ts <= %s")
         params.append(args["to"])
     # Filter by technician ID if provided
     if args.get("techId"):
@@ -611,8 +597,8 @@ def get_admin_appointments():
             query = f"""
                  SELECT a.id::text,
                          a.status::text,
-                         {co_start} AS start_ts,
-                         a.end AS end_ts,
+                         a.start_ts AS start_ts,
+                         a.end_ts AS end_ts,
                          COALESCE(a.total_amount, 0) AS total_amount,
                          c.name as customer_name,
                          COALESCE(v.make, '') || ' ' || COALESCE(v.model, '') as vehicle_label
@@ -620,7 +606,7 @@ def get_admin_appointments():
                  LEFT JOIN customers c ON c.id = a.customer_id
                  LEFT JOIN vehicles v ON v.id = a.vehicle_id
                  WHERE {where_sql}
-                 ORDER BY {co_start} ASC, a.id ASC
+                 ORDER BY a.start_ts ASC, a.id ASC
                  LIMIT %s OFFSET %s
              """
             cur.execute(query, (*params, limit, offset))
@@ -642,6 +628,20 @@ def get_admin_appointments():
         last_appt = appointments[-1]
         cursor_data = f"{last_appt['start_ts'].isoformat()},{last_appt['id']}"
         next_cursor = base64.b64encode(cursor_data.encode('utf-8')).decode('utf-8')
+
+    # Serialize appointment fields for JSON
+    for appt in appointments:
+        # Convert datetime to ISO strings
+        if appt.get('start_ts'):
+            appt['start_ts'] = appt['start_ts'].astimezone(timezone.utc).isoformat()
+        if appt.get('end_ts'):
+            appt['end_ts'] = appt['end_ts'].astimezone(timezone.utc).isoformat()
+        # Convert Decimal numeric to float
+        if 'total_amount' in appt:
+            try:
+                appt['total_amount'] = float(appt['total_amount'])
+            except Exception:
+                pass
 
     return _ok({"appointments": appointments, "nextCursor": next_cursor})
 
@@ -763,8 +763,8 @@ def stats():
             cars_result = cur.fetchone()
             cars = int(cars_result[0]) if cars_result and len(cars_result) > 0 else 0
 
-            # jobs today
-            cur.execute("SELECT COUNT(*) FROM appointments WHERE scheduled_date = %s", (today,))
+            # jobs today (based on canonical start_ts)
+            cur.execute("SELECT COUNT(*) FROM appointments WHERE start_ts::date = %s", (today,))
             jobs_today = int(cur.fetchone()[0])
 
             # unpaid total

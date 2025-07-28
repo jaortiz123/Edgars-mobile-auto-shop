@@ -96,3 +96,37 @@ jobs:
           service: ${{ secrets.ECS_SERVICE }}
           cluster: ${{ secrets.ECS_CLUSTER }}
           wait-for-service-stability: true
+
+  db-migration:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: autoshop
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U user -d autoshop"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install backend dependencies
+        run: pip install -r requirements.txt
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Initialize database schema
+        run: psql -h localhost -U user -d autoshop -f init.sql
+      - name: Alembic upgrade head
+        run: alembic upgrade head
+      - name: Verify appointments schema
+        run: |
+          psql -h localhost -U user -d autoshop -c "\d appointments"
+          psql -h localhost -U user -d autoshop -c "\di ix_appointments_start_ts"

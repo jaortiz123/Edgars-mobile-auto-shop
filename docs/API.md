@@ -99,14 +99,21 @@ RBAC roles: `Owner`, `Advisor`, `Tech`, `Accountant`.
 
 ### GET `/api/appointments`
 
-Query params: `from`, `to`, `status`, `techId`, `q`, `limit`, `cursor`
+_Query params:_ `from`, `to`, `status`, `techId`, `q`, `limit`, `cursor`
 
-**200**
+**Response 200**
 
 ```json
 {
   "appointments": [
-    { "id": "APT-1", "status": "SCHEDULED", "start": "2025-07-29T17:00:00Z", "end": null }
+    {
+      "id": "APT-1",
+      "status": "SCHEDULED",
+      "start": "2025-07-29T17:00:00Z",     // legacy
+      "end": null,                          // legacy
+      "start_ts": "2025-07-29T17:00:00Z",  // canonical
+      "end_ts": null                       // canonical
+    }
   ],
   "nextCursor": null
 }

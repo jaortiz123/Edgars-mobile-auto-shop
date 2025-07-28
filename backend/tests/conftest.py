@@ -35,8 +35,8 @@ class _FakeCursor:
         # cars_on_premises -> COUNT(*)
         if "check_in_at" in (self._q or ""):
             return [2]
-        # jobs_today -> COUNT(*) WHERE scheduled_date = %s
-        if "scheduled_date = %s" in (self._q or ""):
+        # jobs_today -> COUNT(*) WHERE start_ts::date = %s
+        if ("scheduled_date = %s" in (self._q or "")) or ("start_ts::date = %s" in (self._q or "")):
             return [4]
         # unpaid total -> SUM(...)
         if "COALESCE(SUM" in (self._q or ""):

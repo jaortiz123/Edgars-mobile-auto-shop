@@ -115,6 +115,8 @@ appointments(
   status appointment_status NOT NULL DEFAULT 'SCHEDULED',
   start TIMESTAMP NOT NULL,
   "end" TIMESTAMP NULL,
+  start_ts TIMESTAMPTZ NULL,    -- canonical start timestamp (backfilled)
+  end_ts TIMESTAMPTZ NULL,      -- canonical end timestamp (backfilled)
 
   total_amount NUMERIC(10,2) NULL,
   paid_amount  NUMERIC(10,2) NOT NULL DEFAULT 0,
@@ -136,6 +138,7 @@ appointments(
 CREATE INDEX IF NOT EXISTS idx_appt_shop ON appointments(shop_id);
 CREATE INDEX IF NOT EXISTS idx_appt_status ON appointments(status);
 CREATE INDEX IF NOT EXISTS idx_appt_time ON appointments(start);
+CREATE INDEX IF NOT EXISTS idx_appt_start_ts ON appointments(start_ts);
 CREATE INDEX IF NOT EXISTS idx_appt_customer ON appointments(customer_id);
 ```
 
