@@ -117,3 +117,6 @@ export function useAppointments() {
   if (!v) throw new Error('useAppointments must be used within AppointmentProvider');
   return v;
 }
+
+// Alias for compatibility with Dashboard imports
+export { useAppointments as useAppointmentContext };

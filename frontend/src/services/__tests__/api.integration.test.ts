@@ -1,23 +1,40 @@
-import { vi, test, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const mockGet = vi.fn();
+const { mockGet, mockPost, mockPut, mockPatch, mockDelete } = vi.hoisted(() => ({
+  mockGet: vi.fn(),
+  mockPost: vi.fn(),
+  mockPut: vi.fn(),
+  mockPatch: vi.fn(),
+  mockDelete: vi.fn(),
+}));
 
 vi.mock('axios', () => ({
   default: {
     create: () => ({
       get: mockGet,
-      post: vi.fn(),
-      put: vi.fn(),
-      delete: vi.fn(),
+      post: mockPost,
+      put: mockPut,
+      patch: mockPatch,
+      delete: mockDelete,
     }),
   },
 }));
 
 import { serviceAPI } from '../api';
 
-test('serviceAPI.getAll retries on failure', async () => {
-  mockGet.mockRejectedValueOnce(new Error('fail'));
-  mockGet.mockResolvedValue({ data: [] });
-  await serviceAPI.getAll();
-  expect(mockGet).toHaveBeenCalledTimes(2);
+beforeEach(() => {
+  mockGet.mockReset();
+  mockPost.mockReset();
+  mockPut.mockReset();
+  mockPatch.mockReset();
+  mockDelete.mockReset();
+});
+
+describe('serviceAPI', () => {
+  it('getAll retries on failure', async () => {
+    mockGet.mockRejectedValueOnce(new Error('fail'));
+    mockGet.mockResolvedValueOnce({ data: { data: [], errors: null } });
+    await serviceAPI.getAll();
+    expect(mockGet).toHaveBeenCalledTimes(2);
+  });
 });
