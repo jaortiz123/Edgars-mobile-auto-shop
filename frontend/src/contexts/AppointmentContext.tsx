@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useCallback, useState } from 'react';
-import { useToast } from '../components/ui/Toast';
+import { useToast } from '@/components/ui/Toast';
 import type { BoardCard, BoardColumn, DashboardStats } from '../types/models';
 import * as api from '../lib/api';
 import { handleApiError } from '../lib/api';
@@ -74,25 +74,34 @@ export function AppointmentProvider({ children }: { children: React.ReactNode })
   }, [toast]);
 
   const optimisticMove: AppointmentState['optimisticMove'] = useCallback(async (id, next) => {
-    const previousCards = cards;
-    const idx = previousCards.findIndex((c) => c.id === id);
-    if (idx === -1) return;
+     const previousCards = cards;
+     const idx = previousCards.findIndex((c) => c.id === id);
+     if (idx === -1) return;
 
-    const newCards = [...previousCards];
-    newCards[idx] = { ...newCards[idx], status: next.status, position: next.position };
+     const newCards = [...previousCards];
+     newCards[idx] = { ...newCards[idx], status: next.status, position: next.position };
 
-    setCards(newCards);
+     setCards(newCards);
 
-    try {
+     try {
       await api.moveAppointment(id, { status: next.status, position: next.position });
       void refreshStats();
-      toast.push({ kind: 'success', text: 'Appointment moved successfully' });
-    } catch (e) {
+      toast.success('Appointment moved successfully', { key: `move-${id}` });
+     } catch (e: any) {
       console.error(e);
+      // rollback
       setCards(previousCards);
-      toast.push({ kind: 'error', text: handleApiError(e, 'Failed to move appointment') });
-    }
-  }, [cards, refreshStats, toast]);
+      const statusCode = e.response?.status;
+      const detail = e.response?.data?.errors?.[0]?.detail || '';
+      if (statusCode === 429) {
+        toast.error('Too many moves. Please wait a moment.', { key: `move-rate-${id}` });
+      } else if (statusCode === 400 && detail.toLowerCase().includes('not allowed')) {
+        toast.error('That status change is not allowed.', { key: `move-invalid-${id}` });
+      } else {
+        toast.error('Could not move appointment. Try again.', { key: `move-fail-${id}` });
+      }
+     }
+   }, [cards, refreshStats]);
 
   useEffect(() => {
     void refreshBoard();

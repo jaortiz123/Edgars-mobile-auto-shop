@@ -205,20 +205,81 @@ Soft delete. **204**
 
 ### PATCH `/api/admin/appointments/:id/move`
 
-RBAC: Tech cannot transition to `COMPLETED`.
+Move an appointment card to a new status and position on the admin board.
 
-```json
-{ "status": "READY", "position": 3 }
+**Request**
+```http
+PATCH /api/admin/appointments/APT-1201/move
+Content-Type: application/json
+
+{
+  "status": "IN_PROGRESS",   // New status (AppointmentStatus)
+  "position": 2               // New position within the column
+}
 ```
 
-**200** → updated appointment
+**Response 200**
+```json
+{
+  "data": {
+    "id": "APT-1201",
+    "status": "IN_PROGRESS",
+    "position": 2
+  },
+  "errors": null,
+  "meta": { "request_id": "<uuid>" }
+}
+```
 
-**Side‑effects**
+**Error Responses**
 
-* Set `check_in_at` when entering `IN_PROGRESS` if null.
-* Set `check_out_at` when entering `COMPLETED` if null.
-* Write `audit_logs` row.
-* Invalidate stats cache.
+- **400 Invalid Transition** (code `INVALID_TRANSITION`)
+
+```json
+{
+  "data": null,
+  "errors": [
+    {
+      "status": "400",
+      "code": "INVALID_TRANSITION",
+      "detail": "Invalid transition SCHEDULED → COMPLETED"
+    }
+  ],
+  "meta": { "request_id": "<uuid>" }
+}
+```
+
+- **429 Rate Limited** (code `RATE_LIMITED`)
+
+```json
+{
+  "data": null,
+  "errors": [
+    {
+      "status": "429",
+      "code": "RATE_LIMITED",
+      "detail": "Rate limit exceeded"
+    }
+  ],
+  "meta": { "request_id": "<uuid>" }
+}
+```
+
+- **500 Server Error** (code `PROVIDER_ERROR`)
+
+```json
+{
+  "data": null,
+  "errors": [
+    {
+      "status": "500",
+      "code": "PROVIDER_ERROR",
+      "detail": "Could not move appointment"
+    }
+  ],
+  "meta": { "request_id": "<uuid>" }
+}
+```
 
 ---
 

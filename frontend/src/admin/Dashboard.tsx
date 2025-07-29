@@ -2,12 +2,14 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { AppointmentCalendar } from '../components/admin/AppointmentCalendar';
-// import { AppointmentDetailModal } from '../components/admin/AppointmentDetailModal';
+import AppointmentDrawer from '../components/admin/AppointmentDrawer';
 import { AppointmentFormModal } from '../components/admin/AppointmentFormModal';
 import CarsOnPremisesWidget from '../components/admin/CarsOnPremisesWidget';
 import { DashboardSidebar } from '../components/admin/DashboardSidebar';
 import type { AppointmentFormData } from '../components/admin/AppointmentFormModal';
 import { useAppointments } from '../contexts/AppointmentContext';
+import { getViewMode, setViewMode, ViewMode } from '../lib/prefs';
+import StatusBoard from '../components/admin/StatusBoard';
 import { 
   Calendar,
   CheckCircle,
@@ -19,10 +21,8 @@ import {
   PlusCircle
 } from 'lucide-react';
 import { 
-  useApi, 
   handleApiError, 
   isOnline, 
-  type Appointment,
   type DashboardStats,
   getAppointments,
   getDashboardStats,
@@ -112,19 +112,38 @@ function isStatsResponse(obj: unknown): obj is StatsApi {
   return typeof obj === 'object' && obj !== null && 'todayAppointments' in obj;
 }
 
+// Local UI appointment type used by the dashboard
+interface UIAppointment {
+  id: string;
+  customer: string;
+  vehicle: string;
+  service: string;
+  timeSlot: string;
+  dateTime: Date;
+  status: 'scheduled' | 'in-progress' | 'completed' | 'canceled';
+  phone?: string;
+  address?: string;
+  estimatedDuration?: string;
+  reminderStatus: 'pending' | 'sent' | 'failed';
+}
+
 export function Dashboard() {
   const { refreshTrigger, triggerRefresh, isRefreshing, setRefreshing } = useAppointments();
+  const [view, setView] = useState<ViewMode>(getViewMode());
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>();
-  const [nextAppointment, setNextAppointment] = useState<Appointment | null>(null);
+  const [nextAppointment, setNextAppointment] = useState<UIAppointment | null>(null);
   const [nextAvailableSlot, setNextAvailableSlot] = useState<Date | null>(null);
-  // const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  // const [selectedAppointment, setSelectedAppointment] = useState<UIAppointment | null>(null);
   const [showAppointmentForm, setShowAppointmentForm] = useState(false);
   const [isSubmittingAppointment, setIsSubmittingAppointment] = useState(false);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointments, setAppointments] = useState<UIAppointment[]>([]);
+  // Drawer state for appointment details
+  const [drawerId, setDrawerId] = useState<string | null>(null);
+  const openDrawer = (id: string) => setDrawerId(id);
+  const closeDrawer = () => setDrawerId(null);
   const [isOffline, setIsOffline] = useState(!isOnline());
   const [showScheduleDropdown, setShowScheduleDropdown] = useState(false);
-  const api = useApi();
   const loadingRef = useRef(false);
 
   useEffect(() => {
@@ -159,14 +178,14 @@ export function Dashboard() {
      loadingRef.current = true;
      setLoading(true);
      setRefreshing(true);
-     let fetchedApts: Appointment[] = [];
+     let fetchedApts: UIAppointment[] = [];
      let fetchedStats: StatsApi | undefined;
      try {
       console.log("📡 Making API calls to backend...");
        const [aptRes, statsRes] = await Promise.all([getAppointments(), getDashboardStats()]);
-      console.log("✅ API calls completed", { aptRes: aptRes.success, statsRes: statsRes.success });
+      console.log("✅ API calls completed", { aptRes: aptRes?.success, statsRes: statsRes?.success });
       
-       if (aptRes.success && aptRes.data && isAppointmentsResponse(aptRes.data)) {
+       if (aptRes?.success && aptRes.data && isAppointmentsResponse(aptRes.data)) {
         console.log("📋 Processing appointments data", aptRes.data);
          fetchedApts = aptRes.data.appointments.map(apt => {
            // Safe date parsing with fallbacks
@@ -207,7 +226,7 @@ export function Dashboard() {
            };
          });
        }
-       if (statsRes.success && statsRes.data && isStatsResponse(statsRes.data)) {
+       if (statsRes?.success && statsRes.data && isStatsResponse(statsRes.data)) {
         console.log("📊 Processing stats data", statsRes.data);
          fetchedStats = statsRes.data;
        }
@@ -264,7 +283,7 @@ export function Dashboard() {
          setRefreshing(false);
        }
      }
-  }, [api, isOffline, setRefreshing]); // Added setRefreshing to dependencies
+  }, [isOffline, setRefreshing]);
 
   useEffect(() => {
     // Only load once on mount, then rely on refresh triggers
@@ -291,7 +310,7 @@ export function Dashboard() {
     return () => clearInterval(interval);
   }, [isRefreshing, loadDashboardData]);
 
-  const handleAppointmentClick = (appointment: Appointment) => {
+  const handleAppointmentClick = (appointment: UIAppointment) => {
     // setSelectedAppointment(appointment);
     console.log('Appointment clicked:', appointment);
   };
@@ -334,7 +353,7 @@ export function Dashboard() {
         
         if (response.success) {
           // Add to local state for immediate UI update
-          const newApt: Appointment = {
+          const newApt: UIAppointment = {
             id: Date.now().toString(),
             customer: formData.customerName,
             vehicle: `${formData.vehicleYear} ${formData.vehicleMake} ${formData.vehicleModel}`,
@@ -413,7 +432,7 @@ export function Dashboard() {
   const handleStartJob = async (appointmentId: string) => {
     try {
       // Optimistically update UI
-      setAppointments(prev => prev.map((apt: Appointment) => 
+      setAppointments(prev => prev.map((apt: UIAppointment) => 
         apt.id === appointmentId 
           ? { ...apt, status: 'in-progress' as const }
           : apt
@@ -430,7 +449,7 @@ export function Dashboard() {
         const response = await updateAppointmentStatus(appointmentId, 'IN_PROGRESS');
         if (!handleApiError(response, 'Failed to start job')) {
           // Revert on failure
-          setAppointments(prev => prev.map((apt: Appointment) => 
+          setAppointments(prev => prev.map((apt: UIAppointment) => 
             apt.id === appointmentId 
               ? { ...apt, status: 'scheduled' as const }
               : apt
@@ -447,7 +466,7 @@ export function Dashboard() {
   const handleCompleteJob = async (appointmentId: string) => {
     try {
       // Optimistically update UI
-      setAppointments(prev => prev.map((apt: Appointment) => 
+      setAppointments(prev => prev.map((apt: UIAppointment) => 
         apt.id === appointmentId 
           ? { ...apt, status: 'completed' as const }
           : apt
@@ -456,7 +475,7 @@ export function Dashboard() {
       if (nextAppointment?.id === appointmentId) {
         // Recalculate next appointment instead of setting to null
         const now = new Date();
-        const updatedAppointments = appointments.map((apt: Appointment) => 
+        const updatedAppointments = appointments.map((apt: UIAppointment) => 
           apt.id === appointmentId ? { ...apt, status: 'completed' as const } : apt
         );
         const nextAvailable = updatedAppointments
@@ -480,7 +499,7 @@ export function Dashboard() {
         const response = await updateAppointmentStatus(appointmentId, 'COMPLETED');
         if (!handleApiError(response, 'Failed to complete job')) {
           // Revert on failure
-          setAppointments(prev => prev.map((apt: Appointment) => 
+          setAppointments(prev => prev.map((apt: UIAppointment) => 
             apt.id === appointmentId 
               ? { ...apt, status: 'in-progress' as const }
               : apt
@@ -562,6 +581,15 @@ export function Dashboard() {
             <span className="text-xs text-gray-500">
               {new Date().toLocaleTimeString()}
             </span>
+            {/* View Mode Toggles */}
+            <div className="flex items-center gap-2">
+              <button data-testid="toggle-calendar" onClick={() => { setView('calendar'); setViewMode('calendar'); }} className={view === 'calendar' ? 'px-2 py-1 bg-blue-500 text-white rounded' : 'px-2 py-1 bg-gray-200 text-gray-700 rounded'}>
+                Calendar
+              </button>
+              <button data-testid="toggle-board" onClick={() => { setView('board'); setViewMode('board'); }} className={view === 'board' ? 'px-2 py-1 bg-blue-500 text-white rounded' : 'px-2 py-1 bg-gray-200 text-gray-700 rounded'}>
+                Board
+              </button>
+            </div>
           </div>
         </div>
 
@@ -577,132 +605,141 @@ export function Dashboard() {
           </div>
         )}
 
-        {/* Calendar Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          <div className="lg:col-span-3">
-            <AppointmentCalendar 
-              appointments={appointments}
-              onAppointmentClick={handleAppointmentClick}
-              onAddAppointment={handleAddAppointment}
-              onStartJob={handleStartJob}
-              onCompleteJob={handleCompleteJob}
-              onCallCustomer={handleCallCustomer}
-            />
-          </div>
+        {/* Main View Section */}
+        {view === 'calendar' ? (
+          <div data-testid="calendar-view">
+            {/* Calendar Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+              <div className="lg:col-span-3">
+                <AppointmentCalendar
+                  appointments={appointments}
+                  onAppointmentClick={(apt) => openDrawer(apt.id)}
+                  onAddAppointment={handleAddAppointment}
+                  onStartJob={handleStartJob}
+                  onCompleteJob={handleCompleteJob}
+                  onCallCustomer={handleCallCustomer}
+                />
+              </div>
 
-          {/* Next Appointment & Big Action Buttons */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Next Appointment Card */}
-            <Card>
-              <CardContent className="p-5 sm:p-5">
-                <h2 className="text-lg font-bold text-gray-700 mb-4">🕐 Next Appointment</h2>
-              {nextAppointment ? (
-                 <div className="text-center py-2">
-                   <div className="text-xl sm:text-2xl font-bold text-orange-600 mb-2">
-                     {nextAppointment.timeSlot}
-                   </div>
-                   <div className="font-bold text-base text-gray-900">
-                     {nextAppointment.customer}
-                   </div>
-                   <div className="text-gray-600 mt-1 text-xs sm:text-sm">
-                     🚗 {nextAppointment.vehicle}
-                   </div>
-                   <div className="text-gray-600 text-xs sm:text-sm">
-                     🔧 {nextAppointment.service}
-                   </div>
-                   <div className="text-gray-500 text-xs mt-2">
-                     📞 {nextAppointment.phone}
-                   </div>
-                 </div>
-               ) : (
-                 <div className="text-center py-4">
-                   <div className="text-2xl sm:text-3xl mb-2">✅</div>
-                   <div className="font-medium text-base text-gray-600">All caught up!</div>
-                   <div className="text-xs text-gray-500">No more appointments today</div>
-                 </div>
-               )}
-               </CardContent>
-             </Card>
-             
-             {/* Big Action Buttons */}
-             <Card>
-               <CardContent className="p-5 sm:p-5">
-                 <h3 className="text-lg font-bold text-gray-600 mb-4">⚡ Schedule New Service</h3>
-                 {nextAvailableSlot && (
-                   <div className="mb-4 text-center text-gray-700">
-                     Next available slot: <span className="font-bold text-blue-600">{format(nextAvailableSlot, 'h:mm a')}</span>
-                   </div>
-                 )}
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                   {nextAppointment && nextAppointment.status === 'scheduled' && (
-                     <button 
-                     onClick={() => handleQuickAction('start')}
-                     className="w-full py-5 text-lg font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 touch-manipulation bg-orange-500 text-white hover:bg-orange-600"
-                   >
-                     <Wrench className="h-7 w-7" />
-                     <span>🔧 Start Next Job</span>
-                   </button>
-                   )}
-                   
-                   {nextAppointment && nextAppointment.status === 'in-progress' && (
-                     <button 
-                     onClick={() => handleQuickAction('complete')}
-                     className="w-full py-5 text-lg font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 touch-manipulation bg-green-600 text-white hover:bg-green-700"
-                   >
-                     <CheckCircle className="h-7 w-7" />
-                     <span>✅ Complete Current Job</span>
-                   </button>
-                   )}
-                   
-                   <div className="relative">
-                     <button 
-                     onClick={() => setShowScheduleDropdown(!showScheduleDropdown)}
-                     className="w-full py-5 text-lg font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 touch-manipulation bg-blue-600 text-white hover:bg-blue-700"
-                   >
-                       <Calendar className="h-7 w-7" />
-                       <span>📅 Schedule Service</span>
-                       <PlusCircle className="h-6 w-6 ml-2" />
-                     </button>
-                     {showScheduleDropdown && (
-                       <div className="absolute z-10 mt-2 w-full bg-white rounded-md shadow-lg">
-                         <button
-                           onClick={() => { handleAddAppointment(); setShowScheduleDropdown(false); }}
-                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                         >
-                           Regular Appointment
-                         </button>
-                         <button
-                           onClick={() => { handleAddAppointment(); setShowScheduleDropdown(false); }}
-                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                         >
-                           Walk-in Service
-                         </button>
-                       </div>
-                     )}
-                   </div>
-                   
-                   {nextAppointment && (
-                     <button 
-                     onClick={() => handleQuickAction('call')}
-                     className="w-full py-5 text-lg font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 touch-manipulation bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                   >
-                       <Phone className="h-7 w-7" />
-                       <span>📞 Call Customer</span>
-                     </button>
-                   )}
-                   
-                   <button 
-                     onClick={handleVehicleLookup}
-                     className="w-full py-5 text-lg font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 touch-manipulation bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                   >
-                     <Car className="h-7 w-7" />
-                     <span>👥 Customer History</span>
-                   </button>
-                 </div>
-               </CardContent>
-             </Card>
-           </div>
-         </div>
+              {/* Next Appointment & Big Action Buttons */}
+              <div className="lg:col-span-2 space-y-4">
+                {/* Next Appointment Card */}
+                <Card>
+                  <CardContent className="p-5 sm:p-5">
+                    <h2 className="text-lg font-bold text-gray-700 mb-4">🕐 Next Appointment</h2>
+                    {nextAppointment ? (
+                      <div className="text-center py-2">
+                        <div className="text-xl sm:text-2xl font-bold text-orange-600 mb-2">
+                          {nextAppointment.timeSlot}
+                        </div>
+                        <div className="font-bold text-base text-gray-900">
+                          {nextAppointment.customer}
+                        </div>
+                        <div className="text-gray-600 mt-1 text-xs sm:text-sm">
+                          🚗 {nextAppointment.vehicle}
+                        </div>
+                        <div className="text-gray-600 text-xs sm:text-sm">
+                          🔧 {nextAppointment.service}
+                        </div>
+                        <div className="text-gray-500 text-xs mt-2">
+                          📞 {nextAppointment.phone}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <div className="text-2xl sm:text-3xl mb-2">✅</div>
+                        <div className="font-medium text-base text-gray-600">All caught up!</div>
+                        <div className="text-xs text-gray-500">No more appointments today</div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Big Action Buttons */}
+                <Card>
+                  <CardContent className="p-5 sm:p-5">
+                    <h3 className="text-lg font-bold text-gray-600 mb-4">⚡ Schedule New Service</h3>
+                    {nextAvailableSlot && (
+                      <div className="mb-4 text-center text-gray-700">
+                        Next available slot: <span className="font-bold text-blue-600">{format(nextAvailableSlot, 'h:mm a')}</span>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {nextAppointment && nextAppointment.status === 'scheduled' && (
+                        <button
+                          onClick={() => handleQuickAction('start')}
+                          className="w-full py-5 text-lg font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 touch-manipulation bg-orange-500 text-white hover:bg-orange-600"
+                        >
+                          <Wrench className="h-7 w-7" />
+                          <span>🔧 Start Next Job</span>
+                        </button>
+                      )}
+
+                      {nextAppointment && nextAppointment.status === 'in-progress' && (
+                        <button
+                          onClick={() => handleQuickAction('complete')}
+                          className="w-full py-5 text-lg font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 touch-manipulation bg-green-600 text-white hover:bg-green-700"
+                        >
+                          <CheckCircle className="h-7 w-7" />
+                          <span>✅ Complete Current Job</span>
+                        </button>
+                      )}
+
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowScheduleDropdown(!showScheduleDropdown)}
+                          className="w-full py-5 text-lg font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 touch-manipulation bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                          <Calendar className="h-7 w-7" />
+                          <span>📅 Schedule Service</span>
+                          <PlusCircle className="h-6 w-6 ml-2" />
+                        </button>
+                        {showScheduleDropdown && (
+                          <div className="absolute z-10 mt-2 w-full bg-white rounded-md shadow-lg">
+                            <button
+                              onClick={() => { handleAddAppointment(); setShowScheduleDropdown(false); }}
+                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                              Regular Appointment
+                            </button>
+                            <button
+                              onClick={() => { handleAddAppointment(); setShowScheduleDropdown(false); }}
+                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                              Walk-in Service
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {nextAppointment && (
+                        <button
+                          onClick={() => handleQuickAction('call')}
+                          className="w-full py-5 text-lg font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 touch-manipulation bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                        >
+                          <Phone className="h-7 w-7" />
+                          <span>📞 Call Customer</span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={handleVehicleLookup}
+                        className="w-full py-5 text-lg font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 touch-manipulation bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                      >
+                        <Car className="h-7 w-7" />
+                        <span>👥 Customer History</span>
+                      </button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div data-testid="board-view">
+            <StatusBoard onOpen={openDrawer} />
+          </div>
+        )}
 
          {/* Stats and Quick Info */}
          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -736,8 +773,10 @@ export function Dashboard() {
          onSubmit={handleAppointmentFormSubmit}
          isSubmitting={isSubmittingAppointment}
        />
-     </>
-   );
- }
+      {/* Appointment Details Drawer */}
+      <AppointmentDrawer open={!!drawerId} id={drawerId} onClose={closeDrawer} />
+    </>
+  ); // close return of Dashboard
+} // close Dashboard function
 
- export default Dashboard;
+export default Dashboard;

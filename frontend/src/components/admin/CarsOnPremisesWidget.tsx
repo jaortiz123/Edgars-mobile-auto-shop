@@ -8,21 +8,24 @@ export default function CarsOnPremisesWidget() {
     (async () => {
       try {
         const data = await api.getCarsOnPremises();
-        setRows(data);
+        setRows(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error(e);
+        setRows([]); // Ensure rows is always an array
       }
     })();
   }, []);
+
+  const carList = rows ?? []; // Safe guard against undefined
 
   return (
     <div className="rounded-xl border p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold">Cars on Premises</h3>
-        <span className="text-sm text-gray-500">{rows.length}</span>
+        <span className="text-sm text-gray-500">{carList.length}</span>
       </div>
       <div className="space-y-2 max-h-80 overflow-auto">
-        {rows.map((r) => (
+        {carList.map((r) => (
           <div key={r.id} className="flex items-center justify-between border-b last:border-b-0 pb-2">
             <div>
               <div className="font-medium">{r.make ?? '—'} {r.model ?? ''}</div>
@@ -34,7 +37,7 @@ export default function CarsOnPremisesWidget() {
             </div>
           </div>
         ))}
-        {rows.length === 0 && (
+        {carList.length === 0 && (
           <div className="text-sm text-gray-500">No vehicles currently checked in.</div>
         )}
       </div>
