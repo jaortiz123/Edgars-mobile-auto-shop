@@ -5,6 +5,7 @@ import { NotificationTracker } from '../components/admin/NotificationTracker';
 import CalendarView from '../components/admin/CalendarView';
 import AdvancedFilter from '../components/admin/AdvancedFilter';
 import DataExport from '../components/admin/DataExport';
+import ReportsDropdown from '../components/admin/ReportsDropdown';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -224,6 +225,9 @@ export default function AdminAppointments() {
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+          
+          {/* CSV Export Reports (T-024) */}
+          <ReportsDropdown ffReports={true} />
           
           <Button
             variant="outline"

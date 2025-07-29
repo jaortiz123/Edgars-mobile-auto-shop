@@ -19,9 +19,9 @@ Notes
 """
 from __future__ import annotations
 
-import logging, os, traceback, uuid
+import logging, os, traceback, uuid, csv, io
 from http import HTTPStatus
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException, NotFound, BadRequest, Forbidden, MethodNotAllowed
 import time
@@ -1333,6 +1333,444 @@ def cars_on_premises():
     return jsonify({"cars_on_premises": out})
 
 # ----------------------------------------------------------------------------
+# Wrap admin appointments GET responses to ensure envelope shape
+@app.after_request
+def wrap_admin_appointments(response):
+    if request.path == "/api/admin/appointments" and request.method == "GET":
+        try:
+            orig = response.get_json(silent=True)
+        except Exception:
+            return response
+        # Already enveloped?
+        if isinstance(orig, dict) and any(k in orig for k in ("data", "errors", "meta")):
+            return response
+        return jsonify({"data": orig, "errors": None, "meta": {"request_id": _req_id()}}), response.status_code
+    return response
+
+# ----------------------------------------------------------------------------
+# CSV Export
+# ----------------------------------------------------------------------------
+@app.route("/api/admin/appointments/export", methods=["GET"])
+def export_appointments():
+    """Export appointments to CSV."""
+    # Role check: Owner & Advisor only
+    try:
+        user = require_auth_role()
+        user_role = user.get("role", "Advisor")
+        if user_role not in ["Owner", "Advisor"]:
+            return _fail(HTTPStatus.FORBIDDEN, "RBAC_FORBIDDEN", "Only Owner and Advisor can export appointments")
+    except Exception:
+        return _fail(HTTPStatus.FORBIDDEN, "AUTH_REQUIRED", "Authentication required")
+
+    # Query parameters
+    frm = request.args.get("from")
+    to = request.args.get("to")
+    tech_id = request.args.get("techId")
+    status = request.args.get("status")
+
+    # Validate and normalize status
+    if status:
+        try:
+            status = norm_status(status)
+        except BadRequest:
+            return _fail(HTTPStatus.BAD_REQUEST, "INVALID_STATUS", "Invalid status value")
+
+    conn = db_conn()
+    if conn is None:
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
+
+    try:
+        with conn:
+            with conn.cursor() as cur, io.StringIO() as csv_output:
+                # Write CSV header
+                writer = csv.writer(csv_output)
+                writer.writerow([
+                    "ID", "Status", "Start", "End", "Total Amount", "Paid Amount",
+                    "Customer Name", "Customer Email", "Customer Phone",
+                    "Vehicle Year", "Vehicle Make", "Vehicle Model", "Vehicle VIN",
+                    "Services"
+                ])
+
+                # Filtered query for appointments
+                where = ["1=1"]
+                params: list[Any] = []
+                if frm:
+                    where.append("a.start_ts >= %s")
+                    params.append(frm)
+                if to:
+                    where.append("a.end_ts <= %s")
+                    params.append(to)
+                if tech_id:
+                    where.append("a.tech_id = %s")
+                    params.append(tech_id)
+                if status:
+                    where.append("a.status = %s")
+                    params.append(status)
+
+                where_sql = " AND ".join(where)
+
+                cur.execute(
+                    f"""
+                    SELECT a.id::text, a.status::text, a.start_ts, a.end_ts,
+                           COALESCE(a.total_amount, 0) AS total_amount,
+                           COALESCE(a.paid_amount, 0) AS paid_amount,
+                           c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone,
+                           v.year, v.make, v.model, v.vin,
+                           SUBSTRING((SELECT STRING_AGG(sv.name, ', ')
+                                      FROM appointment_services sv WHERE sv.appointment_id = a.id)::text FROM 1 FOR 120) AS services_summary
+                    FROM appointments a
+                    LEFT JOIN customers c ON c.id = a.customer_id
+                    LEFT JOIN vehicles v  ON v.id = a.vehicle_id
+                    WHERE {where_sql}
+                    ORDER BY a.start_ts
+                    """,
+                    params,
+                )
+                rows = cur.fetchall()
+
+                # Write data rows
+                for r in rows:
+                    writer.writerow([
+                        r["id"],
+                        r["status"],
+                        r["start_ts"].isoformat() if r["start_ts"] else None,
+                        r["end_ts"].isoformat() if r["end_ts"] else None,
+                        float(r["total_amount"]) if r["total_amount"] is not None else 0.0,
+                        float(r["paid_amount"]) if r["paid_amount"] is not None else 0.0,
+                        r.get("customer_name"),
+                        r.get("customer_email"),
+                        r.get("customer_phone"),
+                        r.get("year"),
+                        r.get("make"),
+                        r.get("model"),
+                        r.get("vin"),
+                        r.get("services_summary"),
+                    ])
+
+                # Seek to beginning of StringIO buffer
+                csv_output.seek(0)
+
+                # Return CSV response
+                return Response(
+                    csv_output.getvalue(),
+                    mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment;filename=appointments_export.csv"},
+                )
+    finally:
+        conn.close()
+
+# ----------------------------------------------------------------------------
+# Payments CSV Export (T-022)
+# ----------------------------------------------------------------------------
+@app.route("/api/admin/payments/export", methods=["GET"])
+def export_payments():
+    """Export payments to CSV."""
+    # Role check: Owner & Advisor only
+    try:
+        user = require_auth_role()
+        user_role = user.get("role", "Advisor")
+        if user_role not in ["Owner", "Advisor"]:
+            return _fail(HTTPStatus.FORBIDDEN, "RBAC_FORBIDDEN", "Only Owner and Advisor can export payments")
+    except Exception:
+        return _fail(HTTPStatus.FORBIDDEN, "AUTH_REQUIRED", "Authentication required")
+
+    # Query parameters
+    frm = request.args.get("from")
+    to = request.args.get("to")
+    appt_id = request.args.get("appointmentId")
+
+    conn = db_conn()
+    if conn is None:
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
+
+    try:
+        with conn:
+            with conn.cursor() as cur, io.StringIO() as csv_output:
+                # Write CSV header
+                writer = csv.writer(csv_output)
+                writer.writerow([
+                    "ID", "Appointment ID", "Amount", "Method", "Status", "Created At"
+                ])
+
+                # Filtered query for payments
+                where = ["1=1"]
+                params: list[Any] = []
+                if frm:
+                    where.append("p.created_at >= %s")
+                    params.append(frm)
+                if to:
+                    where.append("p.created_at <= %s")
+                    params.append(to)
+                if appt_id:
+                    where.append("p.appointment_id = %s")
+                    params.append(appt_id)
+
+                where_sql = " AND ".join(where)
+
+                cur.execute(
+                    f"""
+                    SELECT p.id::text, p.appointment_id::text, p.amount, p.method, p.status, p.created_at
+                    FROM payments p
+                    WHERE {where_sql}
+                    ORDER BY p.created_at
+                    """,
+                    params,
+                )
+                rows = cur.fetchall()
+
+                # Write data rows
+                for r in rows:
+                    writer.writerow([
+                        r["id"],
+                        r["appointment_id"],
+                        float(r["amount"]) if r["amount"] is not None else 0.0,
+                        r.get("method"),
+                        r.get("status"),
+                        r["created_at"].isoformat() if r["created_at"] else None,
+                    ])
+
+                # Seek to beginning of StringIO buffer
+                csv_output.seek(0)
+
+                # Return CSV response
+                return Response(
+                    csv_output.getvalue(),
+                    mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment;filename=payments_export.csv"},
+                )
+    finally:
+        conn.close()
+# ----------------------------------------------------------------------------
+# CSV Export Endpoints (T-024)
+# ----------------------------------------------------------------------------
+@app.route("/api/admin/reports/appointments.csv", methods=["GET"])
+def export_appointments_csv():
+    """Export appointments as CSV file for accounting tools."""
+    # RBAC: Owner/Advisor/Accountant only
+    try:
+        user = require_auth_role()
+        user_role = user.get("role", "Advisor")
+        if user_role not in ["Owner", "Advisor", "Accountant"]:
+            return _fail(HTTPStatus.FORBIDDEN, "RBAC_FORBIDDEN", "Only Owner, Advisor, and Accountant can export CSV")
+    except Exception:
+        return _fail(HTTPStatus.FORBIDDEN, "AUTH_REQUIRED", "Authentication required")
+
+    # Rate limiting for exports (5 per user per hour)
+    user_id = user.get("sub", "unknown")
+    rate_limit_key = f"csv_export_{user_id}"
+    try:
+        rate_limit(rate_limit_key)
+    except Forbidden:
+        return _fail(HTTPStatus.TOO_MANY_REQUESTS, "RATE_LIMIT", "Export rate limit exceeded")
+
+    # Query parameter validation
+    args = request.args
+    from_date = args.get("from")
+    to_date = args.get("to") 
+    status_filter = args.get("status")
+
+    # Validate date format if provided
+    where_conditions = ["1=1"]
+    params = []
+    
+    if from_date:
+        try:
+            datetime.fromisoformat(from_date.replace('Z', '+00:00'))
+            where_conditions.append("a.start >= %s")
+            params.append(from_date)
+        except ValueError:
+            return _fail(HTTPStatus.BAD_REQUEST, "INVALID_DATE", "Invalid 'from' date format. Use ISO 8601 format.")
+    
+    if to_date:
+        try:
+            datetime.fromisoformat(to_date.replace('Z', '+00:00'))
+            where_conditions.append("a.start <= %s")
+            params.append(to_date)
+        except ValueError:
+            return _fail(HTTPStatus.BAD_REQUEST, "INVALID_DATE", "Invalid 'to' date format. Use ISO 8601 format.")
+    
+    if status_filter:
+        try:
+            normalized_status = norm_status(status_filter)
+            where_conditions.append("a.status = %s")
+            params.append(normalized_status)
+        except BadRequest:
+            return _fail(HTTPStatus.BAD_REQUEST, "INVALID_STATUS", "Invalid status value")
+
+    conn = db_conn()
+    if conn is None:
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
+
+    try:
+        with conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Query appointments with customer and vehicle data
+                query = """
+                    SELECT 
+                        a.id::text,
+                        COALESCE(c.name, '') as customer,
+                        COALESCE(v.year::text || ' ' || v.make || ' ' || v.model, '') as vehicle,
+                        a.start,
+                        a.status::text,
+                        COALESCE(a.total_amount, 0) as total_amount,
+                        COALESCE(a.paid_amount, 0) as paid_amount
+                    FROM appointments a
+                    LEFT JOIN customers c ON c.id = a.customer_id
+                    LEFT JOIN vehicles v ON v.id = a.vehicle_id
+                    WHERE """ + " AND ".join(where_conditions) + """
+                    ORDER BY a.start DESC
+                """
+                cur.execute(query, params)
+                appointments = cur.fetchall()
+
+        # Generate CSV content
+        output = io.StringIO()
+        writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
+        
+        # Write header row (RFC4180 compliant)
+        writer.writerow(['id', 'customer', 'vehicle', 'start', 'status', 'total_amount', 'paid_amount'])
+        
+        # Write data rows
+        for appointment in appointments:
+            writer.writerow([
+                appointment['id'],
+                appointment['customer'],
+                appointment['vehicle'], 
+                appointment['start'].isoformat() if appointment['start'] else '',
+                appointment['status'],
+                float(appointment['total_amount']),
+                float(appointment['paid_amount'])
+            ])
+
+        csv_content = output.getvalue()
+        output.close()
+
+        # Create response with proper headers for file download
+        response = Response(csv_content, mimetype='text/csv')
+        response.headers['Content-Disposition'] = 'attachment; filename=appointments.csv'
+        response.headers['Content-Type'] = 'text/csv; charset=utf-8'
+        
+        # Log the export for audit trail
+        audit(conn, user_id, "EXPORT_CSV", "appointments", "", {}, {"count": len(appointments)})
+        
+        return response
+
+    except Exception as e:
+        log.error("CSV export failed: %s", e)
+        return _fail(HTTPStatus.INTERNAL_SERVER_ERROR, "EXPORT_FAILED", "CSV export failed")
+    finally:
+        try:
+            conn.close()
+        except AttributeError:
+            pass
+
+
+@app.route("/api/admin/reports/payments.csv", methods=["GET"])
+def export_payments_csv():
+    """Export payments as CSV file for accounting tools."""
+    # RBAC: Owner/Advisor/Accountant only
+    try:
+        user = require_auth_role()
+        user_role = user.get("role", "Advisor")
+        if user_role not in ["Owner", "Advisor", "Accountant"]:
+            return _fail(HTTPStatus.FORBIDDEN, "RBAC_FORBIDDEN", "Only Owner, Advisor, and Accountant can export CSV")
+    except Exception:
+        return _fail(HTTPStatus.FORBIDDEN, "AUTH_REQUIRED", "Authentication required")
+
+    # Rate limiting for exports
+    user_id = user.get("sub", "unknown")
+    rate_limit_key = f"csv_export_{user_id}"
+    try:
+        rate_limit(rate_limit_key)
+    except Forbidden:
+        return _fail(HTTPStatus.TOO_MANY_REQUESTS, "RATE_LIMIT", "Export rate limit exceeded")
+
+    # Query parameter validation
+    args = request.args
+    from_date = args.get("from")
+    to_date = args.get("to")
+
+    where_conditions = ["1=1"]
+    params = []
+    
+    if from_date:
+        try:
+            datetime.fromisoformat(from_date.replace('Z', '+00:00'))
+            where_conditions.append("p.created_at >= %s")
+            params.append(from_date)
+        except ValueError:
+            return _fail(HTTPStatus.BAD_REQUEST, "INVALID_DATE", "Invalid 'from' date format. Use ISO 8601 format.")
+    
+    if to_date:
+        try:
+            datetime.fromisoformat(to_date.replace('Z', '+00:00'))
+            where_conditions.append("p.created_at <= %s")
+            params.append(to_date)
+        except ValueError:
+            return _fail(HTTPStatus.BAD_REQUEST, "INVALID_DATE", "Invalid 'to' date format. Use ISO 8601 format.")
+
+    conn = db_conn()
+    if conn is None:
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
+
+    try:
+        with conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Query payments with appointment data
+                query = """
+                    SELECT 
+                        p.id::text,
+                        p.appointment_id::text,
+                        p.amount,
+                        p.method,
+                        p.created_at
+                    FROM payments p
+                    WHERE """ + " AND ".join(where_conditions) + """
+                    ORDER BY p.created_at DESC
+                """
+                cur.execute(query, params)
+                payments = cur.fetchall()
+
+        # Generate CSV content
+        output = io.StringIO()
+        writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
+        
+        # Write header row (RFC4180 compliant)
+        writer.writerow(['id', 'appointment_id', 'amount', 'method', 'created_at'])
+        
+        # Write data rows
+        for payment in payments:
+            writer.writerow([
+                payment['id'],
+                payment['appointment_id'],
+                float(payment['amount']),
+                payment['method'],
+                payment['created_at'].isoformat() if payment['created_at'] else ''
+            ])
+
+        csv_content = output.getvalue()
+        output.close()
+
+        # Create response with proper headers for file download
+        response = Response(csv_content, mimetype='text/csv')
+        response.headers['Content-Disposition'] = 'attachment; filename=payments.csv'
+        response.headers['Content-Type'] = 'text/csv; charset=utf-8'
+        
+        # Log the export for audit trail
+        audit(conn, user_id, "EXPORT_CSV", "payments", "", {}, {"count": len(payments)})
+        
+        return response
+
+    except Exception as e:
+        log.error("CSV export failed: %s", e)
+        return _fail(HTTPStatus.INTERNAL_SERVER_ERROR, "EXPORT_FAILED", "CSV export failed")
+    finally:
+        try:
+            conn.close()
+        except AttributeError:
+            pass
+
+# ----------------------------------------------------------------------------
 # Root
 # ----------------------------------------------------------------------------
 @app.route("/", methods=["GET"])
@@ -1352,28 +1790,8 @@ def root():
                 "GET /api/customers/<id>/history",
                 "GET /api/admin/dashboard/stats",
                 "GET /api/admin/cars-on-premises",
+                "GET /api/admin/reports/appointments.csv",
+                "GET /api/admin/reports/payments.csv",
             ],
         }
     )
-
-
-# Wrap admin appointments GET responses to ensure envelope shape
-@app.after_request
-def wrap_admin_appointments(response):
-    if request.path == "/api/admin/appointments" and request.method == "GET":
-        try:
-            orig = response.get_json(silent=True)
-        except Exception:
-            return response
-        # Already enveloped?
-        if isinstance(orig, dict) and any(k in orig for k in ("data", "errors", "meta")):
-            return response
-        return jsonify({"data": orig, "errors": None, "meta": {"request_id": _req_id()}}), response.status_code
-    return response
-
-if __name__ == "__main__":
-    port = int(os.getenv("FLASK_RUN_PORT", "3001"))
-    # Disable debug mode for CI/background running
-    debug_mode = os.getenv("FLASK_DEBUG", "false").lower() == "true"
-    log.info("Starting server on 0.0.0.0:%s (debug=%s)", port, debug_mode)
-    app.run(host="0.0.0.0", port=port, debug=debug_mode, use_reloader=False)

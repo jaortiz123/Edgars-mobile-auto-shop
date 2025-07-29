@@ -704,17 +704,63 @@ Get customer's appointment and payment history. Returns past appointments (COMPL
 
 ---
 
-## 10. Exports (S2)
+## 10. CSV Export Reports (T-024)
 
-### GET `/api/exports/appointments.csv?from&to&status`
+### GET `/api/admin/reports/appointments.csv`
 
-CSV with header: `id,customer,vehicle,start,status,total_amount,paid_amount`
+Export appointments data in CSV format for accounting integration.
 
-### GET `/api/exports/payments.csv?from&to`
+**Query Parameters:**
+- `from` (optional): ISO 8601 date string (YYYY-MM-DD) for start date filter
+- `to` (optional): ISO 8601 date string (YYYY-MM-DD) for end date filter
+- `status` (optional): Appointment status filter (SCHEDULED, IN_PROGRESS, READY, COMPLETED, NO_SHOW, CANCELED)
 
-CSV with header: `id,appointment_id,amount,method,created_at`
+**Response:**
+- Content-Type: `text/csv; charset=utf-8`
+- Content-Disposition: `attachment; filename=appointments_export.csv`
 
-**RBAC:** Owner/Advisor/Accountant only. Rate limited.
+**CSV Headers:**
+```
+ID,Status,Start,End,Total Amount,Paid Amount,Customer Name,Customer Email,Customer Phone,Vehicle Year,Vehicle Make,Vehicle Model,Vehicle VIN,Services
+```
+
+**Example:**
+```
+GET /api/admin/reports/appointments.csv?from=2024-01-01&to=2024-01-31&status=COMPLETED
+```
+
+### GET `/api/admin/reports/payments.csv`
+
+Export payment records in CSV format for accounting integration.
+
+**Query Parameters:**
+- `from` (optional): ISO 8601 date string (YYYY-MM-DD) for start date filter
+- `to` (optional): ISO 8601 date string (YYYY-MM-DD) for end date filter
+
+**Response:**
+- Content-Type: `text/csv; charset=utf-8`
+- Content-Disposition: `attachment; filename=payments_export.csv`
+
+**CSV Headers:**
+```
+ID,Appointment ID,Amount,Payment Method,Transaction ID,Payment Date,Status
+```
+
+**Example:**
+```
+GET /api/admin/reports/payments.csv?from=2024-01-01&to=2024-01-31
+```
+
+**Authentication & Authorization:**
+- **RBAC:** Owner, Advisor, and Accountant roles only
+- **Rate Limiting:** 5 exports per user per hour
+- **Audit Logging:** All export activities are logged
+
+**Error Responses:**
+- `400 Bad Request`: Invalid date format or status value
+- `403 Forbidden`: Insufficient permissions or authentication required
+- `429 Too Many Requests`: Rate limit exceeded
+- `503 Service Unavailable`: Database unavailable
 
 ---
 
