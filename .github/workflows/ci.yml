@@ -5,15 +5,76 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  schedule:
+    # Nightly accessibility tests at 02:00 UTC (T-016 follow-up)
+    - cron: '0 2 * * *'
 
 env:
   NODE_VERSION: '20'
   PYTHON_VERSION: '3.11'
 
 jobs:
+  # Frontend ESLint - Fail fast on lint issues
+  frontend-lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: |
+          echo "📦 Installing frontend dependencies for linting..."
+          npm ci
+
+      - name: Run ESLint
+        run: |
+          echo "🔍 Running ESLint to check code quality..."
+          npm run lint --if-present
+
+  # Backend flake8 - Fail fast on lint issues  
+  backend-lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install Python dependencies (including flake8)
+        run: |
+          echo "📦 Installing Python dependencies for linting..."
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run flake8
+        run: |
+          echo "🔍 Running flake8 to check code quality..."
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
   # Backend Python Tests with Coverage
   backend-tests:
     runs-on: ubuntu-latest
+    needs: [backend-lint]
     defaults:
       run:
         working-directory: backend
@@ -89,9 +150,143 @@ jobs:
           name: backend-coverage
           fail_ci_if_error: false
 
+  # No-DB Smoke Tests (T-006) - Sprint 6 Exit Criteria #1
+  no-db-smoke-tests:
+    runs-on: ubuntu-latest
+    needs: [backend-tests]
+    defaults:
+      run:
+        working-directory: backend
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-mock
+
+      - name: No-DB smoke (T-006)
+        env:
+          # Explicitly NO database connection - tests must work without DB
+          FALLBACK_TO_MEMORY: "true"
+          JWT_SECRET: test-secret
+          LOG_LEVEL: WARNING
+        run: |
+          echo "🔥 Running no-DB smoke tests for T-006 exit criteria..."
+          echo "Running: pytest -q backend/tests/test_appointments_api.py::test_get_admin_appointments_returns_empty_list_if_no_db"
+          pytest -q tests/test_appointments_api.py::test_get_admin_appointments_returns_empty_list_if_no_db
+          echo ""
+          echo "Running: pytest -q backend/tests/test_errors.py"
+          pytest -q tests/test_errors.py
+          echo ""
+          echo "✅ T-006 no-DB smoke tests completed successfully"
+
+  # Docs curl test (T-007) - Living example to prove envelope shape
+  docs-curl:
+    runs-on: ubuntu-latest
+    needs: [backend-tests]
+    # Skip on PRs that don't touch backend
+    if: ${{ github.event_name == 'push' || contains(github.event.pull_request.changed_files.*.filename, 'backend/') || contains(github.event.pull_request.changed_files.*.filename, 'docs/') }}
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install jq for JSON assertions
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Start Flask server in background
+        env:
+          FALLBACK_TO_MEMORY: "true"
+          JWT_SECRET: test-secret
+          LOG_LEVEL: WARNING
+        run: |
+          echo "🌐 Starting Flask server for curl test..."
+          python local_server.py &
+          SERVER_PID=$!
+          echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
+          
+          # Wait for server to start
+          for i in {1..30}; do
+            if curl -f http://localhost:3001/health 2>/dev/null; then
+              echo "✅ Server is ready!"
+              break
+            fi
+            echo "⏳ Waiting for server... ($i/30)"
+            sleep 2
+          done
+
+      - name: Test API endpoint with curl and assert envelope shape
+        run: |
+          echo "🧪 Testing /api/admin/appointments endpoint..."
+          
+          # Make curl request and capture response
+          echo "📡 Making curl request to http://localhost:3001/api/admin/appointments"
+          response=$(curl -s -X GET "http://localhost:3001/api/admin/appointments" \
+            -H "Content-Type: application/json")
+          
+          echo "📄 Response: $response"
+          
+          # Use jq to assert .errors == null (T-007 requirement)
+          errors_field=$(echo "$response" | jq -r '.errors')
+          
+          if [ "$errors_field" = "null" ]; then
+            echo "✅ SUCCESS: .errors field is null as expected"
+          else
+            echo "❌ FAILURE: .errors field is not null, got: $errors_field"
+            exit 1
+          fi
+          
+          # Additional validation: ensure we have proper envelope structure
+          data_field=$(echo "$response" | jq '.data')
+          meta_field=$(echo "$response" | jq '.meta')
+          
+          if [ "$data_field" != "null" ] && [ "$meta_field" != "null" ]; then
+            echo "✅ SUCCESS: Envelope structure is valid (has data and meta fields)"
+          else
+            echo "❌ FAILURE: Invalid envelope structure"
+            echo "data field: $data_field"
+            echo "meta field: $meta_field" 
+            exit 1
+          fi
+
+      - name: Stop Flask server
+        if: always()
+        run: |
+          if [ ! -z "$SERVER_PID" ]; then
+            echo "🛑 Stopping Flask server (PID: $SERVER_PID)"
+            kill $SERVER_PID || true
+          fi
+
   # Frontend Node.js Tests with Coverage  
   frontend-tests:
     runs-on: ubuntu-latest
+    needs: [frontend-lint]
     defaults:
       run:
         working-directory: frontend
@@ -271,7 +466,7 @@ jobs:
       - run: npm test:e2e
 
   docker-deploy:
-    needs: [backend, frontend, e2e]
+    needs: [backend-tests, frontend-tests, e2e-tests]
     runs-on: ubuntu-latest
     environment: production
     steps:

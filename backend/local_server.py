@@ -563,6 +563,10 @@ def get_admin_appointments():
         raise BadRequest("offset must be non-negative")
     cursor = args.get("cursor")
 
+    # Validate that cursor and offset are not used together
+    if cursor and offset > 0:
+        raise BadRequest("cannot use both cursor and offset parameters together")
+
     # Use canonical start_ts and end_ts columns directly
     co_start = "a.start_ts"
 
@@ -1078,5 +1082,7 @@ def wrap_admin_appointments(response):
 
 if __name__ == "__main__":
     port = int(os.getenv("FLASK_RUN_PORT", "3001"))
-    log.info("Starting server on 0.0.0.0:%s", port)
-    app.run(host="0.0.0.0", port=port, debug=True)
+    # Disable debug mode for CI/background running
+    debug_mode = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+    log.info("Starting server on 0.0.0.0:%s (debug=%s)", port, debug_mode)
+    app.run(host="0.0.0.0", port=port, debug=debug_mode, use_reloader=False)

@@ -170,6 +170,15 @@ Shortcut for status only.
 
 Soft delete. **204**
 
+**curl sample:**
+
+```bash
+# Get admin appointments with envelope shape demonstration
+curl -X GET "http://localhost:3001/api/admin/appointments" \
+  -H "Content-Type: application/json" \
+  | jq '.errors'
+```
+
 ---
 
 ## 2.1 Services Management
