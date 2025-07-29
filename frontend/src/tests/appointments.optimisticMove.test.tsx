@@ -4,13 +4,25 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import appRender from './render';
 import * as api from '@/lib/api';
-import { toast } from '@/lib/toast';
 import { useAppointments } from '@/contexts/AppointmentContext';
 import type { BoardColumn, BoardCard, DashboardStats, AppointmentStatus } from '@/types/models';
 
-// Mock API and toast
+// Mock API
 vi.mock('@/lib/api');
-vi.mock('@/lib/toast');
+
+// Mock Toast module to match actual implementation 
+vi.mock('@/components/ui/Toast', () => {
+  const push = vi.fn();
+  const success = vi.fn();
+  const error = vi.fn();
+  const ToastProvider = ({ children }: any) => children;
+  const useToast = () => ({ push, success, error });
+  const toast = { push, success, error };
+  return { ToastProvider, useToast, toast };
+});
+
+// Import the mocked toast after mocking
+import { toast } from '@/components/ui/Toast';
 
 // Initial test data using real statuses
 const dummyStats: DashboardStats = { jobsToday:0, carsOnPremises:0, scheduled:0, inProgress:0, ready:0, completed:0, noShow:0, unpaidTotal:0 };
@@ -49,8 +61,8 @@ describe('AppointmentContext.optimisticMove', () => {
     vi.mocked(api.getBoard).mockResolvedValue({ columns: initialColumns, cards: initialCards });
     vi.mocked(api.getStats).mockResolvedValue(dummyStats);
     vi.mocked(api.moveAppointment).mockReset();
-    vi.mocked(toast.success).mockReset();
-    vi.mocked(toast.error).mockReset();
+    vi.mocked(toast.success).mockClear();
+    vi.mocked(toast.error).mockClear();
   });
 
   it('success path', async () => {

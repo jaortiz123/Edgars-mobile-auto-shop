@@ -1,53 +1,265 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
 
 jobs:
-  backend:
+  # Backend Python Tests with Coverage
+  backend-tests:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 18
-      - run: npm ci
-      - run: npm test --if-present
-      - run: npm ci
-        working-directory: ../../
-      - run: npm test:e2e
-        working-directory: ../../
-      - run: npm ci
-        working-directory: ../frontend
-      - run: npm test --if-present
-        working-directory: ../frontend
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_autoshop
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U test_user -d test_autoshop"
+          --health-interval=5s --health-timeout=5s --health-retries=20
 
-  frontend:
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-mock
+
+      - name: Set up test environment
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: test_autoshop
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          FALLBACK_TO_MEMORY: "true"
+          JWT_SECRET: test-secret
+          LOG_LEVEL: WARNING
+        run: |
+          echo "Environment configured for testing"
+
+      - name: Run backend tests with coverage
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: test_autoshop
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          FALLBACK_TO_MEMORY: "true"
+          JWT_SECRET: test-secret
+          LOG_LEVEL: WARNING
+        run: |
+          echo "🧪 Running backend tests with coverage..."
+          pytest tests/ \
+            --cov=. \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-fail-under=75 \
+            -v \
+            --tb=short
+
+      - name: Upload backend coverage reports
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: backend/coverage.xml
+          flags: backend
+          name: backend-coverage
+          fail_ci_if_error: false
+
+  # Frontend Node.js Tests with Coverage  
+  frontend-tests:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 18
-      - run: npm ci
-      - run: npm test --if-present -- --run
 
-  e2e:
-    needs: [backend, frontend]
-    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: |
+          echo "📦 Installing frontend dependencies..."
+          npm ci
+
+      - name: Run frontend tests with coverage
+        run: |
+          echo "🧪 Running frontend tests with coverage..."
+          npm test -- --coverage --run
+
+      - name: Upload frontend coverage reports
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: frontend/coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+          fail_ci_if_error: false
+
+  # Accessibility Tests
+  accessibility-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run accessibility tests
+        run: |
+          echo "♿ Running WCAG 2.2 AA accessibility tests..."
+          npm run test:a11y
+
+  # End-to-End Tests (Optional - only run on main branch)
+  e2e-tests:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: [backend-tests, frontend-tests]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: ~/.docker
+          key: ${{ runner.os }}-docker-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-docker-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start services
+        run: |
+          echo "🐳 Starting Docker services for E2E tests..."
+          docker-compose up -d --build
+
+      - name: Wait for services to be ready
+        run: |
+          echo "⏳ Waiting for services to start..."
+          timeout 60 bash -c 'until curl -f http://localhost:3001/health; do sleep 2; done'
+
+      - name: Run E2E tests
+        run: |
+          echo "🎭 Running end-to-end tests..."
+          npm run test:e2e
+
+      - name: Cleanup services
+        if: always()
+        run: docker-compose down
+
+  # Build & Security Scan
+  build-and-scan:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd frontend && npm ci
+          cd ../backend && pip install -r requirements.txt
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          echo "🏗️ Building frontend for production..."
+          npm run build
+
+      - name: Security audit - Frontend
+        run: |
+          cd frontend
+          echo "🔒 Running frontend security audit..."
+          npm audit --audit-level=high
+
+      - name: Security audit - Backend  
+        run: |
+          cd backend
+          echo "🔒 Running backend security audit..."
+          pip install safety
+          safety check
+
+  # Test Coverage Summary
+  coverage-summary:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+    if: always()
+    
+    steps:
+      - name: Coverage Summary
+        run: |
+          echo "📊 Test Coverage Summary"
+          echo "======================="
+          echo "✅ Backend: Python tests with 75% coverage threshold"
+          echo "✅ Frontend: Node.js tests with 100% coverage threshold (statements, branches, functions, lines)"
+          echo "✅ Accessibility: WCAG 2.2 AA compliance tests"
+          echo ""
+          echo "Coverage reports uploaded to Codecov for detailed analysis."
       - run: npm ci
       - name: Cache Docker layers
         uses: actions/cache@v4

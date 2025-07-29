@@ -43,7 +43,11 @@ import jwt
 
 class RequestIdFilter(logging.Filter):
     def filter(self, record):
-        record.request_id = request.environ.get('REQUEST_ID', 'N/A')
+        try:
+            record.request_id = request.environ.get('REQUEST_ID', 'N/A')
+        except RuntimeError:
+            # No request context available (e.g., during server startup)
+            record.request_id = 'N/A'
         return True
 
 app = Flask(__name__)
@@ -721,6 +725,215 @@ def update_appointment_status(appt_id: str):
             audit(conn, "system", "STATUS_CHANGE", "appointment", appt_id, {"status": old_status}, {"status": new_status})
     conn.close()
     return jsonify({"id": appt_id, "status": new_status})
+
+# ----------------------------------------------------------------------------
+# Services CRUD (S2)
+# ----------------------------------------------------------------------------
+@app.route("/api/appointments/<appt_id>/services", methods=["GET"])
+def get_appointment_services(appt_id: str):
+    """Get all services for an appointment."""
+    conn = db_conn()
+    if conn is None:
+        return jsonify({"services": []})
+
+    with conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id::text, appointment_id::text, name, notes, 
+                       estimated_hours, estimated_price, category, created_at
+                FROM appointment_services 
+                WHERE appointment_id = %s 
+                ORDER BY created_at
+                """,
+                (appt_id,)
+            )
+            services = cur.fetchall()
+
+    conn.close()
+    return jsonify({
+        "services": [
+            {
+                "id": s["id"],
+                "appointment_id": s["appointment_id"],
+                "name": s["name"],
+                "notes": s.get("notes"),
+                "estimated_hours": float(s["estimated_hours"]) if s.get("estimated_hours") is not None else None,
+                "estimated_price": float(s["estimated_price"]) if s.get("estimated_price") is not None else None,
+                "category": s.get("category"),
+                "created_at": s["created_at"].isoformat() if s.get("created_at") else None,
+            }
+            for s in services
+        ]
+    })
+
+
+@app.route("/api/appointments/<appt_id>/services", methods=["POST"])
+def create_appointment_service(appt_id: str):
+    """Create a new service for an appointment."""
+    body = request.get_json(silent=True) or {}
+    
+    # Validate required fields
+    name = body.get("name", "").strip()
+    if not name:
+        return _fail(HTTPStatus.BAD_REQUEST, "VALIDATION_FAILED", "Service name is required")
+    
+    notes = body.get("notes", "").strip()
+    estimated_hours = body.get("estimated_hours")
+    estimated_price = body.get("estimated_price")
+    category = body.get("category", "").strip()
+    
+    # Convert numeric fields
+    try:
+        if estimated_hours is not None:
+            estimated_hours = float(estimated_hours)
+        if estimated_price is not None:
+            estimated_price = float(estimated_price)
+    except ValueError:
+        return _fail(HTTPStatus.BAD_REQUEST, "VALIDATION_FAILED", "Invalid numeric values")
+
+    conn = db_conn()
+    if conn is None:
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
+
+    new_service_id = None
+    with conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Verify appointment exists
+            cur.execute("SELECT id FROM appointments WHERE id = %s", (appt_id,))
+            if not cur.fetchone():
+                return _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Appointment not found")
+            
+            # Create service
+            cur.execute(
+                """
+                INSERT INTO appointment_services (appointment_id, name, notes, estimated_hours, estimated_price, category)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id::text
+                """,
+                (appt_id, name, notes or None, estimated_hours, estimated_price, category or None)
+            )
+            row = cur.fetchone()
+            new_service_id = row["id"] if row else None
+            
+            # Recompute appointment total
+            _recompute_appointment_total(cur, appt_id)
+            
+    conn.close()
+    
+    if not new_service_id:
+        return _fail(HTTPStatus.INTERNAL_SERVER_ERROR, "CREATE_FAILED", "Failed to create service")
+    
+    return jsonify({"id": new_service_id}), 201
+
+
+@app.route("/api/appointments/<appt_id>/services/<service_id>", methods=["PATCH"])
+def update_appointment_service(appt_id: str, service_id: str):
+    """Update an existing service."""
+    body = request.get_json(silent=True) or {}
+    
+    # Build update fields
+    updates = {}
+    if "name" in body:
+        name = body["name"].strip()
+        if not name:
+            return _fail(HTTPStatus.BAD_REQUEST, "VALIDATION_FAILED", "Service name cannot be empty")
+        updates["name"] = name
+    
+    if "notes" in body:
+        updates["notes"] = body["notes"].strip() or None
+    
+    if "estimated_hours" in body:
+        try:
+            updates["estimated_hours"] = float(body["estimated_hours"]) if body["estimated_hours"] is not None else None
+        except ValueError:
+            return _fail(HTTPStatus.BAD_REQUEST, "VALIDATION_FAILED", "Invalid estimated_hours value")
+    
+    if "estimated_price" in body:
+        try:
+            updates["estimated_price"] = float(body["estimated_price"]) if body["estimated_price"] is not None else None
+        except ValueError:
+            return _fail(HTTPStatus.BAD_REQUEST, "VALIDATION_FAILED", "Invalid estimated_price value")
+    
+    if "category" in body:
+        updates["category"] = body["category"].strip() or None
+    
+    if not updates:
+        return _fail(HTTPStatus.BAD_REQUEST, "VALIDATION_FAILED", "No valid fields to update")
+
+    conn = db_conn()
+    if conn is None:
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
+
+    with conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Build dynamic update query
+            set_parts = []
+            values = []
+            for field, value in updates.items():
+                set_parts.append(f"{field} = %s")
+                values.append(value)
+            
+            values.extend([service_id, appt_id])
+            
+            cur.execute(
+                f"""
+                UPDATE appointment_services 
+                SET {', '.join(set_parts)}
+                WHERE id = %s AND appointment_id = %s
+                RETURNING id::text
+                """,
+                values
+            )
+            
+            if not cur.fetchone():
+                return _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Service not found")
+            
+            # Recompute appointment total
+            _recompute_appointment_total(cur, appt_id)
+    
+    conn.close()
+    return jsonify({"id": service_id})
+
+
+@app.route("/api/appointments/<appt_id>/services/<service_id>", methods=["DELETE"])
+def delete_appointment_service(appt_id: str, service_id: str):
+    """Delete a service from an appointment."""
+    conn = db_conn()
+    if conn is None:
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
+
+    with conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "DELETE FROM appointment_services WHERE id = %s AND appointment_id = %s RETURNING id::text",
+                (service_id, appt_id)
+            )
+            
+            if not cur.fetchone():
+                return _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Service not found")
+            
+            # Recompute appointment total
+            _recompute_appointment_total(cur, appt_id)
+    
+    conn.close()
+    return "", 204
+
+
+def _recompute_appointment_total(cur, appt_id: str):
+    """Recompute appointment total_amount from services."""
+    cur.execute(
+        """
+        UPDATE appointments 
+        SET total_amount = (
+            SELECT COALESCE(SUM(estimated_price), 0) 
+            FROM appointment_services 
+            WHERE appointment_id = %s
+        )
+        WHERE id = %s
+        """,
+        (appt_id, appt_id)
+    )
 
 # ----------------------------------------------------------------------------
 # Stats & Cars
