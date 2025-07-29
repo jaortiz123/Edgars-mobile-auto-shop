@@ -81,6 +81,20 @@ export interface DrawerPayload {
   services: AppointmentService[];
 }
 
+export type MessageChannel = 'sms' | 'email';
+export type MessageDirection = 'out' | 'in';
+export type MessageStatus = 'sending' | 'delivered' | 'failed';
+
+export interface Message {
+  id: string;
+  appointment_id: string;
+  channel: MessageChannel;
+  direction: MessageDirection;
+  body: string;
+  status: MessageStatus;
+  sent_at?: string | null; // ISO timestamp
+}
+
 export interface CarOnPremises {
   id: string;
   make?: string | null;

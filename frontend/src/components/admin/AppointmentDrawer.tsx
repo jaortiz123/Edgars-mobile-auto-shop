@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Tabs } from '@/components/ui/Tabs';
 import * as api from '@/lib/api';
 import type { DrawerPayload, AppointmentService } from '@/types/models';
+import MessageThread from './MessageThread';
 
 export default function AppointmentDrawer({ open, onClose, id }: { open: boolean; onClose: () => void; id: string | null }) {
   const [tab, setTab] = useState('overview');
@@ -93,11 +94,16 @@ export default function AppointmentDrawer({ open, onClose, id }: { open: boolean
         <Tabs
           value={tab}
           onValueChange={setTab}
-          tabs={[{ value: 'overview', label: 'Overview' }, { value: 'services', label: 'Services' }]}
+          tabs={[
+            { value: 'overview', label: 'Overview' }, 
+            { value: 'services', label: 'Services' },
+            { value: 'messages', label: 'Messages' }
+          ]}
         />
         <div className="p-4 overflow-auto flex-1">
           {tab === 'overview' && <Overview data={data} />}
           {tab === 'services' && <Services data={data} />}
+          {tab === 'messages' && id && <MessageThread appointmentId={id} drawerOpen={open} />}
         </div>
       </div>
     </div>
