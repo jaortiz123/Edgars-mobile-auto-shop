@@ -6,6 +6,7 @@ psycopg2-binary
 Flask
 Flask-CORS
 PyJWT
+redis
 
 # Testing dependencies
 pytest
