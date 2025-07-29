@@ -438,41 +438,121 @@ Partial update.
 
 ---
 
-## 5. Messaging (S2)
+## 5. Messaging (T-021)
 
-> **Flag:** `ff.messaging` must be enabled. TCPA compliance required.
+**Role-based access:** Owner & Advisor can read/write, Tech can read only.
 
 ### GET `/api/appointments/:id/messages`
 
-Returns latest messages first (paginate with `cursor`).
+Returns all messages for an appointment, ordered by sent_at DESC (latest first).
+
+**Response 200**
+
+```json
+{
+  "data": {
+    "messages": [
+      {
+        "id": "msg-uuid-1",
+        "appointment_id": "123",
+        "channel": "sms",
+        "direction": "out",
+        "body": "Your vehicle is ready for pickup.",
+        "status": "delivered",
+        "sent_at": "2025-07-29T14:30:00Z"
+      },
+      {
+        "id": "msg-uuid-2", 
+        "appointment_id": "123",
+        "channel": "sms",
+        "direction": "in",
+        "body": "Thank you!",
+        "status": "delivered",
+        "sent_at": "2025-07-29T14:35:00Z"
+      }
+    ]
+  },
+  "errors": null,
+  "meta": { "request_id": "<uuid>" }
+}
+```
+
+**Error Responses**
+
+* **403 Forbidden** - Authentication required or invalid role
+* **404 Not Found** - Appointment not found
 
 ### POST `/api/appointments/:id/messages`
 
-Headers: optional `Idempotency-Key`
+Create a new outbound message for an appointment.
+
+**Request**
 
 ```json
-{ "channel": "sms", "body": "Your vehicle is ready for pickup." }
+{
+  "channel": "sms",
+  "body": "Your estimate is ready. Please call to approve."
+}
 ```
 
-**201** → `status: "sending"` message
-
-**Errors**
-
-* `RBAC_FORBIDDEN` for roles
-* `VALIDATION_FAILED` for missing consent or quiet hours
-
-### POST `/api/webhooks/messaging`
-
-Provider → system (HMAC signed).
+**Response 201**
 
 ```json
-{ "provider": "twilio", "message_id": "...", "status": "delivered", "error_code": null }
+{
+  "data": {
+    "id": "msg-uuid-new",
+    "status": "sending"
+  },
+  "errors": null,
+  "meta": { "request_id": "<uuid>" }
+}
 ```
 
-**200**. Server updates `messages.status` and stores `provider_id`, `error_code`.
+**Error Responses**
 
-**STOP handling**
-Inbound `body` equals `STOP` → set `customers.sms_consent_status = 'denied'`, insert auto reply, audit log.
+* **400 Bad Request** - Invalid channel or empty body
+* **403 Forbidden** - Only Owner & Advisor can send messages
+
+### PATCH `/api/appointments/:id/messages/:message_id`
+
+Update message delivery status (typically from webhook or manual retry).
+
+**Request**
+
+```json
+{
+  "status": "delivered"
+}
+```
+
+**Response 200**
+
+```json
+{
+  "data": {
+    "id": "msg-uuid-1"
+  },
+  "errors": null,
+  "meta": { "request_id": "<uuid>" }
+}
+```
+
+**Error Responses**
+
+* **400 Bad Request** - Invalid status value
+* **403 Forbidden** - Only Owner & Advisor can update messages  
+* **404 Not Found** - Message not found
+
+### DELETE `/api/appointments/:id/messages/:message_id`
+
+Delete a message from an appointment.
+
+**Response 204** - No content
+
+**Error Responses**
+
+* **403 Forbidden** - Only Owner & Advisor can delete messages
+* **404 Not Found** - Message not found
 
 ---
 

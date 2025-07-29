@@ -2,13 +2,14 @@ import axios from 'axios';
 import type {
   Appointment, AppointmentService, AppointmentStatus,
   BoardCard, BoardColumn, DashboardStats, DrawerPayload,
-  CarOnPremises
+  CarOnPremises, Message, MessageChannel, MessageStatus
 } from '../types/models';
 
 // Re-export types for components
 export type {
   Appointment, AppointmentService, AppointmentStatus,
-  BoardCard, BoardColumn, DashboardStats, DrawerPayload
+  BoardCard, BoardColumn, DashboardStats, DrawerPayload,
+  Message, MessageChannel, MessageStatus
 } from '../types/models';
 
 export const toStatus = (s: string): AppointmentStatus =>
@@ -167,6 +168,45 @@ export async function patchAppointment(id: string, body: Partial<Appointment>) {
 export function isOnline() {
   if (typeof navigator === 'undefined') return true;
   return navigator.onLine;
+}
+
+// ----------------------------------------------------------------------------
+// Messaging (T-021)
+// ----------------------------------------------------------------------------
+
+export async function getAppointmentMessages(appointmentId: string): Promise<Message[]> {
+  const { data } = await http.get<{ messages: Message[] }>(`/appointments/${appointmentId}/messages`);
+  return data.messages;
+}
+
+export async function createAppointmentMessage(
+  appointmentId: string,
+  message: { channel: MessageChannel; body: string }
+): Promise<{ id: string; status: MessageStatus }> {
+  const { data } = await http.post<{ id: string; status: MessageStatus }>(
+    `/appointments/${appointmentId}/messages`,
+    message
+  );
+  return data;
+}
+
+export async function updateMessageStatus(
+  appointmentId: string,
+  messageId: string,
+  update: { status: MessageStatus }
+): Promise<{ id: string }> {
+  const { data } = await http.patch<{ id: string }>(
+    `/appointments/${appointmentId}/messages/${messageId}`,
+    update
+  );
+  return data;
+}
+
+export async function deleteAppointmentMessage(
+  appointmentId: string,
+  messageId: string
+): Promise<void> {
+  await http.delete(`/appointments/${appointmentId}/messages/${messageId}`);
 }
 
 export function handleApiError(err: unknown, defaultMessage?: string): string {

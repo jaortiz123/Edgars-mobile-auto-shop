@@ -940,6 +940,214 @@ def _recompute_appointment_total(cur, appt_id: str):
     )
 
 # ----------------------------------------------------------------------------
+# Messaging (T-021)
+# ----------------------------------------------------------------------------
+@app.route("/api/appointments/<appt_id>/messages", methods=["GET"])
+def get_appointment_messages(appt_id: str):
+    """Get all messages for an appointment."""
+    # Role check: Owner & Advisor read/write, Tech read-only
+    try:
+        user = require_auth_role()
+        user_role = user.get("role", "Advisor")
+    except Exception:
+        return _fail(HTTPStatus.FORBIDDEN, "AUTH_REQUIRED", "Authentication required")
+
+    conn = db_conn()
+    if conn is None:
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
+
+    with conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Verify appointment exists
+            cur.execute("SELECT id FROM appointments WHERE id = %s", (appt_id,))
+            if not cur.fetchone():
+                return _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Appointment not found")
+            
+            # Get messages ordered by timestamp (latest first)
+            cur.execute(
+                """
+                SELECT id::text, appointment_id::text, channel, direction, body, 
+                       status, sent_at
+                FROM messages 
+                WHERE appointment_id = %s
+                ORDER BY sent_at DESC
+                """,
+                (appt_id,)
+            )
+            messages = cur.fetchall()
+
+    conn.close()
+    return _ok({
+        "messages": [
+            {
+                "id": m["id"],
+                "appointment_id": m["appointment_id"],
+                "channel": m["channel"],
+                "direction": m["direction"],
+                "body": m["body"],
+                "status": m["status"],
+                "sent_at": m["sent_at"].isoformat() if m.get("sent_at") else None,
+            }
+            for m in messages
+        ]
+    })
+
+
+@app.route("/api/appointments/<appt_id>/messages", methods=["POST"])
+def create_appointment_message(appt_id: str):
+    """Create a new outbound message for an appointment."""
+    # Role check: Owner & Advisor can write, Tech read-only
+    try:
+        user = require_auth_role()
+        user_role = user.get("role", "Advisor")
+        if user_role not in ["Owner", "Advisor"]:
+            return _fail(HTTPStatus.FORBIDDEN, "RBAC_FORBIDDEN", "Only Owner and Advisor can send messages")
+    except Exception:
+        return _fail(HTTPStatus.FORBIDDEN, "AUTH_REQUIRED", "Authentication required")
+
+    body = request.get_json(silent=True) or {}
+    
+    # Validate required fields
+    channel = body.get("channel", "").strip().lower()
+    if channel not in ["sms", "email"]:
+        return _fail(HTTPStatus.BAD_REQUEST, "VALIDATION_FAILED", "Channel must be 'sms' or 'email'")
+    
+    message_body = body.get("body", "").strip()
+    if not message_body:
+        return _fail(HTTPStatus.BAD_REQUEST, "VALIDATION_FAILED", "Message body is required")
+
+    conn = db_conn()
+    if conn is None:
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
+
+    new_message_id = None
+    with conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Verify appointment exists
+            cur.execute("SELECT id FROM appointments WHERE id = %s", (appt_id,))
+            if not cur.fetchone():
+                return _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Appointment not found")
+            
+            # Create outbound message with 'queued' status
+            cur.execute(
+                """
+                INSERT INTO messages (appointment_id, channel, direction, body, status)
+                VALUES (%s, %s, 'out', %s, 'sending')
+                RETURNING id::text
+                """,
+                (appt_id, channel, message_body)
+            )
+            row = cur.fetchone()
+            new_message_id = row["id"] if row else None
+            
+            # Audit log
+            audit(conn, user.get("sub", "system"), "MESSAGE_SENT", "message", new_message_id or "unknown", 
+                  {}, {"appointment_id": appt_id, "channel": channel, "direction": "out"})
+            
+    conn.close()
+    
+    if not new_message_id:
+        return _fail(HTTPStatus.INTERNAL_SERVER_ERROR, "CREATE_FAILED", "Failed to create message")
+    
+    return _ok({"id": new_message_id, "status": "sending"}, HTTPStatus.CREATED)
+
+
+@app.route("/api/appointments/<appt_id>/messages/<message_id>", methods=["PATCH"])
+def update_message_status(appt_id: str, message_id: str):
+    """Update message delivery status (typically from webhook or manual retry)."""
+    # Role check: Owner & Advisor can update
+    try:
+        user = require_auth_role()
+        user_role = user.get("role", "Advisor")
+        if user_role not in ["Owner", "Advisor"]:
+            return _fail(HTTPStatus.FORBIDDEN, "RBAC_FORBIDDEN", "Only Owner and Advisor can update messages")
+    except Exception:
+        return _fail(HTTPStatus.FORBIDDEN, "AUTH_REQUIRED", "Authentication required")
+
+    body = request.get_json(silent=True) or {}
+    
+    # Build update fields
+    updates = {}
+    if "status" in body:
+        status = body["status"].strip().lower()
+        if status not in ["sending", "delivered", "failed"]:
+            return _fail(HTTPStatus.BAD_REQUEST, "VALIDATION_FAILED", "Status must be 'sending', 'delivered', or 'failed'")
+        updates["status"] = status
+    
+    if not updates:
+        return _fail(HTTPStatus.BAD_REQUEST, "VALIDATION_FAILED", "No valid fields to update")
+
+    conn = db_conn()
+    if conn is None:
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
+
+    with conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Build dynamic update query
+            set_parts = []
+            values = []
+            for field, value in updates.items():
+                set_parts.append(f"{field} = %s")
+                values.append(value)
+            
+            values.extend([message_id, appt_id])
+            
+            cur.execute(
+                f"""
+                UPDATE messages 
+                SET {', '.join(set_parts)}
+                WHERE id = %s AND appointment_id = %s
+                RETURNING id::text
+                """,
+                values
+            )
+            
+            if not cur.fetchone():
+                return _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Message not found")
+            
+            # Audit log
+            audit(conn, user.get("sub", "system"), "MESSAGE_UPDATED", "message", message_id, 
+                  {}, updates)
+    
+    conn.close()
+    return _ok({"id": message_id})
+
+
+@app.route("/api/appointments/<appt_id>/messages/<message_id>", methods=["DELETE"])
+def delete_appointment_message(appt_id: str, message_id: str):
+    """Delete a message from an appointment."""
+    # Role check: Owner & Advisor can delete
+    try:
+        user = require_auth_role()
+        user_role = user.get("role", "Advisor")
+        if user_role not in ["Owner", "Advisor"]:
+            return _fail(HTTPStatus.FORBIDDEN, "RBAC_FORBIDDEN", "Only Owner and Advisor can delete messages")
+    except Exception:
+        return _fail(HTTPStatus.FORBIDDEN, "AUTH_REQUIRED", "Authentication required")
+
+    conn = db_conn()
+    if conn is None:
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
+
+    with conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Hard delete since no deleted_at column in current schema
+            cur.execute(
+                "DELETE FROM messages WHERE id = %s AND appointment_id = %s RETURNING id::text",
+                (message_id, appt_id)
+            )
+            
+            if not cur.fetchone():
+                return _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Message not found")
+            
+            # Audit log
+            audit(conn, user.get("sub", "system"), "MESSAGE_DELETED", "message", message_id, 
+                  {"deleted": False}, {"deleted": True})
+    
+    conn.close()
+    return "", 204
+
+# ----------------------------------------------------------------------------
 # Stats & Cars
 # ----------------------------------------------------------------------------
 @app.route("/api/admin/dashboard/stats", methods=["GET"])
