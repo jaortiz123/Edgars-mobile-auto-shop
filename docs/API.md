@@ -172,6 +172,124 @@ Soft delete. **204**
 
 ---
 
+## 2.1 Services Management
+
+### GET `/api/appointments/:id/services`
+
+Returns all services for an appointment.
+
+**200**
+```json
+{
+  "services": [
+    {
+      "id": "svc-1",
+      "appointment_id": "apt-123",
+      "name": "Front brake pad replacement",
+      "notes": "OEM preferred",
+      "estimated_hours": 1.5,
+      "estimated_price": 180.00,
+      "category": "Brakes",
+      "created_at": "2025-07-28T10:00:00Z"
+    }
+  ]
+}
+```
+
+### POST `/api/appointments/:id/services`
+
+Creates a new service for the appointment.
+
+**Request:**
+```json
+{
+  "name": "Brake Fluid Check",
+  "notes": "Check brake fluid level and condition",
+  "estimated_hours": 0.25,
+  "estimated_price": 25.00,
+  "category": "Maintenance"
+}
+```
+
+**201**
+```json
+{
+  "service": {
+    "id": "svc-2",
+    "appointment_id": "apt-123",
+    "name": "Brake Fluid Check",
+    "notes": "Check brake fluid level and condition",
+    "estimated_hours": 0.25,
+    "estimated_price": 25.00,
+    "category": "Maintenance",
+    "created_at": "2025-07-28T10:15:00Z"
+  },
+  "appointment_total": 205.00
+}
+```
+
+### PATCH `/api/appointments/:id/services/:serviceId`
+
+Updates an existing service.
+
+**Request:**
+```json
+{
+  "name": "Brake Fluid Replacement",
+  "estimated_price": 45.00
+}
+```
+
+**200**
+```json
+{
+  "service": {
+    "id": "svc-2",
+    "appointment_id": "apt-123",
+    "name": "Brake Fluid Replacement",
+    "notes": "Check brake fluid level and condition",
+    "estimated_hours": 0.25,
+    "estimated_price": 45.00,
+    "category": "Maintenance",
+    "created_at": "2025-07-28T10:15:00Z"
+  },
+  "appointment_total": 225.00
+}
+```
+
+### DELETE `/api/appointments/:id/services/:serviceId`
+
+Deletes a service from the appointment.
+
+**204**
+```json
+{
+  "message": "Service deleted successfully",
+  "appointment_total": 180.00
+}
+```
+
+**curl examples:**
+```bash
+# List services
+curl -X GET "http://localhost:3001/api/appointments/45/services"
+
+# Create service
+curl -X POST "http://localhost:3001/api/appointments/45/services" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Oil Change", "estimated_price": 75.00}'
+
+# Update service
+curl -X PATCH "http://localhost:3001/api/appointments/45/services/svc-1" \
+  -H "Content-Type: application/json" \
+  -d '{"estimated_price": 85.00}'
+
+# Delete service
+curl -X DELETE "http://localhost:3001/api/appointments/45/services/svc-1"
+```
+
+---
+
 ## 3. Status Board
 
 ### GET `/api/admin/appointments/board?from&to&techId`

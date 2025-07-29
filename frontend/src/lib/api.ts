@@ -117,6 +117,47 @@ export async function getDrawer(id: string) {
   const { data } = await http.get<DrawerPayload>(`/appointments/${id}`);
   return data;
 }
+
+// Services CRUD methods
+export async function getAppointmentServices(appointmentId: string): Promise<AppointmentService[]> {
+  const resp = await http.get<Envelope<{ services: AppointmentService[] }>>(
+    `/appointments/${appointmentId}/services`
+  );
+  return resp.data.data.services;
+}
+
+export async function createAppointmentService(
+  appointmentId: string, 
+  service: Partial<AppointmentService>
+): Promise<{ service: AppointmentService; appointment_total: number }> {
+  const resp = await http.post<{ service: AppointmentService; appointment_total: number }>(
+    `/appointments/${appointmentId}/services`,
+    service
+  );
+  return resp.data;
+}
+
+export async function updateAppointmentService(
+  appointmentId: string,
+  serviceId: string,
+  service: Partial<AppointmentService>
+): Promise<{ service: AppointmentService; appointment_total: number }> {
+  const resp = await http.patch<{ service: AppointmentService; appointment_total: number }>(
+    `/appointments/${appointmentId}/services/${serviceId}`,
+    service
+  );
+  return resp.data;
+}
+
+export async function deleteAppointmentService(
+  appointmentId: string,
+  serviceId: string
+): Promise<{ message: string; appointment_total: number }> {
+  const resp = await http.delete<{ message: string; appointment_total: number }>(
+    `/appointments/${appointmentId}/services/${serviceId}`
+  );
+  return resp.data;
+}
 export async function patchAppointment(id: string, body: Partial<Appointment>) {
   const { data } = await http.patch<Appointment>(`/appointments/${id}`, body);
   return data;

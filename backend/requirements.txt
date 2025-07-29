@@ -3,3 +3,11 @@ python-json-logger
 alembic
 SQLAlchemy
 psycopg2-binary
+Flask
+Flask-CORS
+PyJWT
+
+# Testing dependencies
+pytest
+pytest-cov
+pytest-mock
