@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",
+    "test:a11y": "vitest run src/tests/accessibility.test.tsx --reporter=verbose",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "clean": "rm -rf node_modules/.cache .vite .next dist"
   },

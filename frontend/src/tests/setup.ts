@@ -14,7 +14,21 @@ vi.mock('@/lib/api', () => ({
   getDashboardStats: vi.fn().mockResolvedValue({ success: true, data: { totals: { today: 0, week: 0, unpaid_total: 0 }, countsByStatus: {}, carsOnPremises: [] }, errors: null }),
   getCarsOnPremises: vi.fn().mockResolvedValue([]),
   getStats: vi.fn().mockResolvedValue({ totals: { today: 0, week: 0, unpaid_total: 0 }, countsByStatus: {}, carsOnPremises: [] }),
-  getDrawer: vi.fn().mockResolvedValue({ success: true, data: { id: 'x', services: [] }, errors: null }),
+  getDrawer: vi.fn().mockImplementation((id: string) => {
+    console.log(`🔧 Global getDrawer mock called with id: ${id}`);
+    return Promise.resolve({
+      appointment: { 
+        id: id,
+        status: 'scheduled', 
+        total_amount: 150, 
+        paid_amount: 0, 
+        check_in_at: null 
+      },
+      customer: { name: 'Test Customer' },
+      vehicle: { year: '2020', make: 'Test', model: 'Car' },
+      services: []
+    });
+  }),
   createAppointment: vi.fn().mockResolvedValue({ success: true, data: { id: 'new' }, errors: null }),
   updateAppointmentStatus: vi.fn().mockResolvedValue({ success: true, data: { ok: true }, errors: null }),
   handleApiError: vi.fn().mockImplementation((_e, fallback) => fallback),

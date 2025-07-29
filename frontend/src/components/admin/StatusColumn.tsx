@@ -17,7 +17,7 @@ export default function StatusColumn({
     <div className="min-w-[280px] w-72">
       <div className="sticky top-0 bg-gray-50 z-10 rounded-t-lg border-x border-t p-3">
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold">{column.title}</h4>
+          <h2 className="text-sm font-semibold">{column.title}</h2>
           <span className="text-xs text-gray-500">{column.count}</span>
         </div>
         <div className="text-xs text-gray-500">${column.sum.toFixed(2)}</div>

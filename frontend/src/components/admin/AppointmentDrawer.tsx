@@ -7,13 +7,65 @@ export default function AppointmentDrawer({ open, onClose, id }: { open: boolean
   const [tab, setTab] = useState('overview');
   const [data, setData] = useState<DrawerPayload | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    if (open && id) {
+    if (open && id && api.getDrawer) {
       setData(null);
       void api.getDrawer(id).then(setData).catch(console.error);
     }
   }, [open, id]);
+
+  // Focus management
+  useEffect(() => {
+    if (open) {
+      // Store the previously focused element
+      previousActiveElement.current = document.activeElement as HTMLElement;
+      // Focus the close button when drawer opens
+      setTimeout(() => {
+        closeButtonRef.current?.focus();
+      }, 100);
+    } else {
+      // Return focus to the previously focused element when drawer closes
+      if (previousActiveElement.current) {
+        previousActiveElement.current.focus();
+      }
+    }
+  }, [open]);
+
+  // Focus trap functionality
+  useEffect(() => {
+    if (!open) return;
+
+    const handleTabKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      
+      const drawer = ref.current;
+      if (!drawer) return;
+
+      const focusableElements = drawer.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      const firstElement = focusableElements[0] as HTMLElement;
+      const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+
+      if (e.shiftKey) {
+        if (document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement?.focus();
+        }
+      } else {
+        if (document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement?.focus();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleTabKey);
+    return () => document.removeEventListener('keydown', handleTabKey);
+  }, [open]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape' && open) onClose(); }
@@ -29,7 +81,14 @@ export default function AppointmentDrawer({ open, onClose, id }: { open: boolean
       <div ref={ref} data-testid="drawer-open" className="absolute right-0 top-0 h-full w-full max-w-xl bg-white shadow-xl flex flex-col">
         <div className="p-4 border-b flex items-center justify-between">
           <h2 id="drawer-title" className="text-lg font-semibold">Appointment</h2>
-          <button aria-label="Close" onClick={onClose}>✕</button>
+          <button 
+            ref={closeButtonRef}
+            aria-label="Close drawer" 
+            onClick={onClose}
+            className="p-1 hover:bg-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            ✕
+          </button>
         </div>
         <Tabs
           value={tab}

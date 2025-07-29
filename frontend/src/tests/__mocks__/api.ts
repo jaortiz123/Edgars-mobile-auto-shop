@@ -4,7 +4,42 @@ import type {
 } from '@/types/models';
 
 export async function getBoard(): Promise<{ columns: BoardColumn[]; cards: BoardCard[] }> {
-  return { columns: [], cards: [] };
+  return { 
+    columns: [
+      { key: 'scheduled', title: 'Scheduled', count: 1, sum: 500 },
+      { key: 'in-progress', title: 'In Progress', count: 1, sum: 750 },
+      { key: 'completed', title: 'Completed', count: 1, sum: 300 }
+    ], 
+    cards: [
+      {
+        id: 'test-1',
+        customerName: 'John Doe',
+        vehicle: '2020 Toyota Camry',
+        servicesSummary: 'Oil Change, Brake Inspection',
+        status: 'scheduled',
+        position: 1,
+        price: 500
+      },
+      {
+        id: 'test-2', 
+        customerName: 'Jane Smith',
+        vehicle: '2019 Honda Civic',
+        servicesSummary: 'Tire Rotation, Engine Diagnostic',
+        status: 'in-progress',
+        position: 1,
+        price: 750
+      },
+      {
+        id: 'test-3',
+        customerName: 'Bob Johnson', 
+        vehicle: '2021 Ford F-150',
+        servicesSummary: 'Air Filter Replacement',
+        status: 'completed',
+        position: 1,
+        price: 300
+      }
+    ]
+  };
 }
 
 export async function getAppointments(): Promise<{ appointments: unknown[]; nextCursor: string | null }> {
@@ -40,13 +75,18 @@ export async function updateAppointmentStatus(): Promise<{ id: string; status: s
   return { id: '', status: '' };
 }
 
-export async function getDrawer(): Promise<DrawerPayload> {
-  return {
-    appointment: { status: 'PENDING', total_amount: 0, paid_amount: 0, check_in_at: null },
-    customer: { name: '' },
-    vehicle: { year: '', make: '', model: '' },
+export async function getDrawer(id: string): Promise<DrawerPayload> {
+  return Promise.resolve({
+    appointment: { 
+      status: 'PENDING', 
+      total_amount: 0, 
+      paid_amount: 0, 
+      check_in_at: null 
+    },
+    customer: { name: `Test Customer ${id}` },
+    vehicle: { year: '2020', make: 'Toyota', model: 'Camry' },
     services: [],
-  };
+  });
 }
 
 export async function patchAppointment(): Promise<unknown> {
