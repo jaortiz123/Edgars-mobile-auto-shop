@@ -10,6 +10,7 @@ export default function AppointmentCard({ card, onOpen, onMove }: {
     <div
       className="rounded-lg border bg-white p-3 shadow-sm cursor-pointer"
       data-card-id={card.id}
+      data-testid={`board-card-${card.id}`}
       onClick={() => onOpen(card.id)}
     >
       <div className="flex items-center justify-between gap-2">
