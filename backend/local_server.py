@@ -386,7 +386,10 @@ def move_card(appt_id: str):
 
     # rate limit (by IP or user id)
     key = f"move:{request.remote_addr}:{user.get('sub') if user else 'anon'}"
-    rate_limit(key)
+    try:
+        rate_limit(key)
+    except Forbidden:
+        return _fail(429, 'RATE_LIMITED', 'Rate limit exceeded')
 
     body = request.get_json(force=True, silent=False) or {}
     new_status = norm_status(str(body.get("status", "")))
@@ -402,10 +405,10 @@ def move_card(appt_id: str):
             cur.execute("SELECT id::text, status::text, total_amount FROM appointments WHERE id = %s", (appt_id,))
             row = cur.fetchone()
             if not row:
-                raise BadRequest("Appointment not found")
+                return _fail(404, 'RESOURCE_NOT_FOUND', 'Appointment not found')
             old_status = row["status"]
             if new_status not in ALLOWED_TRANSITIONS.get(old_status, set()):
-                raise BadRequest(f"Invalid transition {old_status} → {new_status}")
+                return _fail(400, 'INVALID_TRANSITION', f"Invalid transition {old_status} → {new_status}")
 
             cur.execute(
                 "UPDATE appointments SET status = %s WHERE id = %s RETURNING id",
@@ -414,8 +417,7 @@ def move_card(appt_id: str):
             audit(conn, (user or {}).get("sub", "anon"), "STATUS_CHANGE", "appointment", appt_id, {"status": old_status}, {"status": new_status})
 
     conn.close()
-    return jsonify({"id": appt_id, "status": new_status, "position": position})
-
+    return _ok({"id": appt_id, "status": new_status, "position": position})
 # ----------------------------------------------------------------------------
 # Drawer
 # ----------------------------------------------------------------------------
