@@ -11,3 +11,6 @@ PyJWT
 pytest
 pytest-cov
 pytest-mock
+
+# Linting dependencies
+flake8
