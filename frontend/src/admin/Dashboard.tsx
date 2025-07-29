@@ -583,10 +583,36 @@ export function Dashboard() {
             </span>
             {/* View Mode Toggles */}
             <div className="flex items-center gap-2">
-              <button data-testid="toggle-calendar" onClick={() => { setView('calendar'); setViewMode('calendar'); }} className={view === 'calendar' ? 'px-2 py-1 bg-blue-500 text-white rounded' : 'px-2 py-1 bg-gray-200 text-gray-700 rounded'}>
+              <button 
+                data-testid="toggle-calendar" 
+                onClick={() => { setView('calendar'); setViewMode('calendar'); }}
+                onKeyDown={(e) => { 
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setView('calendar');
+                    setViewMode('calendar');
+                  }
+                }}
+                aria-pressed={view === 'calendar' ? 'true' : 'false'}
+                aria-label="Switch to calendar view"
+                className={view === 'calendar' ? 'px-2 py-1 bg-blue-500 text-white rounded' : 'px-2 py-1 bg-gray-200 text-gray-700 rounded'}
+              >
                 Calendar
               </button>
-              <button data-testid="toggle-board" onClick={() => { setView('board'); setViewMode('board'); }} className={view === 'board' ? 'px-2 py-1 bg-blue-500 text-white rounded' : 'px-2 py-1 bg-gray-200 text-gray-700 rounded'}>
+              <button 
+                data-testid="toggle-board" 
+                onClick={() => { setView('board'); setViewMode('board'); }}
+                onKeyDown={(e) => { 
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setView('board');
+                    setViewMode('board');
+                  }
+                }}
+                aria-pressed={view === 'board' ? 'true' : 'false'}
+                aria-label="Switch to board view"
+                className={view === 'board' ? 'px-2 py-1 bg-blue-500 text-white rounded' : 'px-2 py-1 bg-gray-200 text-gray-700 rounded'}
+              >
                 Board
               </button>
             </div>

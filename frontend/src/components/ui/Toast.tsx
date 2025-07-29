@@ -87,10 +87,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       error: (text: string, opts?: { key?: string }) => push({ kind: 'error', text, key: opts?.key })
     }}>
       {children}
+      {/* ARIA live region for screen reader announcements */}
+      <div 
+        aria-live="polite" 
+        aria-atomic="true" 
+        className="absolute -top-full left-0 w-1 h-1 overflow-hidden opacity-0"
+      >
+        {items.length > 0 && items[items.length - 1].text}
+      </div>
       <div className="fixed bottom-4 right-4 flex flex-col gap-2 z-50">
         {items.map((i) => (
           <div
             key={i.id}
+            role="alert"
+            aria-live="assertive"
             className={`rounded-md px-4 py-2 shadow-md text-white ${
               i.kind === 'error' ? 'bg-red-600' : i.kind === 'success' ? 'bg-green-600' : 'bg-gray-800'
             }`}

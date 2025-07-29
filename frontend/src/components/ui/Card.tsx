@@ -34,10 +34,10 @@ const CardHeader = React.forwardRef<
 CardHeader.displayName = "CardHeader";
 
 const CardTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <h3 ref={ref} className={`text-2xl font-bold leading-none tracking-tight text-text-primary ${className}`} {...props} />
+  HTMLHeadingElement,
+  React.HTMLAttributes<HTMLHeadingElement> & { as?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' }
+>(({ className, as: Heading = 'h2', ...props }, ref) => (
+  <Heading ref={ref} className={`text-2xl font-bold leading-none tracking-tight text-text-primary ${className}`} {...props} />
 ));
 CardTitle.displayName = "CardTitle";
 
