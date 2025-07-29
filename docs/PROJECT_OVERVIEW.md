@@ -27,7 +27,7 @@ We deliver value every sprint with **minimal, reversible schema changes**. No he
 - **Appointment Drawer:** tabs **Overview · Services · Messages · History**.
 - **Lite domain objects:** services, messages, payments, inspection checklists.
 - **Dashboard stats** and **Cars on Premises**.
-- **CSV exports** (appointments, payments).
+- **CSV exports** (T-024): One-click CSV downloads for accounting integration.
 
 ### Out of scope (V1)
 - Payment gateway processing (record only).
@@ -44,7 +44,7 @@ We deliver value every sprint with **minimal, reversible schema changes**. No he
 - Drawer shows complete appointment context and totals without page hops.
 - Customer communication logged with **delivery status**.
 - **Unpaid total** drops immediately when a payment is recorded.
-- CSV exports open cleanly in accounting tools.
+- **CSV exports** (T-024) enable one-click data downloads for accounting tools.
 - Meets **TCPA**, **RBAC**, **WCAG 2.2 AA**, **SLO p95** targets.
 
 ---
