@@ -3,6 +3,7 @@ import { Tabs } from '@/components/ui/Tabs';
 import * as api from '@/lib/api';
 import type { DrawerPayload, AppointmentService } from '@/types/models';
 import MessageThread from './MessageThread';
+import CustomerHistory from './CustomerHistory';
 
 export default function AppointmentDrawer({ open, onClose, id }: { open: boolean; onClose: () => void; id: string | null }) {
   const [tab, setTab] = useState('overview');
@@ -97,13 +98,36 @@ export default function AppointmentDrawer({ open, onClose, id }: { open: boolean
           tabs={[
             { value: 'overview', label: 'Overview' }, 
             { value: 'services', label: 'Services' },
-            { value: 'messages', label: 'Messages' }
+            { value: 'messages', label: 'Messages' },
+            { value: 'history', label: 'History' }
           ]}
         />
         <div className="p-4 overflow-auto flex-1">
           {tab === 'overview' && <Overview data={data} />}
           {tab === 'services' && <Services data={data} />}
           {tab === 'messages' && id && <MessageThread appointmentId={id} drawerOpen={open} />}
+          {tab === 'history' && data?.customer?.id && (
+            <CustomerHistory 
+              customerId={data.customer.id} 
+              onAppointmentClick={(appointmentId) => {
+                // Reuse existing openDrawer functionality by opening in new drawer
+                if (id !== appointmentId) {
+                  // Close current drawer and open new one
+                  onClose();
+                  // Small delay to allow for smooth transition
+                  setTimeout(() => {
+                    // This will trigger the parent to open the new appointment
+                    // The exact implementation depends on how openDrawer is exposed
+                    // For now, we'll just navigate to the new appointment in the same drawer
+                    void api.getDrawer(appointmentId).then((newData) => {
+                      setData(newData);
+                      setTab('overview'); // Switch to overview of the clicked appointment
+                    }).catch(console.error);
+                  }, 100);
+                }
+              }}
+            />
+          )}
         </div>
       </div>
     </div>

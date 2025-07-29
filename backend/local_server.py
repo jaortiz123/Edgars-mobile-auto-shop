@@ -1148,6 +1148,88 @@ def delete_appointment_message(appt_id: str, message_id: str):
     return "", 204
 
 # ----------------------------------------------------------------------------
+# Customer History (T-023)
+# ----------------------------------------------------------------------------
+@app.route("/api/customers/<customer_id>/history", methods=["GET"])
+def get_customer_history(customer_id: str):
+    """Get customer's appointment and payment history."""
+    # Role check: Owner & Advisor only
+    try:
+        user = require_auth_role()
+        user_role = user.get("role", "Advisor")
+        if user_role not in ["Owner", "Advisor"]:
+            return _fail(HTTPStatus.FORBIDDEN, "RBAC_FORBIDDEN", "Only Owner and Advisor can view customer history")
+    except Exception:
+        return _fail(HTTPStatus.FORBIDDEN, "AUTH_REQUIRED", "Authentication required")
+
+    conn = db_conn()
+    if conn is None:
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
+
+    with conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Verify customer exists
+            cur.execute("SELECT id, name FROM customers WHERE id = %s", (customer_id,))
+            customer = cur.fetchone()
+            if not customer:
+                return _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Customer not found")
+            
+            # Get past appointments with payments using LEFT JOIN
+            cur.execute(
+                """
+                SELECT 
+                    a.id::text, 
+                    a.status::text, 
+                    a.start,
+                    a.total_amount,
+                    a.paid_amount,
+                    a.created_at as appointment_created_at,
+                    COALESCE(
+                        JSON_AGG(
+                            JSON_BUILD_OBJECT(
+                                'id', p.id::text,
+                                'amount', p.amount,
+                                'method', p.method,
+                                'created_at', p.created_at
+                            ) ORDER BY p.created_at DESC
+                        ) FILTER (WHERE p.id IS NOT NULL), 
+                        '[]'::json
+                    ) as payments
+                FROM appointments a
+                LEFT JOIN payments p ON p.appointment_id = a.id
+                WHERE a.customer_id = %s 
+                    AND a.status IN ('COMPLETED', 'NO_SHOW', 'CANCELED')
+                GROUP BY a.id, a.status, a.start, a.total_amount, a.paid_amount, a.created_at
+                ORDER BY a.start DESC, a.id DESC
+                """,
+                (customer_id,)
+            )
+            appointments = cur.fetchall()
+
+    conn.close()
+    
+    # Format appointments for response
+    past_appointments = []
+    for appt in appointments:
+        past_appointments.append({
+            "id": appt["id"],
+            "status": appt["status"],
+            "start": appt["start"].isoformat() if appt.get("start") else None,
+            "total_amount": float(appt["total_amount"]) if appt.get("total_amount") else 0.0,
+            "paid_amount": float(appt["paid_amount"]) if appt.get("paid_amount") else 0.0,
+            "created_at": appt["appointment_created_at"].isoformat() if appt.get("appointment_created_at") else None,
+            "payments": appt["payments"] if appt.get("payments") else []
+        })
+
+    return _ok({
+        "data": {
+            "pastAppointments": past_appointments,
+            "payments": []  # payments are now nested in appointments
+        },
+        "errors": None
+    })
+
+# ----------------------------------------------------------------------------
 # Stats & Cars
 # ----------------------------------------------------------------------------
 @app.route("/api/admin/dashboard/stats", methods=["GET"])
@@ -1267,6 +1349,7 @@ def root():
                 "PATCH /api/admin/appointments/<id>/move",
                 "GET /api/appointments/<id>",
                 "PATCH /api/appointments/<id>",
+                "GET /api/customers/<id>/history",
                 "GET /api/admin/dashboard/stats",
                 "GET /api/admin/cars-on-premises",
             ],

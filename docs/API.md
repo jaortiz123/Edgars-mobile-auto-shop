@@ -645,15 +645,62 @@ Basic profile.
 
 ### GET `/api/customers/:id/history`
 
-**200**
+Get customer's appointment and payment history. Returns past appointments (COMPLETED, NO_SHOW, CANCELED) with nested payment information.
+
+**RBAC:** Owner & Advisor only
+
+**Response 200**
 
 ```json
 {
-  "lastAppointments": [ { "id": "APT-1", "status": "COMPLETED", "total_amount": 420.00, "start": "2025-05-20T16:00:00Z" } ],
-  "lifetimeSpend": 2135.50,
-  "lastContactAt": "2025-07-10T21:02:00Z"
+  "data": {
+    "data": {
+      "pastAppointments": [
+        {
+          "id": "APT-1",
+          "status": "COMPLETED",
+          "start": "2025-05-20T16:00:00Z",
+          "total_amount": 420.00,
+          "paid_amount": 420.00,
+          "created_at": "2025-05-18T10:00:00Z",
+          "payments": [
+            {
+              "id": "PAY-1",
+              "amount": 420.00,
+              "method": "cash",
+              "created_at": "2025-05-20T16:30:00Z"
+            }
+          ]
+        },
+        {
+          "id": "APT-2",
+          "status": "NO_SHOW",
+          "start": "2025-04-15T14:00:00Z",
+          "total_amount": 180.00,
+          "paid_amount": 0.00,
+          "created_at": "2025-04-10T09:00:00Z",
+          "payments": []
+        }
+      ],
+      "payments": []
+    },
+    "errors": null
+  },
+  "errors": null,
+  "meta": { "request_id": "<uuid>" }
 }
 ```
+
+**Error Responses**
+
+* **403 Forbidden** - Only Owner & Advisor can view customer history
+* **404 Not Found** - Customer not found
+
+**Notes:**
+- Only returns past appointments (COMPLETED, NO_SHOW, CANCELED status)
+- Appointments ordered by start date descending (most recent first)
+- Payments nested within each appointment
+- Used by History tab in AppointmentDrawer (T-023)
 
 ---
 

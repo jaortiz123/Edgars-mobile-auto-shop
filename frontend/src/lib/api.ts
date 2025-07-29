@@ -209,6 +209,40 @@ export async function deleteAppointmentMessage(
   await http.delete(`/appointments/${appointmentId}/messages/${messageId}`);
 }
 
+// ----------------------------------------------------------------------------
+// Customer History (T-023)
+// ----------------------------------------------------------------------------
+
+export interface CustomerHistoryPayment {
+  id: string;
+  amount: number;
+  method: string;
+  created_at: string;
+}
+
+export interface CustomerHistoryAppointment {
+  id: string;
+  status: string;
+  start: string;
+  total_amount: number;
+  paid_amount: number;
+  created_at: string;
+  payments: CustomerHistoryPayment[];
+}
+
+export interface CustomerHistoryResponse {
+  data: {
+    pastAppointments: CustomerHistoryAppointment[];
+    payments: CustomerHistoryPayment[];
+  };
+  errors: null;
+}
+
+export async function getCustomerHistory(customerId: string): Promise<CustomerHistoryResponse> {
+  const { data } = await http.get<CustomerHistoryResponse>(`/customers/${customerId}/history`);
+  return data;
+}
+
 export function handleApiError(err: unknown, defaultMessage?: string): string {
   let msg: string;
   if (axios.isAxiosError(err)) {
