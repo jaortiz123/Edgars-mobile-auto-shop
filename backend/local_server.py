@@ -37,6 +37,15 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import jwt
 
+# Redis for caching with graceful fallback
+try:
+    import redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
+from psycopg2.extras import RealDictCursor
+import jwt
+
 # ----------------------------------------------------------------------------
 # App setup
 # ----------------------------------------------------------------------------
@@ -87,6 +96,27 @@ JWT_ALG = "HS256"
 
 FALLBACK_TO_MEMORY = os.getenv("FALLBACK_TO_MEMORY", "false").lower() == "true"
 
+# Redis configuration with graceful fallback
+_REDIS_CLIENT = None
+if REDIS_AVAILABLE:
+    try:
+        _REDIS_CLIENT = redis.Redis(
+            host=os.getenv("REDIS_HOST", "localhost"),
+            port=int(os.getenv("REDIS_PORT", 6379)),
+            db=int(os.getenv("REDIS_DB", 0)),
+            password=os.getenv("REDIS_PASSWORD"),
+            decode_responses=True,
+            socket_timeout=1,
+            socket_connect_timeout=1,
+            health_check_interval=30
+        )
+        # Test connection
+        _REDIS_CLIENT.ping()
+        log.info("Redis connection established")
+    except Exception as e:
+        log.warning("Redis unavailable, continuing without cache: %s", e)
+        _REDIS_CLIENT = None
+
 # Simple in-memory rate limiter buckets {key: (count, window_start)}
 _RATE: Dict[str, Tuple[int, float]] = {}
 RATE_LIMIT_PER_MINUTE = int(os.getenv("MOVE_RATE_LIMIT_PER_MIN", "60"))
@@ -125,6 +155,48 @@ def db_conn():
         if FALLBACK_TO_MEMORY:
             return None
         raise RuntimeError("DB connection failed")
+
+
+def redis_get(key: str) -> Optional[str]:
+    """Get value from Redis with graceful fallback"""
+    if not _REDIS_CLIENT:
+        return None
+    try:
+        return _REDIS_CLIENT.get(key)
+    except Exception as e:
+        log.warning("Redis get failed for key %s: %s", key, e)
+        return None
+
+
+def redis_set(key: str, value: str, ex: int = None) -> bool:
+    """Set value in Redis with graceful fallback"""
+    if not _REDIS_CLIENT:
+        return False
+    try:
+        _REDIS_CLIENT.set(key, value, ex=ex)
+        return True
+    except Exception as e:
+        log.warning("Redis set failed for key %s: %s", key, e)
+        return False
+
+
+def format_duration_hours(hours: float) -> str:
+    """Format duration in hours to human-readable string"""
+    if hours is None or hours < 0:
+        return "N/A"
+    
+    if hours < 1:
+        minutes = int(hours * 60)
+        return f"{minutes}m"
+    elif hours < 24:
+        return f"{hours:.1f}h"
+    else:
+        days = int(hours // 24)
+        remaining_hours = hours % 24
+        if remaining_hours < 1:
+            return f"{days}d"
+        else:
+            return f"{days}d {remaining_hours:.1f}h"
 
 
 _STATUS_ALIASES = {
@@ -1240,6 +1312,15 @@ def stats():
     except Exception:
         pass
 
+    # Check Redis cache first (30s TTL)
+    cache_key = "dashboard_stats"
+    cached_result = redis_get(cache_key)
+    if cached_result:
+        try:
+            return jsonify(json.loads(cached_result))
+        except Exception as e:
+            log.warning("Failed to parse cached stats: %s", e)
+
     frm = request.args.get("from")
     to = request.args.get("to")
 
@@ -1280,8 +1361,36 @@ def stats():
             cur.execute("SELECT COALESCE(SUM(COALESCE(total_amount,0) - COALESCE(paid_amount,0)),0) FROM appointments")
             unpaid = float(cur.fetchone()[0])
 
+            # NEW METRICS FOR v2
+
+            # today_completed - completed appointments today
+            cur.execute("""
+                SELECT COUNT(*) FROM appointments 
+                WHERE start_ts::date = %s AND status = 'COMPLETED'
+            """, (today,))
+            today_completed = int(cur.fetchone()[0])
+
+            # today_booked - all appointments scheduled for today (regardless of status)
+            # This is the same as jobs_today but more explicit
+            today_booked = jobs_today
+
+            # avg_cycle_time - average time from start to completion (in hours)
+            cur.execute("""
+                SELECT AVG(EXTRACT(EPOCH FROM end_ts - start_ts)) / 3600 as avg_hours
+                FROM appointments 
+                WHERE end_ts IS NOT NULL AND start_ts IS NOT NULL
+                  AND status = 'COMPLETED'
+                  AND start_ts >= %s
+            """, (today - timedelta(days=30),))  # Last 30 days for better average
+            
+            avg_result = cur.fetchone()
+            avg_cycle_hours = float(avg_result[0]) if avg_result and avg_result[0] is not None else None
+
     conn.close()
-    return jsonify({
+    
+    # Build enhanced response structure
+    response_data = {
+        # Legacy fields for backward compatibility
         "jobsToday": jobs_today,
         "carsOnPremises": cars,
         "scheduled": counts.get("SCHEDULED", 0),
@@ -1290,7 +1399,20 @@ def stats():
         "completed": counts.get("COMPLETED", 0),
         "noShow": counts.get("NO_SHOW", 0),
         "unpaidTotal": round(unpaid, 2),
-    })
+        
+        # NEW: Enhanced totals object for v2
+        "totals": {
+            "today_completed": today_completed,
+            "today_booked": today_booked,
+            "avg_cycle": avg_cycle_hours,
+            "avg_cycle_formatted": format_duration_hours(avg_cycle_hours) if avg_cycle_hours else "N/A"
+        }
+    }
+
+    # Cache result for 30 seconds
+    redis_set(cache_key, json.dumps(response_data), ex=30)
+    
+    return jsonify(response_data)
 
 
 @app.route("/api/admin/cars-on-premises", methods=["GET"])

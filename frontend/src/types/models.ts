@@ -72,6 +72,13 @@ export interface DashboardStats {
   completed: number;
   noShow: number;
   unpaidTotal: number;
+  // NEW v2 ENHANCED TOTALS
+  totals?: {
+    today_completed: number;
+    today_booked: number;
+    avg_cycle: number | null;
+    avg_cycle_formatted: string;
+  };
 }
 
 export interface DrawerPayload {
