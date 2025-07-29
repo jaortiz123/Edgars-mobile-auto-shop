@@ -179,6 +179,7 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
               {dayAppointments.map(appointment => (
                 <div 
                   key={appointment.id}
+                  data-testid={`calendar-tile-${appointment.id}`}
                   className="flex flex-col p-3 border-b border-gray-200 last:border-b-0 hover:shadow-md cursor-pointer transition-all duration-200 hover:border-blue-300"
                   onClick={() => onAppointmentClick(appointment)}
                 >

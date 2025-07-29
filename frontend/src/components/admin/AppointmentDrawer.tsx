@@ -26,7 +26,7 @@ export default function AppointmentDrawer({ open, onClose, id }: { open: boolean
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div ref={ref} className="absolute right-0 top-0 h-full w-full max-w-xl bg-white shadow-xl flex flex-col">
+      <div ref={ref} data-testid="drawer-open" className="absolute right-0 top-0 h-full w-full max-w-xl bg-white shadow-xl flex flex-col">
         <div className="p-4 border-b flex items-center justify-between">
           <h2 id="drawer-title" className="text-lg font-semibold">Appointment</h2>
           <button aria-label="Close" onClick={onClose}>✕</button>
