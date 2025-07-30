@@ -1,6 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Calendar, User, Car, Wrench, MapPin, Phone, Mail } from 'lucide-react';
 import { Button } from '../ui/Button';
+import TemplateSelector from './TemplateSelector';
+import { getTemplates } from '../../lib/templateService';
+import { getAvailableSlots } from '../../lib/availabilityService';
+import { checkConflict } from '../../lib/api';
+import ConflictWarning from './ConflictWarning';
 
 export interface AppointmentFormData {
   customerName: string;
@@ -22,6 +27,7 @@ interface AppointmentFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: AppointmentFormData) => void;
+  onQuickSchedule: () => void;
   isSubmitting?: boolean;
   initialAppointmentType?: 'regular' | 'emergency';
 }
@@ -60,6 +66,7 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
+  onQuickSchedule,
   isSubmitting = false,
   initialAppointmentType = 'regular'
 }) => {
@@ -80,6 +87,48 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
   });
 
   const [errors, setErrors] = useState<Partial<AppointmentFormData>>({});
+  const [templates, setTemplates] = useState([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [conflict, setConflict] = useState<any>(null);
+  const [overrideConflict, setOverrideConflict] = useState(false);
+
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      const fetchedTemplates = await getTemplates();
+      setTemplates(fetchedTemplates);
+    };
+    fetchTemplates();
+  }, []);
+
+  useEffect(() => {
+    if (formData.serviceType && formData.appointmentType !== 'emergency') {
+      const fetchSlots = async () => {
+        const slots = await getAvailableSlots(formData.serviceType);
+        setAvailableSlots(slots);
+      };
+      fetchSlots();
+    } else {
+      setAvailableSlots([]);
+    }
+  }, [formData.serviceType, formData.appointmentType]);
+
+  useEffect(() => {
+    if (formData.appointmentDate && formData.appointmentTime && formData.appointmentType !== 'emergency') {
+      const check = async () => {
+        const { conflict, conflictingAppointment } = await checkConflict({
+          date: formData.appointmentDate,
+          time: formData.appointmentTime,
+        });
+        setConflict(conflict ? conflictingAppointment : null);
+        setOverrideConflict(false);
+      };
+      check();
+    } else {
+      setConflict(null);
+      setOverrideConflict(false);
+    }
+  }, [formData.appointmentDate, formData.appointmentTime, formData.appointmentType]);
 
   const handleInputChange = (field: keyof AppointmentFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -87,6 +136,25 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
+  };
+
+  const handleTemplateSelect = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    const selectedTemplate = templates.find(t => t.id === templateId);
+    if (selectedTemplate) {
+      setFormData(prev => ({
+        ...prev,
+        ...selectedTemplate.fields,
+      }));
+    }
+  };
+
+  const handleSlotSelect = (slot: { date: string; time: string }) => {
+    setFormData(prev => ({
+      ...prev,
+      appointmentDate: slot.date,
+      appointmentTime: slot.time,
+    }));
   };
 
   const validateForm = (): boolean => {
@@ -111,7 +179,7 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
     }
 
     // Validate email format if provided
-    if (formData.customerEmail && !/\S+@\S+\.\S+/.test(formData.customerEmail)) {
+    if (formData.customerEmail && !/\S+@\S+\.\S/.test(formData.customerEmail)) {
       newErrors.customerEmail = 'Please enter a valid email address';
     }
 
@@ -144,7 +212,7 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
     console.log('✅ Form validation result:', isValid);
     console.log('❌ Validation errors:', errors);
     
-    if (isValid) {
+    if (isValid && (!conflict || overrideConflict)) {
       console.log('📤 Calling onSubmit with:', formData);
       const dataToSubmit = { ...formData };
       if (dataToSubmit.appointmentType === 'emergency') {
@@ -215,6 +283,16 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Template Selector */}
+          <div className="mb-4">
+            <h3 className="text-base font-semibold text-gray-900 mb-2">Apply Template</h3>
+            <TemplateSelector
+              templates={templates}
+              onSelect={handleTemplateSelect}
+              selectedTemplateId={selectedTemplateId}
+            />
+          </div>
+
           {/* Customer Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
@@ -450,7 +528,36 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
                 {errors.appointmentTime && <p className="text-red-500 text-xs mt-1">{errors.appointmentTime}</p>}
               </>
               </div>
+
+              {/* Available Slots */}
+              <div className="md:col-span-2">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Available Slots</h4>
+                {availableSlots.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {availableSlots.map((slot, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => handleSlotSelect(slot)}
+                        className="px-3 py-1 border border-blue-300 rounded-full text-sm text-blue-700 bg-blue-50 hover:bg-blue-100"
+                      >
+                        {slot.date} {slot.time}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No slots available for this service type.</p>
+                )}
+              </div>
             </div>
+          )}
+
+          {/* Conflict Warning */}
+          {conflict && !overrideConflict && (
+            <ConflictWarning
+              conflictingAppointment={conflict}
+              onOverride={() => setOverrideConflict(true)}
+            />
           )}
 
           {/* Service Address */}
@@ -501,8 +608,16 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
               Cancel
             </Button>
             <Button
+              type="button"
+              onClick={onQuickSchedule}
+              disabled={isSubmitting || (conflict && !overrideConflict)}
+              className="flex-1 bg-green-600 hover:bg-green-700"
+            >
+              ⚡ Quick Schedule
+            </Button>
+            <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || (conflict && !overrideConflict)}
               className="flex-1 bg-blue-600 hover:bg-blue-700"
             >
               {isSubmitting ? (

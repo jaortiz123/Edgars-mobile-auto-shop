@@ -513,7 +513,7 @@ def get_appointment(appt_id: str):
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT a.id::text, a.status::text, a.start, a.end, a.total_amount, a.paid_amount,
+                SELECT a.id::text, a.status::text, a.start_ts, a.end_ts, a.total_amount, a.paid_amount,
                        a.check_in_at, a.check_out_at, a.tech_id::text,
                        c.id::text as customer_id, c.name as customer_name, c.email, c.phone,
                        v.id::text as vehicle_id, v.year, v.make, v.model, v.vin
@@ -539,8 +539,8 @@ def get_appointment(appt_id: str):
     appointment = {
         "id": a["id"],
         "status": a["status"],
-        "start": iso(a.get("start")),
-        "end": iso(a.get("end")),
+        "start": iso(a.get("start_ts")),
+        "end": iso(a.get("end_ts")),
         "total_amount": float(a.get("total_amount") or 0),
         "paid_amount": float(a.get("paid_amount") or 0),
         "check_in_at": iso(a.get("check_in_at")),
@@ -583,8 +583,8 @@ def patch_appointment(appt_id: str):
 
     fields = [
         ("status", "status"),
-        ("start", "start"),
-        ("end", "end"),
+        ("start", "start_ts"),
+        ("end", "end_ts"),
         ("total_amount", "total_amount"),
         ("paid_amount", "paid_amount"),
         ("check_in_at", "check_in_at"),
@@ -780,7 +780,7 @@ def create_appointment():
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
-                INSERT INTO appointments (status, start, total_amount, paid_amount)
+                INSERT INTO appointments (status, start_ts, total_amount, paid_amount)
                 VALUES (%s, %s, %s, %s)
                 RETURNING id
                 """,
@@ -1274,7 +1274,7 @@ def get_customer_history(customer_id: str):
                 SELECT 
                     a.id::text, 
                     a.status::text, 
-                    a.start,
+                    a.start_ts,
                     a.total_amount,
                     a.paid_amount,
                     a.created_at as appointment_created_at,
@@ -1293,8 +1293,8 @@ def get_customer_history(customer_id: str):
                 LEFT JOIN payments p ON p.appointment_id = a.id
                 WHERE a.customer_id = %s 
                     AND a.status IN ('COMPLETED', 'NO_SHOW', 'CANCELED')
-                GROUP BY a.id, a.status, a.start, a.total_amount, a.paid_amount, a.created_at
-                ORDER BY a.start DESC, a.id DESC
+                GROUP BY a.id, a.status, a.start_ts, a.total_amount, a.paid_amount, a.created_at
+                ORDER BY a.start_ts DESC, a.id DESC
                 """,
                 (customer_id,)
             )
@@ -1308,7 +1308,7 @@ def get_customer_history(customer_id: str):
         past_appointments.append({
             "id": appt["id"],
             "status": appt["status"],
-            "start": appt["start"].isoformat() if appt.get("start") else None,
+            "start": appt["start_ts"].isoformat() if appt.get("start_ts") else None,
             "total_amount": float(appt["total_amount"]) if appt.get("total_amount") else 0.0,
             "paid_amount": float(appt["paid_amount"]) if appt.get("paid_amount") else 0.0,
             "created_at": appt["appointment_created_at"].isoformat() if appt.get("appointment_created_at") else None,
@@ -1373,15 +1373,42 @@ def stats():
             # cars on premises
             cur.execute("SELECT COUNT(*) FROM appointments WHERE check_in_at IS NOT NULL AND check_out_at IS NULL")
             cars_result = cur.fetchone()
-            cars = int(cars_result[0]) if cars_result and len(cars_result) > 0 else 0
+            cars = 0
+            if cars_result:
+                try:
+                    # Handle both dict (RealDictCursor) and tuple results
+                    if isinstance(cars_result, dict):
+                        cars = int(cars_result.get('count', 0))
+                    else:
+                        cars = int(cars_result[0]) if len(cars_result) > 0 else 0
+                except (IndexError, TypeError, ValueError):
+                    cars = 0
 
             # jobs today (based on canonical start_ts)
             cur.execute("SELECT COUNT(*) FROM appointments WHERE start_ts::date = %s", (today,))
-            jobs_today = int(cur.fetchone()[0])
+            jobs_result = cur.fetchone()
+            jobs_today = 0
+            if jobs_result:
+                try:
+                    if isinstance(jobs_result, dict):
+                        jobs_today = int(jobs_result.get('count', 0))
+                    else:
+                        jobs_today = int(jobs_result[0]) if len(jobs_result) > 0 else 0
+                except (IndexError, TypeError, ValueError):
+                    jobs_today = 0
 
             # unpaid total
             cur.execute("SELECT COALESCE(SUM(COALESCE(total_amount,0) - COALESCE(paid_amount,0)),0) FROM appointments")
-            unpaid = float(cur.fetchone()[0])
+            unpaid_result = cur.fetchone()
+            unpaid = 0.0
+            if unpaid_result:
+                try:
+                    if isinstance(unpaid_result, dict):
+                        unpaid = float(unpaid_result.get('coalesce', 0))
+                    else:
+                        unpaid = float(unpaid_result[0]) if len(unpaid_result) > 0 else 0.0
+                except (IndexError, TypeError, ValueError):
+                    unpaid = 0.0
 
             # NEW METRICS FOR v2
 
@@ -1390,7 +1417,16 @@ def stats():
                 SELECT COUNT(*) FROM appointments 
                 WHERE start_ts::date = %s AND status = 'COMPLETED'
             """, (today,))
-            today_completed = int(cur.fetchone()[0])
+            completed_result = cur.fetchone()
+            today_completed = 0
+            if completed_result:
+                try:
+                    if isinstance(completed_result, dict):
+                        today_completed = int(completed_result.get('count', 0))
+                    else:
+                        today_completed = int(completed_result[0]) if len(completed_result) > 0 else 0
+                except (IndexError, TypeError, ValueError):
+                    today_completed = 0
 
             # today_booked - all appointments scheduled for today (regardless of status)
             # This is the same as jobs_today but more explicit
@@ -1406,7 +1442,15 @@ def stats():
             """, (today - timedelta(days=30),))  # Last 30 days for better average
             
             avg_result = cur.fetchone()
-            avg_cycle_hours = float(avg_result[0]) if avg_result and avg_result[0] is not None else None
+            avg_cycle_hours = None
+            if avg_result:
+                try:
+                    if isinstance(avg_result, dict):
+                        avg_cycle_hours = float(avg_result.get('avg_hours', 0)) if avg_result.get('avg_hours') is not None else None
+                    else:
+                        avg_cycle_hours = float(avg_result[0]) if len(avg_result) > 0 and avg_result[0] is not None else None
+                except (IndexError, TypeError, ValueError):
+                    avg_cycle_hours = None
 
     conn.close()
     
@@ -1720,7 +1764,7 @@ def export_appointments_csv():
     if from_date:
         try:
             datetime.fromisoformat(from_date.replace('Z', '+00:00'))
-            where_conditions.append("a.start >= %s")
+            where_conditions.append("a.start_ts >= %s")
             params.append(from_date)
         except ValueError:
             return _fail(HTTPStatus.BAD_REQUEST, "INVALID_DATE", "Invalid 'from' date format. Use ISO 8601 format.")
@@ -1728,7 +1772,7 @@ def export_appointments_csv():
     if to_date:
         try:
             datetime.fromisoformat(to_date.replace('Z', '+00:00'))
-            where_conditions.append("a.start <= %s")
+            where_conditions.append("a.start_ts <= %s")
             params.append(to_date)
         except ValueError:
             return _fail(HTTPStatus.BAD_REQUEST, "INVALID_DATE", "Invalid 'to' date format. Use ISO 8601 format.")
@@ -1754,7 +1798,7 @@ def export_appointments_csv():
                         a.id::text,
                         COALESCE(c.name, '') as customer,
                         COALESCE(v.year::text || ' ' || v.make || ' ' || v.model, '') as vehicle,
-                        a.start,
+                        a.start_ts,
                         a.status::text,
                         COALESCE(a.total_amount, 0) as total_amount,
                         COALESCE(a.paid_amount, 0) as paid_amount
@@ -1762,7 +1806,7 @@ def export_appointments_csv():
                     LEFT JOIN customers c ON c.id = a.customer_id
                     LEFT JOIN vehicles v ON v.id = a.vehicle_id
                     WHERE """ + " AND ".join(where_conditions) + """
-                    ORDER BY a.start DESC
+                    ORDER BY a.start_ts DESC
                 """
                 cur.execute(query, params)
                 appointments = cur.fetchall()
@@ -1780,7 +1824,7 @@ def export_appointments_csv():
                 appointment['id'],
                 appointment['customer'],
                 appointment['vehicle'], 
-                appointment['start'].isoformat() if appointment['start'] else '',
+                appointment['start_ts'].isoformat() if appointment['start_ts'] else '',
                 appointment['status'],
                 float(appointment['total_amount']),
                 float(appointment['paid_amount'])
@@ -1938,4 +1982,21 @@ def root():
                 "GET /api/admin/reports/payments.csv",
             ],
         }
+    )
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 3001))
+    host = os.environ.get("HOST", "0.0.0.0")
+    
+    print(f"Starting Edgar's Auto Shop API server on {host}:{port}")
+    print(f"Health check: http://localhost:{port}/health")
+    print(f"Admin dashboard: http://localhost:5173/admin/dashboard")
+    
+    app.run(
+        host=host,
+        port=port,
+        debug=True,
+        use_reloader=False,  # Disable reloader to prevent double process spawning
+        threaded=True
     )

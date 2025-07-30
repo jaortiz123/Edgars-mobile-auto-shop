@@ -23,7 +23,7 @@ export default function Section({
 
   return (
     <section 
-      className={`px-4 py-16 ${bgClasses[bgColor]} ${className}`}
+      className={`px-sp-3 py-sp-6 ${bgClasses[bgColor]} ${className}`}
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledBy}
     >

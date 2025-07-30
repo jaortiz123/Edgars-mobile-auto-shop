@@ -428,6 +428,34 @@ Backend sets `SET app.shop_id = '<uuid>'` per request after JWT validation.
 
 ---
 
+## 8.1. Canonical Timestamps Migration Rationale (T-010)
+
+### Background
+The appointments table has evolved to include timezone-aware canonical timestamp fields (`start_ts`, `end_ts`) alongside the legacy timing fields (`start`, `end`, `scheduled_date`, `scheduled_time`). This migration (Alembic revision `abcdef123456`) ensures backward compatibility while providing a clear path forward.
+
+### Migration Strategy
+- **Additive**: New `start_ts` and `end_ts` columns are added as nullable `TIMESTAMPTZ` fields
+- **Backfill Logic**: Uses COALESCE to prioritize existing data in this order:
+  1. `start_ts` (if already exists)
+  2. `start` (primary timing field)
+  3. `scheduled_date + scheduled_time` (legacy combination)
+  4. `scheduled_date` (date-only, defaults to midnight)
+- **Indexing**: Creates performance index on `start_ts` for query optimization
+- **Zero Downtime**: Legacy fields remain functional during transition
+
+### Data Integrity
+- Migration includes comprehensive test coverage (`test_migrations.py`)
+- Validates that no NULL `start_ts` values remain for appointments with valid scheduling data
+- Handles edge cases: date-only appointments, missing scheduling information, mixed field scenarios
+- Preserves all existing appointment data without loss
+
+### Future Evolution
+- Legacy fields (`start`, `end`, `scheduled_date`, `scheduled_time`) can be deprecated once application migration is complete
+- All new functionality should use `start_ts`/`end_ts` for timezone consistency
+- Provides foundation for multi-timezone shop support
+
+---
+
 ## 9. Open Questions
 
 1. Single shop vs. multi‑tenant? (decides `shop_id` + RLS)

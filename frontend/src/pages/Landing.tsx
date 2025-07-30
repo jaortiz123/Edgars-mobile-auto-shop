@@ -36,14 +36,14 @@ export default function Landing() {
 
       {/* 1. HERO (Larger, more breathing room) */}
       <section className="bg-primary text-primary-foreground">
-        <div className="container mx-auto px-4 py-24 md:py-32 text-center"> {/* Increased padding */}
-          <h1 className="text-4xl md:text-6xl font-black tracking-tighter max-w-4xl mx-auto">
+        <div className="container mx-auto px-sp-3 py-sp-8 md:py-sp-8 text-center"> {/* Increased padding */}
+          <h1 className="text-fs-6 md:text-fs-6 font-black tracking-tighter max-w-4xl mx-auto">
             Your Trusted Woodland Mechanic, Delivered to Your Driveway.
           </h1>
-          <p className="max-w-3xl mx-auto mt-6 text-xl text-primary-foreground/80">
+          <p className="max-w-3xl mx-auto mt-sp-4 text-fs-4 text-primary-foreground/80">
             Certified, dealership-quality repairs at your home or office. No waiting rooms, no wasted time.
           </p>
-          <div className="mt-10">
+          <div className="mt-sp-5">
             <Button asLink to="/booking" size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
               Book Mobile Service Now
             </Button>

@@ -1,0 +1,116 @@
+/* Sprint 1A T1: Typography System */
+
+/* Base Typography Reset */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: var(--fs-2); /* 16px base */
+  line-height: var(--lh-normal);
+}
+
+body {
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  font-size: var(--fs-2);
+  font-weight: var(--fw-normal);
+  line-height: var(--lh-normal);
+}
+
+/* Heading Scale */
+h1, .text-h1 {
+  font-size: var(--fs-6);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  margin-bottom: var(--sp-4);
+}
+
+h2, .text-h2 {
+  font-size: var(--fs-5);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  margin-bottom: var(--sp-3);
+}
+
+h3, .text-h3 {
+  font-size: var(--fs-4);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  margin-bottom: var(--sp-3);
+}
+
+h4, .text-h4 {
+  font-size: var(--fs-3);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  margin-bottom: var(--sp-2);
+}
+
+h5, .text-h5 {
+  font-size: var(--fs-2);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  margin-bottom: var(--sp-2);
+}
+
+h6, .text-h6 {
+  font-size: var(--fs-1);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  margin-bottom: var(--sp-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Body Text Variants */
+.text-body {
+  font-size: var(--fs-2);
+  line-height: var(--lh-normal);
+}
+
+.text-body-sm {
+  font-size: var(--fs-1);
+  line-height: var(--lh-normal);
+}
+
+.text-lead {
+  font-size: var(--fs-3);
+  line-height: var(--lh-relaxed);
+  font-weight: var(--fw-normal);
+}
+
+.text-caption {
+  font-size: var(--fs-0);
+  line-height: var(--lh-normal);
+}
+
+/* Font Weight Utilities */
+.font-normal { font-weight: var(--fw-normal); }
+.font-medium { font-weight: var(--fw-medium); }
+.font-semibold { font-weight: var(--fw-semibold); }
+.font-bold { font-weight: var(--fw-bold); }
+
+/* Line Height Utilities */
+.leading-tight { line-height: var(--lh-tight); }
+.leading-normal { line-height: var(--lh-normal); }
+.leading-relaxed { line-height: var(--lh-relaxed); }
+
+/* Links */
+a {
+  color: hsl(var(--primary));
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Focus styles */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
