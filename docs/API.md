@@ -170,15 +170,6 @@ Shortcut for status only.
 
 Soft delete. **204**
 
-**curl sample:**
-
-```bash
-# Get admin appointments with envelope shape demonstration
-curl -X GET "http://localhost:3001/api/admin/appointments" \
-  -H "Content-Type: application/json" \
-  | jq '.errors'
-```
-
 ---
 
 ## 2.1 Services Management
@@ -299,7 +290,59 @@ curl -X DELETE "http://localhost:3001/api/appointments/45/services/svc-1"
 
 ---
 
-## 3. Status Board
+## 3. Admin Appointments
+
+### GET `/api/admin/appointments`
+
+Returns a paginated list of appointments with comprehensive filtering support.
+
+**Query Parameters:**
+- `status` (string) - Filter by appointment status (scheduled, in_progress, ready, completed, cancelled)
+- `from` (string) - Filter appointments starting after this ISO date (e.g., '2023-12-01T10:00:00Z')
+- `to` (string) - Filter appointments ending before this ISO date (e.g., '2023-12-01T18:00:00Z')
+- `techId` (string) - Filter by technician ID
+- `q` (string) - Text search across customer name, vehicle make/model, email, and phone
+- `limit` (integer) - Number of results per page (1-200, default: 50)
+- `offset` (integer) - Pagination offset (≥0, default: 0)
+- `cursor` (string) - Cursor-based pagination (cannot be used with offset)
+
+**Response 200**
+```json
+{
+  "data": {
+    "appointments": [
+      {
+        "id": "apt-123",
+        "status": "SCHEDULED",
+        "start_ts": "2025-07-29T17:00:00Z",
+        "end_ts": "2025-07-29T18:00:00Z",
+        "total_amount": 256.65,
+        "customer_name": "Noah Bell",
+        "vehicle_label": "2019 Honda HR-V"
+      }
+    ],
+    "nextCursor": "eyJpZCI6..."
+  },
+  "errors": null,
+  "meta": { "request_id": "<uuid>" }
+}
+```
+
+**Error Responses:**
+- **400 Bad Request** - Invalid parameters (limit out of range, invalid date format, cursor+offset conflict)
+
+```json
+{
+  "message": "limit must be between 1 and 200"
+}
+```
+
+**curl sample:**
+```bash
+# Get appointments with filters
+curl -X GET "http://localhost:3001/api/admin/appointments?status=scheduled&from=2023-01-01T00:00:00Z&limit=10" \
+  -H "Content-Type: application/json"
+```
 
 ### GET `/api/admin/appointments/board?from&to&techId`
 

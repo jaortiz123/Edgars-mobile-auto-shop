@@ -649,9 +649,31 @@ def get_admin_appointments():
         where.append("a.status = %s")
         params.append(norm_status(args["status"]))
     if args.get("from"):
+        # Validate date format
+        try:
+            # Try to parse various ISO formats
+            from_date = args["from"]
+            if from_date:
+                # Handle URL encoding issues: space back to +, then handle 'Z' suffix
+                fixed_date = from_date.replace(' ', '+')
+                normalized_date = fixed_date.replace('Z', '+00:00') if fixed_date.endswith('Z') else fixed_date
+                datetime.fromisoformat(normalized_date)
+        except ValueError:
+            raise BadRequest("Invalid 'from' date format. Expected ISO format (e.g., '2023-12-01T10:00:00Z')")
         where.append("a.start_ts >= %s")
         params.append(args["from"])
     if args.get("to"):
+        # Validate date format
+        try:
+            # Try to parse various ISO formats
+            to_date = args["to"]
+            if to_date:
+                # Handle URL encoding issues: space back to +, then handle 'Z' suffix
+                fixed_date = to_date.replace(' ', '+')
+                normalized_date = fixed_date.replace('Z', '+00:00') if fixed_date.endswith('Z') else fixed_date
+                datetime.fromisoformat(normalized_date)
+        except ValueError:
+            raise BadRequest("Invalid 'to' date format. Expected ISO format (e.g., '2023-12-01T18:00:00Z')")
         where.append("a.end_ts <= %s")
         params.append(args["to"])
     # Filter by technician ID if provided
