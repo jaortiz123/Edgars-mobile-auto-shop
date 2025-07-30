@@ -52,15 +52,16 @@ export interface BoardColumn {
 
 export interface BoardCard {
   id: string;
-  status: AppointmentStatus;
-  position: number;
-  start?: string;
-  end: string | null;
   customerName: string;
   vehicle: string;
   servicesSummary?: string;
   price?: number;
-  tags?: string[];
+  urgency?: 'urgent' | 'soon';
+  // Sprint 3C: Additional properties for countdown timers and status management
+  status: AppointmentStatus;
+  position: number;
+  start?: string | null; // ISO timestamp for countdown calculations
+  end?: string | null;   // ISO timestamp
 }
 
 export interface DashboardStats {

@@ -38,14 +38,19 @@ def test_canonical_timestamps_migration_handles_start_ts_nulls():
     
     Verifies that the canonical timestamps migration correctly handles the start_ts 
     field by:
-    1. Creating an in-memory SQLite database
+    1. Creating a temporary SQLite database
     2. Setting up test data with various NULL/non-NULL scenarios
-    3. Running the migration
-    4. Asserting no NULL start_ts rows exist after migration
+    3. Simulating the migration logic (since Alembic migration is PostgreSQL-specific)
+    4. Asserting no NULL start_ts rows exist after migration for valid appointments
     
-    Uses alembic.command.upgrade with sqlite url and queries with 
-    sqlalchemy text() to assert count == 0.
+    NOTE: This test simulates the migration logic rather than using alembic.command.upgrade()
+    because the actual migration is designed for PostgreSQL syntax and would require
+    a more complex setup to run Alembic migrations against SQLite.
     """
+    import tempfile
+    import os
+    from sqlalchemy import create_engine, text
+    
     # Create temporary SQLite database
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_db:
         sqlite_url = f"sqlite:///{tmp_db.name}"
@@ -54,136 +59,142 @@ def test_canonical_timestamps_migration_handles_start_ts_nulls():
         # Create SQLAlchemy engine
         engine = create_engine(sqlite_url)
         
-        # Set up basic tables structure for testing
+        # Set up basic schema structure for testing (pre-migration state)
         with engine.connect() as conn:
-            # Create customers table
-            conn.execute(text("""
-                CREATE TABLE customers (
-                    id INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    phone TEXT,
-                    email TEXT
-                )
-            """))
-            
-            # Create services table  
-            conn.execute(text("""
-                CREATE TABLE services (
-                    id INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    description TEXT
-                )
-            """))
-            
             # Create appointments table with legacy fields (pre-migration state)
             conn.execute(text("""
                 CREATE TABLE appointments (
                     id INTEGER PRIMARY KEY,
-                    customer_id INTEGER REFERENCES customers(id),
-                    service_id INTEGER REFERENCES services(id),
+                    customer_id INTEGER,
+                    vehicle_id INTEGER,
+                    status TEXT DEFAULT 'SCHEDULED',
+                    start TIMESTAMP,
+                    "end" TIMESTAMP,
                     scheduled_date DATE,
                     scheduled_time TIME,
-                    status TEXT DEFAULT 'SCHEDULED',
-                    location_address TEXT,
+                    total_amount NUMERIC(10,2),
+                    paid_amount NUMERIC(10,2) DEFAULT 0,
+                    check_in_at TIMESTAMP,
+                    check_out_at TIMESTAMP,
+                    tech_id TEXT,
+                    title TEXT,
                     notes TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    position INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    deleted_at TIMESTAMP
                 )
             """))
             
-            # Insert test customers
-            conn.execute(text("INSERT INTO customers (id, name, phone, email) VALUES (1, 'John Doe', '+15551234567', 'john@example.com')"))
-            conn.execute(text("INSERT INTO customers (id, name, phone, email) VALUES (2, 'Jane Smith', '+15559876543', 'jane@example.com')"))
-            conn.execute(text("INSERT INTO customers (id, name, phone, email) VALUES (3, 'Bob Johnson', '+15555551234', 'bob@example.com')"))
+            # Insert test appointments with various scenarios for start_ts backfill
+            # Case 1: Has 'start' field (modern format) - should use this
+            conn.execute(text("""
+                INSERT INTO appointments (id, start, "end", notes) 
+                VALUES (1, '2025-07-29 10:00:00', '2025-07-29 11:00:00', 'Has start/end fields')
+            """))
             
-            # Insert test services
-            conn.execute(text("INSERT INTO services (id, name, description) VALUES (1, 'Oil Change', 'Standard oil change')"))
-            conn.execute(text("INSERT INTO services (id, name, description) VALUES (2, 'Brake Service', 'Brake inspection and repair')"))
-            conn.execute(text("INSERT INTO services (id, name, description) VALUES (3, 'Diagnostic', 'Vehicle diagnostic')"))
+            # Case 2: Has scheduled_date + scheduled_time (legacy format) - should backfill from these
+            conn.execute(text("""
+                INSERT INTO appointments (id, scheduled_date, scheduled_time, notes) 
+                VALUES (2, '2025-07-29', '14:30:00', 'Has scheduled_date and scheduled_time')
+            """))
             
-            # Insert test appointments with various NULL scenarios
-            # Case 1: Both scheduled_date and scheduled_time present
-            conn.execute(text("INSERT INTO appointments (id, customer_id, service_id, scheduled_date, scheduled_time, notes) VALUES (1, 1, 1, '2025-07-29', '10:00:00', 'Test with both date and time')"))
+            # Case 3: Has only scheduled_date (no time) - should backfill with date at midnight
+            conn.execute(text("""
+                INSERT INTO appointments (id, scheduled_date, notes) 
+                VALUES (3, '2025-07-30', 'Has only scheduled_date')
+            """))
             
-            # Case 2: Only scheduled_date present (scheduled_time is NULL)
-            conn.execute(text("INSERT INTO appointments (id, customer_id, service_id, scheduled_date, scheduled_time, notes) VALUES (2, 2, 2, '2025-07-29', NULL, 'Test with date only')"))
+            # Case 4: Has no scheduling info - should remain NULL
+            conn.execute(text("""
+                INSERT INTO appointments (id, notes) 
+                VALUES (4, 'No scheduling info - should be NULL')
+            """))
             
-            # Case 3: Both scheduled_date and scheduled_time NULL
-            conn.execute(text("INSERT INTO appointments (id, customer_id, service_id, scheduled_date, scheduled_time, notes) VALUES (3, 3, 3, NULL, NULL, 'Test with both NULL')"))
-            
-            # Case 4: scheduled_date NULL, but scheduled_time present (edge case)
-            conn.execute(text("INSERT INTO appointments (id, customer_id, service_id, scheduled_date, scheduled_time, notes) VALUES (4, 1, 1, NULL, '14:30:00', 'Test with time only')"))
-            
-            # Case 5: Normal case with different date/time
-            conn.execute(text("INSERT INTO appointments (id, customer_id, service_id, scheduled_date, scheduled_time, notes) VALUES (5, 2, 2, '2025-07-30', '15:45:00', 'Another normal case')"))
-            
+            # Case 5: Mix of fields - start should take precedence
+            conn.execute(text("""
+                INSERT INTO appointments (id, start, scheduled_date, scheduled_time, notes) 
+                VALUES (5, '2025-07-31 09:00:00', '2025-07-31', '10:00:00', 'start field should take precedence')
+            """))
             
             # Verify test data was inserted correctly
-            result = conn.execute(text("SELECT COUNT(*) FROM appointments"))
-            assert result.scalar() == 5, "Test appointments should be inserted"
+            result = conn.execute(text("SELECT COUNT(*) FROM appointments")).scalar()
+            assert result == 5, "Test appointments should be inserted"
             
-            # Add the canonical timestamp columns (simulate migration step 1)
+        # For this test, we'll simulate the migration logic directly in SQLite
+        # since the Alembic migration is designed for PostgreSQL
+        with engine.connect() as conn:
+            # Add canonical timestamp columns
             conn.execute(text("ALTER TABLE appointments ADD COLUMN start_ts TIMESTAMP"))
             conn.execute(text("ALTER TABLE appointments ADD COLUMN end_ts TIMESTAMP"))
             
-            # Apply the backfill logic from the migration (simulate migration step 2)
-            # This is the core logic we're testing - it should handle NULLs correctly
+            # Apply the canonical timestamps migration logic adapted for SQLite
             conn.execute(text("""
                 UPDATE appointments
-                SET start_ts = CASE
-                    WHEN scheduled_date IS NOT NULL AND scheduled_time IS NOT NULL
-                        THEN datetime(scheduled_date || ' ' || scheduled_time)
-                    WHEN scheduled_date IS NOT NULL
-                        THEN datetime(scheduled_date || ' 00:00:00')
-                    ELSE NULL
-                END
+                SET start_ts = COALESCE(
+                    start_ts,
+                    start,
+                    CASE 
+                        WHEN scheduled_date IS NOT NULL AND scheduled_time IS NOT NULL
+                            THEN datetime(scheduled_date || ' ' || scheduled_time)
+                        WHEN scheduled_date IS NOT NULL
+                            THEN datetime(scheduled_date || ' 00:00:00')
+                        ELSE NULL
+                    END
+                )
             """))
             
-            # Set end_ts equal to start_ts as per migration logic
-            conn.execute(text("UPDATE appointments SET end_ts = start_ts"))
+            # Backfill end_ts using COALESCE logic adapted for SQLite
+            conn.execute(text("""
+                UPDATE appointments
+                SET end_ts = COALESCE(
+                    end_ts,
+                    "end",
+                    datetime(start_ts, '+1 hour')
+                )
+                WHERE start_ts IS NOT NULL
+            """))
             
-            # VERIFICATION: Assert no NULL start_ts rows exist where we expect data
-            # This is the core assertion from the T-010 requirement
+            # Create index on start_ts (simulated)
+            conn.execute(text("CREATE INDEX ix_appointments_start_ts ON appointments (start_ts)"))
+            
+        # Verify migration results
+        with engine.connect() as conn:
+            # T-010 CORE VERIFICATION: Assert no NULL start_ts for appointments with valid scheduling data
             null_start_ts_count = conn.execute(text("SELECT COUNT(*) FROM appointments WHERE start_ts IS NULL")).scalar()
             
-            # The migration should result in start_ts being NULL only for appointments
-            # where scheduled_date IS NULL (regardless of scheduled_time)
-            expected_null_count = conn.execute(text("SELECT COUNT(*) FROM appointments WHERE scheduled_date IS NULL")).scalar()
-            
-            assert null_start_ts_count == expected_null_count, (
-                f"Expected {expected_null_count} NULL start_ts rows, but found {null_start_ts_count}. "
-                "Migration should only leave start_ts NULL when scheduled_date IS NULL."
-            )
-            
-            # Additional verification: Check that non-NULL cases were handled correctly
-            non_null_with_data_count = conn.execute(text("SELECT COUNT(*) FROM appointments WHERE scheduled_date IS NOT NULL AND start_ts IS NOT NULL")).scalar()
-            expected_non_null_count = conn.execute(text("SELECT COUNT(*) FROM appointments WHERE scheduled_date IS NOT NULL")).scalar()
-            
-            assert non_null_with_data_count == expected_non_null_count, (
-                "All appointments with scheduled_date should have non-NULL start_ts after migration"
+            # Only appointment #4 (no scheduling info) should have NULL start_ts
+            assert null_start_ts_count == 1, (
+                f"Expected 1 NULL start_ts row (appointment with no scheduling info), but found {null_start_ts_count}. "
+                "Migration should only leave start_ts NULL when no scheduling information is available."
             )
             
             # Verify specific test cases
-            test_cases = conn.execute(text("SELECT id, scheduled_date, scheduled_time, start_ts, notes FROM appointments ORDER BY id")).fetchall()
+            test_cases = conn.execute(text("SELECT id, start, scheduled_date, scheduled_time, start_ts, end_ts, notes FROM appointments ORDER BY id")).fetchall()
             
-            # Case 1: Both date and time present - should have start_ts
+            # Case 1: Should use 'start' field value
             case1 = test_cases[0]
-            assert case1[3] is not None, "Case 1: Should have start_ts when both date and time present"
+            assert case1[4] is not None, "Case 1: Should have start_ts when 'start' field present"
             
-            # Case 2: Only date present - should have start_ts with 00:00:00 time
-            case2 = test_cases[1] 
-            assert case2[3] is not None, "Case 2: Should have start_ts when date present (time NULL)"
+            # Case 2: Should use scheduled_date + scheduled_time
+            case2 = test_cases[1]
+            assert case2[4] is not None, "Case 2: Should have start_ts from scheduled_date + scheduled_time"
             
-            # Case 3: Both NULL - should have NULL start_ts
+            # Case 3: Should use scheduled_date (with default time)
             case3 = test_cases[2]
-            assert case3[3] is None, "Case 3: Should have NULL start_ts when both date and time are NULL"
+            assert case3[4] is not None, "Case 3: Should have start_ts from scheduled_date only"
             
-            # Case 4: Date NULL, time present - should have NULL start_ts (edge case)
+            # Case 4: Should have NULL start_ts (no scheduling info)
             case4 = test_cases[3]
-            assert case4[3] is None, "Case 4: Should have NULL start_ts when date is NULL (even if time present)"
+            assert case4[4] is None, "Case 4: Should have NULL start_ts when no scheduling info"
             
-            # Case 5: Normal case - should have start_ts
+            # Case 5: Should use 'start' field (precedence over scheduled_date/time)
             case5 = test_cases[4]
-            assert case5[3] is not None, "Case 5: Should have start_ts for normal case"
+            assert case5[4] is not None, "Case 5: Should have start_ts from 'start' field (precedence)"
+            
+            # Verify index was created
+            index_check = conn.execute(text("SELECT name FROM sqlite_master WHERE type='index' AND name LIKE '%start_ts%'")).fetchall()
+            assert len(index_check) > 0, "Index on start_ts should be created"
                 
     finally:
         # Clean up temporary database file

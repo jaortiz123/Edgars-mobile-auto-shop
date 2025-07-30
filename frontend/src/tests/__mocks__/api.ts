@@ -6,9 +6,9 @@ import type {
 export async function getBoard(): Promise<{ columns: BoardColumn[]; cards: BoardCard[] }> {
   return { 
     columns: [
-      { key: 'scheduled', title: 'Scheduled', count: 1, sum: 500 },
-      { key: 'in-progress', title: 'In Progress', count: 1, sum: 750 },
-      { key: 'completed', title: 'Completed', count: 1, sum: 300 }
+      { key: 'SCHEDULED', title: 'Scheduled', count: 1, sum: 500 },
+      { key: 'IN_PROGRESS', title: 'In Progress', count: 1, sum: 750 },
+      { key: 'COMPLETED', title: 'Completed', count: 1, sum: 300 }
     ], 
     cards: [
       {
@@ -16,27 +16,33 @@ export async function getBoard(): Promise<{ columns: BoardColumn[]; cards: Board
         customerName: 'John Doe',
         vehicle: '2020 Toyota Camry',
         servicesSummary: 'Oil Change, Brake Inspection',
-        status: 'scheduled',
+        status: 'SCHEDULED',
         position: 1,
-        price: 500
+        price: 500,
+        start: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes from now
+        end: new Date(Date.now() + 90 * 60 * 1000).toISOString()
       },
       {
         id: 'test-2', 
         customerName: 'Jane Smith',
         vehicle: '2019 Honda Civic',
         servicesSummary: 'Tire Rotation, Engine Diagnostic',
-        status: 'in-progress',
+        status: 'IN_PROGRESS',
         position: 1,
-        price: 750
+        price: 750,
+        start: new Date(Date.now() - 15 * 60 * 1000).toISOString(), // 15 minutes ago (running late)
+        end: new Date(Date.now() + 45 * 60 * 1000).toISOString()
       },
       {
         id: 'test-3',
         customerName: 'Bob Johnson', 
         vehicle: '2021 Ford F-150',
         servicesSummary: 'Air Filter Replacement',
-        status: 'completed',
+        status: 'COMPLETED',
         position: 1,
-        price: 300
+        price: 300,
+        start: new Date(Date.now() - 120 * 60 * 1000).toISOString(), // 2 hours ago
+        end: new Date(Date.now() - 60 * 60 * 1000).toISOString()
       }
     ]
   };

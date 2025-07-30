@@ -12,6 +12,10 @@ This repository contains the serverless backend for "Edgar's Mobile Auto Repair 
 -   **Infrastructure as Code:** Terraform
 -   **CI/CD:** GitHub Actions
 
+## UI Standards
+
+For information on the design system, including typography and spacing, please see the [UI Standards documentation](docs/UI-Standards.md).
+
 ---
 
 ## Architecture

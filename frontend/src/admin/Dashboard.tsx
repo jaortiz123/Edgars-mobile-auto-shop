@@ -4,12 +4,16 @@ import { Badge } from '../components/ui/Badge';
 import { AppointmentCalendar } from '../components/admin/AppointmentCalendar';
 import AppointmentDrawer from '../components/admin/AppointmentDrawer';
 import { AppointmentFormModal } from '../components/admin/AppointmentFormModal';
-import CarsOnPremisesWidget from '../components/admin/CarsOnPremisesWidget';
-import { DashboardSidebar } from '../components/admin/DashboardSidebar';
+import DailyFocusHero from '../components/admin/DailyFocusHero';
+import ScheduleFilterToggle from '../components/admin/ScheduleFilterToggle';
+import NotificationCenter from '../components/admin/NotificationCenter';
 import type { AppointmentFormData } from '../components/admin/AppointmentFormModal';
 import { useAppointments } from '../contexts/AppointmentContext';
 import { getViewMode, setViewMode, ViewMode } from '../lib/prefs';
 import StatusBoard from '../components/admin/StatusBoard';
+import FloatingActionButton from '../components/ui/FloatingActionButton';
+import { scheduleReminder } from '@/services/notificationService';
+import '@/styles/appointment-reminders.css';
 import { 
   Calendar,
   CheckCircle,
@@ -23,14 +27,13 @@ import {
 import { 
   handleApiError, 
   isOnline, 
-  type DashboardStats,
   getAppointments,
-  getDashboardStats,
-  createAppointment,
   updateAppointmentStatus
 } from '../lib/api';
+import { createAppointment } from '../services/apiService';
 import { parseDurationToMinutes } from '../lib/utils';
 import { format } from 'date-fns';
+import { saveLastQuickAdd } from '../lib/quickAddUtils';
 
 // Utility function to convert 12-hour format to 24-hour format
 const convertTo24Hour = (time12h: string): string => {
@@ -80,37 +83,6 @@ const convertTo24Hour = (time12h: string): string => {
   }
 };
 
-// 1. Define types for API responses
-interface AppointmentApi {
-  id: string|number;
-  customer_name?: string;
-  vehicle_id?: string|number;
-  service_id?: string|number;
-  scheduled_time?: string;
-  scheduled_at?: string;
-  scheduled_date?: string;
-  status?: string;
-  customer_phone?: string;
-  location_address?: string;
-  estimatedDuration?: string;
-  reminderStatus?: string;
-}
-interface StatsApi {
-  todayAppointments: number;
-  pendingAppointments: number;
-  completedToday: number;
-  totalCustomers: number;
-  partsOrdered: number;
-  todayRevenue: number;
-}
-
-// 2. Type guard for responseData
-function isAppointmentsResponse(obj: unknown): obj is { appointments: AppointmentApi[] } {
-  return typeof obj === 'object' && obj !== null && 'appointments' in obj;
-}
-function isStatsResponse(obj: unknown): obj is StatsApi {
-  return typeof obj === 'object' && obj !== null && 'todayAppointments' in obj;
-}
 
 // Local UI appointment type used by the dashboard
 interface UIAppointment {
@@ -127,17 +99,35 @@ interface UIAppointment {
   reminderStatus: 'pending' | 'sent' | 'failed';
 }
 
+// Backend appointment response type
+interface ApiAppointmentResponse {
+  id: string;
+  customer_name?: string;
+  customer_id?: string;
+  customer_phone?: string;
+  customer_email?: string;
+  service_id?: string;
+  service?: string;
+  vehicle_id?: string;
+  scheduled_at?: string;
+  scheduled_date?: string;
+  scheduled_time?: string;
+  location_address?: string;
+  status?: string;
+  notes?: string;
+}
+
 export function Dashboard() {
   const { refreshTrigger, triggerRefresh, isRefreshing, setRefreshing } = useAppointments();
   const [view, setView] = useState<ViewMode>(getViewMode());
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<DashboardStats>();
+  // Dashboard state
   const [nextAppointment, setNextAppointment] = useState<UIAppointment | null>(null);
   const [nextAvailableSlot, setNextAvailableSlot] = useState<Date | null>(null);
-  // const [selectedAppointment, setSelectedAppointment] = useState<UIAppointment | null>(null);
   const [showAppointmentForm, setShowAppointmentForm] = useState(false);
   const [isSubmittingAppointment, setIsSubmittingAppointment] = useState(false);
   const [appointments, setAppointments] = useState<UIAppointment[]>([]);
+  const [filter, setFilter] = useState<'all' | 'today'>('today');
   // Drawer state for appointment details
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const openDrawer = (id: string) => setDrawerId(id);
@@ -179,15 +169,14 @@ export function Dashboard() {
      setLoading(true);
      setRefreshing(true);
      let fetchedApts: UIAppointment[] = [];
-     let fetchedStats: StatsApi | undefined;
      try {
       console.log("📡 Making API calls to backend...");
-       const [aptRes, statsRes] = await Promise.all([getAppointments(), getDashboardStats()]);
-      console.log("✅ API calls completed", { aptRes: aptRes?.success, statsRes: statsRes?.success });
+       const aptRes = await getAppointments();
+      console.log("✅ API calls completed", { aptRes });
       
-       if (aptRes?.success && aptRes.data && isAppointmentsResponse(aptRes.data)) {
-        console.log("📋 Processing appointments data", aptRes.data);
-         fetchedApts = aptRes.data.appointments.map(apt => {
+       if (aptRes && aptRes.appointments && Array.isArray(aptRes.appointments)) {
+        console.log("📋 Processing appointments data", aptRes);
+         fetchedApts = aptRes.appointments.map((apt: ApiAppointmentResponse) => {
            // Safe date parsing with fallbacks
            let dateTime;
            try {
@@ -225,24 +214,16 @@ export function Dashboard() {
              reminderStatus: 'pending' as const, // Default value since backend doesn't provide this
            };
          });
-       }
-       if (statsRes?.success && statsRes.data && isStatsResponse(statsRes.data)) {
-        console.log("📊 Processing stats data", statsRes.data);
-         fetchedStats = statsRes.data;
-       }
+       }       
      } catch (err) {
       console.error('❌ Dashboard API error', err);
       // Still proceed to show empty dashboard instead of hanging
      } finally {
       clearTimeout(safetyTimer);
-      console.log("🔄 Setting appointments and stats");
+      console.log("🔄 Setting appointments");
        setAppointments(fetchedApts);
-       if (fetchedStats) setStats(fetchedStats);
        try {
         // Compute next appointment and derived stats
-        const todayStr = new Date().toDateString();
-        const todayList = fetchedApts.filter(a => a.dateTime.toDateString() === todayStr);
-        
         // Find next appointment from ALL appointments (not just today's) that are scheduled or in-progress
         const now = new Date();
         const next = fetchedApts
@@ -263,17 +244,8 @@ export function Dashboard() {
             else if (slot.getMinutes() > 0) slot.setMinutes(30,0,0);
           }
         }
+        // Calculate next available slot
         setNextAvailableSlot(slot);
-        // Offline fallback
-        if (isOffline || !isOnline()) {
-          setStats(prev => ({
-            ...prev,
-            todayAppointments: todayList.length,
-            pendingAppointments: todayList.filter(a=>a.status==='scheduled').length,
-            completedToday: todayList.filter(a=>a.status==='completed').length,
-            todayRevenue: todayList.filter(a=>a.status==='completed').length * 150
-          }));
-        }
       } catch (procErr) {
         console.error('🛠️ Dashboard post-processing error', procErr);
       } finally {
@@ -283,7 +255,7 @@ export function Dashboard() {
          setRefreshing(false);
        }
      }
-  }, [isOffline, setRefreshing]);
+  }, [setRefreshing]);
 
   useEffect(() => {
     // Only load once on mount, then rely on refresh triggers
@@ -310,9 +282,43 @@ export function Dashboard() {
     return () => clearInterval(interval);
   }, [isRefreshing, loadDashboardData]);
 
-  const handleAppointmentClick = (appointment: UIAppointment) => {
-    // setSelectedAppointment(appointment);
-    console.log('Appointment clicked:', appointment);
+  // Schedule notifications for today's appointments
+  useEffect(() => {
+    appointments.forEach(apt => {
+      if (apt.dateTime.toDateString() === new Date().toDateString()) {
+        scheduleReminder({
+          id: apt.id,
+          customer: apt.customer,
+          dateTime: apt.dateTime.toISOString(),
+          service: apt.service
+        }, 15); // Schedule reminder 15 minutes before
+      }
+    });
+  }, [appointments]);
+
+  // Computed filtered appointments
+  const filteredAppointments = React.useMemo(() => {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    
+    switch (filter) {
+      case 'today':
+        return appointments.filter(apt => 
+          apt.dateTime >= startOfDay && apt.dateTime <= endOfDay
+        );
+      case 'all':
+      default:
+        return appointments;
+    }
+  }, [appointments, filter]);
+
+  const handleFilterChange = (newFilter: 'all' | 'today') => {
+    setFilter(newFilter);
+  };
+
+  const handleQuickSchedule = () => {
+    setShowAppointmentForm(true);
   };
 
   const handleAddAppointment = () => {
@@ -331,18 +337,18 @@ export function Dashboard() {
     }
 
     try {
+      const requestedTime = formData.appointmentDate && formData.appointmentTime ? 
+        new Date(`${formData.appointmentDate}T${convertTo24Hour(formData.appointmentTime)}:00`).toISOString() : 
+        new Date().toISOString(); // fallback to current time for emergency appointments
+        
       const appointmentData = {
         customer_id: formData.customerName,
         service: formData.serviceType,
-        requested_time: formData.appointmentDate && formData.appointmentTime ? 
-          new Date(`${formData.appointmentDate}T${convertTo24Hour(formData.appointmentTime)}:00`).toISOString() : 
-          undefined,
+        requested_time: requestedTime,
         customer_phone: formData.customerPhone || '',
         customer_email: formData.customerEmail || '',
         location_address: formData.serviceAddress || '',
         notes: `Vehicle: ${formData.vehicleYear} ${formData.vehicleMake} ${formData.vehicleModel}. ${formData.notes || ''}`.trim(),
-        estimated_duration: formData.estimatedDuration || '1 hour',
-        appointmentType: formData.appointmentType,
       };
 
       console.log('📤 Sending appointment data:', appointmentData);
@@ -351,7 +357,7 @@ export function Dashboard() {
         const response = await createAppointment(appointmentData);
         console.log('📥 API response:', response);
         
-        if (response.success) {
+        if (response) {
           // Add to local state for immediate UI update
           const newApt: UIAppointment = {
             id: Date.now().toString(),
@@ -363,19 +369,16 @@ export function Dashboard() {
             status: formData.appointmentType === 'emergency' ? 'in-progress' : 'scheduled',
             phone: formData.customerPhone || '(555) 000-0000',
             address: formData.serviceAddress || 'Address not provided',
-            estimatedDuration: formData.estimatedDuration || '1 hour',
+            estimatedDuration: '1 hour',
             reminderStatus: 'pending' as const,
           };
           
           setAppointments(prev => [...prev, newApt]);
-          setStats(prev => ({
-            todayAppointments: (prev?.todayAppointments ?? 0) + 1,
-            pendingAppointments: (prev?.pendingAppointments ?? 0) + 1,
-            completedToday: prev?.completedToday ?? 0,
-            totalCustomers: prev?.totalCustomers ?? 0,
-            partsOrdered: prev?.partsOrdered ?? 0,
-            todayRevenue: prev?.todayRevenue ?? 0
-          }));
+          saveLastQuickAdd({
+            customer_id: formData.customerName,
+            service: formData.serviceType,
+            estimated_duration: formData.estimatedDuration,
+          });
           
           alert('✅ Appointment scheduled successfully!');
           setShowAppointmentForm(false);
@@ -387,7 +390,7 @@ export function Dashboard() {
             triggerRefresh();
           }, 1000);
         } else {
-          throw new Error(response.error || 'API request failed');
+          throw new Error('API request failed');
         }
       } else {
         alert('⚠️ You are offline. Appointment will be scheduled when connection is restored.');
@@ -399,33 +402,6 @@ export function Dashboard() {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       alert(`❌ Failed to schedule appointment: ${errorMessage}`);
       setIsSubmittingAppointment(false);
-    }
-  };
-
-  const handleWorkOrders = () => {
-    // Open work orders functionality
-    alert('📋 Work Orders feature coming soon! This will show all active work orders and their status.');
-  };
-
-  const handlePartsLookup = () => {
-    // Open parts lookup functionality
-    alert('🔧 Parts Lookup feature coming soon! This will help you find and order parts for repairs.');
-  };
-
-  const handleCreateQuote = () => {
-    // Open quote creation functionality
-    alert('💰 Create Quote feature coming soon! This will help you generate quotes for potential customers.');
-  };
-
-  const handleVehicleLookup = () => {
-    // Open vehicle lookup functionality
-    alert('🚗 Vehicle Lookup feature coming soon! This will help you look up vehicle specifications and history.');
-  };
-
-  const handleEmergency = () => {
-    // Handle emergency situations
-    if (window.confirm('🚨 Emergency Protocol\n\nAre you dealing with an emergency situation that requires immediate attention?')) {
-      alert('Emergency protocol activated!\n\n1. Prioritize safety first\n2. Contact emergency services if needed: 911\n3. Notify dispatch: (555) 123-4567\n4. Document the situation');
     }
   };
 
@@ -485,13 +461,6 @@ export function Dashboard() {
         setNextAppointment(nextAvailable || null);
       }
       
-      setStats(prev => ({
-        ...prev,
-        completedToday: (prev?.completedToday ?? 0) + 1,
-        pendingAppointments: Math.max(0, (prev?.pendingAppointments ?? 0) - 1),
-        todayRevenue: (prev?.todayRevenue ?? 0) + 150
-      }));
-      
       // setSelectedAppointment(null);
       
       // Try to update backend if online
@@ -504,12 +473,6 @@ export function Dashboard() {
               ? { ...apt, status: 'in-progress' as const }
               : apt
           ));
-          setStats(prev => ({
-            ...prev,
-            completedToday: (prev?.completedToday ?? 0) - 1,
-            pendingAppointments: (prev?.pendingAppointments ?? 0) + 1,
-            todayRevenue: (prev?.todayRevenue ?? 0) - 150
-          }));
         }
       }
       
@@ -535,7 +498,7 @@ export function Dashboard() {
       case 'complete':
         handleCompleteJob(nextAppointment.id);
         break;
-      case 'call':
+            case 'call':
         if (nextAppointment.phone) {
           handleCallCustomer(nextAppointment.phone);
         }
@@ -543,12 +506,17 @@ export function Dashboard() {
     }
   };
 
+  const handleVehicleLookup = () => {
+    // Open customer history functionality
+    alert('👥 Customer History feature coming soon! This will show customer history and vehicle details.');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-500 mx-auto mb-4"></div>
-          <p className="text-lg font-medium text-gray-600">Loading your dashboard...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-500 mx-auto mb-sp-3"></div>
+          <p className="text-fs-3 font-medium text-gray-600">Loading your dashboard...</p>
         </div>
       </div>
     );
@@ -556,21 +524,22 @@ export function Dashboard() {
 
   return (
     <>
-      <div className="space-y-4 p-4 sm:p-5">
+      <FloatingActionButton onClick={handleAddAppointment} />
+      <div className="space-y-sp-3 p-sp-3 sm:p-sp-4">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-sp-3">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">🔧 Edgar's Shop Dashboard</h1>
-            <p className="text-sm text-gray-600 mt-1">Welcome back! Here's what's happening today.</p>
+            <h1 className="text-fs-4 sm:text-fs-5 font-bold text-gray-900">🔧 Edgar's Shop Dashboard</h1>
+            <p className="text-fs-1 text-gray-600 mt-sp-1">Welcome back! Here's what's happening today.</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-sp-2">
             <button
               onClick={() => {
                 console.log('🔄 Manual refresh triggered');
                 triggerRefresh();
               }}
               disabled={isRefreshing}
-              className="flex items-center gap-2 px-4 py-2 bg-white text-blue-900 rounded-lg border border-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-50"
+              className="flex items-center gap-sp-2 px-sp-3 py-sp-2 bg-white text-blue-900 rounded-lg border border-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`h-5 w-5 ${(isRefreshing) ? 'animate-spin' : ''}`} />
               Refresh
@@ -578,11 +547,12 @@ export function Dashboard() {
             <Badge variant={isOffline ? "destructive" : "success"}>
               {isOffline ? "Offline Mode" : "Shop Open"}
             </Badge>
-            <span className="text-xs text-gray-500">
+            <NotificationCenter />
+            <span className="text-fs-0 text-gray-500">
               {new Date().toLocaleTimeString()}
             </span>
             {/* View Mode Toggles */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-sp-2">
               <button 
                 data-testid="toggle-calendar" 
                 onClick={() => { setView('calendar'); setViewMode('calendar'); }}
@@ -595,7 +565,7 @@ export function Dashboard() {
                 }}
                 aria-pressed={view === 'calendar' ? 'true' : 'false'}
                 aria-label="Switch to calendar view"
-                className={view === 'calendar' ? 'px-2 py-1 bg-blue-500 text-white rounded' : 'px-2 py-1 bg-gray-200 text-gray-700 rounded'}
+                className={view === 'calendar' ? 'px-sp-2 py-sp-1 bg-blue-500 text-white rounded' : 'px-sp-2 py-sp-1 bg-gray-200 text-gray-700 rounded'}
               >
                 Calendar
               </button>
@@ -611,7 +581,7 @@ export function Dashboard() {
                 }}
                 aria-pressed={view === 'board' ? 'true' : 'false'}
                 aria-label="Switch to board view"
-                className={view === 'board' ? 'px-2 py-1 bg-blue-500 text-white rounded' : 'px-2 py-1 bg-gray-200 text-gray-700 rounded'}
+                className={view === 'board' ? 'px-sp-2 py-sp-1 bg-blue-500 text-white rounded' : 'px-sp-2 py-sp-1 bg-gray-200 text-gray-700 rounded'}
               >
                 Board
               </button>
@@ -621,10 +591,10 @@ export function Dashboard() {
 
         {/* Offline notification */}
         {isOffline && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-sp-3">
             <div className="flex items-center">
-              <AlertTriangle className="h-6 w-6 text-yellow-600 mr-2" />
-              <span className="text-sm text-yellow-800 font-medium">
+              <AlertTriangle className="h-6 w-6 text-yellow-600 mr-sp-2" />
+              <span className="text-fs-1 text-yellow-800 font-medium">
                 Working in offline mode. Changes will sync when connection is restored.
               </span>
             </div>
@@ -634,11 +604,15 @@ export function Dashboard() {
         {/* Main View Section */}
         {view === 'calendar' ? (
           <div data-testid="calendar-view">
+            <DailyFocusHero nextAppointment={nextAppointment} appointments={filteredAppointments} />
+            <div className="mt-sp-3">
+              <ScheduleFilterToggle onFilterChange={handleFilterChange} currentFilter={filter} />
+            </div>
             {/* Calendar Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-sp-3 mt-sp-3">
               <div className="lg:col-span-3">
                 <AppointmentCalendar
-                  appointments={appointments}
+                  appointments={filteredAppointments}
                   onAppointmentClick={(apt) => openDrawer(apt.id)}
                   onAddAppointment={handleAddAppointment}
                   onStartJob={handleStartJob}
@@ -648,34 +622,34 @@ export function Dashboard() {
               </div>
 
               {/* Next Appointment & Big Action Buttons */}
-              <div className="lg:col-span-2 space-y-4">
+              <div className="lg:col-span-2 space-y-sp-3">
                 {/* Next Appointment Card */}
                 <Card>
-                  <CardContent className="p-5 sm:p-5">
-                    <h2 className="text-lg font-bold text-gray-700 mb-4">🕐 Next Appointment</h2>
+                  <CardContent className="p-sp-4 sm:p-sp-4">
+                    <h2 className="text-fs-3 font-bold text-gray-700 mb-sp-3">🕐 Next Appointment</h2>
                     {nextAppointment ? (
-                      <div className="text-center py-2">
-                        <div className="text-xl sm:text-2xl font-bold text-orange-600 mb-2">
+                      <div className="text-center py-sp-2">
+                        <div className="text-fs-4 sm:text-fs-5 font-bold text-orange-600 mb-sp-2">
                           {nextAppointment.timeSlot}
                         </div>
-                        <div className="font-bold text-base text-gray-900">
+                        <div className="font-bold text-fs-2 text-gray-900">
                           {nextAppointment.customer}
                         </div>
-                        <div className="text-gray-600 mt-1 text-xs sm:text-sm">
+                        <div className="text-gray-600 mt-sp-1 text-fs-0 sm:text-fs-1">
                           🚗 {nextAppointment.vehicle}
                         </div>
-                        <div className="text-gray-600 text-xs sm:text-sm">
+                        <div className="text-gray-600 text-fs-0 sm:text-fs-1">
                           🔧 {nextAppointment.service}
                         </div>
-                        <div className="text-gray-500 text-xs mt-2">
+                        <div className="text-gray-500 text-fs-0 mt-sp-2">
                           📞 {nextAppointment.phone}
                         </div>
                       </div>
                     ) : (
-                      <div className="text-center py-4">
-                        <div className="text-2xl sm:text-3xl mb-2">✅</div>
-                        <div className="font-medium text-base text-gray-600">All caught up!</div>
-                        <div className="text-xs text-gray-500">No more appointments today</div>
+                      <div className="text-center py-sp-3">
+                        <div className="text-fs-5 sm:text-fs-6 mb-sp-2">✅</div>
+                        <div className="font-medium text-fs-2 text-gray-600">All caught up!</div>
+                        <div className="text-fs-0 text-gray-500">No more appointments today</div>
                       </div>
                     )}
                   </CardContent>
@@ -683,18 +657,18 @@ export function Dashboard() {
 
                 {/* Big Action Buttons */}
                 <Card>
-                  <CardContent className="p-5 sm:p-5">
-                    <h3 className="text-lg font-bold text-gray-600 mb-4">⚡ Schedule New Service</h3>
+                  <CardContent className="p-sp-4 sm:p-sp-4">
+                    <h3 className="text-fs-3 font-bold text-gray-600 mb-sp-3">⚡ Schedule New Service</h3>
                     {nextAvailableSlot && (
-                      <div className="mb-4 text-center text-gray-700">
+                      <div className="mb-sp-3 text-center text-gray-700">
                         Next available slot: <span className="font-bold text-blue-600">{format(nextAvailableSlot, 'h:mm a')}</span>
                       </div>
                     )}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-sp-3">
                       {nextAppointment && nextAppointment.status === 'scheduled' && (
                         <button
                           onClick={() => handleQuickAction('start')}
-                          className="w-full py-5 text-lg font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 touch-manipulation bg-orange-500 text-white hover:bg-orange-600"
+                          className="w-full py-sp-4 text-fs-3 font-bold rounded-xl shadow-lg flex items-center justify-center space-x-sp-2 touch-manipulation bg-orange-500 text-white hover:bg-orange-600"
                         >
                           <Wrench className="h-7 w-7" />
                           <span>🔧 Start Next Job</span>
@@ -704,7 +678,7 @@ export function Dashboard() {
                       {nextAppointment && nextAppointment.status === 'in-progress' && (
                         <button
                           onClick={() => handleQuickAction('complete')}
-                          className="w-full py-5 text-lg font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 touch-manipulation bg-green-600 text-white hover:bg-green-700"
+                          className="w-full py-sp-4 text-fs-3 font-bold rounded-xl shadow-lg flex items-center justify-center space-x-sp-2 touch-manipulation bg-green-600 text-white hover:bg-green-700"
                         >
                           <CheckCircle className="h-7 w-7" />
                           <span>✅ Complete Current Job</span>
@@ -714,23 +688,23 @@ export function Dashboard() {
                       <div className="relative">
                         <button
                           onClick={() => setShowScheduleDropdown(!showScheduleDropdown)}
-                          className="w-full py-5 text-lg font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 touch-manipulation bg-blue-600 text-white hover:bg-blue-700"
+                          className="w-full py-sp-4 text-fs-3 font-bold rounded-xl shadow-lg flex items-center justify-center space-x-sp-2 touch-manipulation bg-blue-600 text-white hover:bg-blue-700"
                         >
                           <Calendar className="h-7 w-7" />
                           <span>📅 Schedule Service</span>
-                          <PlusCircle className="h-6 w-6 ml-2" />
+                          <PlusCircle className="h-6 w-6 ml-sp-2" />
                         </button>
                         {showScheduleDropdown && (
-                          <div className="absolute z-10 mt-2 w-full bg-white rounded-md shadow-lg">
+                          <div className="absolute z-10 mt-sp-2 w-full bg-white rounded-md shadow-lg">
                             <button
                               onClick={() => { handleAddAppointment(); setShowScheduleDropdown(false); }}
-                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              className="block w-full text-left px-sp-3 py-sp-2 text-fs-1 text-gray-700 hover:bg-gray-100"
                             >
                               Regular Appointment
                             </button>
                             <button
                               onClick={() => { handleAddAppointment(); setShowScheduleDropdown(false); }}
-                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              className="block w-full text-left px-sp-3 py-sp-2 text-fs-1 text-gray-700 hover:bg-gray-100"
                             >
                               Walk-in Service
                             </button>
@@ -766,19 +740,7 @@ export function Dashboard() {
             <StatusBoard onOpen={openDrawer} />
           </div>
         )}
-
-         {/* Stats and Quick Info */}
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-           <DashboardSidebar 
-             stats={stats ?? { todayAppointments: 0, pendingAppointments: 0, completedToday: 0, totalCustomers: 0, partsOrdered: 0, todayRevenue: 0 }}
-             handleWorkOrders={handleWorkOrders}
-             handlePartsLookup={handlePartsLookup}
-             handleCreateQuote={handleCreateQuote}
-             handleEmergency={handleEmergency}
-           />
-           <CarsOnPremisesWidget />
-         </div>
-       </div>
+      </div>
 
        {/* Detail Modal */}
        {/* {selectedAppointment && (
@@ -797,6 +759,7 @@ export function Dashboard() {
          isOpen={showAppointmentForm}
          onClose={() => setShowAppointmentForm(false)}
          onSubmit={handleAppointmentFormSubmit}
+         onQuickSchedule={handleQuickSchedule}
          isSubmitting={isSubmittingAppointment}
        />
       {/* Appointment Details Drawer */}

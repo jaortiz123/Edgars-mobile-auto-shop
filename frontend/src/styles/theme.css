@@ -1,0 +1,58 @@
+/* Sprint 1A T1: Typography Scale & Design System Foundation */
+
+:root {
+  /* Typography Scale - 1.25 Modular Scale (Major Third) */
+  /* Base: 16px, Ratio: 1.25 */
+  --fs-0: 0.75rem;    /* 12px - Captions, fine print */
+  --fs-1: 0.875rem;   /* 14px - Small text, labels */
+  --fs-2: 1rem;       /* 16px - Body text (base) */
+  --fs-3: 1.25rem;    /* 20px - Small headings, lead text */
+  --fs-4: 1.5rem;     /* 24px - Medium headings */
+  --fs-5: 2rem;       /* 32px - Large headings */
+  --fs-6: 2.5rem;     /* 40px - Hero headings */
+
+  /* Line Heights - Matched to typography scale */
+  --lh-tight: 1.25;   /* Headings */
+  --lh-normal: 1.5;   /* Body text */
+  --lh-relaxed: 1.75; /* Large text blocks */
+
+  /* Font Weights */
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* Spacing System - 8px Base Unit */
+  --sp-0: 0;
+  --sp-1: 0.5rem;  /* 8px */
+  --sp-2: 1rem;    /* 16px */
+  --sp-3: 1.5rem;  /* 24px */
+  --sp-4: 2rem;    /* 32px */
+  --sp-5: 2.5rem;  /* 40px */
+  --sp-6: 3rem;    /* 48px */
+  --sp-8: 4rem;    /* 64px */
+
+  /* Component Specific Variables */
+  --card-padding: var(--sp-3);
+  --card-gap: var(--sp-2);
+  --button-padding-y: var(--sp-2);
+  --button-padding-x: var(--sp-3);
+  
+  /* Card Shadows - Enhanced for Sprint 1B */
+  --card-shadow-default: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --card-shadow-focus: 0 0 0 2px rgba(59, 130, 246, 0.5);
+  --card-shadow-urgent: 0 0 0 2px rgba(239, 68, 68, 0.3), 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  --card-shadow-warning: 0 0 0 2px rgba(245, 158, 11, 0.3), 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode support (future enhancement) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Enhanced shadow system for dark mode */
+    --card-shadow-default: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+    --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    --card-shadow-urgent: 0 0 0 2px rgba(239, 68, 68, 0.4), 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+    --card-shadow-warning: 0 0 0 2px rgba(245, 158, 11, 0.4), 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+  }
+}

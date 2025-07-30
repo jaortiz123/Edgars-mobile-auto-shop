@@ -12,7 +12,7 @@ interface Props<T extends BaseService = BaseService> {
 export default function ServiceCard<T extends BaseService = BaseService>({ service, onSelect, displayPrice = false }: Props<T>) {
   return (
     <Card 
-      className="flex flex-col h-full hover:shadow-xl transition-shadow duration-300 min-h-[320px] cursor-pointer" 
+      className="card-base flex flex-col h-full cursor-pointer min-h-[320px]" 
       onClick={() => onSelect(service)}
     >
       <CardHeader>
@@ -25,8 +25,8 @@ export default function ServiceCard<T extends BaseService = BaseService>({ servi
       <CardContent className="flex-grow">
         {displayPrice && (
             <div>
-                <span className="text-sm text-muted-foreground">From</span>
-                <p className="text-4xl font-extrabold text-primary">${service.base_price}</p>
+                <span className="text-fs-1 text-muted-foreground">From</span>
+                <p className="text-fs-6 font-extrabold text-primary">${service.base_price}</p>
             </div>
         )}
       </CardContent>

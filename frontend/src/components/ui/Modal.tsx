@@ -20,11 +20,11 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, cl
       onClick={onClose}
     >
       <div
-        className={["bg-white dark:bg-gray-900 rounded-lg shadow-lg max-w-lg w-full p-6 relative", className].join(" ")}
+        className={["bg-white dark:bg-gray-900 rounded-lg shadow-lg max-w-lg w-full p-sp-4 relative", className].join(" ")}
         onClick={e => e.stopPropagation()}
       >
         {title && (
-          <header className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <header className="mb-sp-3 text-fs-3 font-semibold text-gray-900 dark:text-gray-100">
             {title}
           </header>
         )}

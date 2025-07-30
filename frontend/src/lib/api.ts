@@ -243,6 +243,37 @@ export async function getCustomerHistory(customerId: string): Promise<CustomerHi
   return data;
 }
 
+export async function checkConflict(slot: { date: string; time: string }): Promise<{ conflict: boolean; conflictingAppointment?: any }> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // Mock conflict logic: conflict if time is 10:00 AM on any date
+      if (slot.time === '10:00 AM') {
+        resolve({
+          conflict: true,
+          conflictingAppointment: {
+            id: 'mock-conflict-123',
+            customerName: 'John Doe',
+            serviceType: 'Engine Diagnostics',
+            appointmentDate: slot.date,
+            appointmentTime: slot.time,
+          },
+        });
+      } else {
+        resolve({ conflict: false });
+      }
+    }, 300);
+  });
+}
+
+export async function markArrived(id: string): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      console.log(`Appointment ${id} marked as arrived.`);
+      resolve();
+    }, 300);
+  });
+}
+
 export function handleApiError(err: unknown, defaultMessage?: string): string {
   let msg: string;
   if (axios.isAxiosError(err)) {
@@ -255,9 +286,6 @@ export function handleApiError(err: unknown, defaultMessage?: string): string {
 }
 
 // Expose the axios instance for advanced callers
-export const client = http;
-
-// Minimal hook so callers can `useApi()` if they want symmetry
 export function useApi() {
   return client;
 }

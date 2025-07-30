@@ -15,9 +15,10 @@ import {
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout: authLogout } = useAuth();
   
   const logout = async () => {
-    await authAPI.logout();
+    authLogout();
     navigate('/admin/login');
   };
 
