@@ -1,11 +1,13 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAppointments } from '@/contexts/AppointmentContext';
 import StatusColumn from './StatusColumn';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import type { AppointmentStatus } from '@/types/models';
 
 export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }) {
   const { columns, cards, optimisticMove, triggerRefresh } = useAppointments();
+  const [reschedulingIds, setReschedulingIds] = useState<Set<string>>(new Set());
 
   const byStatus = useMemo(() => {
     const map = new Map<string, typeof cards>();
@@ -19,9 +21,38 @@ export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }
   }, [columns, cards]);
 
   const handleQuickReschedule = async (id: string) => {
-    // In a real app, you'd fetch the next available slot and update the appointment
-    alert(`Quick Reschedule for ${id} triggered!`);
-    triggerRefresh();
+    if (reschedulingIds.has(id)) return; // Prevent double-clicking
+
+    setReschedulingIds(prev => new Set(prev).add(id));
+
+    try {
+      // Get appointment details for service type
+      const appointment = cards.find(card => card.id === id);
+      const serviceType = appointment?.servicesSummary || 'default';
+      
+      // Use rescheduling service with direct path
+      const reschedulingModule = await import('../../services/reschedulingService.js');
+      const result = await reschedulingModule.quickRescheduleToNext(id, serviceType, {
+        daysAhead: 7,
+        reason: 'Quick reschedule from status board'
+      });
+      
+      if (result?.success) {
+        triggerRefresh();
+      } else {
+        console.error('Rescheduling failed:', result?.error || 'Unknown error');
+      }
+    } catch (error) {
+      console.error('Error in quick reschedule:', error);
+      // Show user feedback for failed rescheduling
+      // Note: In a real app, you'd show a toast notification
+    } finally {
+      setReschedulingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
+    }
   };
 
   return (
@@ -34,10 +65,15 @@ export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }
               column={col}
               cards={byStatus.get(col.key) ?? []}
               onOpen={onOpen}
-              onMove={(id) => {
-                void optimisticMove(id, { status: col.key as any, position: 1 });
+              onMove={(id: string) => {
+                void optimisticMove(id, { status: col.key as AppointmentStatus, position: 1 });
               }}
-              onQuickReschedule={handleQuickReschedule}
+              onQuickReschedule={(id: string) => {
+                if (!reschedulingIds.has(id)) {
+                  void handleQuickReschedule(id);
+                }
+              }}
+              isRescheduling={(id: string) => reschedulingIds.has(id)}
             />
           ))}
         </div>

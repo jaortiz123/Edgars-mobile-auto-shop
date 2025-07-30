@@ -23,9 +23,10 @@ interface AppointmentCardProps {
   onOpen: (id: string) => void;
   onMove: (id: string) => void;
   onQuickReschedule: (id: string) => void;
+  isRescheduling?: boolean;
 }
 
-export default function AppointmentCard({ card, onOpen, onMove, onQuickReschedule }: AppointmentCardProps) {
+export default function AppointmentCard({ card, onOpen, onMove, onQuickReschedule, isRescheduling = false }: AppointmentCardProps) {
   // Always call all hooks first to maintain hooks order
   const [minutesUntil, setMinutesUntil] = useState(0);
   const [hasArrived, setHasArrived] = useState(false);
@@ -35,6 +36,7 @@ export default function AppointmentCard({ card, onOpen, onMove, onQuickReschedul
   const [error, setError] = useState<string | null>(null);
 
   const intervalManagerRef = useRef<IntervalManager>(new IntervalManager());
+  const cardRef = useRef<HTMLDivElement>(null);
 
   // Validate card data with error boundary
   const validatedCard = useMemo(() => {
@@ -86,6 +88,9 @@ export default function AppointmentCard({ card, onOpen, onMove, onQuickReschedul
       isDragging: monitor.isDragging(),
     }),
   }), [validatedCard]);
+
+  // Connect drag to ref
+  drag(cardRef);
 
   // Event handlers with useCallback
   const handleCardClick = useCallback(() => {
@@ -232,7 +237,7 @@ export default function AppointmentCard({ card, onOpen, onMove, onQuickReschedul
 
   return (
     <div
-      ref={drag}
+      ref={cardRef}
       className={`appointment-card relative group ${isDragging ? 'opacity-50' : 'opacity-100'} ${
         hasUrgentNotification ? 'has-urgent-notification' : ''
       }`}
@@ -340,12 +345,23 @@ export default function AppointmentCard({ card, onOpen, onMove, onQuickReschedul
       
       {/* Quick reschedule button with enhanced accessibility */}
       <button
-        className="absolute bottom-sp-2 right-sp-2 p-sp-1 bg-blue-500 text-white rounded-full opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-300"
+        className={`absolute bottom-sp-2 right-sp-2 p-sp-1 text-white rounded-full opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-300 ${
+          isRescheduling 
+            ? 'bg-gray-500 cursor-not-allowed' 
+            : 'bg-blue-500 hover:bg-blue-600'
+        }`}
         onClick={handleQuickReschedule}
         aria-label={`Quick reschedule appointment for ${validatedCard.customerName}`}
         tabIndex={0}
+        disabled={isRescheduling}
       >
-        <RefreshCw className="h-4 w-4" aria-hidden="true" />
+        <RefreshCw 
+          className={`h-4 w-4 ${isRescheduling ? 'animate-spin' : ''}`} 
+          aria-hidden="true" 
+        />
+        {isRescheduling && (
+          <span className="sr-only">Rescheduling...</span>
+        )}
       </button>
     </div>
   );
