@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import type { BoardCard, BoardColumn } from '@/types/models';
 import AppointmentCard from './AppointmentCard';
 import { useDrop } from 'react-dnd';
@@ -9,13 +9,17 @@ export default function StatusColumn({
   onOpen,
   onMove,
   onQuickReschedule,
+  isRescheduling,
 }: {
   column: BoardColumn;
   cards: BoardCard[];
   onOpen: (id: string) => void;
   onMove: (id: string) => void;
   onQuickReschedule: (id: string) => void;
+  isRescheduling?: (id: string) => boolean;
 }) {
+  const columnRef = useRef<HTMLDivElement>(null);
+  
   const [, drop] = useDrop(() => ({
     accept: 'card',
     drop: (item: { id: string; status: string; position: number }) => {
@@ -29,8 +33,11 @@ export default function StatusColumn({
     }),
   }));
 
+  // Connect drop to ref
+  drop(columnRef);
+
   return (
-    <div ref={drop} className="min-w-[280px] w-72">
+    <div ref={columnRef} className="min-w-[280px] w-72">
       <div className="sticky top-0 bg-gray-50 z-10 rounded-t-lg border-x border-t p-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">{column.title}</h2>
@@ -46,6 +53,7 @@ export default function StatusColumn({
             onOpen={onOpen}
             onMove={onMove}
             onQuickReschedule={onQuickReschedule}
+            isRescheduling={isRescheduling?.(c.id) || false}
           />
         ))}
         {cards.length === 0 && (

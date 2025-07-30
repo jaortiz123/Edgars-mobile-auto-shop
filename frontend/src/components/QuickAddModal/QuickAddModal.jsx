@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { X, Calendar, User, Car, Wrench, MapPin, Phone, Mail, Clock, Zap } from 'lucide-react';
+import { X, Calendar, User, Car, Wrench, MapPin, Phone, Mail, Clock, Zap, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import TemplateSelector from '../admin/TemplateSelector';
+import ConflictWarning from '../admin/ConflictWarning';
 import { getTemplates, applyTemplateToFormData } from '../../services/templateService';
 import { getLastAppointmentSettings, createOneClickAppointment, saveLastAppointmentSettings } from '../../utils/shortcut';
 import { checkConflict } from '../../lib/api';
+import { getAvailableSlots, clearAvailabilityCache } from '../../services/availabilityService';
+import { formatDate, getRelativeDate } from '../../utils/dateUtils';
 import './QuickAddModal.css';
 
 /**
@@ -41,8 +44,12 @@ const QuickAddModal = ({
   const [templates, setTemplates] = useState([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState(null);
   const [conflict, setConflict] = useState(null);
+  const [overrideConflict, setOverrideConflict] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [smartDefaults, setSmartDefaults] = useState({});
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [isSlotLoading, setIsSlotLoading] = useState(false);
+  const [showSlotPicker, setShowSlotPicker] = useState(false);
 
   // ============ REFS FOR CLEANUP ============
   const cleanupFunctionsRef = useRef([]);
@@ -136,6 +143,7 @@ const QuickAddModal = ({
   useEffect(() => {
     if (!formData.appointmentDate || !formData.appointmentTime) {
       setConflict(null);
+      setOverrideConflict(false);
       return;
     }
 
@@ -147,6 +155,10 @@ const QuickAddModal = ({
           time: formData.appointmentTime,
         });
         setConflict(hasConflict ? conflictingAppointment : null);
+        // Reset override when time changes
+        if (hasConflict && !overrideConflict) {
+          setOverrideConflict(false);
+        }
       } catch (error) {
         console.warn('Error checking conflicts:', error);
         // Non-blocking error - don't prevent submission
@@ -160,6 +172,43 @@ const QuickAddModal = ({
       if (timeoutId) clearTimeout(timeoutId);
     };
   }, [formData.appointmentDate, formData.appointmentTime]);
+
+  // ============ AVAILABILITY CHECK (Sprint 3B T1) ============
+  useEffect(() => {
+    if (!isOpen || !formData.serviceType) return;
+
+    let isMounted = true;
+
+    const fetchAvailableSlots = async () => {
+      setIsSlotLoading(true);
+      try {
+        const targetDate = formData.appointmentDate || new Date();
+        const slots = await getAvailableSlots(formData.serviceType, targetDate, { maxSlots: 5 });
+
+        if (isMounted) {
+          setAvailableSlots(slots || []);
+          setShowSlotPicker(slots && slots.length > 0);
+        }
+      } catch (error) {
+        console.error('Error fetching available slots:', error);
+        if (isMounted) {
+          setErrors(prev => ({ ...prev, slots: 'Failed to load available slots' }));
+        }
+      } finally {
+        if (isMounted) {
+          setIsSlotLoading(false);
+        }
+      }
+    };
+
+    // Debounce slot fetching to avoid excessive API calls
+    const timeoutId = setTimeout(fetchAvailableSlots, 300);
+
+    return () => {
+      clearTimeout(timeoutId);
+      isMounted = false;
+    };
+  }, [isOpen, formData.serviceType, formData.appointmentDate]);
 
   // ============ KEYBOARD NAVIGATION ============
   useEffect(() => {
@@ -285,8 +334,8 @@ const QuickAddModal = ({
       return;
     }
 
-    if (conflict) {
-      setErrors({ conflict: 'Please resolve the time conflict before submitting' });
+    if (conflict && !overrideConflict) {
+      setErrors({ conflict: 'Please resolve the time conflict or click "Proceed Anyway" before submitting' });
       return;
     }
 
@@ -319,6 +368,37 @@ const QuickAddModal = ({
     setSelectedTemplateId(null);
     onClose();
   }, [onClose]);
+
+  // Sprint 3B T1: Handle slot selection from suggested slots
+  const handleSlotSelect = useCallback((slot) => {
+    try {
+      // Update both date and time from the selected slot
+      const slotDate = new Date(slot.time);
+      const dateString = slotDate.toISOString().split('T')[0];
+      const timeString = slot.formatted;
+      
+      setFormData(prev => ({
+        ...prev,
+        appointmentDate: dateString,
+        appointmentTime: timeString
+      }));
+      
+      // Clear any existing errors
+      setErrors(prev => ({
+        ...prev,
+        appointmentDate: '',
+        appointmentTime: '',
+        slots: ''
+      }));
+      
+      // Hide slot picker after selection
+      setShowSlotPicker(false);
+      
+    } catch (error) {
+      console.error('Error selecting slot:', error);
+      setErrors(prev => ({ ...prev, slots: 'Failed to select time slot' }));
+    }
+  }, []);
 
   // ============ RENDER CONDITIONS ============
   if (!isOpen) return null;
@@ -482,19 +562,26 @@ const QuickAddModal = ({
                   <Clock className="h-4 w-4" aria-hidden="true" />
                   Time *
                 </label>
-                <select
-                  id="appointment-time"
-                  value={formData.appointmentTime}
-                  onChange={(e) => handleInputChange('appointmentTime', e.target.value)}
-                  className={`quick-add-input ${errors.appointmentTime ? 'error' : ''}`}
-                  required
-                  aria-describedby={errors.appointmentTime ? 'appointment-time-error' : undefined}
-                >
-                  <option value="">Select time</option>
-                  {timeSlots.map(time => (
-                    <option key={time} value={time}>{time}</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    id="appointment-time"
+                    value={formData.appointmentTime}
+                    onChange={(e) => handleInputChange('appointmentTime', e.target.value)}
+                    className={`quick-add-input ${errors.appointmentTime ? 'error' : ''}`}
+                    required
+                    aria-describedby={errors.appointmentTime ? 'appointment-time-error' : undefined}
+                  >
+                    <option value="">Select time</option>
+                    {timeSlots.map(time => (
+                      <option key={time} value={time}>{time}</option>
+                    ))}
+                  </select>
+                  {isSlotLoading && (
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                      <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+                    </div>
+                  )}
+                </div>
                 {errors.appointmentTime && (
                   <div id="appointment-time-error" className="quick-add-error" role="alert">
                     {errors.appointmentTime}
@@ -535,13 +622,79 @@ const QuickAddModal = ({
             </div>
           </div>
 
-          {/* Conflict Warning */}
-          {conflict && (
-            <div className="quick-add-conflict" role="alert">
-              <div className="quick-add-conflict-icon">⚠️</div>
+          {/* Available Time Slots - Sprint 3B T1 */}
+          {formData.serviceType && (
+            <div className="quick-add-section">
+              <h3 className="quick-add-section-title">
+                <Clock className="h-5 w-5" aria-hidden="true" />
+                Available Time Slots
+                {isSlotLoading && <div className="quick-add-spinner-small" aria-hidden="true"></div>}
+              </h3>
+              
+              {isSlotLoading ? (
+                <div className="quick-add-slots-loading">
+                  <span>Finding available slots...</span>
+                </div>
+              ) : availableSlots.length > 0 ? (
+                <div className="quick-add-slots-container">
+                  <p className="quick-add-slots-description">
+                    Select from available time slots for {formData.serviceType}:
+                  </p>
+                  <div className="quick-add-slots-grid">
+                    {availableSlots.map((slot, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSlotSelect(slot)}
+                        className={`quick-add-slot-button ${
+                          formData.appointmentTime === slot.formatted ? 'selected' : ''
+                        } ${!slot.available ? 'disabled' : ''}`}
+                        type="button"
+                        disabled={!slot.available}
+                        aria-pressed={formData.appointmentTime === slot.formatted}
+                        title={slot.available ? `Available at ${slot.formatted}` : slot.conflictReason}
+                      >
+                        <div className="quick-add-slot-time">{slot.formatted}</div>
+                        <div className="quick-add-slot-date">{formatDate(slot.time, 'short')}</div>
+                        {!slot.available && (
+                          <div className="quick-add-slot-conflict">Unavailable</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : formData.serviceType ? (
+                <div className="quick-add-slots-empty">
+                  <p>No available slots found for {formData.serviceType}</p>
+                  <p className="quick-add-slots-empty-hint">
+                    Try selecting a different date or service type
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {/* Conflict Warning - Sprint 3B T2 */}
+          {conflict && !overrideConflict && (
+            <ConflictWarning 
+              conflictingAppointment={conflict}
+              onOverride={() => setOverrideConflict(true)}
+            />
+          )}
+
+          {/* Override Confirmation */}
+          {conflict && overrideConflict && (
+            <div className="quick-add-override-notice" role="alert">
+              <div className="quick-add-override-icon">✓</div>
               <div>
-                <strong>Schedule Conflict Detected</strong>
-                <p>Another appointment is scheduled at this time. Please choose a different time slot.</p>
+                <strong>Conflict Override Enabled</strong>
+                <p>This appointment will be scheduled despite the time conflict.</p>
+                <button 
+                  type="button"
+                  onClick={() => setOverrideConflict(false)}
+                  className="quick-add-override-cancel"
+                >
+                  Cancel Override
+                </button>
               </div>
             </div>
           )}
@@ -577,7 +730,7 @@ const QuickAddModal = ({
             
             <Button
               type="submit"
-              disabled={isSubmitting || isLoading || !!conflict}
+              disabled={isSubmitting || isLoading || (conflict && !overrideConflict)}
               className="quick-add-button-primary"
             >
               {isSubmitting ? (
@@ -588,7 +741,7 @@ const QuickAddModal = ({
               ) : (
                 <>
                   <Calendar className="h-4 w-4" aria-hidden="true" />
-                  Schedule Appointment
+                  {conflict && overrideConflict ? 'Schedule Anyway' : 'Schedule Appointment'}
                 </>
               )}
             </Button>
