@@ -4,6 +4,7 @@ import { Badge } from '../components/ui/Badge';
 import { AppointmentCalendar } from '../components/admin/AppointmentCalendar';
 import AppointmentDrawer from '../components/admin/AppointmentDrawer';
 import { AppointmentFormModal } from '../components/admin/AppointmentFormModal';
+import QuickAddModal from '../components/QuickAddModal/QuickAddModal';
 import DailyFocusHero from '../components/admin/DailyFocusHero';
 import ScheduleFilterToggle from '../components/admin/ScheduleFilterToggle';
 import NotificationCenter from '../components/admin/NotificationCenter';
@@ -125,6 +126,7 @@ export function Dashboard() {
   const [nextAppointment, setNextAppointment] = useState<UIAppointment | null>(null);
   const [nextAvailableSlot, setNextAvailableSlot] = useState<Date | null>(null);
   const [showAppointmentForm, setShowAppointmentForm] = useState(false);
+  const [showQuickAddModal, setShowQuickAddModal] = useState(false);
   const [isSubmittingAppointment, setIsSubmittingAppointment] = useState(false);
   const [appointments, setAppointments] = useState<UIAppointment[]>([]);
   const [filter, setFilter] = useState<'all' | 'today'>('today');
@@ -322,7 +324,19 @@ export function Dashboard() {
   };
 
   const handleAddAppointment = () => {
-    setShowAppointmentForm(true);
+    // Use QuickAddModal for FAB clicks to enable faster appointment creation
+    setShowQuickAddModal(true);
+  };
+
+  // Handler for QuickAddModal submission - integrates with existing appointment creation flow
+  const handleQuickAddSubmit = async (formData: AppointmentFormData) => {
+    console.log('🚀 QuickAdd submission:', formData);
+    
+    // Reuse existing appointment creation logic
+    await handleAppointmentFormSubmit(formData);
+    
+    // Close QuickAddModal on success
+    setShowQuickAddModal(false);
   };
 
   const handleAppointmentFormSubmit = async (formData: AppointmentFormData) => {
@@ -606,7 +620,7 @@ export function Dashboard() {
           <div data-testid="calendar-view">
             <DailyFocusHero nextAppointment={nextAppointment} appointments={filteredAppointments} />
             <div className="mt-sp-3">
-              <ScheduleFilterToggle onFilterChange={handleFilterChange} currentFilter={filter} />
+              <ScheduleFilterToggle onFilterChange={handleFilterChange} activeFilter={filter} />
             </div>
             {/* Calendar Section */}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-sp-3 mt-sp-3">
@@ -762,6 +776,15 @@ export function Dashboard() {
          onQuickSchedule={handleQuickSchedule}
          isSubmitting={isSubmittingAppointment}
        />
+
+       {/* Quick Add Modal - Enhanced for rapid appointment creation */}
+       <QuickAddModal
+         isOpen={showQuickAddModal}
+         onClose={() => setShowQuickAddModal(false)}
+         onSubmit={handleQuickAddSubmit}
+         isSubmitting={isSubmittingAppointment}
+       />
+
       {/* Appointment Details Drawer */}
       <AppointmentDrawer open={!!drawerId} id={drawerId} onClose={closeDrawer} />
     </>

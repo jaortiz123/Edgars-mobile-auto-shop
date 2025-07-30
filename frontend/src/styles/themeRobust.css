@@ -1,0 +1,202 @@
+/* Sprint 1A Robustness: CSS Fallback System */
+/* Enhanced theme.css with comprehensive fallbacks and error handling */
+
+:root {
+  /* Typography Scale - 1.25 Modular Scale (Major Third) with Fallbacks */
+  --fs-0: 0.75rem;    /* 12px - Captions, fine print */
+  --fs-1: 0.875rem;   /* 14px - Small text, labels */
+  --fs-2: 1rem;       /* 16px - Body text (base) */
+  --fs-3: 1.25rem;    /* 20px - Small headings, lead text */
+  --fs-4: 1.5rem;     /* 24px - Medium headings */
+  --fs-5: 2rem;       /* 32px - Large headings */
+  --fs-6: 2.5rem;     /* 40px - Hero headings */
+
+  /* Line Heights with Fallbacks */
+  --lh-tight: 1.25;   /* Headings */
+  --lh-normal: 1.5;   /* Body text */
+  --lh-relaxed: 1.75; /* Large text blocks */
+
+  /* Font Weights with Fallbacks */
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* Spacing System - 8px Base Unit with Fallbacks */
+  --sp-0: 0;
+  --sp-1: 0.5rem;  /* 8px */
+  --sp-2: 1rem;    /* 16px */
+  --sp-3: 1.5rem;  /* 24px */
+  --sp-4: 2rem;    /* 32px */
+  --sp-5: 2.5rem;  /* 40px */
+  --sp-6: 3rem;    /* 48px */
+  --sp-8: 4rem;    /* 64px */
+
+  /* Component Specific Variables with Fallbacks */
+  --card-padding: var(--sp-3, 1.5rem);
+  --card-gap: var(--sp-2, 1rem);
+  --button-padding-y: var(--sp-2, 1rem);
+  --button-padding-x: var(--sp-3, 1.5rem);
+  
+  /* Enhanced Shadow System with Fallbacks */
+  --card-shadow-default: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --card-shadow-focus: 0 0 0 2px rgba(59, 130, 246, 0.5);
+  --card-shadow-urgent: 0 0 0 2px rgba(239, 68, 68, 0.3), 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  --card-shadow-warning: 0 0 0 2px rgba(245, 158, 11, 0.3), 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+
+  /* Performance Optimization Variables */
+  --render-optimization: optimizeSpeed;
+  --font-display: swap;
+  --will-change: auto;
+
+  /* Accessibility Variables */
+  --focus-outline-width: 2px;
+  --focus-outline-offset: 2px;
+  --focus-outline-color: rgba(59, 130, 246, 0.6);
+  --min-touch-target: 44px;
+
+  /* Animation Variables with Reduced Motion Support */
+  --animation-duration: 0.2s;
+  --animation-easing: ease-in-out;
+  --transition-property: color, background-color, border-color, box-shadow, transform;
+}
+
+/* Reduced Motion Preference */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --animation-duration: 0.01s;
+    --transition-property: none;
+  }
+  
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01s !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  :root {
+    --focus-outline-width: 3px;
+    --focus-outline-color: ButtonText;
+    --card-shadow-focus: 0 0 0 3px ButtonText;
+  }
+}
+
+/* Dark Mode with Enhanced Fallbacks */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Enhanced shadow system for dark mode with fallbacks */
+    --card-shadow-default: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+    --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    --card-shadow-urgent: 0 0 0 2px rgba(239, 68, 68, 0.4), 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+    --card-shadow-warning: 0 0 0 2px rgba(245, 158, 11, 0.4), 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+    --focus-outline-color: rgba(96, 165, 250, 0.8);
+  }
+}
+
+/* Fallback Font Stack Enhancement */
+@supports not (font-variation-settings: normal) {
+  :root {
+    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+}
+
+/* CSS Variable Fallback Utilities */
+.ds-fallback-typography {
+  font-size: var(--fs-2, 1rem);
+  line-height: var(--lh-normal, 1.5);
+  font-weight: var(--fw-normal, 400);
+}
+
+.ds-fallback-spacing {
+  padding: var(--sp-3, 1.5rem);
+  gap: var(--sp-2, 1rem);
+}
+
+/* Error Recovery Styles */
+.ds-error-recovery {
+  /* Provide sensible defaults if design system fails */
+  font-size: 1rem;
+  line-height: 1.5;
+  padding: 1rem;
+  margin: 0.5rem 0;
+  color: #000;
+  background: #fff;
+}
+
+/* Performance Optimization Hints */
+.ds-performance-optimized {
+  contain: layout style paint;
+  will-change: var(--will-change, auto);
+  font-display: var(--font-display, swap);
+}
+
+/* Accessibility Enhancement Utilities */
+.ds-focus-enhanced:focus-visible {
+  outline: var(--focus-outline-width, 2px) solid var(--focus-outline-color, #3b82f6);
+  outline-offset: var(--focus-outline-offset, 2px);
+  box-shadow: var(--card-shadow-focus, 0 0 0 2px rgba(59, 130, 246, 0.5));
+}
+
+.ds-touch-target {
+  min-height: var(--min-touch-target, 44px);
+  min-width: var(--min-touch-target, 44px);
+}
+
+/* Development Mode Warnings */
+.ds-dev-warning {
+  position: relative;
+}
+
+.ds-dev-warning::before {
+  content: '⚠️ Design System Warning: Check console for details';
+  position: absolute;
+  top: -2rem;
+  left: 0;
+  padding: 0.25rem 0.5rem;
+  background: #fbbf24;
+  color: #000;
+  font-size: 0.75rem;
+  border-radius: 0.25rem;
+  white-space: nowrap;
+  z-index: 9999;
+  display: none;
+}
+
+/* Show warnings in development */
+@media screen and (max-width: 0px) {
+  .ds-dev-warning::before {
+    display: block;
+  }
+}
+
+/* Critical CSS Variables Validation */
+@supports not (color: var(--fs-2)) {
+  /* Fallback for browsers that don't support CSS variables */
+  html {
+    font-size: 16px;
+  }
+  
+  h1 { font-size: 2.5rem; }
+  h2 { font-size: 2rem; }
+  h3 { font-size: 1.5rem; }
+  h4 { font-size: 1.25rem; }
+  h5 { font-size: 1rem; }
+  h6 { font-size: 0.875rem; }
+  
+  .p-1 { padding: 0.5rem; }
+  .p-2 { padding: 1rem; }
+  .p-3 { padding: 1.5rem; }
+  .p-4 { padding: 2rem; }
+  
+  .m-1 { margin: 0.5rem; }
+  .m-2 { margin: 1rem; }
+  .m-3 { margin: 1.5rem; }
+  .m-4 { margin: 2rem; }
+}

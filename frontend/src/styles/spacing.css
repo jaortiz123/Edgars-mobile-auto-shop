@@ -1,24 +1,44 @@
-/* Sprint 1A T3: Spacing System */
+/* Sprint 1A T3: Spacing System - Enhanced with Robustness */
 
-/* Margin Utilities */
-.m-0 { margin: var(--sp-0); }
-.m-1 { margin: var(--sp-1); }
-.m-2 { margin: var(--sp-2); }
-.m-3 { margin: var(--sp-3); }
-.m-4 { margin: var(--sp-4); }
-.m-5 { margin: var(--sp-5); }
-.m-6 { margin: var(--sp-6); }
-.m-8 { margin: var(--sp-8); }
+/* Margin Utilities with Fallbacks */
+.m-0 { margin: var(--sp-0, 0); }
+.m-1 { margin: var(--sp-1, 0.5rem); }
+.m-2 { margin: var(--sp-2, 1rem); }
+.m-3 { margin: var(--sp-3, 1.5rem); }
+.m-4 { margin: var(--sp-4, 2rem); }
+.m-5 { margin: var(--sp-5, 2.5rem); }
+.m-6 { margin: var(--sp-6, 3rem); }
+.m-8 { margin: var(--sp-8, 4rem); }
 
-/* Margin Top */
-.mt-0 { margin-top: var(--sp-0); }
-.mt-1 { margin-top: var(--sp-1); }
-.mt-2 { margin-top: var(--sp-2); }
-.mt-3 { margin-top: var(--sp-3); }
-.mt-4 { margin-top: var(--sp-4); }
-.mt-5 { margin-top: var(--sp-5); }
-.mt-6 { margin-top: var(--sp-6); }
-.mt-8 { margin-top: var(--sp-8); }
+/* Enhanced Margin Utilities with Design System Prefixes */
+.m-sp-0 { margin: var(--sp-0, 0); }
+.m-sp-1 { margin: var(--sp-1, 0.5rem); }
+.m-sp-2 { margin: var(--sp-2, 1rem); }
+.m-sp-3 { margin: var(--sp-3, 1.5rem); }
+.m-sp-4 { margin: var(--sp-4, 2rem); }
+.m-sp-5 { margin: var(--sp-5, 2.5rem); }
+.m-sp-6 { margin: var(--sp-6, 3rem); }
+.m-sp-8 { margin: var(--sp-8, 4rem); }
+
+/* Margin Top with Fallbacks */
+.mt-0 { margin-top: var(--sp-0, 0); }
+.mt-1 { margin-top: var(--sp-1, 0.5rem); }
+.mt-2 { margin-top: var(--sp-2, 1rem); }
+.mt-3 { margin-top: var(--sp-3, 1.5rem); }
+.mt-4 { margin-top: var(--sp-4, 2rem); }
+.mt-5 { margin-top: var(--sp-5, 2.5rem); }
+.mt-6 { margin-top: var(--sp-6, 3rem); }
+.mt-8 { margin-top: var(--sp-8, 4rem); }
+
+/* Enhanced Margin Top with Design System Prefixes */
+.mt-sp-0 { margin-top: var(--sp-0, 0); }
+.mt-sp-1 { margin-top: var(--sp-1, 0.5rem); }
+.mt-sp-2 { margin-top: var(--sp-2, 1rem); }
+.mt-sp-3 { margin-top: var(--sp-3, 1.5rem); }
+.mt-sp-4 { margin-top: var(--sp-4, 2rem); }
+.mt-sp-5 { margin-top: var(--sp-5, 2.5rem); }
+.mt-sp-6 { margin-top: var(--sp-6, 3rem); }
+.mt-sp-8 { margin-top: var(--sp-8, 4rem); }
 
 /* Margin Bottom */
 .mb-0 { margin-bottom: var(--sp-0); }
