@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { LoadingButton } from '../components/LoadingSpinner';
-import { useToast } from '../components/ToastProvider';
+import { useToast } from '../hooks/useToast';
 
 interface LocationState {
   from?: {
@@ -24,8 +24,30 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Client-side validation
+    if (!email.trim()) {
+      showToast({
+        type: 'error',
+        title: 'Email required',
+        message: 'Please enter your email address.',
+        duration: 3000
+      });
+      return;
+    }
+    
+    if (!password.trim()) {
+      showToast({
+        type: 'error',
+        title: 'Password required',
+        message: 'Please enter your password.',
+        duration: 3000
+      });
+      return;
+    }
+    
     try {
-      await login(email, password);
+      await login(email.trim(), password);
       showToast({
         type: 'success',
         title: 'Welcome back!',
@@ -33,11 +55,17 @@ const Login: React.FC = () => {
         duration: 3000
       });
       navigate(from, { replace: true });
-    } catch {
+    } catch (loginError) {
+      // Error is already handled in AuthContext, but we can show additional feedback
+      let errorMessage = 'Please check your email and password and try again.';
+      if (loginError instanceof Error) {
+        errorMessage = loginError.message;
+      }
+      
       showToast({
         type: 'error',
         title: 'Sign in failed',
-        message: 'Please check your email and password and try again.',
+        message: errorMessage,
         duration: 5000
       });
     }
@@ -63,9 +91,9 @@ const Login: React.FC = () => {
           </p>
         </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
           {error && (
-            <div className="rounded-md bg-red-50 p-4">
+            <div className="rounded-md bg-red-50 p-4" role="alert" aria-live="polite">
               <div className="text-sm text-red-800">{error}</div>
             </div>
           )}
@@ -73,7 +101,7 @@ const Login: React.FC = () => {
           <div className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
+                Email address *
               </label>
               <input
                 id="email"
@@ -85,12 +113,14 @@ const Login: React.FC = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Enter your email"
+                aria-describedby={error ? 'login-error' : undefined}
+                aria-invalid={error ? "true" : "false"}
               />
             </div>
             
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
+                Password *
               </label>
               <div className="mt-1 relative">
                 <input
@@ -103,19 +133,22 @@ const Login: React.FC = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   className="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                   placeholder="Enter your password"
+                  aria-describedby="password-toggle"
+                  aria-invalid={error ? "true" : "false"}
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center hover:text-gray-600 focus:outline-none focus:text-gray-600"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
+                  id="password-toggle"
                 >
                   {showPassword ? (
-                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L7.03 12.727m2.848-2.849L12 7.5m0 0l2.122 2.378M12 7.5v6m0-6l-2.122 2.378" />
                     </svg>
                   ) : (
-                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>

@@ -1,4 +1,4 @@
-/* Sprint 1A T1: Typography System */
+/* Sprint 1A T1: Typography System - Enhanced with Robustness */
 
 /* Base Typography Reset */
 * {
@@ -6,111 +6,227 @@
 }
 
 html {
-  font-size: var(--fs-2); /* 16px base */
-  line-height: var(--lh-normal);
+  font-size: var(--fs-2, 1rem); /* 16px base with fallback */
+  line-height: var(--lh-normal, 1.5);
 }
 
 body {
-  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
-  font-size: var(--fs-2);
-  font-weight: var(--fw-normal);
-  line-height: var(--lh-normal);
+  font-family: var(--font-sans, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif);
+  font-size: var(--fs-2, 1rem);
+  font-weight: var(--fw-normal, 400);
+  line-height: var(--lh-normal, 1.5);
+  /* Performance optimizations */
+  font-display: swap;
+  text-rendering: optimizeSpeed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Heading Scale */
+/* Heading Scale - Enhanced with Fallbacks and Accessibility */
 h1, .text-h1 {
-  font-size: var(--fs-6);
-  font-weight: var(--fw-bold);
-  line-height: var(--lh-tight);
-  margin-bottom: var(--sp-4);
+  font-size: var(--fs-6, 2.5rem);
+  font-weight: var(--fw-bold, 700);
+  line-height: var(--lh-tight, 1.25);
+  margin-bottom: var(--sp-4, 2rem);
+  /* Performance optimization */
+  contain: layout style;
 }
 
 h2, .text-h2 {
-  font-size: var(--fs-5);
-  font-weight: var(--fw-bold);
-  line-height: var(--lh-tight);
-  margin-bottom: var(--sp-3);
+  font-size: var(--fs-5, 2rem);
+  font-weight: var(--fw-bold, 700);
+  line-height: var(--lh-tight, 1.25);
+  margin-bottom: var(--sp-3, 1.5rem);
+  contain: layout style;
 }
 
 h3, .text-h3 {
-  font-size: var(--fs-4);
-  font-weight: var(--fw-semibold);
-  line-height: var(--lh-tight);
-  margin-bottom: var(--sp-3);
+  font-size: var(--fs-4, 1.5rem);
+  font-weight: var(--fw-semibold, 600);
+  line-height: var(--lh-tight, 1.25);
+  margin-bottom: var(--sp-3, 1.5rem);
+  contain: layout style;
 }
 
 h4, .text-h4 {
-  font-size: var(--fs-3);
-  font-weight: var(--fw-semibold);
-  line-height: var(--lh-tight);
-  margin-bottom: var(--sp-2);
+  font-size: var(--fs-3, 1.25rem);
+  font-weight: var(--fw-semibold, 600);
+  line-height: var(--lh-tight, 1.25);
+  margin-bottom: var(--sp-2, 1rem);
+  contain: layout style;
 }
 
 h5, .text-h5 {
-  font-size: var(--fs-2);
-  font-weight: var(--fw-semibold);
-  line-height: var(--lh-tight);
-  margin-bottom: var(--sp-2);
+  font-size: var(--fs-2, 1rem);
+  font-weight: var(--fw-semibold, 600);
+  line-height: var(--lh-tight, 1.25);
+  margin-bottom: var(--sp-2, 1rem);
+  contain: layout style;
 }
 
 h6, .text-h6 {
-  font-size: var(--fs-1);
-  font-weight: var(--fw-semibold);
-  line-height: var(--lh-tight);
-  margin-bottom: var(--sp-2);
+  font-size: var(--fs-1, 0.875rem);
+  font-weight: var(--fw-semibold, 600);
+  line-height: var(--lh-tight, 1.25);
+  margin-bottom: var(--sp-2, 1rem);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  contain: layout style;
 }
 
-/* Body Text Variants */
+/* Body Text Variants - Enhanced with Fallbacks */
 .text-body {
-  font-size: var(--fs-2);
-  line-height: var(--lh-normal);
+  font-size: var(--fs-2, 1rem);
+  line-height: var(--lh-normal, 1.5);
 }
 
 .text-body-sm {
-  font-size: var(--fs-1);
-  line-height: var(--lh-normal);
+  font-size: var(--fs-1, 0.875rem);
+  line-height: var(--lh-normal, 1.5);
 }
 
 .text-lead {
-  font-size: var(--fs-3);
-  line-height: var(--lh-relaxed);
-  font-weight: var(--fw-normal);
+  font-size: var(--fs-3, 1.25rem);
+  line-height: var(--lh-relaxed, 1.75);
+  font-weight: var(--fw-normal, 400);
 }
 
 .text-caption {
-  font-size: var(--fs-0);
-  line-height: var(--lh-normal);
+  font-size: var(--fs-0, 0.75rem);
+  line-height: var(--lh-normal, 1.5);
 }
 
-/* Font Weight Utilities */
-.font-normal { font-weight: var(--fw-normal); }
-.font-medium { font-weight: var(--fw-medium); }
-.font-semibold { font-weight: var(--fw-semibold); }
-.font-bold { font-weight: var(--fw-bold); }
+/* Typography Scale Utilities with Fallbacks */
+.text-fs-0 {
+  font-size: var(--fs-0, 0.75rem);
+  line-height: var(--lh-normal, 1.5);
+}
 
-/* Line Height Utilities */
-.leading-tight { line-height: var(--lh-tight); }
-.leading-normal { line-height: var(--lh-normal); }
-.leading-relaxed { line-height: var(--lh-relaxed); }
+.text-fs-1 {
+  font-size: var(--fs-1, 0.875rem);
+  line-height: var(--lh-normal, 1.5);
+}
 
-/* Links */
+.text-fs-2 {
+  font-size: var(--fs-2, 1rem);
+  line-height: var(--lh-normal, 1.5);
+}
+
+.text-fs-3 {
+  font-size: var(--fs-3, 1.25rem);
+  line-height: var(--lh-tight, 1.25);
+}
+
+.text-fs-4 {
+  font-size: var(--fs-4, 1.5rem);
+  line-height: var(--lh-tight, 1.25);
+}
+
+.text-fs-5 {
+  font-size: var(--fs-5, 2rem);
+  line-height: var(--lh-tight, 1.25);
+}
+
+.text-fs-6 {
+  font-size: var(--fs-6, 2.5rem);
+  line-height: var(--lh-tight, 1.25);
+}
+
+/* Font Weight Utilities with Fallbacks */
+.font-normal { font-weight: var(--fw-normal, 400); }
+.font-medium { font-weight: var(--fw-medium, 500); }
+.font-semibold { font-weight: var(--fw-semibold, 600); }
+.font-bold { font-weight: var(--fw-bold, 700); }
+
+/* Line Height Utilities with Fallbacks */
+.leading-tight { line-height: var(--lh-tight, 1.25); }
+.leading-normal { line-height: var(--lh-normal, 1.5); }
+.leading-relaxed { line-height: var(--lh-relaxed, 1.75); }
+
+/* Enhanced Link Styles with Accessibility */
 a {
-  color: hsl(var(--primary));
+  color: hsl(var(--primary, 217 91% 60%));
   text-decoration: none;
+  /* Enhanced focus support */
+  border-radius: 0.125rem;
+  transition: var(--transition-property, color) var(--animation-duration, 0.2s) var(--animation-easing, ease-in-out);
 }
 
 a:hover {
   text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
 }
 
-/* Focus styles */
+a:visited {
+  color: hsl(var(--primary, 217 91% 60%));
+}
+
+/* Enhanced Focus Styles - WCAG AA Compliant */
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
+  outline: var(--focus-outline-width, 2px) solid var(--focus-outline-color, hsl(217 91% 60%));
+  outline-offset: var(--focus-outline-offset, 2px);
+  box-shadow: var(--card-shadow-focus, 0 0 0 2px rgba(59, 130, 246, 0.5));
+}
+
+/* Responsive Typography */
+@media (max-width: 768px) {
+  .text-fs-6 {
+    font-size: var(--fs-5, 2rem); /* Scale down hero text on mobile */
+  }
+  
+  .text-fs-5 {
+    font-size: var(--fs-4, 1.5rem);
+  }
+  
+  /* Increase line height for better mobile readability */
+  .text-body,
+  .text-fs-2 {
+    line-height: var(--lh-relaxed, 1.75);
+  }
+}
+
+/* Print Styles */
+@media print {
+  body {
+    font-size: 12pt;
+    line-height: 1.5;
+    color: black;
+    background: white;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    color: black;
+    page-break-after: avoid;
+  }
+  
+  a {
+    color: black;
+    text-decoration: underline;
+  }
+  
+  a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+  }
+}
+
+/* Error Recovery for Typography */
+.typography-fallback {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+/* Performance Optimized Typography */
+.typography-optimized {
+  font-display: swap;
+  text-rendering: optimizeSpeed;
+  contain: layout style;
+  will-change: auto;
 }

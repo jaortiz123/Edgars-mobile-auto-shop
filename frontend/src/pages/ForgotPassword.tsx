@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useToast } from '../components/ToastProvider';
+import { useToast } from '../hooks/useToast';
 import { LoadingButton } from '../components/LoadingSpinner';
 
 const ForgotPassword: React.FC = () => {

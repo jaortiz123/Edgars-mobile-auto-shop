@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { getAdminAppointmentsToday, updateAppointment } from '../services/apiService';
 import { NotificationTracker } from '../components/admin/NotificationTracker';
 import CalendarView from '../components/admin/CalendarView';
+import ScheduleView from '../components/admin/ScheduleView';
 import AdvancedFilter from '../components/admin/AdvancedFilter';
 import DataExport from '../components/admin/DataExport';
 import ReportsDropdown from '../components/admin/ReportsDropdown';
@@ -19,7 +20,8 @@ import {
   Users,
   Clock,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  CalendarDays
 } from 'lucide-react';
 
 interface Appointment {
@@ -52,7 +54,7 @@ interface FilterOptions {
   phoneSearch: string;
 }
 
-type ViewMode = 'list' | 'calendar';
+type ViewMode = 'list' | 'calendar' | 'schedule';
 
 export default function AdminAppointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -76,17 +78,23 @@ export default function AdminAppointments() {
     fetchAppointments();
   }, []);
 
-  // Auto-refresh appointments every 30 seconds
+  // Auto-refresh appointments every 30 seconds with proper cleanup
   useEffect(() => {
+    if (loading) return; // Don't setup interval during initial load
+    
     const interval = setInterval(() => {
+      console.log('🔄 Auto-refreshing appointments...');
+      // Only refresh if we're not already loading to prevent race conditions
       if (!loading) {
-        console.log('🔄 Auto-refreshing appointments...');
         fetchAppointments();
       }
     }, 30000); // Refresh every 30 seconds
 
-    return () => clearInterval(interval);
-  }, [loading]);
+    return () => {
+      console.log('🧹 Cleaning up appointment auto-refresh interval');
+      clearInterval(interval);
+    };
+  }, [loading]); // Only re-setup when loading state changes
 
   const fetchAppointments = async () => {
     setLoading(true);
@@ -332,6 +340,15 @@ export default function AdminAppointments() {
                   List View
                 </Button>
                 <Button
+                  variant={viewMode === 'schedule' ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('schedule')}
+                  className="rounded-none flex items-center gap-2"
+                >
+                  <CalendarDays className="h-4 w-4" />
+                  Smart Schedule
+                </Button>
+                <Button
                   variant={viewMode === 'calendar' ? 'primary' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('calendar')}
@@ -399,6 +416,11 @@ export default function AdminAppointments() {
         </Card>
       ) : viewMode === 'calendar' ? (
         <CalendarView />
+      ) : viewMode === 'schedule' ? (
+        <ScheduleView 
+          appointments={filteredAppointments}
+          title="Smart Today View"
+        />
       ) : (
         <Card>
           <CardHeader>

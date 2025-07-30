@@ -1,0 +1,405 @@
+/**
+ * Sprint 1B Card Design System - Robust CSS Enhancements
+ * 
+ * Performance and accessibility improvements for card components:
+ * - GPU-accelerated animations
+ * - Optimized shadow calculations
+ * - Enhanced accessibility features
+ * - Memory-efficient animations
+ * - Dark mode support
+ */
+
+/* Enhanced Card Base Styles with Performance Optimization */
+.card-base {
+  border-radius: 0.5rem;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  box-shadow: var(--card-shadow-default);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Performance optimization */
+  will-change: transform, box-shadow;
+  transform: translateZ(0); /* Force GPU acceleration */
+  backface-visibility: hidden; /* Prevent flickering */
+}
+
+.card-base:hover {
+  box-shadow: var(--card-shadow-hover);
+  transform: translateY(-2px) translateZ(0);
+}
+
+.card-base:focus {
+  outline: none;
+  box-shadow: var(--card-shadow-focus);
+  transform: translateY(-1px) translateZ(0);
+}
+
+/* Enhanced focus styles for better accessibility */
+.card-base:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  box-shadow: var(--card-shadow-focus), 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+/* Improved Card Variants with Performance */
+.card-urgent {
+  box-shadow: var(--card-shadow-urgent);
+  border-color: #fca5a5;
+  animation: urgent-pulse-border 2s infinite ease-in-out;
+}
+
+.card-warning {
+  box-shadow: var(--card-shadow-warning);
+  border-color: #fbbf24;
+}
+
+/* GPU-accelerated urgent pulse animation */
+@keyframes urgent-pulse-border {
+  0%, 100% {
+    border-color: #fca5a5;
+    box-shadow: var(--card-shadow-urgent);
+  }
+  50% {
+    border-color: #ef4444;
+    box-shadow: var(--card-shadow-urgent), 0 0 0 4px rgba(239, 68, 68, 0.1);
+  }
+}
+
+/* Enhanced Urgency Badge System with GPU Acceleration */
+.urgency-badge {
+  position: absolute;
+  top: var(--sp-1);
+  right: var(--sp-1);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border-width: 2px;
+  border-style: solid;
+  z-index: 10;
+  
+  /* Performance optimization */
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.urgency-badge.urgent {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.urgency-badge.soon {
+  border-color: #f59e0b;
+  background-color: #fffbeb;
+}
+
+.urgency-badge.normal {
+  border-color: #10b981;
+  background-color: #f0fdf4;
+}
+
+/* Optimized pulse animations using transform and opacity */
+.urgency-badge.urgent::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border-radius: 50%;
+  border: 2px solid #ef4444;
+  opacity: 0.6;
+  
+  /* GPU-accelerated animation */
+  animation: urgency-pulse-transform 2s infinite ease-in-out;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+.urgency-badge.soon::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border-radius: 50%;
+  border: 2px solid #f59e0b;
+  opacity: 0.4;
+  
+  /* GPU-accelerated animation */
+  animation: urgency-pulse-transform 3s infinite ease-in-out;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+/* Optimized keyframe animation using transform */
+@keyframes urgency-pulse-transform {
+  0%, 100% {
+    transform: scale(1) translateZ(0);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.2) translateZ(0);
+    opacity: 0.2;
+  }
+}
+
+/* Enhanced Urgency Status with Accessibility */
+.urgency-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-0);
+  font-weight: 500;
+  padding: 2px var(--sp-1);
+  border-radius: 4px;
+  margin-top: var(--sp-1);
+  transition: all 0.2s ease;
+  
+  /* Accessibility enhancement */
+  position: relative;
+}
+
+.urgency-status.urgent {
+  color: #dc2626;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.urgency-status.soon {
+  color: #d97706;
+  background-color: #fffbeb;
+  border: 1px solid #fed7aa;
+}
+
+.urgency-status.normal {
+  color: #059669;
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+/* Enhanced Live Countdown with Performance Optimization */
+.countdown {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: var(--fs-0);
+  font-weight: var(--fw-medium);
+  position: relative;
+  padding-left: 16px; /* Space for live indicator */
+}
+
+.countdown.starting-soon {
+  color: #d97706;
+  background-color: #fffbeb;
+  border-radius: 4px;
+  padding: var(--sp-1) var(--sp-2);
+  padding-left: 20px;
+}
+
+.countdown.running-late {
+  color: #dc2626;
+  background-color: #fef2f2;
+  border-radius: 4px;
+  padding: var(--sp-1) var(--sp-2);
+  padding-left: 20px;
+}
+
+.countdown.overdue {
+  color: #991b1b;
+  background-color: #fee2e2;
+  border-radius: 4px;
+  padding: var(--sp-1) var(--sp-2);
+  padding-left: 20px;
+  font-weight: var(--fw-bold);
+  animation: overdue-flash 1.5s infinite ease-in-out;
+}
+
+.countdown.normal {
+  color: #1f2937;
+}
+
+/* Live indicator with optimized animation */
+.live-indicator {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%) translateZ(0);
+  width: 8px;
+  height: 8px;
+  background-color: #10b981;
+  border-radius: 50%;
+  
+  /* GPU-accelerated pulse */
+  animation: live-pulse 2s infinite ease-in-out;
+  will-change: transform, opacity;
+}
+
+.countdown.starting-soon .live-indicator {
+  background-color: #f59e0b;
+}
+
+.countdown.running-late .live-indicator,
+.countdown.overdue .live-indicator {
+  background-color: #ef4444;
+}
+
+/* Optimized live indicator animation */
+@keyframes live-pulse {
+  0%, 100% {
+    transform: translateY(-50%) scale(1) translateZ(0);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-50%) scale(1.3) translateZ(0);
+    opacity: 0.5;
+  }
+}
+
+/* Optimized overdue flash animation */
+@keyframes overdue-flash {
+  0%, 100% {
+    background-color: #fee2e2;
+  }
+  50% {
+    background-color: #fecaca;
+  }
+}
+
+/* Enhanced Button Interactions */
+.appointment-card button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity, background-color;
+}
+
+.appointment-card button:hover {
+  transform: translateZ(0);
+}
+
+.appointment-card button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Improved group hover effects */
+.appointment-card.group:hover .opacity-0 {
+  opacity: 1;
+}
+
+.appointment-card.group:focus-within .opacity-0 {
+  opacity: 1;
+}
+
+/* Screen Reader Only Content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .card-base {
+    border-width: 2px;
+    border-color: #000;
+  }
+  
+  .urgency-badge.urgent {
+    border-color: #000;
+    background-color: #fff;
+  }
+  
+  .urgency-status.urgent {
+    border-color: #000;
+    color: #000;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .card-base,
+  .urgency-badge::before,
+  .countdown,
+  .live-indicator,
+  .appointment-card button {
+    animation: none;
+    transition: none;
+  }
+  
+  .card-base:hover {
+    transform: none;
+  }
+  
+  .urgency-badge::before {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  
+  .live-indicator {
+    opacity: 1;
+    transform: translateY(-50%);
+  }
+}
+
+/* Dark Mode Support Enhancement */
+@media (prefers-color-scheme: dark) {
+  .card-base {
+    background-color: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+  }
+  
+  .urgency-status.urgent {
+    background-color: #431a1a;
+    border-color: #991b1b;
+    color: #fca5a5;
+  }
+  
+  .urgency-status.soon {
+    background-color: #451a03;
+    border-color: #92400e;
+    color: #fbbf24;
+  }
+  
+  .countdown.overdue {
+    background-color: #431a1a;
+    color: #fca5a5;
+  }
+  
+  .countdown.running-late {
+    background-color: #431a1a;
+    color: #fca5a5;
+  }
+  
+  .countdown.starting-soon {
+    background-color: #451a03;
+    color: #fbbf24;
+  }
+}
+
+/* Performance optimization for large lists */
+.appointment-card-container {
+  contain: layout style paint;
+}
+
+/* Memory optimization for animations */
+.urgency-badge.urgent::before,
+.urgency-badge.soon::before {
+  contain: layout style paint;
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .appointment-card button {
+    min-height: 44px; /* Minimum touch target size */
+    min-width: 44px;
+  }
+  
+  .appointment-card .opacity-0 {
+    opacity: 1; /* Always show buttons on touch devices */
+  }
+}

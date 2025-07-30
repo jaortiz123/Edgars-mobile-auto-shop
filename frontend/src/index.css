@@ -1,11 +1,19 @@
-/* Sprint 1A: Import Design System */
+/* Sprint 1A: Import Design System with Robustness Enhancements */
+@import './styles/themeRobust.css';
 @import './styles/theme.css';
 @import './styles/typography.css';
 @import './styles/spacing.css';
+@import './styles/accessibilityEnhancements.css';
 
-/* Smooth scrolling for premium UX */
+/* Smooth scrolling for premium UX with reduced motion support */
 html {
   scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 @tailwind base;

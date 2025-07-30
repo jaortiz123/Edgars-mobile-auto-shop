@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { LoadingButton } from '../components/LoadingSpinner';
-import { useToast } from '../components/ToastProvider';
+import { useToast } from '../hooks/useToast';
 
 const Register: React.FC = () => {
   const [email, setEmail] = useState('');
