@@ -1,5 +1,5 @@
 // Sprint 1A Robustness: Design System Test Suite
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { 
   DesignSystemValidator,
   getCSSVariable,
@@ -21,24 +21,24 @@ import { DESIGN_TOKENS, CSS_VARIABLES, ACCESSIBILITY_REQUIREMENTS } from '@/type
 const mockDocument = {
   documentElement: {
     style: {
-      getPropertyValue: jest.fn(),
-      setProperty: jest.fn()
+      getPropertyValue: vi.fn(),
+      setProperty: vi.fn()
     }
   },
-  createElement: jest.fn(),
-  querySelectorAll: jest.fn(() => []),
+  createElement: vi.fn(),
+  querySelectorAll: vi.fn(() => []),
   styleSheets: []
 };
 
 const mockWindow = {
-  getComputedStyle: jest.fn(() => ({
-    getPropertyValue: jest.fn(),
+  getComputedStyle: vi.fn(() => ({
+    getPropertyValue: vi.fn(),
     fontSize: '16px',
     lineHeight: '1.5',
     fontWeight: '400'
   })),
   performance: {
-    now: jest.fn(() => Date.now())
+    now: vi.fn(() => Date.now())
   }
 };
 
@@ -93,7 +93,7 @@ describe('Sprint 1A Design System Robustness', () => {
   describe('CSS Variable Validation', () => {
     it('should validate typography scale CSS variables', () => {
       mockWindow.getComputedStyle.mockReturnValue({
-        getPropertyValue: jest.fn(() => '1rem')
+        getPropertyValue: vi.fn(() => '1rem')
       });
 
       const isValid = validator.validateTypographyScale('fs-2');
@@ -110,7 +110,7 @@ describe('Sprint 1A Design System Robustness', () => {
 
     it('should validate spacing scale CSS variables', () => {
       mockWindow.getComputedStyle.mockReturnValue({
-        getPropertyValue: jest.fn(() => '1rem')
+        getPropertyValue: vi.fn(() => '1rem')
       });
 
       const isValid = validator.validateSpacingScale('sp-3');
@@ -119,7 +119,7 @@ describe('Sprint 1A Design System Robustness', () => {
 
     it('should detect missing CSS variables', () => {
       mockWindow.getComputedStyle.mockReturnValue({
-        getPropertyValue: jest.fn(() => '')
+        getPropertyValue: vi.fn(() => '')
       });
 
       const isValid = validator.validateCSSVariable('--fs-2');
@@ -133,7 +133,7 @@ describe('Sprint 1A Design System Robustness', () => {
   describe('Design System Class Validation', () => {
     it('should validate typography classes', () => {
       mockWindow.getComputedStyle.mockReturnValue({
-        getPropertyValue: jest.fn(() => '1.25rem')
+        getPropertyValue: vi.fn(() => '1.25rem')
       });
 
       const isValid = validator.validateDesignSystemClass('text-fs-3');
@@ -142,7 +142,7 @@ describe('Sprint 1A Design System Robustness', () => {
 
     it('should validate spacing classes', () => {
       mockWindow.getComputedStyle.mockReturnValue({
-        getPropertyValue: jest.fn(() => '1.5rem')
+        getPropertyValue: vi.fn(() => '1.5rem')
       });
 
       const isValid = validator.validateDesignSystemClass('p-sp-3');
@@ -255,7 +255,7 @@ describe('Sprint 1A Design System Robustness', () => {
   describe('CSS Variable Utilities', () => {
     it('should get CSS variable with fallback', () => {
       mockWindow.getComputedStyle.mockReturnValue({
-        getPropertyValue: jest.fn(() => '')
+        getPropertyValue: vi.fn(() => '')
       });
 
       const value = getCSSVariable('--fs-2', '16px');
@@ -264,7 +264,7 @@ describe('Sprint 1A Design System Robustness', () => {
 
     it('should get optimized CSS variable', () => {
       mockWindow.getComputedStyle.mockReturnValue({
-        getPropertyValue: jest.fn(() => '1rem')
+        getPropertyValue: vi.fn(() => '1rem')
       });
 
       const value = getOptimizedCSSVariable('--fs-2');
@@ -273,7 +273,7 @@ describe('Sprint 1A Design System Robustness', () => {
 
     it('should validate design tokens at runtime', () => {
       mockWindow.getComputedStyle.mockReturnValue({
-        getPropertyValue: jest.fn(() => '1rem')
+        getPropertyValue: vi.fn(() => '1rem')
       });
 
       const isValid = validateDesignToken('typography', 'fs-2');
