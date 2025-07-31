@@ -5,7 +5,6 @@ import { expect, vi, beforeAll, afterAll, beforeEach } from 'vitest'
 import { toHaveNoViolations } from 'jest-axe'
 import { cleanup } from '@testing-library/react'
 import { setupCleanConsole, restoreConsole } from './testEnv'
-import { mockFactory } from './mockFactory'
 
 // Extend expect with accessibility matchers
 expect.extend(toHaveNoViolations)
@@ -15,20 +14,9 @@ beforeEach(() => {
   cleanup()
 })
 
-// Enhanced global API mock using the new mock factory system  
-vi.mock('@/lib/api', () => ({
-  ...mockFactory.api
-}))
-
-// Enhanced time utilities mock using the new mock factory system
-vi.mock('@/utils/time', () => ({
-  ...mockFactory.time
-}))
-
-// Mock notification service using the new mock factory system
-vi.mock('@/services/notificationService', () => ({
-  ...(mockFactory.notifications || {})
-}));
+// Note: Global vi.mock declarations removed to prevent circular dependencies.
+// Tests should now use createTestMocks() directly for dependency injection.
+// Example: const { api, time, notification } = createTestMocks();
 
 // Mock performance monitoring service
 vi.mock('@/services/performanceMonitoring', () => ({
@@ -64,12 +52,8 @@ vi.mock('@/services/offlineSupport', () => ({
 
 // Apply browser API mocks globally in beforeAll
 beforeAll(() => {
-  // Apply mock factory globals if available
-  try {
-    mockFactory.applyGlobally();
-  } catch (error) {
-    console.log('Mock factory not fully initialized during setup, using fallback mocks');
-  }
+  // Note: Mock factory globals removed to prevent circular dependencies
+  // Individual tests should use createTestMocks() for dependency injection
   setupCleanConsole();
 });
 
@@ -97,7 +81,7 @@ if (!global.IntersectionObserver) {
 }
 
 // Enhanced matchMedia mock for responsive design testing
-if (!window.matchMedia) {
+if (typeof window !== 'undefined' && !window.matchMedia) {
   window.matchMedia = (query: string): MediaQueryList => ({
     matches: query.includes('max-width: 768px'), // Default mobile breakpoint
     media: query,

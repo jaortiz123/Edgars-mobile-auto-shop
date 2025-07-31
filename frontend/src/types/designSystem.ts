@@ -183,8 +183,10 @@ export const PERFORMANCE_THRESHOLDS = {
     maxNestingDepth: 4
   },
   render: {
-    maxPaintTime: 16,     // 16ms for 60fps
-    maxLayoutTime: 8,     // 8ms layout threshold
-    maxStyleRecalc: 4     // 4ms style recalculation
+    maxPaintTime: 16,        // 16ms for 60fps
+    maxLayoutTime: 8,        // 8ms layout threshold
+    maxStyleRecalc: 4,       // 4ms style recalculation
+    maxStyleRecalcTime: 4,   // Alias for maxStyleRecalc
+    maxScriptTime: 5         // 5ms script execution threshold
   }
 } as const;

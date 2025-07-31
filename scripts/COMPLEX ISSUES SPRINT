@@ -1,0 +1,390 @@
+Phase 1 – “Stabilize the Foundation” (robust task cards)
+
+Each card now includes Issue Summary → Root Cause → Impact → Resolution so that anyone reading the PR or Copilot’s context understands why the task exists, not just what to do.
+
+⸻
+
+T1 // @workspace P1-T-001-Integrate-CI-Coverage
+Context: Finish Sprint 7 T-006 – CI should fail on coverage regressions.
+
+Field	Detail
+Issue #11 – Incomplete CI Coverage Enforcement	
+Root Cause	Initial workflow only ran unit tests; --coverage & thresholds omitted, artefacts not uploaded.
+Impact	Coverage can silently fall; engineers have no visibility; regressions ship.
+Resolution	Add coverage step, fail-fast threshold, artifact upload, and status badge.
+
+Files affected
+	•	.github/workflows/ci.yml
+	•	vitest.config.ts (coverage provider)
+	•	package.json (test script tweak)
+	•	README.md (badge)
+
+Current behavior – CI passes even at 0 % coverage.
+Expected behavior – Any PR < 80 % lines/branches fails; badge shows live %.
+
+Sub-tasks
+	1.	Workflow – insert npm run test -- --coverage step, cache npm.
+	2.	Threshold – in vitest.config.ts:
+
+coverage: { lines: 0.8, branches: 0.8 }
+
+
+	3.	Artifact – actions/upload-artifact@v4 for coverage/.
+	4.	Badge – Codecov shield or GitHub summary badge.
+	5.	Docs – update “CI & Quality Gates” section in README.
+
+Acceptance criteria
+	•	Dummy PR dropping coverage to 79 % turns workflow red.
+	•	Artifact downloadable; badge shows ≥ 80 %.
+
+⸻
+
+T2 // @workspace P1-T-002-Redesign-Mock-Factory
+Context: Break circular mocks that crash the runner.
+
+Field	Detail
+Issue #3 – Circular Dependencies in Mock Factory	
+Root Cause	time.mock ➜ notification.mock ➜ api.mock ➜ time.mock loop created via re-exports.
+Impact	undefined functions at runtime ⇢ intermittent test failures.
+Resolution	Introduce dependency-injection factory returning plain mocks; tests compose what they need.
+
+Files affected
+	•	src/test/mocks/index.ts (new factory)
+	•	src/test/setup.ts
+	•	all test files using vi.mock('@/utils/time' …)
+
+Current behavior – Sporadic “fn is not a function”.
+Expected behavior – Deterministic mocks, no circular warnings.
+
+Sub-tasks
+	1.	Write createTestMocks() → { time, api, notification }.
+	2.	Replace global vi.mock calls with const {api}=createTestMocks().
+	3.	Provide helper withMocks(fn) for brevity.
+	4.	Purge legacy duplicate mocks.
+
+Acceptance criteria
+	•	node --trace-warnings shows 0 “Circular dependency” messages.
+	•	Full test suite green.
+
+⸻
+
+T3 // @workspace P1-T-003-Split-Design-System-Tests
+Context: Resolve environment mismatch in design-system tests.
+
+Field	Detail
+Issue #2 – Design System Test Conflicts	
+Root Cause	Single .test.ts file mixes jsdom-only JSX checks with Node-only token checks.
+Impact	Test crashes (DOM APIs undefined) & TypeScript JSX errors.
+Resolution	Separate component & utility suites; map env in vitest.config.ts.
+
+Files affected
+	•	src/tests/designSystem/*.test.(ts|tsx) (split)
+	•	vitest.config.ts (environmentMatchGlobs)
+
+Current behavior – Jestdom errors.
+Expected behavior – Components run in jsdom; tokens run in Node.
+
+Sub-tasks
+	1.	Move JSX assertions → designComponents.test.tsx.
+	2.	Move token logic → designTokens.test.ts.
+	3.	Add config:
+
+environmentMatchGlobs: [
+  ['**/*.components.test.tsx','jsdom']
+]
+
+
+	4.	Fix imports & TSX extension.
+
+Acceptance criteria
+	•	Both new tests pass; no env mismatch stack traces.
+
+⸻
+
+T4 // @workspace P1-T-004-Centralize-Mocks
+Context: Kill redundant API mocks.
+
+Field	Detail
+Issue #9 – Duplicate Mock Implementations	
+Root Cause	Early tests created ad-hoc mocks; mock-factory refactor left stragglers.
+Impact	Divergent response shapes; debugging nightmares.
+Resolution	One canonical api mock exported, all tests import it.
+
+Files affected
+	•	src/test/mocks/api.ts (authoritative)
+	•	every file with vi.mock('@/lib/api'… duplicates
+
+Sub-tasks
+	1.	Authoritative mock implements full envelope { data, errors }.
+	2.	Global search-and-replace duplicates to factory import.
+	3.	Delete old mocks.
+
+Acceptance criteria
+	•	grep -R "mockResolvedValue" src/tests | wc -l drops to expected 1-2 central spots.
+
+⸻
+
+T5 // @workspace P1-T-005-Fix-React-Act-Warnings
+Context: Remove noisy act() warnings.
+
+Field	Detail
+Issue #1 – React act() Warnings	
+Root Cause	Async updates not wrapped with await act() across component tests.
+Impact	Console noise; potential flakiness.
+Resolution	Wrap interactions; add ESLint rule to catch regressions.
+
+Files affected – all *.test.tsx listed by grep.
+
+Sub-tasks
+	1.	grep -R "fireEvent" src/tests | xargs sed -n to locate offenders.
+	2.	Refactor to await act(async () => { ... }).
+	3.	Install eslint-plugin-testing-library rule no-unwrapped-act.
+	4.	Make CI fail on console.error.
+
+Acceptance criteria
+	•	vitest --run logs no “act()” warnings.
+
+⸻
+
+T6 // @workspace P1-T-006-Strict-Type-Safety-In-Tests
+Context: Remove any from mocks & utils.
+
+Field	Detail
+Issue #8 – Excessive any Types	
+Root Cause	Quick prototyping; no interfaces around mocks.
+Impact	IntelliSense useless; silent shape drift.
+Resolution	Introduce proper TypeScript interfaces & enable noImplicitAny.
+
+Files affected
+	•	src/test/mocks/**/*.ts
+	•	src/test/utils/**/*.ts
+	•	types/test.d.ts (new)
+
+Sub-tasks
+	1.	Define interfaces (MockApiResponse<T>, MockToast).
+	2.	Replace any occurrences.
+	3.	Enable noImplicitAny for test tsconfig.
+	4.	Fix compile errors.
+
+Acceptance criteria
+	•	tsc -p tsconfig.test.json --noEmit passes.
+
+⸻
+
+T7 // @workspace P1-T-007-Standardize-Test-Filetypes
+Context: Eliminate .js stragglers.
+
+Field	Detail
+Issue #7 – Mixed TS/JS Test Files	
+Root Cause	Legacy Jest files never migrated.
+Impact	Inconsistent linting; harder to enforce TS rules.
+Resolution	Rename & convert to .ts / .tsx; update imports.
+
+Files affected – every src/tests/**/*.js file.
+
+Sub-tasks
+	1.	git mv each file with correct extension.
+	2.	Add missing type imports (import { describe } from 'vitest').
+	3.	Run ESLint autofix.
+
+Acceptance criteria
+	•	find src/tests -name '*.js' returns 0 results.
+	•	ESLint & Vitest both green.
+
+⸻
+
+🏁 Phase 1 Sprint Goal
+
+*Create a warning-free, type-safe test suite with enforced coverage gates and a single, reliable mock system.
+
+Key deliverables
+	•	CI coverage badge & 80 % gate (T1)
+	•	Circular-dependency-free mock factory (T2)
+	•	JS-DOM vs Node test separation (T3)
+	•	One canonical mock & ESLint rules (T4, T6)
+	•	Zero act() warnings (T5)
+	•	Consistent .ts / .tsx tests (T7)
+
+Dependencies / Hand-offs
+
+Needs	Provided To
+Codecov token (or alternative) secrets ➜ DevOps	Badge + gate for CI
+Final mock shapes ➜ All future test writers	Ensures consistent fixtures
+ESLint config changes ➜ Front-end team	Shared lint rules in monorepo
+Updated README badge ➜ Docs maintainer	Keep docs truthful
+
+Phase-2 “Expand Coverage” begins only when every acceptance criterion above passes on main and CI is green twice consecutively.
+
+
+Phase 2 – “Expand the Coverage”
+
+Sprint code-name: E2E-Confidence – we assume Phase 1 is merged, CI is green, and the mock-factory is stable.
+
+⸻
+
+T1 // @workspace P2-T-001-Bootstrap-Integration-Test-Harness
+Context: Stand-up a dedicated integration-testing layer that exercises real HTTP calls against an in-process server (MSW) instead of unit-level mocks.
+
+Field	Detail
+Issue #5 – Missing Integration Tests	
+Root Cause	Test pyramid is upside-down: heavy on units, no middle layer.
+Impact	High risk that features break across module boundaries; bugs appear only in prod.
+Resolution	Introduce MSW-powered integration harness that spins up handlers once per suite and hits the real React app via @testing-library/react <App />.
+
+Files affected
+	•	src/test/server/mswServer.ts (new)
+	•	src/test/setup.integration.ts (new)
+	•	vitest.config.ts (environmentMatchGlobs for **/*.it.(ts|tsx))
+	•	package.json (test:integration script)
+
+Current behavior – No mid-tier tests, only units & a few E2Es.
+Expected behavior – npm run test:integration boots MSW, renders full app, runs workflow specs.
+
+Sub-tasks
+	1.	Install msw@^2, add “node” and “jsdom” server setups.
+	2.	Create mswServer.ts with default REST handlers mirroring real endpoints.
+	3.	Add setup.integration.ts → beforeAll(server.listen) / afterEach(server.resetHandlers) / afterAll(server.close).
+	4.	Configure Vitest to treat *.it.tsx as jsdom env & serial runner.
+	5.	Document helper renderWithProviders() that wraps <App />.
+
+Acceptance criteria
+	•	vitest run --include "**/*.it.tsx" spins server once, all tests pass.
+	•	MSW prints “🌐 MSW enabled for integration tests” in CI logs.
+
+⸻
+
+T2 // @workspace P2-T-002-Happy-Path-Integration-Workflow
+Context: Cover the core user journey end-to-end with the new harness.
+
+Field	Detail
+Issue #5 continued / #10 linkage	
+Root Cause	No single test proves that Calendar → Board → Drawer → Add Service → Status Change sequence works.
+Impact	Regression fear; product team lacks confidence.
+Resolution	Write one high-value test that simulates the happy path using MSW & seeded DB (P2-T-003).
+
+Files affected
+	•	src/tests/integration/happyPath.it.tsx (new)
+
+Sub-tasks
+	1.	Seed MSW with fixture appointments.json, services.json.
+	2.	Steps inside test:
+	•	render(<App/>), wait for Board.
+	•	user.click(“calendar-btn”), ensure calendar view.
+	•	user.click(appointment tile), drawer opens.
+	•	user.click(“Services” tab) → user.type & save.
+	•	user.drag(card).to(“In Progress”).
+	•	Assert toast “Updated” and API PATCH /appointments/:id.
+	3.	Wrap state mutations in await act(async…) (Phase 1 rule).
+
+Acceptance criteria
+	•	Test passes reliably on CI repeat 3×.
+	•	Coverage report shows lines executed in Drawer, Board, and API hooks.
+
+⸻
+
+T3 // @workspace P2-T-003-Containerised-Test-Database
+Context: Provide realistic SQL behaviour for backend integration tests.
+
+Field	Detail
+Issue #10 – Missing Test Database Isolation	
+Root Cause	Unit tests stub queries; integration needs true constraints/ joins.
+Impact	Data-level bugs (foreign-key, NULL handling) slip through.
+Resolution	Dockerised Postgres spun up via testcontainers, seeded before each suite.
+
+Files affected
+	•	backend/tests/conftest.py (fixture pg_container)
+	•	backend/tests/seed.sql
+	•	pyproject.toml (testcontainers dep)
+	•	GitHub workflow: add services.postgres or Testcontainers socket privileges.
+
+Sub-tasks
+	1.	Author seed script: customers, vehicles, appointments, services.
+	2.	In conftest.py, create with PostgresContainer('postgres:15-alpine') as pg: fixture.
+	3.	Export DATABASE_URL env for Flask test client.
+	4.	Auto-run Alembic migrations inside container.
+	5.	Ensure teardown drops container.
+
+Acceptance criteria
+	•	pytest -q spins Postgres container, all backend tests green in <30 s.
+	•	CI logs show “PostgreSQL started on port …” and “Migrations ✓”.
+
+⸻
+
+T4 // @workspace P2-T-004-Coverage-Gap-Analysis-&-Backfill
+Context: Use coverage reports to target untested critical paths.
+
+Field	Detail
+Issue #4 – Inconsistent Coverage Patterns	
+Root Cause	Historical tests focused on UI hot-spots, ignored utility edge-cases.
+Impact	False sense of security; dead code undetected.
+Resolution	Fail build if any critical module < 70 % lines; add targeted tests.
+
+Files affected
+	•	scripts/coverage/critical-modules.json (list paths)
+	•	scripts/coverage/check.js (node script)
+	•	new tests in src/tests/coverageBackfill/*
+
+Sub-tasks
+	1.	Generate baseline coverage-final.json, identify modules < 70 %.
+	2.	Store list in critical-modules.json for tracking.
+	3.	Write check.js to parse coverage json and throw if below threshold.
+	4.	Add step in CI after tests: node scripts/coverage/check.js.
+	5.	Backfill tests for utils: priceCalc.test.ts, dateUtils.edge.test.ts.
+
+Acceptance criteria
+	•	All critical modules ≥ 70 % on branch tip.
+	•	CI step “Coverage check” passes; fails if developer drops coverage.
+
+⸻
+
+T5 // @workspace P2-T-005-Cross-Browser-Smoke-Tests
+Context: Guard against browser-specific regressions (Chrome / Firefox / Safari Tech Preview).
+
+Field	Detail
+Issue #15 – Limited Browser Compatibility Testing	
+Root Cause	jsdom ≠ real rendering engine; CSS flex & drag-and-drop differ.
+Impact	Production issues on Safari mobile; brand reputation risk.
+Resolution	Add minimal Playwright suite executed on CI matrix.
+
+Files affected
+	•	playwright.config.ts
+	•	tests/e2e/smoke.spec.ts
+	•	.github/workflows/ci.yml (job e2e)
+
+Current behavior – No real browser tests.
+Expected behavior – Smoke spec verifies login → board render in all three browsers.
+
+Sub-tasks
+	1.	Install @playwright/test.
+	2.	Config with projects: chromium, firefox, webkit.
+	3.	Write one spec: navigates to http://localhost:5173, expects board columns visible.
+	4.	Use start-server-and-test in workflow to spin Vite preview.
+	5.	Cache .playwright bundle.
+
+Acceptance criteria
+	•	CI matrix runs 3 browsers, all green.
+	•	Failure in any browser fails PR.
+
+⸻
+
+🏁 Phase 2 Sprint Goal
+
+Move from unit-heavy to confidence-heavy: Core workflows validated against real HTTP mocks, real SQL, and real browsers; coverage gaps closed.
+
+Key Deliverables	Source Task
+MSW integration harness	T1
+Happy-path workflow spec	T2
+Containerised Postgres fixture	T3
+Coverage threshold script & backfill tests	T4
+Playwright smoke matrix	T5
+
+Dependencies / Hand-offs
+
+Needs	Provided To	Notes
+Docker-in-Docker enabled in GH runners	DevOps	Required for Testcontainers
+Seed data spec	QA & Backend	QA verifies fixture realism
+Real API contract for MSW handlers	Front-end team	Keep mocks in sync
+
+Exit criteria: npm run test, npm run test:integration, pytest, and npx playwright test all pass under CI; coverage report shows critical-module gate green for two consecutive merges.
+
+

@@ -2,17 +2,11 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, test, expect, beforeEach, describe } from 'vitest';
 import AppointmentDrawer from '../components/admin/AppointmentDrawer';
-import * as api from '../lib/api';
+import * as centralizedApiMock from '../test/mocks/api';
 import { ToastProvider } from '../components/ui/Toast';
 
-// Mock the API
-vi.mock('../lib/api', () => ({
-  getDrawer: vi.fn(),
-  createAppointmentService: vi.fn(),
-  updateAppointmentService: vi.fn(),
-  deleteAppointmentService: vi.fn(),
-  handleApiError: vi.fn((err, defaultMsg) => defaultMsg || 'Error occurred')
-}));
+// Use centralized API mock instead of duplicate declarations
+vi.mock('../lib/api', () => centralizedApiMock);
 
 // Mock the toast library
 vi.mock('../lib/toast', () => ({
@@ -78,7 +72,7 @@ function TestWrapper({ children }: { children: React.ReactNode }) {
 describe('Services CRUD in AppointmentDrawer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(api.getDrawer).mockResolvedValue(mockDrawerData);
+    vi.mocked(centralizedApiMock.getDrawer).mockResolvedValue(mockDrawerData);
   });
 
   test('displays existing services correctly', async () => {
@@ -121,7 +115,7 @@ describe('Services CRUD in AppointmentDrawer', () => {
       appointment_total: 200.00
     };
 
-    vi.mocked(api.createAppointmentService).mockResolvedValue(mockCreatedService);
+    vi.mocked(centralizedApiMock.createAppointmentService).mockResolvedValue(mockCreatedService);
 
     render(
       <TestWrapper>
@@ -218,7 +212,7 @@ describe('Services CRUD in AppointmentDrawer', () => {
       appointment_total: 170.00
     };
 
-    vi.mocked(api.updateAppointmentService).mockResolvedValue(mockUpdatedService);
+    vi.mocked(centralizedApiMock.updateAppointmentService).mockResolvedValue(mockUpdatedService);
 
     render(
       <TestWrapper>
@@ -275,7 +269,7 @@ describe('Services CRUD in AppointmentDrawer', () => {
       appointment_total: 75.00
     };
 
-    vi.mocked(api.deleteAppointmentService).mockResolvedValue(mockDeleteResponse);
+    vi.mocked(centralizedApiMock.deleteAppointmentService).mockResolvedValue(mockDeleteResponse);
 
     // Mock window.confirm
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -337,7 +331,7 @@ describe('Services CRUD in AppointmentDrawer', () => {
   });
 
   test('handles API errors gracefully', async () => {
-    vi.mocked(api.createAppointmentService).mockRejectedValue(new Error('Network error'));
+    vi.mocked(centralizedApiMock.createAppointmentService).mockRejectedValue(new Error('Network error'));
 
     render(
       <TestWrapper>
@@ -398,7 +392,7 @@ describe('Services CRUD in AppointmentDrawer', () => {
       ...mockDrawerData,
       services: []
     };
-    vi.mocked(api.getDrawer).mockResolvedValue(emptyData);
+    vi.mocked(centralizedApiMock.getDrawer).mockResolvedValue(emptyData);
 
     render(
       <TestWrapper>

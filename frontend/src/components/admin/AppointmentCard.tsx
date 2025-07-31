@@ -117,13 +117,8 @@ export default function AppointmentCard({ card, onOpen, onMove, onQuickReschedul
 
     try {
       await markArrived(validatedCard.id);
-      setHasArrived(true);
-      
-      withCardErrorBoundary(
-        () => notifyArrival(validatedCard.id, {
-          customer: validatedCard.customerName,
-          service: validatedCard.servicesSummary || 'Service'
-        }),
+      setHasArrived(true);        withCardErrorBoundary(
+        () => notifyArrival(validatedCard.customerName, validatedCard.id),
         undefined,
         'Error sending arrival notification'
       );
@@ -179,19 +174,13 @@ export default function AppointmentCard({ card, onOpen, onMove, onQuickReschedul
             
             // Running late notification (10+ minutes past start)
             if (minutes_past > 10 && !notifiedLate) {
-              notifyLate(validatedCard.id, 'running late', {
-                customer: validatedCard.customerName,
-                service: validatedCard.servicesSummary || 'Service'
-              });
+              notifyLate(validatedCard.customerName, validatedCard.id, minutes_past);
               setNotifiedLate(true);
             }
             
             // Overdue notification (30+ minutes past start)
             if (minutes_past > 30 && !notifiedOverdue) {
-              notifyOverdue(validatedCard.id, {
-                customer: validatedCard.customerName,
-                service: validatedCard.servicesSummary || 'Service'
-              });
+              notifyOverdue(validatedCard.customerName, validatedCard.id, minutes_past);
               setNotifiedOverdue(true);
             }
           }

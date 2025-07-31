@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { test, expect } from 'vitest'
 import '@testing-library/jest-dom/vitest'
 import ServiceCard from '../ServiceCard'
-import type { Service } from '../../services/api'
+import type { Service } from '../../types/models'
 
 test('shows service name and description', () => {
   const service: Service = {
