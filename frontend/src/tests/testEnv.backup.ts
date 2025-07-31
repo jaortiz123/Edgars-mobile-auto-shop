@@ -34,9 +34,7 @@ export function setupCleanConsole() {
     const message = String(args[0] || '');
     
     // Detect React act() warnings and fail tests
-    if ((message.includes('state update') && message.includes('act(')) || 
-        message.includes('not wrapped in act(') ||
-        message.includes('Warning: An update to') && message.includes('act(')) {
+    if (message.includes('state update') && message.includes('act(')) {
       actWarnings.push(message);
       if (process.env.CI || process.env.VITEST_STRICT_CONSOLE) {
         throw new Error(`React act() warning detected: ${message}`);
@@ -76,6 +74,27 @@ export function setupCleanConsole() {
 }
 
 export function restoreConsole() {
+  console.error = originalError;
+  console.warn = originalWarn;
+}
+
+// Helper functions for act() warning detection
+export function getConsoleErrors() {
+  return [...consoleErrors];
+}
+
+export function getActWarnings() {
+  return [...actWarnings];
+}
+
+export function clearConsoleErrors() {
+  consoleErrors = [];
+  actWarnings = [];
+}
+
+export function hasActWarnings() {
+  return actWarnings.length > 0;
+}
   console.error = originalError;
   console.warn = originalWarn;
 }

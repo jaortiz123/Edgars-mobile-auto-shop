@@ -30,7 +30,7 @@ import { getDrawer, createAppointmentService, updateAppointmentService, deleteAp
 const mockDrawerData = {
   appointment: {
     id: 'apt-123',
-    status: 'SCHEDULED' as const,
+    status: 'SCHEDULED',
     total_amount: 150.00,
     paid_amount: 0,
     check_in_at: null
@@ -138,31 +138,12 @@ describe('Services CRUD in AppointmentDrawer', () => {
     // Click Add Service button
     await user.click(screen.getByTestId('add-service-button'));
 
-    // Fill in the form - use keyboard shortcuts for reliable input
-    const nameField = screen.getByLabelText('Service Name *');
-    await user.click(nameField);
-    await user.keyboard('{Control>}a{/Control}');
-    await user.type(nameField, 'Tire Rotation');
-    
-    const notesField = screen.getByLabelText('Notes');
-    await user.click(notesField);
-    await user.keyboard('{Control>}a{/Control}');
-    await user.type(notesField, 'All four tires');
-    
-    const hoursField = screen.getByLabelText('Hours');
-    await user.click(hoursField);
-    await user.keyboard('{Control>}a{/Control}');
-    await user.type(hoursField, '0.5');
-    
-    const priceField = screen.getByLabelText('Price ($)');
-    await user.click(priceField);
-    await user.keyboard('{Control>}a{/Control}');
-    await user.type(priceField, '50.00');
-    
-    const categoryField = screen.getByLabelText('Category');
-    await user.click(categoryField);
-    await user.keyboard('{Control>}a{/Control}');
-    await user.type(categoryField, 'Maintenance');
+    // Fill in the form
+    await user.type(screen.getByLabelText('Service Name *'), 'Tire Rotation');
+    await user.type(screen.getByLabelText('Notes'), 'All four tires');
+    await user.type(screen.getByLabelText('Hours'), '0.5');
+    await user.type(screen.getByLabelText('Price ($)'), '50.00');
+    await user.selectOptions(screen.getByLabelText('Category'), 'Maintenance');
 
     // Submit the form
     await user.click(screen.getByTestId('add-service-submit-button'));
@@ -211,8 +192,8 @@ describe('Services CRUD in AppointmentDrawer', () => {
       service: {
         id: 'svc-1',
         appointment_id: 'apt-123',
-        name: 'Service',
-        notes: 'Updated',
+        name: 'Premium Oil Change',
+        notes: 'Full synthetic premium oil',
         estimated_hours: 1.5,
         estimated_price: 95.00,
         category: 'Maintenance'
@@ -236,34 +217,30 @@ describe('Services CRUD in AppointmentDrawer', () => {
     // Click edit button for the first service
     await user.click(screen.getByTestId('edit-service-svc-1'));
 
-    // Wait for edit form to appear and modify the service fields
-    // Use getByLabelText since these are controlled inputs in edit mode
-    const nameInput = screen.getByLabelText('Service name');
+    // Modify the service
+    const nameInput = screen.getByDisplayValue('Oil Change');
     await user.clear(nameInput);
-    await user.type(nameInput, 'Service');
+    await user.type(nameInput, 'Premium Oil Change');
 
-    const notesInput = screen.getByLabelText('Notes');
+    const notesInput = screen.getByDisplayValue('Full synthetic oil');
     await user.clear(notesInput);
-    await user.type(notesInput, 'Updated');
+    await user.type(notesInput, 'Full synthetic premium oil');
 
-    const hoursInput = screen.getByLabelText('Hours');
+    const hoursInput = screen.getByDisplayValue('1');
     await user.clear(hoursInput);
     await user.type(hoursInput, '1.5');
 
-    const priceInput = screen.getByLabelText('Price');
+    const priceInput = screen.getByDisplayValue('75');
     await user.clear(priceInput);
     await user.type(priceInput, '95.00');
-
-    // Add a small delay to ensure all React state updates are processed
-    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Save changes
     await user.click(screen.getByTestId('save-edit-service-svc-1'));
 
     await waitFor(() => {
       expect(updateAppointmentService).toHaveBeenCalledWith('apt-123', 'svc-1', {
-        name: 'Service',
-        notes: 'Updated',
+        name: 'Premium Oil Change',
+        notes: 'Full synthetic premium oil',
         estimated_hours: 1.5,
         estimated_price: 95.00,
         category: 'Maintenance'
@@ -271,7 +248,7 @@ describe('Services CRUD in AppointmentDrawer', () => {
     });
 
     // Check if the service is updated
-    expect(await screen.findByText('Service')).toBeInTheDocument();
+    expect(await screen.findByText('Premium Oil Change')).toBeInTheDocument();
     expect(screen.getByText('Total: $170.00')).toBeInTheDocument();
   });
 

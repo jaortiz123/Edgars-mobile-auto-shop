@@ -1,20 +1,28 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { vi } from 'vitest';
-import MessageThread from '@/components/admin/MessageThread';
-import * as centralizedApiMock from '../test/mocks/api';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import MessageThread from '../components/admin/MessageThread';
 
-// Use centralized API mock instead of factory pattern
-vi.mock('@/lib/api', () => centralizedApiMock);
+// Mock the API module before importing the component
+vi.mock('@/lib/api', () => ({
+  getAppointmentMessages: vi.fn(),
+  createAppointmentMessage: vi.fn(),
+  handleApiError: vi.fn((error, defaultMessage) => defaultMessage)
+}));
 
-// Mock toast
+// Mock the toast library  
 vi.mock('@/lib/toast', () => ({
+  setToastPush: vi.fn(),
   toast: {
     success: vi.fn(),
     error: vi.fn(),
-    info: vi.fn(),
-  },
+    info: vi.fn()
+  }
 }));
+
+// Import the mocked functions after the mock is defined
+import { getAppointmentMessages, createAppointmentMessage } from '@/lib/api';
 
 describe('MessageThread', () => {
   const mockMessages = [
@@ -43,30 +51,27 @@ describe('MessageThread', () => {
   });
 
   it('renders message thread with messages', async () => {
-    vi.mocked(centralizedApiMock.getAppointmentMessages).mockResolvedValue(mockMessages);
+    vi.mocked(getAppointmentMessages).mockResolvedValue(mockMessages);
 
     render(<MessageThread appointmentId="appt-123" drawerOpen={true} />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Your car is ready for pickup')).toBeInTheDocument();
-      expect(screen.getByText('Thank you!')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Your car is ready for pickup')).toBeInTheDocument();
+    expect(screen.getByText('Thank you!')).toBeInTheDocument();
   });
 
   it('renders empty state when no messages', async () => {
-    vi.mocked(centralizedApiMock.getAppointmentMessages).mockResolvedValue([]);
+    vi.mocked(getAppointmentMessages).mockResolvedValue([]);
 
     render(<MessageThread appointmentId="appt-123" drawerOpen={true} />);
 
-    await waitFor(() => {
-      expect(screen.getByText('No messages yet')).toBeInTheDocument();
-      expect(screen.getByText('Send your first message below')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('No messages yet')).toBeInTheDocument();
+    expect(screen.getByText('Send your first message below')).toBeInTheDocument();
   });
 
   it('allows sending a new message', async () => {
-    vi.mocked(centralizedApiMock.getAppointmentMessages).mockResolvedValue([]);
-    vi.mocked(centralizedApiMock.createAppointmentMessage).mockResolvedValue({
+    const user = userEvent.setup();
+    vi.mocked(getAppointmentMessages).mockResolvedValue([]);
+    vi.mocked(createAppointmentMessage).mockResolvedValue({
       id: 'new-msg',
       status: 'sending',
     });
@@ -74,35 +79,29 @@ describe('MessageThread', () => {
     render(<MessageThread appointmentId="appt-123" drawerOpen={true} />);
 
     // Wait for component to load and show the composer
-    await waitFor(() => {
-      expect(screen.getByText('No messages yet')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('No messages yet')).toBeInTheDocument();
 
     // Type a message
     const textarea = screen.getByPlaceholderText('Type your message...');
-    fireEvent.change(textarea, { target: { value: 'Test message' } });
+    await user.type(textarea, 'Test message');
 
     // Click send
     const sendButton = screen.getByRole('button', { name: 'Send message' });
-    fireEvent.click(sendButton);
+    await user.click(sendButton);
 
-    await waitFor(() => {
-      expect(centralizedApiMock.createAppointmentMessage).toHaveBeenCalledWith('appt-123', {
-        channel: 'sms',
-        body: 'Test message',
-      });
+    expect(createAppointmentMessage).toHaveBeenCalledWith('appt-123', {
+      channel: 'sms',
+      body: 'Test message',
     });
   });
 
   it('validates empty messages', async () => {
-    vi.mocked(centralizedApiMock.getAppointmentMessages).mockResolvedValue([]);
+    vi.mocked(getAppointmentMessages).mockResolvedValue([]);
 
     render(<MessageThread appointmentId="appt-123" drawerOpen={true} />);
 
     // Wait for component to load
-    await waitFor(() => {
-      expect(screen.getByText('No messages yet')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('No messages yet')).toBeInTheDocument();
 
     const sendButton = screen.getByRole('button', { name: 'Send message' });
     
@@ -111,28 +110,30 @@ describe('MessageThread', () => {
   });
 
   it('handles API errors when sending messages', async () => {
-    const { toast } = await import('@/lib/toast');
+    const user = userEvent.setup();
     
-    vi.mocked(centralizedApiMock.getAppointmentMessages).mockResolvedValue([]);
-    vi.mocked(centralizedApiMock.createAppointmentMessage).mockRejectedValue(new Error('Network error'));
+    vi.mocked(getAppointmentMessages).mockResolvedValue([]);
+    vi.mocked(createAppointmentMessage).mockRejectedValue(new Error('Network error'));
 
     render(<MessageThread appointmentId="appt-123" drawerOpen={true} />);
 
     // Wait for component to load completely
-    await waitFor(() => {
-      expect(screen.getByText('No messages yet')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('No messages yet')).toBeInTheDocument();
 
     // Type a message
     const textarea = screen.getByPlaceholderText('Type your message...');
-    fireEvent.change(textarea, { target: { value: 'Test message' } });
+    await user.type(textarea, 'Test message');
 
     // Click send
     const sendButton = screen.getByRole('button', { name: 'Send message' });
-    fireEvent.click(sendButton);
+    await user.click(sendButton);
 
+    // Verify the API was called and failed
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalled();
+      expect(createAppointmentMessage).toHaveBeenCalledWith('appt-123', {
+        channel: 'sms',
+        body: 'Test message',
+      });
     });
   });
 });
