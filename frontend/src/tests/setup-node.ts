@@ -38,13 +38,13 @@ global.performance = {
   now: vi.fn(() => Date.now()),
   mark: vi.fn(),
   measure: vi.fn(),
-} as any;
+} as Partial<Performance> as Performance;
 
 // Mock process.env if not available
 if (!global.process) {
   global.process = {
     env: { NODE_ENV: 'test' }
-  } as any;
+  } as unknown as NodeJS.Process;
 }
 
 beforeAll(() => {

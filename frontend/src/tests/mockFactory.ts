@@ -12,24 +12,33 @@
  */
 
 import { vi, type MockedFunction } from 'vitest'
+import type { 
+  MockTimeConfig, 
+  MockApiConfig, 
+  TestMockFactoryConfig,
+  MockApiRequestParams,
+  MockAppointmentData,
+  MockIntersectionObserverOptions,
+  MockGeolocationOptions,
+  MockIntersectionObserverEntry,
+  MockResizeObserverEntry,
+  MockGeolocationPosition,
+  MockGeolocationError,
+  MockAppointmentStatus
+} from '../types/test'
 
 // ===============================
 // TIME UTILITIES MOCK FACTORY
 // ===============================
 
-export interface TimeMockConfig {
-  fixedNow?: Date;
-  autoAdvance?: boolean;
-  cacheEnabled?: boolean;
-  timezone?: string;
-}
+// Export test factory types
+export type { TestMockFactoryConfig, MockTimeConfig, MockApiConfig } from '../types/test';
 
-export function createTimeMocks(config: TimeMockConfig = {}) {
+export function createTimeMocks(config: MockTimeConfig = {}) {
   const { 
     fixedNow = new Date('2024-01-15T10:00:00Z'), 
     autoAdvance = false,
-    cacheEnabled = true,
-    timezone = 'America/New_York'
+    cacheEnabled = true
   } = config;
 
   let currentTime = fixedNow.getTime();
@@ -128,7 +137,7 @@ export function createTimeMocks(config: TimeMockConfig = {}) {
       // Reset only mock call history, preserve implementations
       Object.values(timeMocks).forEach(mock => {
         if (typeof mock === 'function' && 'mockClear' in mock) {
-          (mock as MockedFunction<any>).mockClear();
+          (mock as MockedFunction<(...args: unknown[]) => unknown>).mockClear();
         }
       });
     }
@@ -141,14 +150,7 @@ export function createTimeMocks(config: TimeMockConfig = {}) {
 // API SERVICE MOCK FACTORY
 // ===============================
 
-export interface ApiMockConfig {
-  networkDelay?: number;
-  failureRate?: number;
-  enableCaching?: boolean;
-  responseVariations?: boolean;
-}
-
-export function createApiMocks(config: ApiMockConfig = {}) {
+export function createApiMocks(config: MockApiConfig = {}) {
   const { 
     networkDelay = 100, 
     failureRate = 0, 
@@ -156,7 +158,7 @@ export function createApiMocks(config: ApiMockConfig = {}) {
     responseVariations = true 
   } = config;
 
-  const responseCache = new Map<string, any>();
+  const responseCache = new Map<string, Record<string, unknown>>();
   let requestCounter = 0;
 
   const simulateNetworkDelay = () => 
@@ -164,13 +166,13 @@ export function createApiMocks(config: ApiMockConfig = {}) {
 
   const shouldFail = () => Math.random() < failureRate;
 
-  const generateResponseVariation = (baseResponse: any) => {
+  const generateResponseVariation = <T extends Record<string, unknown>>(baseResponse: T): T => {
     if (!responseVariations) return baseResponse;
     
     return {
       ...baseResponse,
       meta: {
-        ...baseResponse.meta,
+        ...(baseResponse.meta as Record<string, unknown> || {}),
         requestId: `req-${++requestCounter}`,
         timestamp: new Date().toISOString(),
         processingTime: Math.random() * 200 + 50
@@ -180,7 +182,7 @@ export function createApiMocks(config: ApiMockConfig = {}) {
 
   return {
     // Core API methods
-    getAppointments: vi.fn().mockImplementation(async (params = {}) => {
+    getAppointments: vi.fn().mockImplementation(async (params: MockApiRequestParams = {}) => {
       await simulateNetworkDelay();
       if (shouldFail()) throw new Error('Network error');
 
@@ -223,7 +225,7 @@ export function createApiMocks(config: ApiMockConfig = {}) {
       return response;
     }),
 
-    createAppointment: vi.fn().mockImplementation(async (appointmentData) => {
+    createAppointment: vi.fn().mockImplementation(async (appointmentData: Partial<MockAppointmentData>) => {
       await simulateNetworkDelay();
       if (shouldFail()) throw new Error('Failed to create appointment');
 
@@ -239,7 +241,7 @@ export function createApiMocks(config: ApiMockConfig = {}) {
       });
     }),
 
-    updateAppointmentStatus: vi.fn().mockImplementation(async (id, status) => {
+    updateAppointmentStatus: vi.fn().mockImplementation(async (id: string, status: MockAppointmentStatus) => {
       await simulateNetworkDelay();
       if (shouldFail()) throw new Error('Failed to update appointment');
 
@@ -254,7 +256,7 @@ export function createApiMocks(config: ApiMockConfig = {}) {
       });
     }),
 
-    moveAppointment: vi.fn().mockImplementation(async (id, newTime) => {
+    moveAppointment: vi.fn().mockImplementation(async (id: string, newTime: string) => {
       await simulateNetworkDelay();
       if (shouldFail()) throw new Error('Failed to move appointment');
 
@@ -360,16 +362,16 @@ export function createApiMocks(config: ApiMockConfig = {}) {
 export function createBrowserApiMocks() {
   return {
     // Intersection Observer for lazy loading
-    IntersectionObserver: vi.fn().mockImplementation((callback, options = {}) => ({
-      observe: vi.fn((element) => {
+    IntersectionObserver: vi.fn().mockImplementation((callback: (entries: MockIntersectionObserverEntry[]) => void, options: MockIntersectionObserverOptions = {}) => ({
+      observe: vi.fn((element: Element) => {
         // Simulate element entering viewport after a delay
         setTimeout(() => {
           callback([{
             target: element,
             isIntersecting: true,
             intersectionRatio: 1,
-            boundingClientRect: { top: 100, bottom: 200, left: 0, right: 300 },
-            rootBounds: { top: 0, bottom: 600, left: 0, right: 800 },
+            boundingClientRect: { top: 100, bottom: 200, left: 0, right: 300 } as DOMRectReadOnly,
+            rootBounds: { top: 0, bottom: 600, left: 0, right: 800 } as DOMRectReadOnly,
             time: performance.now()
           }]);
         }, 100);
@@ -382,15 +384,15 @@ export function createBrowserApiMocks() {
     })),
 
     // Resize Observer for responsive components
-    ResizeObserver: vi.fn().mockImplementation((callback) => ({
-      observe: vi.fn((element) => {
+    ResizeObserver: vi.fn().mockImplementation((callback: (entries: MockResizeObserverEntry[]) => void) => ({
+      observe: vi.fn((element: Element) => {
         // Simulate resize event
         setTimeout(() => {
           callback([{
             target: element,
-            contentRect: { width: 320, height: 240, top: 0, left: 0 },
-            borderBoxSize: [{ inlineSize: 320, blockSize: 240 }],
-            contentBoxSize: [{ inlineSize: 300, blockSize: 220 }]
+            contentRect: { width: 320, height: 240, top: 0, left: 0 } as DOMRectReadOnly,
+            borderBoxSize: [{ inlineSize: 320, blockSize: 240 }] as readonly ResizeObserverSize[],
+            contentBoxSize: [{ inlineSize: 300, blockSize: 220 }] as readonly ResizeObserverSize[]
           }]);
         }, 50);
       }),
@@ -459,7 +461,11 @@ export function createBrowserApiMocks() {
 
     // Geolocation API
     geolocation: {
-      getCurrentPosition: vi.fn().mockImplementation((success, error, options) => {
+      getCurrentPosition: vi.fn().mockImplementation((
+        success?: (position: MockGeolocationPosition) => void, 
+        error?: (error: MockGeolocationError) => void, 
+        options?: MockGeolocationOptions
+      ) => {
         setTimeout(() => {
           if (Math.random() > 0.9) { // 10% failure rate
             error?.({ code: 1, message: 'Permission denied' });
@@ -490,10 +496,10 @@ export function createBrowserApiMocks() {
 // ===============================
 
 export function createNotificationMocks() {
-  const notifications: Array<{ id: string; type: string; message: string; timestamp: Date }> = [];
+  const notifications: Array<{ id: string; type: string; message: string; timestamp: Date; [key: string]: unknown }> = [];
 
   return {
-    addNotification: vi.fn().mockImplementation((type: string, message: string, options = {}) => {
+    addNotification: vi.fn().mockImplementation((type: string, message: string, options: Record<string, unknown> = {}) => {
       const notification = {
         id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         type,
@@ -563,7 +569,7 @@ export function createNotificationMocks() {
     markNotificationAsRead: vi.fn().mockImplementation((id: string) => {
       const notification = notifications.find(n => n.id === id);
       if (notification) {
-        (notification as any).read = true;
+        (notification as Record<string, unknown>).read = true;
         return true;
       }
       return false;
@@ -582,14 +588,7 @@ export function createNotificationMocks() {
 // MOCK FACTORY ORCHESTRATOR
 // ===============================
 
-export interface MockFactoryConfig {
-  time?: TimeMockConfig;
-  api?: ApiMockConfig;
-  enableBrowserApis?: boolean;
-  enableNotifications?: boolean;
-}
-
-export function createMockFactory(config: MockFactoryConfig = {}) {
+export function createMockFactory(config: TestMockFactoryConfig = {}) {
   const timeMocks = createTimeMocks(config.time);
   const apiMocks = createApiMocks(config.api);
   const browserMocks = config.enableBrowserApis !== false ? createBrowserApiMocks() : null;
@@ -614,11 +613,11 @@ export function createMockFactory(config: MockFactoryConfig = {}) {
         global.IntersectionObserver = browserMocks.IntersectionObserver;
         global.ResizeObserver = browserMocks.ResizeObserver;
         global.matchMedia = browserMocks.matchMedia;
-        global.localStorage = browserMocks.localStorage as any;
+        global.localStorage = browserMocks.localStorage as Storage;
         global.performance = { ...global.performance, ...browserMocks.performance };
         
         if (typeof navigator !== 'undefined') {
-          (navigator as any).geolocation = browserMocks.geolocation;
+          (navigator as unknown as Record<string, unknown>).geolocation = browserMocks.geolocation;
         }
       }
     }

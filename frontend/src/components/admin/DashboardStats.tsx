@@ -11,7 +11,7 @@ export default function DashboardStats() {
   );
 
   // Calculate progress percentage for Jobs today vs booked
-  const progressPercentage = stats.totals?.today_booked > 0 
+  const progressPercentage = stats.totals?.today_booked && stats.totals.today_booked > 0 
     ? Math.round((stats.totals.today_completed / stats.totals.today_booked) * 100)
     : 0;
 

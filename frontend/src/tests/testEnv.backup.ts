@@ -95,27 +95,6 @@ export function clearConsoleErrors() {
 export function hasActWarnings() {
   return actWarnings.length > 0;
 }
-  console.error = originalError;
-  console.warn = originalWarn;
-}
-
-// Helper functions for act() warning detection
-export function getConsoleErrors() {
-  return [...consoleErrors];
-}
-
-export function getActWarnings() {
-  return [...actWarnings];
-}
-
-export function clearConsoleErrors() {
-  consoleErrors = [];
-  actWarnings = [];
-}
-
-export function hasActWarnings() {
-  return actWarnings.length > 0;
-}
 
 // Test utilities for Sprint 7 enhanced testing
 export const testUtils = {
