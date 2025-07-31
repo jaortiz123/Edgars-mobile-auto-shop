@@ -42,6 +42,7 @@ export default tseslint.config(
       'testing-library/no-unnecessary-act': 'error',
       'testing-library/prefer-user-event': 'error',
       'testing-library/await-async-events': 'error',
+      '@typescript-eslint/consistent-type-imports': 'error',
     },
   },
 )
