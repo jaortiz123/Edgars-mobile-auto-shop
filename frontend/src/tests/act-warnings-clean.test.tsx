@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
+import { asyncEvent, asyncClick, asyncChange } from '../test-utils/asyncEvent';
 
 // Simple test component that simulates async behavior to trigger act() warnings
 const AsyncTestComponent: React.FC = () => {
@@ -97,6 +98,41 @@ describe('P1-T-005: React Act() Warning Detection Tests', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('message-0')).toHaveTextContent('Properly wrapped message');
+    });
+  });
+
+  test('SHOULD NOT trigger act() warnings with asyncEvent helper', async () => {
+    render(<AsyncTestComponent />);
+
+    const textarea = screen.getByTestId('message-input');
+    const sendButton = screen.getByTestId('send-button');
+
+    // Using asyncEvent helper for cleaner syntax
+    await asyncEvent(() => {
+      fireEvent.change(textarea, { target: { value: 'AsyncEvent helper message' } });
+    });
+    
+    await asyncEvent(() => {
+      fireEvent.click(sendButton);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('message-0')).toHaveTextContent('AsyncEvent helper message');
+    });
+  });
+
+  test('SHOULD NOT trigger act() warnings with asyncEvent convenience methods', async () => {
+    render(<AsyncTestComponent />);
+
+    const textarea = screen.getByTestId('message-input');
+    const sendButton = screen.getByTestId('send-button');
+
+    // Using convenience methods for even cleaner syntax
+    await asyncChange(textarea, 'Convenience method message');
+    await asyncClick(sendButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('message-0')).toHaveTextContent('Convenience method message');
     });
   });
 });
