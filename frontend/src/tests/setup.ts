@@ -1,94 +1,142 @@
 import '@testing-library/jest-dom/vitest'
 import 'whatwg-fetch'
 
-import { expect, vi, beforeAll, afterAll } from 'vitest'
+import { expect, vi, beforeAll, afterAll, beforeEach } from 'vitest'
 import { toHaveNoViolations } from 'jest-axe'
+import { cleanup } from '@testing-library/react'
+import { setupCleanConsole, restoreConsole } from './testEnv'
+import { mockFactory } from './mockFactory'
+
+// Extend expect with accessibility matchers
 expect.extend(toHaveNoViolations)
 
-// Global API mock to prevent test failures on missing exports
+// Auto cleanup after each test
+beforeEach(() => {
+  cleanup()
+})
+
+// Enhanced global API mock using the new mock factory system  
 vi.mock('@/lib/api', () => ({
-  isOnline: vi.fn(() => true),
-  getBoard: vi.fn().mockResolvedValue({ columns: [], cards: [] }),
-  getAppointments: vi.fn().mockResolvedValue({ success: true, data: { items: [], nextCursor: null }, errors: null }),
-  moveAppointment: vi.fn().mockResolvedValue({ success: true, data: { ok: true }, errors: null }),
-  getDashboardStats: vi.fn().mockResolvedValue({ success: true, data: { totals: { today: 0, week: 0, unpaid_total: 0 }, countsByStatus: {}, carsOnPremises: [] }, errors: null }),
-  getCarsOnPremises: vi.fn().mockResolvedValue([]),
-  getStats: vi.fn().mockResolvedValue({ totals: { today: 0, week: 0, unpaid_total: 0 }, countsByStatus: {}, carsOnPremises: [] }),
-  getDrawer: vi.fn().mockImplementation((id: string) => {
-    console.log(`🔧 Global getDrawer mock called with id: ${id}`);
-    return Promise.resolve({
-      appointment: { 
-        id: id,
-        status: 'scheduled', 
-        total_amount: 150, 
-        paid_amount: 0, 
-        check_in_at: null 
-      },
-      customer: { name: 'Test Customer' },
-      vehicle: { year: '2020', make: 'Test', model: 'Car' },
-      services: []
-    });
-  }),
-  createAppointment: vi.fn().mockResolvedValue({ success: true, data: { id: 'new' }, errors: null }),
-  updateAppointmentStatus: vi.fn().mockResolvedValue({ success: true, data: { ok: true }, errors: null }),
-  handleApiError: vi.fn().mockImplementation((_e, fallback) => fallback),
+  ...mockFactory.api
+}))
+
+// Enhanced time utilities mock using the new mock factory system
+vi.mock('@/utils/time', () => ({
+  ...mockFactory.time
+}))
+
+// Mock notification service using the new mock factory system
+vi.mock('@/services/notificationService', () => ({
+  ...(mockFactory.notifications || {})
 }));
 
-// JSDOM gaps
+// Mock performance monitoring service
+vi.mock('@/services/performanceMonitoring', () => ({
+  default: {
+    generateReport: vi.fn(() => ({
+      overall: { score: 85, grade: 'B', recommendations: [] },
+      memory: { pressure: 'low' },
+      network: { online: true, rtt: 50 },
+      notifications: { sent: 0, failed: 0 }
+    })),
+    trackComponent: vi.fn(),
+    startMeasurement: vi.fn(() => vi.fn()),
+  },
+  usePerformanceMonitoring: vi.fn(() => ({
+    trackUpdate: vi.fn(),
+    trackError: vi.fn(),
+    measure: vi.fn(() => vi.fn()),
+  })),
+}));
+
+// Mock offline support service
+vi.mock('@/services/offlineSupport', () => ({
+  default: {
+    getState: vi.fn(() => ({ 
+      isOnline: true, 
+      queuedActions: [], 
+      lastSync: new Date() 
+    })),
+    addAction: vi.fn(),
+    processQueue: vi.fn(),
+  },
+}));
+
+// Apply browser API mocks globally in beforeAll
+beforeAll(() => {
+  // Apply mock factory globals if available
+  try {
+    mockFactory.applyGlobally();
+  } catch (error) {
+    console.log('Mock factory not fully initialized during setup, using fallback mocks');
+  }
+  setupCleanConsole();
+});
+
+// Enhanced JSDOM environment setup (fallback for any missing mocks)
 if (!global.ResizeObserver) {
-  // minimal mock
-  // @ts-ignore
-  global.ResizeObserver = class {
+  global.ResizeObserver = class ResizeObserver {
     observe() {}
     unobserve() {}
     disconnect() {}
-  }
+  };
 }
 
-// matchMedia mock (used by some UI libs)
+// IntersectionObserver fallback
+if (!global.IntersectionObserver) {
+  global.IntersectionObserver = class IntersectionObserver {
+    constructor() {}
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    get root() { return null; }
+    get rootMargin() { return '0px'; }
+    get thresholds() { return []; }
+    takeRecords() { return []; }
+  };
+}
+
+// Enhanced matchMedia mock for responsive design testing
 if (!window.matchMedia) {
-  // @ts-ignore
-  window.matchMedia = (query: string) => ({
-    matches: false,
+  window.matchMedia = (query: string): MediaQueryList => ({
+    matches: query.includes('max-width: 768px'), // Default mobile breakpoint
     media: query,
     onchange: null,
-    addListener() {}, // deprecated
-    removeListener() {}, // deprecated
-    addEventListener() {},
-    removeEventListener() {},
-    dispatchEvent() { return false },
-  })
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn().mockReturnValue(false)
+  } as MediaQueryList);
 }
 
-// createRange stub (some editors/portals need it)
+// createRange stub for editors and portals
 if (!document.createRange) {
-  // @ts-ignore
   document.createRange = () => ({
     setStart: () => {},
     setEnd: () => {},
     commonAncestorContainer: document.body,
     createContextualFragment: (html: string) => {
-      const template = document.createElement('template')
-      template.innerHTML = html
-      return template.content
+      const template = document.createElement('template');
+      template.innerHTML = html;
+      return template.content;
     },
-  })
+  } as Range);
 }
 
-// scrollTo noop
-// @ts-ignore
-global.scrollTo = () => {}
+// Navigation and scroll mocks
+global.scrollTo = () => {};
+global.scroll = () => {};
 
-// Suppress noisy act() warnings while preserving real errors
-const realError = console.error;
-beforeAll(() => {
-  console.error = (...args) => {
-    const msg = String(args[0] ?? '');
-    if (msg.includes('act(')) return;
-    realError(...args);
-  };
-});
+// Performance API mock for monitoring tests
+if (!global.performance.mark) {
+  global.performance.mark = vi.fn();
+}
+if (!global.performance.measure) {
+  global.performance.measure = vi.fn();
+}
 
+// Enhanced console management using test environment utilities
 afterAll(() => { 
-  console.error = realError; 
+  restoreConsole();
 });

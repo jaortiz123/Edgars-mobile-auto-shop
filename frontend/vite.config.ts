@@ -8,11 +8,17 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      // Add explicit aliases for problem paths
+      // Enhanced path aliases for comprehensive resolution
+      "@/components": path.resolve(__dirname, "./src/components"),
       "@/contexts": path.resolve(__dirname, "./src/contexts"),
       "@/hooks": path.resolve(__dirname, "./src/hooks"),
       "@/lib": path.resolve(__dirname, "./src/lib"),
-      "@/components": path.resolve(__dirname, "./src/components"),
+      "@/services": path.resolve(__dirname, "./src/services"),
+      "@/utils": path.resolve(__dirname, "./src/utils"),
+      "@/types": path.resolve(__dirname, "./src/types"),
+      "@/tests": path.resolve(__dirname, "./src/tests"),
+      "@/pages": path.resolve(__dirname, "./src/pages"),
+      "@/containers": path.resolve(__dirname, "./src/containers"),
     },
   },
   server: {
@@ -26,20 +32,76 @@ export default defineConfig({
     },
   },
   test: {
+    // Enhanced test environment configuration
     environment: 'jsdom',
-    setupFiles: 'src/tests/setup.ts',
+    setupFiles: ['src/tests/setup.ts'],
     globals: true,
     css: true,
     restoreMocks: true,
+    clearMocks: true,
+    mockReset: true,
+    
+    // Enhanced test execution configuration
+    testTimeout: 10000,
+    hookTimeout: 10000,
+    teardownTimeout: 5000,
+    
+    // Better file inclusion patterns
+    include: [
+      'src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
+      'src/tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
+    ],
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/cypress/**',
+      '**/.{idea,git,cache,output,temp}/**',
+      '**/e2e/**'
+    ],
+    
+    // Enhanced coverage configuration
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage',
-      reporter: ['text', 'lcov'],
-      include: ['src/tests/**/*.{ts,tsx}'],
-      statements: 100,
-      branches: 100,
-      functions: 100,
-      lines: 100,
+      reporter: ['text', 'lcov', 'html', 'json'],
+      include: [
+        'src/**/*.{ts,tsx}',
+        '!src/**/*.d.ts',
+        '!src/tests/**',
+        '!src/**/*.test.{ts,tsx}',
+        '!src/**/*.spec.{ts,tsx}',
+        '!src/vite-env.d.ts'
+      ],
+      exclude: [
+        'src/tests/**',
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.spec.{ts,tsx}',
+        'src/**/*.d.ts',
+        'src/main.tsx',
+        'src/vite-env.d.ts'
+      ],
+      // Adjusted coverage thresholds for realistic targets
+      thresholds: {
+        global: {
+          statements: 80,
+          branches: 75,
+          functions: 80,
+          lines: 80,
+        },
+        // Specific thresholds for critical areas
+        'src/utils/**': {
+          statements: 95,
+          branches: 90,
+          functions: 95,
+          lines: 95,
+        },
+        'src/services/**': {
+          statements: 85,
+          branches: 80,
+          functions: 85,
+          lines: 85,
+        }
+      }
     },
   },
 })

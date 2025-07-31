@@ -1,5 +1,9 @@
 # Edgar's Mobile Auto Repair Hub
 
+[![CI/CD Pipeline](https://github.com/jesus-orduno/Edgars-mobile-auto-shop/actions/workflows/ci.yml/badge.svg)](https://github.com/jesus-orduno/Edgars-mobile-auto-shop/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/jesus-orduno/Edgars-mobile-auto-shop/graph/badge.svg?token=YOUR_CODECOV_TOKEN)](https://codecov.io/gh/jesus-orduno/Edgars-mobile-auto-shop)
+[![Frontend Coverage](https://img.shields.io/badge/frontend%20coverage-dynamic-brightgreen)](https://github.com/jesus-orduno/Edgars-mobile-auto-shop/actions/workflows/ci.yml)
+
 This repository contains the serverless backend for "Edgar's Mobile Auto Repair Hub," a conversational AI system for generating service quotes. The project is built entirely on AWS and managed via Terraform, demonstrating modern cloud architecture and DevOps practices.
 
 ## Core Technologies
