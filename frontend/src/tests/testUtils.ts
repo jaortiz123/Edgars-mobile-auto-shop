@@ -4,7 +4,8 @@
  */
 
 import { vi, type MockedFunction } from 'vitest'
-import { mockFactory, type MockFactoryConfig } from './mockFactory'
+import { mockFactory, type TestMockFactoryConfig } from './mockFactory'
+import type { MockNotification } from '../types/test'
 
 // ===============================
 // TEST SCENARIO BUILDERS
@@ -50,7 +51,7 @@ export function createMultipleAppointmentScenarios(count: number = 3): Appointme
       customerName: `Customer ${i + 1}`,
       service: ['Oil Change', 'Brake Service', 'Tire Rotation', 'Engine Diagnostic'][i % 4],
       scheduledAt: scheduledTime.toISOString(),
-      status: ['scheduled', 'in_progress', 'completed'][i % 3] as any,
+      status: (['scheduled', 'in_progress', 'completed'][i % 3]) as 'scheduled' | 'in_progress' | 'completed',
       totalAmount: 50 + (i * 25),
       paidAmount: i % 2 === 0 ? 0 : 50 + (i * 25) // Alternate paid/unpaid
     }));
@@ -138,7 +139,7 @@ export class TimeTestController {
 export class ApiTestController {
   private mockFactory = mockFactory;
 
-  constructor(config: MockFactoryConfig['api'] = {}) {
+  constructor(config: TestMockFactoryConfig['api'] = {}) {
     // Reinitialize API mocks with specific config if provided
     if (Object.keys(config).length > 0) {
       this.mockFactory.api.reset();
@@ -191,7 +192,7 @@ export class ApiTestController {
   }
 
   setupApiError(method: keyof typeof mockFactory.api, error: Error | string) {
-    const mockMethod = this.mockFactory.api[method] as MockedFunction<any>;
+    const mockMethod = this.mockFactory.api[method] as MockedFunction<(...args: unknown[]) => unknown>;
     if (mockMethod && typeof mockMethod.mockRejectedValue === 'function') {
       mockMethod.mockRejectedValue(typeof error === 'string' ? new Error(error) : error);
     }
@@ -199,12 +200,12 @@ export class ApiTestController {
 
   // Get mock call information
   getApiCallCount(method: keyof typeof mockFactory.api): number {
-    const mockMethod = this.mockFactory.api[method] as MockedFunction<any>;
+    const mockMethod = this.mockFactory.api[method] as MockedFunction<(...args: unknown[]) => unknown>;
     return mockMethod?.mock?.calls?.length || 0;
   }
 
   getLastApiCall(method: keyof typeof mockFactory.api) {
-    const mockMethod = this.mockFactory.api[method] as MockedFunction<any>;
+    const mockMethod = this.mockFactory.api[method] as MockedFunction<(...args: unknown[]) => unknown>;
     const calls = mockMethod?.mock?.calls;
     return calls?.[calls.length - 1];
   }
@@ -223,7 +224,7 @@ export class NotificationTestController {
 
   expectNotification(type: string, messagePattern?: string | RegExp) {
     const notifications = this.mockFactory.notifications!.getNotifications();
-    const matching = notifications.filter(n => {
+    const matching = notifications.filter((n: MockNotification) => {
       const typeMatches = n.type === type;
       if (!messagePattern) return typeMatches;
       
@@ -271,7 +272,7 @@ export class TestEnvironment {
   public api: ApiTestController;
   public notifications: NotificationTestController;
 
-  constructor(config: MockFactoryConfig = {}) {
+  constructor(config: TestMockFactoryConfig = {}) {
     // Initialize mock factory with config
     mockFactory.resetAll();
     
@@ -328,7 +329,7 @@ export class TestEnvironment {
 
 export function withTestEnvironment<T>(
   testFn: (env: TestEnvironment) => T | Promise<T>,
-  config?: MockFactoryConfig
+  config?: TestMockFactoryConfig
 ): T | Promise<T> {
   const env = new TestEnvironment(config);
   

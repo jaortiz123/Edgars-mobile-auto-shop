@@ -373,7 +373,11 @@ function Services({ data }: { data: DrawerPayload | null }) {
               <button
                 data-testid="add-service-submit-button"
                 onClick={handleAddService}
-                disabled={!newService.name.trim() || (newService.estimated_hours.trim() && (isNaN(parseFloat(newService.estimated_hours)) || parseFloat(newService.estimated_hours) < 0)) || (newService.estimated_price.trim() && (isNaN(parseFloat(newService.estimated_price)) || parseFloat(newService.estimated_price) < 0))}
+                disabled={
+                  !newService.name.trim() || 
+                  (!!newService.estimated_hours.trim() && (isNaN(parseFloat(newService.estimated_hours)) || parseFloat(newService.estimated_hours) < 0)) || 
+                  (!!newService.estimated_price.trim() && (isNaN(parseFloat(newService.estimated_price)) || parseFloat(newService.estimated_price) < 0))
+                }
                 className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Add
