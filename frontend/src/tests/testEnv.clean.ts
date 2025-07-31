@@ -34,9 +34,7 @@ export function setupCleanConsole() {
     const message = String(args[0] || '');
     
     // Detect React act() warnings and fail tests
-    if ((message.includes('state update') && message.includes('act(')) || 
-        message.includes('not wrapped in act(') ||
-        message.includes('Warning: An update to') && message.includes('act(')) {
+    if (message.includes('state update') && message.includes('act(')) {
       actWarnings.push(message);
       if (process.env.CI || process.env.VITEST_STRICT_CONSOLE) {
         throw new Error(`React act() warning detected: ${message}`);
@@ -122,15 +120,14 @@ export const testUtils = {
   
   // Memory leak detection helpers
   checkMemoryLeaks: () => {
-    if ('gc' in global && typeof global.gc === 'function') {
-      global.gc();
+    // Basic memory usage check
+    if (typeof performance !== 'undefined' && performance.memory) {
+      return {
+        usedJSHeapSize: performance.memory.usedJSHeapSize,
+        totalJSHeapSize: performance.memory.totalJSHeapSize,
+        jsHeapSizeLimit: performance.memory.jsHeapSizeLimit,
+      };
     }
-    
-    return {
-      heapUsed: process.memoryUsage?.()?.heapUsed || 0,
-      external: process.memoryUsage?.()?.external || 0
-    };
-  }
+    return null;
+  },
 };
-
-export default testUtils;

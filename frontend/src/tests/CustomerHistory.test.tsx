@@ -1,13 +1,26 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { vi } from 'vitest';
-import CustomerHistory from '../../src/components/admin/CustomerHistory';
-import * as centralizedApiMock from '../test/mocks/api';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import CustomerHistory from '../components/admin/CustomerHistory';
 
-// Use centralized API mock instead of duplicate declarations
-vi.mock('../../src/lib/api', () => centralizedApiMock);
+// Mock the API module before importing the component
+vi.mock('@/lib/api', () => ({
+  getCustomerHistory: vi.fn()
+}));
 
-const mockGetCustomerHistory = vi.mocked(centralizedApiMock.getCustomerHistory);
+// Mock the toast library  
+vi.mock('../lib/toast', () => ({
+  setToastPush: vi.fn(),
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn()
+  }
+}));
+
+// Import the mocked function after the mock is defined
+import { getCustomerHistory } from '@/lib/api';
 
 describe('CustomerHistory', () => {
   const mockOnAppointmentClick = vi.fn();
@@ -18,7 +31,7 @@ describe('CustomerHistory', () => {
   });
 
   it('renders loading state initially', () => {
-    mockGetCustomerHistory.mockImplementation(() => new Promise(() => {})); // Never resolves
+    vi.mocked(getCustomerHistory).mockImplementation(() => new Promise(() => {})); // Never resolves
     
     render(
       <CustomerHistory 
@@ -27,13 +40,13 @@ describe('CustomerHistory', () => {
       />
     );
 
-    // Check for skeleton loading animation class
-    const skeletonElement = document.querySelector('.animate-pulse');
-    expect(skeletonElement).toBeTruthy();
+    // Check for skeleton loading animation using class selector
+    // eslint-disable-next-line testing-library/no-node-access
+    expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 
   it('renders empty state when no appointments', async () => {
-    mockGetCustomerHistory.mockResolvedValue({
+    vi.mocked(getCustomerHistory).mockResolvedValue({
       data: {
         pastAppointments: [],
         payments: []
@@ -48,14 +61,13 @@ describe('CustomerHistory', () => {
       />
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('No appointment history')).toBeInTheDocument();
-      expect(screen.getByText('This customer has no completed appointments yet.')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('No appointment history')).toBeInTheDocument();
+    expect(screen.getByText('This customer has no completed appointments yet.')).toBeInTheDocument();
   });
 
   it('renders error state and allows retry', async () => {
-    mockGetCustomerHistory.mockRejectedValue(new Error('API Error'));
+    const user = userEvent.setup();
+    vi.mocked(getCustomerHistory).mockRejectedValue(new Error('API Error'));
 
     render(
       <CustomerHistory 
@@ -64,13 +76,12 @@ describe('CustomerHistory', () => {
       />
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Failed to load customer history')).toBeInTheDocument();
-      expect(screen.getByText('Retry')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Failed to load customer history')).toBeInTheDocument();
+    const retryButton = screen.getByText('Retry');
+    expect(retryButton).toBeInTheDocument();
 
     // Test retry functionality
-    mockGetCustomerHistory.mockResolvedValue({
+    vi.mocked(getCustomerHistory).mockResolvedValue({
       data: {
         pastAppointments: [],
         payments: []
@@ -78,13 +89,10 @@ describe('CustomerHistory', () => {
       errors: null
     });
 
-    fireEvent.click(screen.getByText('Retry'));
+    await user.click(retryButton);
 
-    await waitFor(() => {
-      expect(screen.getByText('No appointment history')).toBeInTheDocument();
-    });
-
-    expect(mockGetCustomerHistory).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText('No appointment history')).toBeInTheDocument();
+    expect(getCustomerHistory).toHaveBeenCalledTimes(2);
   });
 
   it('renders appointments grouped by year', async () => {
@@ -138,7 +146,7 @@ describe('CustomerHistory', () => {
       errors: null
     };
 
-    mockGetCustomerHistory.mockResolvedValue(mockData);
+    vi.mocked(getCustomerHistory).mockResolvedValue(mockData);
 
     render(
       <CustomerHistory 
@@ -147,9 +155,7 @@ describe('CustomerHistory', () => {
       />
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('3 past appointments')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('3 past appointments')).toBeInTheDocument();
 
     // Should see year headers
     expect(screen.getByText('2025')).toBeInTheDocument();
@@ -165,6 +171,7 @@ describe('CustomerHistory', () => {
   });
 
   it('expands and collapses year sections', async () => {
+    const user = userEvent.setup();
     const mockData = {
       data: {
         pastAppointments: [
@@ -183,7 +190,7 @@ describe('CustomerHistory', () => {
       errors: null
     };
 
-    mockGetCustomerHistory.mockResolvedValue(mockData);
+    vi.mocked(getCustomerHistory).mockResolvedValue(mockData);
 
     render(
       <CustomerHistory 
@@ -192,27 +199,26 @@ describe('CustomerHistory', () => {
       />
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('1 past appointment')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('1 past appointment')).toBeInTheDocument();
 
     // Current year should be expanded by default
     expect(screen.getByText('7/15/2025')).toBeInTheDocument();
 
     // Click to collapse
-    fireEvent.click(screen.getByText('2025'));
+    await user.click(screen.getByText('2025'));
 
     // Appointment details should be hidden
     expect(screen.queryByText('7/15/2025')).not.toBeInTheDocument();
 
     // Click to expand again
-    fireEvent.click(screen.getByText('2025'));
+    await user.click(screen.getByText('2025'));
 
     // Appointment details should be visible again
     expect(screen.getByText('7/15/2025')).toBeInTheDocument();
   });
 
   it('calls onAppointmentClick when appointment is clicked', async () => {
+    const user = userEvent.setup();
     const mockData = {
       data: {
         pastAppointments: [
@@ -231,7 +237,7 @@ describe('CustomerHistory', () => {
       errors: null
     };
 
-    mockGetCustomerHistory.mockResolvedValue(mockData);
+    vi.mocked(getCustomerHistory).mockResolvedValue(mockData);
 
     render(
       <CustomerHistory 
@@ -240,12 +246,12 @@ describe('CustomerHistory', () => {
       />
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('7/15/2025')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('7/15/2025')).toBeInTheDocument();
 
-    // Click on appointment
-    fireEvent.click(screen.getByText('7/15/2025').closest('div'));
+    // Click on appointment row
+    // eslint-disable-next-line testing-library/no-node-access
+    const appointmentRow = screen.getByText('7/15/2025').closest('div')!;
+    await user.click(appointmentRow);
 
     expect(mockOnAppointmentClick).toHaveBeenCalledWith('apt-1');
   });
@@ -287,7 +293,7 @@ describe('CustomerHistory', () => {
       errors: null
     };
 
-    mockGetCustomerHistory.mockResolvedValue(mockData);
+    vi.mocked(getCustomerHistory).mockResolvedValue(mockData);
 
     render(
       <CustomerHistory 
@@ -296,11 +302,9 @@ describe('CustomerHistory', () => {
       />
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('COMPLETED')).toBeInTheDocument();
-      expect(screen.getByText('NO SHOW')).toBeInTheDocument();
-      expect(screen.getByText('CANCELED')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('COMPLETED')).toBeInTheDocument();
+    expect(screen.getByText('NO SHOW')).toBeInTheDocument();
+    expect(screen.getByText('CANCELED')).toBeInTheDocument();
   });
 
   it('shows payment information correctly', async () => {
@@ -335,7 +339,7 @@ describe('CustomerHistory', () => {
       errors: null
     };
 
-    mockGetCustomerHistory.mockResolvedValue(mockData);
+    vi.mocked(getCustomerHistory).mockResolvedValue(mockData);
 
     render(
       <CustomerHistory 
@@ -344,10 +348,8 @@ describe('CustomerHistory', () => {
       />
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('$250.00')).toBeInTheDocument(); // Total amount
-      expect(screen.getByText('$200.00 paid')).toBeInTheDocument(); // Paid amount
-      expect(screen.getByText('2 payments')).toBeInTheDocument(); // Payment count
-    });
+    expect(await screen.findByText('$250.00')).toBeInTheDocument(); // Total amount
+    expect(screen.getByText('$200.00 paid')).toBeInTheDocument(); // Paid amount
+    expect(screen.getByText('2 payments')).toBeInTheDocument(); // Payment count
   });
 });
