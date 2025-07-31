@@ -388,6 +388,13 @@ export function notifyReminder(customerName: string, appointmentId: string, minu
   );
 }
 
+/**
+ * Schedule a reminder notification
+ */
+export function scheduleReminder(appointmentId: string, customerName: string, minutesUntil: number): string {
+  return notifyReminder(customerName, appointmentId, minutesUntil);
+}
+
 // =============================================================================
 // State Management Functions
 // =============================================================================
@@ -414,6 +421,13 @@ export function getNotificationsByType(type: Notification['type']): Notification
 export function getUnreadNotifications(): Notification[] {
   cleanupExpiredNotifications();
   return notifications.filter(n => !n.read);
+}
+
+/**
+ * Mark notification as read (alias for markAsRead)
+ */
+export function markNotificationAsRead(id: string): boolean {
+  return markAsRead(id);
 }
 
 /**
@@ -598,10 +612,12 @@ export default {
   notifyOverdue,
   notifyArrival,
   notifyReminder,
+  scheduleReminder,
   getNotifications,
   getNotificationsByType,
   getUnreadNotifications,
   markAsRead,
+  markNotificationAsRead,
   markAllAsRead,
   removeNotification,
   clearAllNotifications,

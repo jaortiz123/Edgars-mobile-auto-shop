@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { useToast } from './ToastProvider';
+import { useToast } from '../hooks/useToast';
 import { LoadingSpinner } from './LoadingSpinner';
 
 interface UserSession {

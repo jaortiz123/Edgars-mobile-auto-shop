@@ -288,12 +288,7 @@ export function Dashboard() {
   useEffect(() => {
     appointments.forEach(apt => {
       if (apt.dateTime.toDateString() === new Date().toDateString()) {
-        scheduleReminder({
-          id: apt.id,
-          customer: apt.customer,
-          dateTime: apt.dateTime.toISOString(),
-          service: apt.service
-        }, 15); // Schedule reminder 15 minutes before
+        scheduleReminder(apt.id, apt.customer, 15); // Schedule reminder 15 minutes before
       }
     });
   }, [appointments]);

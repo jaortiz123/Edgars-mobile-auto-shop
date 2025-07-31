@@ -2,15 +2,10 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import MessageThread from '@/components/admin/MessageThread';
-import * as api from '@/lib/api';
+import * as centralizedApiMock from '../test/mocks/api';
 
-// Mock the API
-vi.mock('@/lib/api', () => ({
-  getAppointmentMessages: vi.fn(),
-  createAppointmentMessage: vi.fn(),
-  deleteAppointmentMessage: vi.fn(),
-  handleApiError: vi.fn().mockReturnValue('Failed to send message'),
-}));
+// Use centralized API mock instead of factory pattern
+vi.mock('@/lib/api', () => centralizedApiMock);
 
 // Mock toast
 vi.mock('@/lib/toast', () => ({
@@ -48,7 +43,7 @@ describe('MessageThread', () => {
   });
 
   it('renders message thread with messages', async () => {
-    (api.getAppointmentMessages as any).mockResolvedValue(mockMessages);
+    vi.mocked(centralizedApiMock.getAppointmentMessages).mockResolvedValue(mockMessages);
 
     render(<MessageThread appointmentId="appt-123" drawerOpen={true} />);
 
@@ -59,7 +54,7 @@ describe('MessageThread', () => {
   });
 
   it('renders empty state when no messages', async () => {
-    (api.getAppointmentMessages as any).mockResolvedValue([]);
+    vi.mocked(centralizedApiMock.getAppointmentMessages).mockResolvedValue([]);
 
     render(<MessageThread appointmentId="appt-123" drawerOpen={true} />);
 
@@ -70,8 +65,8 @@ describe('MessageThread', () => {
   });
 
   it('allows sending a new message', async () => {
-    (api.getAppointmentMessages as any).mockResolvedValue([]);
-    (api.createAppointmentMessage as any).mockResolvedValue({
+    vi.mocked(centralizedApiMock.getAppointmentMessages).mockResolvedValue([]);
+    vi.mocked(centralizedApiMock.createAppointmentMessage).mockResolvedValue({
       id: 'new-msg',
       status: 'sending',
     });
@@ -92,7 +87,7 @@ describe('MessageThread', () => {
     fireEvent.click(sendButton);
 
     await waitFor(() => {
-      expect(api.createAppointmentMessage).toHaveBeenCalledWith('appt-123', {
+      expect(centralizedApiMock.createAppointmentMessage).toHaveBeenCalledWith('appt-123', {
         channel: 'sms',
         body: 'Test message',
       });
@@ -100,7 +95,7 @@ describe('MessageThread', () => {
   });
 
   it('validates empty messages', async () => {
-    (api.getAppointmentMessages as any).mockResolvedValue([]);
+    vi.mocked(centralizedApiMock.getAppointmentMessages).mockResolvedValue([]);
 
     render(<MessageThread appointmentId="appt-123" drawerOpen={true} />);
 
@@ -118,8 +113,8 @@ describe('MessageThread', () => {
   it('handles API errors when sending messages', async () => {
     const { toast } = await import('@/lib/toast');
     
-    (api.getAppointmentMessages as any).mockResolvedValue([]);
-    (api.createAppointmentMessage as any).mockRejectedValue(new Error('Network error'));
+    vi.mocked(centralizedApiMock.getAppointmentMessages).mockResolvedValue([]);
+    vi.mocked(centralizedApiMock.createAppointmentMessage).mockRejectedValue(new Error('Network error'));
 
     render(<MessageThread appointmentId="appt-123" drawerOpen={true} />);
 

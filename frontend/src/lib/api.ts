@@ -285,7 +285,12 @@ export function handleApiError(err: unknown, defaultMessage?: string): string {
   return msg;
 }
 
+export async function login(username: string, password: string): Promise<{ token?: string; user?: unknown }> {
+  const response = await http.post('/admin/login', { username, password });
+  return response.data;
+}
+
 // Expose the axios instance for advanced callers
 export function useApi() {
-  return client;
+  return http;
 }

@@ -124,10 +124,7 @@ export function useRobustCardState(
       // Send notification if enabled
       if (enableNotifications) {
         withCardErrorBoundary(
-          () => notifyArrival(validatedCard.id, {
-            customer: validatedCard.customerName,
-            service: validatedCard.servicesSummary || 'Service'
-          }),
+          () => notifyArrival(validatedCard.customerName, validatedCard.id),
           undefined,
           'Error sending arrival notification'
         );
@@ -209,10 +206,7 @@ export function useRobustCardState(
             // Running late notification (10+ minutes past start)
             if (minutes_past > 10 && !prevState.notifiedLate) {
               sendNotificationSafely(() => {
-                notifyLate(validatedCard.id, 'running late', {
-                  customer: validatedCard.customerName,
-                  service: validatedCard.servicesSummary || 'Service'
-                });
+                notifyLate(validatedCard.customerName, validatedCard.id, minutes_past);
               });
               newState.notifiedLate = true;
             }
@@ -220,10 +214,7 @@ export function useRobustCardState(
             // Overdue notification (30+ minutes past start)
             if (minutes_past > 30 && !prevState.notifiedOverdue) {
               sendNotificationSafely(() => {
-                notifyOverdue(validatedCard.id, {
-                  customer: validatedCard.customerName,
-                  service: validatedCard.servicesSummary || 'Service'
-                });
+                notifyOverdue(validatedCard.customerName, validatedCard.id, minutes_past);
               });
               newState.notifiedOverdue = true;
             }

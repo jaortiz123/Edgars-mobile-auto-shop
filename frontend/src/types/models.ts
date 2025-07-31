@@ -73,6 +73,11 @@ export interface DashboardStats {
   completed: number;
   noShow: number;
   unpaidTotal: number;
+  // Additional dashboard metrics
+  completedToday?: number;
+  pendingAppointments?: number;
+  todayRevenue?: number;
+  partsOrdered?: number;
   // NEW v2 ENHANCED TOTALS
   totals?: {
     today_completed: number;
@@ -122,3 +127,39 @@ export type ApiAppointmentStatusLower =
   | 'completed'
   | 'no_show'
   | 'canceled';
+
+// Customer History Types (T-023)
+export interface CustomerHistoryPayment {
+  id: string;
+  amount: number;
+  method: string;
+  created_at: string;
+}
+
+export interface CustomerHistoryAppointment {
+  id: string;
+  status: string;
+  start: string;
+  total_amount: number;
+  paid_amount: number;
+  created_at: string;
+  payments: CustomerHistoryPayment[];
+}
+
+export interface CustomerHistoryResponse {
+  data: {
+    pastAppointments: CustomerHistoryAppointment[];
+    payments: CustomerHistoryPayment[];
+  };
+  errors: null;
+}
+
+export interface Service {
+  id: number;
+  name: string;
+  description: string;
+  base_price?: number;
+  duration?: number;
+  duration_minutes?: number;
+  category?: string;
+}

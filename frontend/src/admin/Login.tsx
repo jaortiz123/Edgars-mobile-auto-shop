@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import api from '../services/api'
+import { login } from '../lib/api'
 import { useNavigate } from 'react-router-dom'
 
 export default function Login() {
@@ -9,7 +9,7 @@ export default function Login() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await api.post('/admin/login', { username, password })
+    await login(username, password)
     navigate('/admin')
   }
 

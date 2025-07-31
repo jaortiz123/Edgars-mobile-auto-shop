@@ -58,6 +58,15 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
     );
   }, [card]);
 
+  // Early return if card validation fails
+  if (!validatedCard) {
+    return (
+      <div className="appointment-card-error border-red-200 bg-red-50 p-4 rounded-lg">
+        <p className="text-red-600 text-sm">Invalid appointment card data</p>
+      </div>
+    );
+  }
+
   // Safe appointment time parsing with memoization
   const appointmentTime = useMemo(() => 
     validatedCard ? parseAppointmentTime(validatedCard.start) : new Date(), 
@@ -156,10 +165,7 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
       
       // Notify arrival with error boundary
       withCardErrorBoundary(
-        () => notifyArrival(validatedCard.id, {
-          customer: validatedCard.customerName,
-          service: validatedCard.servicesSummary || 'Service'
-        }),
+        () => notifyArrival(validatedCard.customerName, validatedCard.id),
         undefined,
         'Error sending arrival notification'
       );
@@ -200,10 +206,7 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
               // Running late notification (10+ minutes past start)
               if (minutes_past > 10 && !prevState.notifiedLate) {
                 withCardErrorBoundary(
-                  () => notifyLate(validatedCard.id, 'running late', {
-                    customer: validatedCard.customerName,
-                    service: validatedCard.servicesSummary || 'Service'
-                  }),
+                  () => notifyLate(validatedCard.customerName, validatedCard.id, minutes_past),
                   undefined,
                   'Error sending late notification'
                 );
@@ -213,10 +216,7 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
               // Overdue notification (30+ minutes past start)
               if (minutes_past > 30 && !prevState.notifiedOverdue) {
                 withCardErrorBoundary(
-                  () => notifyOverdue(validatedCard.id, {
-                    customer: validatedCard.customerName,
-                    service: validatedCard.servicesSummary || 'Service'
-                  }),
+                  () => notifyOverdue(validatedCard.customerName, validatedCard.id, minutes_past),
                   undefined,
                   'Error sending overdue notification'
                 );

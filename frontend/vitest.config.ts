@@ -30,7 +30,7 @@ export default defineConfig({
   },
 
   test: {
-    // Environment configuration
+    // Default environment for most tests
     environment: 'jsdom',
     setupFiles: ['src/tests/setup.ts'],
     

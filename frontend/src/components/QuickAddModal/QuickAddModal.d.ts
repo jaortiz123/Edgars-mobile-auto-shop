@@ -4,6 +4,7 @@ export interface QuickAddModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (appointmentData: any) => void;
+  isSubmitting?: boolean;
   customers?: Array<{
     id: string;
     name: string;

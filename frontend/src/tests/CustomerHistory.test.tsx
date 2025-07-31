@@ -2,14 +2,12 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import CustomerHistory from '../../src/components/admin/CustomerHistory';
-import * as api from '../../src/lib/api';
+import * as centralizedApiMock from '../test/mocks/api';
 
-// Mock the API
-vi.mock('../../src/lib/api', () => ({
-  getCustomerHistory: vi.fn()
-}));
+// Use centralized API mock instead of duplicate declarations
+vi.mock('../../src/lib/api', () => centralizedApiMock);
 
-const mockGetCustomerHistory = vi.mocked(api.getCustomerHistory);
+const mockGetCustomerHistory = vi.mocked(centralizedApiMock.getCustomerHistory);
 
 describe('CustomerHistory', () => {
   const mockOnAppointmentClick = vi.fn();
