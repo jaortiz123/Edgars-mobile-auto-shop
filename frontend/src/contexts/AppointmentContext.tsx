@@ -62,10 +62,11 @@ export function AppointmentProvider({ children }: { children: React.ReactNode })
       
       // Direct function call with comprehensive error handling
       let data: { columns: BoardColumn[]; cards: BoardCard[] } | undefined;
-      try {
-        console.log('🎯 AppointmentContext: About to call api.getBoard...');
-        data = await api.getBoard({});
-        console.log('🎯 AppointmentContext: api.getBoard call completed, result:', data);
+      try {      console.log('🎯 AppointmentContext: About to call api.getBoard...');
+      console.log('🔍 AppointmentContext: Actual api.getBoard function:', api.getBoard);
+      console.log('🔍 AppointmentContext: api.getBoard toString:', api.getBoard.toString().substring(0, 200));
+      data = await api.getBoard({});
+      console.log('🎯 AppointmentContext: api.getBoard call completed, result:', data);
       } catch (apiError) {
         console.error('🚨 AppointmentContext: api.getBoard threw error:', {
           error: apiError,
