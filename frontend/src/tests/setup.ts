@@ -4,7 +4,95 @@ import 'whatwg-fetch'
 import { expect, vi, beforeAll, afterAll, beforeEach } from 'vitest'
 import { toHaveNoViolations } from 'jest-axe'
 import { cleanup } from '@testing-library/react'
-import { setupCleanConsole, restoreConsole } from './testEnv'
+import { restoreConsole } from './testEnv'
+
+// CI-STRICT-001: Fail tests on console.error/warn (ROBUSTNESS ENHANCED)
+beforeAll(() => {
+  const origError = console.error;
+  const origWarn = console.warn;
+  
+  /**
+   * Create a robust console override that handles edge cases safely
+   */
+  const createSafeConsoleOverride = (level: 'error' | 'warn') => {
+    return (...args: unknown[]) => {
+      try {
+        // Track seen objects for circular reference detection
+        const seen = new WeakSet<object>();
+        
+        // Safe argument processing with comprehensive error handling
+        const safeArgs = args.map((arg) => {
+          if (arg === null) return 'null';
+          if (arg === undefined) return 'undefined';
+          if (typeof arg === 'string') return arg;
+          if (typeof arg === 'number' || typeof arg === 'boolean') return String(arg);
+          
+          // Handle objects and complex types safely
+          if (typeof arg === 'object' && arg !== null) {
+            try {
+              // Try JSON.stringify first (handles most objects)
+              return JSON.stringify(arg, (key, value) => {
+                // Handle circular references
+                if (typeof value === 'object' && value !== null) {
+                  if (seen.has(value)) return '[Circular Reference]';
+                  seen.add(value);
+                }
+                return value;
+              }, 2);
+            } catch {
+              try {
+                // Fallback to toString if JSON fails
+                return String(arg);
+              } catch {
+                // Last resort: describe the object safely
+                return `[Object of type ${Object.prototype.toString.call(arg)} - toString failed]`;
+              }
+            }
+          }
+          
+          // Handle functions and other types
+          try {
+            return String(arg);
+          } catch {
+            return `[${typeof arg} - conversion failed]`;
+          }
+        });
+        
+        // Create error with enhanced context
+        const message = safeArgs.join(' ');
+        const error = new Error(`console.${level}: ${message}`);
+        
+        // Preserve stack trace for better debugging
+        if (Error.captureStackTrace) {
+          Error.captureStackTrace(error, createSafeConsoleOverride);
+        }
+        
+        throw error;
+      } catch (processingError) {
+        // Graceful degradation: if our processing fails, still fail the test
+        const errorMessage = processingError instanceof Error ? processingError.message : 'Unknown error';
+        throw new Error(`console.${level}: [CI-STRICT-001 Error: ${errorMessage}] - Original console call failed processing`);
+      }
+    };
+  };
+  
+  // Apply robust console overrides
+  console.error = createSafeConsoleOverride('error');
+  console.warn = createSafeConsoleOverride('warn');
+  
+  // Store originals for potential restoration if needed (backward compatibility)
+  const globals = globalThis as typeof globalThis & {
+    __originalConsole?: {
+      error: typeof console.error;
+      warn: typeof console.warn;
+    };
+  };
+  
+  globals.__originalConsole = {
+    error: origError,
+    warn: origWarn
+  };
+});
 
 // Extend expect with accessibility matchers
 expect.extend(toHaveNoViolations)
@@ -14,7 +102,16 @@ beforeEach(() => {
   cleanup()
 })
 
-// Note: Global vi.mock declarations removed to prevent circular dependencies.
+// MOCK-FACTORY-001: Complete MockFactory API implementation
+import { createMocks } from './mocks';
+const { time, notification, api } = createMocks();
+
+// Apply centralized mocks to avoid circular dependencies
+vi.mock('@/utils/time', () => time);
+vi.mock('@/services/notificationService', () => notification);
+vi.mock('@/lib/api', () => api);
+
+// Note: Global vi.mock declarations replaced with centralized mock factory.
 // Tests should now use createTestMocks() directly for dependency injection.
 // Example: const { api, time, notification } = createTestMocks();
 
@@ -54,7 +151,7 @@ vi.mock('@/services/offlineSupport', () => ({
 beforeAll(() => {
   // Note: Mock factory globals removed to prevent circular dependencies
   // Individual tests should use createTestMocks() for dependency injection
-  setupCleanConsole();
+  // setupCleanConsole(); // Commented out because CI-STRICT-001 overrides console methods
 });
 
 // Enhanced JSDOM environment setup (fallback for any missing mocks)

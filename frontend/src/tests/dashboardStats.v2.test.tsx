@@ -103,7 +103,7 @@ describe('DashboardStats v2 Enhancements', () => {
     expect(progressTile).toHaveTextContent('60% complete');
     
     // Should have a progress bar with correct width
-    const progressBar = progressTile.querySelector('.bg-blue-600');
+    const progressBar = screen.getByTestId('progress-bar');
     expect(progressBar).toBeInTheDocument();
     expect(progressBar).toHaveStyle({ width: '60%' });
   });
@@ -160,8 +160,7 @@ describe('DashboardStats v2 Enhancements', () => {
     expect(screen.getByTestId('kpi-jobs-progress')).toHaveTextContent('0% complete');
     
     // Progress bar should be 0 width
-    const progressTile = screen.getByTestId('kpi-jobs-progress');
-    const progressBar = progressTile.querySelector('.bg-blue-600');
+    const progressBar = screen.getByTestId('progress-bar');
     expect(progressBar).toHaveStyle({ width: '0%' });
   });
 
@@ -177,10 +176,10 @@ describe('DashboardStats v2 Enhancements', () => {
   });
 
   it('uses responsive grid layout', () => {
-    const { container } = render(<DashboardStats />);
+    render(<DashboardStats />);
 
     // Should use the new responsive grid classes
-    const grid = container.querySelector('.grid-cols-2.md\\:grid-cols-4.xl\\:grid-cols-5');
+    const grid = screen.getByTestId('dashboard-grid');
     expect(grid).toBeInTheDocument();
   });
 });

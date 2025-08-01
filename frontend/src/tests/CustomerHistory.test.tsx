@@ -3,11 +3,16 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import CustomerHistory from '../components/admin/CustomerHistory';
+import * as api from '@/lib/api';
 
-// Mock the API module before importing the component
+// Mock the API module completely
 vi.mock('@/lib/api', () => ({
-  getCustomerHistory: vi.fn()
+  getCustomerHistory: vi.fn(),
+  handleApiError: vi.fn((err, defaultMessage) => defaultMessage || 'Unknown error')
 }));
+
+// Get the mocked function
+const mockGetCustomerHistory = vi.mocked(api.getCustomerHistory);
 
 // Mock the toast library  
 vi.mock('../lib/toast', () => ({
@@ -19,19 +24,18 @@ vi.mock('../lib/toast', () => ({
   }
 }));
 
-// Import the mocked function after the mock is defined
-import { getCustomerHistory } from '@/lib/api';
-
 describe('CustomerHistory', () => {
   const mockOnAppointmentClick = vi.fn();
   const customerId = 'cust-123';
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockOnAppointmentClick.mockClear();
+    mockGetCustomerHistory.mockClear();
   });
 
   it('renders loading state initially', () => {
-    vi.mocked(getCustomerHistory).mockImplementation(() => new Promise(() => {})); // Never resolves
+    mockGetCustomerHistory.mockImplementation(() => new Promise(() => {})); // Never resolves
     
     render(
       <CustomerHistory 
@@ -46,7 +50,7 @@ describe('CustomerHistory', () => {
   });
 
   it('renders empty state when no appointments', async () => {
-    vi.mocked(getCustomerHistory).mockResolvedValue({
+    mockGetCustomerHistory.mockResolvedValue({
       data: {
         pastAppointments: [],
         payments: []
@@ -67,7 +71,13 @@ describe('CustomerHistory', () => {
 
   it('renders error state and allows retry', async () => {
     const user = userEvent.setup();
-    vi.mocked(getCustomerHistory).mockRejectedValue(new Error('API Error'));
+    
+    // Temporarily mock console.error to prevent CI-STRICT from throwing
+    const originalError = console.error;
+    console.error = vi.fn();
+    
+    // Force API to throw an error
+    mockGetCustomerHistory.mockRejectedValue(new Error('Network error'));
 
     render(
       <CustomerHistory 
@@ -76,23 +86,28 @@ describe('CustomerHistory', () => {
       />
     );
 
-    expect(await screen.findByText('Failed to load customer history')).toBeInTheDocument();
-    const retryButton = screen.getByText('Retry');
-    expect(retryButton).toBeInTheDocument();
+    try {
+      expect(await screen.findByText('Failed to load customer history', {}, { timeout: 5000 })).toBeInTheDocument();
+      const retryButton = screen.getByText('Retry');
+      expect(retryButton).toBeInTheDocument();
 
-    // Test retry functionality
-    vi.mocked(getCustomerHistory).mockResolvedValue({
-      data: {
-        pastAppointments: [],
-        payments: []
-      },
-      errors: null
-    });
+      // Test retry functionality - reset mock to return empty data
+      mockGetCustomerHistory.mockResolvedValue({
+        data: {
+          pastAppointments: [],
+          payments: []
+        },
+        errors: null
+      });
 
-    await user.click(retryButton);
+      await user.click(retryButton);
 
-    expect(await screen.findByText('No appointment history')).toBeInTheDocument();
-    expect(getCustomerHistory).toHaveBeenCalledTimes(2);
+      expect(await screen.findByText('No appointment history')).toBeInTheDocument();
+      expect(mockGetCustomerHistory).toHaveBeenCalledTimes(2);
+    } finally {
+      // Restore console.error
+      console.error = originalError;
+    }
   });
 
   it('renders appointments grouped by year', async () => {
@@ -146,7 +161,7 @@ describe('CustomerHistory', () => {
       errors: null
     };
 
-    vi.mocked(getCustomerHistory).mockResolvedValue(mockData);
+    mockGetCustomerHistory.mockResolvedValue(mockData);
 
     render(
       <CustomerHistory 
@@ -190,7 +205,7 @@ describe('CustomerHistory', () => {
       errors: null
     };
 
-    vi.mocked(getCustomerHistory).mockResolvedValue(mockData);
+    mockGetCustomerHistory.mockResolvedValue(mockData);
 
     render(
       <CustomerHistory 
@@ -237,7 +252,7 @@ describe('CustomerHistory', () => {
       errors: null
     };
 
-    vi.mocked(getCustomerHistory).mockResolvedValue(mockData);
+    mockGetCustomerHistory.mockResolvedValue(mockData);
 
     render(
       <CustomerHistory 
@@ -293,7 +308,7 @@ describe('CustomerHistory', () => {
       errors: null
     };
 
-    vi.mocked(getCustomerHistory).mockResolvedValue(mockData);
+    mockGetCustomerHistory.mockResolvedValue(mockData);
 
     render(
       <CustomerHistory 
@@ -339,7 +354,7 @@ describe('CustomerHistory', () => {
       errors: null
     };
 
-    vi.mocked(getCustomerHistory).mockResolvedValue(mockData);
+    mockGetCustomerHistory.mockResolvedValue(mockData);
 
     render(
       <CustomerHistory 

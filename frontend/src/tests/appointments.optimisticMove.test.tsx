@@ -80,8 +80,11 @@ describe('AppointmentContext.optimisticMove - Enhanced with Mock Factory', () =>
     // Wait for initial load
     await waitFor(() => expect(screen.getByTestId('cards').textContent).toContain('1-SCHEDULED-1'));
     
+    // Setup user event
+    const user = userEvent.setup();
+    
     // Trigger move
-    userEvent.click(screen.getByText('Move'));
+    await user.click(screen.getByText('Move'));
     
     // UI updates optimistically
     await waitFor(() => expect(screen.getByTestId('cards').textContent).toContain('1-IN_PROGRESS-2'));
@@ -95,8 +98,9 @@ describe('AppointmentContext.optimisticMove - Enhanced with Mock Factory', () =>
     apiMocks.moveAppointment.mockRejectedValue({ response: { status: 500 } });
     appRender(<TestComponent />);
     
+    const user = userEvent.setup();
     await waitFor(() => expect(screen.getByTestId('cards').textContent).toContain('1-SCHEDULED-1'));
-    userEvent.click(screen.getByText('Move'));
+    await user.click(screen.getByText('Move'));
     
     // UI updates optimistically
     await waitFor(() => expect(screen.getByTestId('cards').textContent).toContain('1-IN_PROGRESS-2'));
@@ -110,8 +114,9 @@ describe('AppointmentContext.optimisticMove - Enhanced with Mock Factory', () =>
     apiMocks.moveAppointment.mockRejectedValue({ response: { status: 429 } });
     appRender(<TestComponent />);
     
+    const user = userEvent.setup();
     await waitFor(() => expect(screen.getByTestId('cards').textContent).toContain('1-SCHEDULED-1'));
-    userEvent.click(screen.getByText('Move'));
+    await user.click(screen.getByText('Move'));
     
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Too many moves. Please wait a moment.', { key: 'move-rate-1' }));
     expect(screen.getByTestId('cards').textContent).toContain('1-SCHEDULED-1');
@@ -121,8 +126,9 @@ describe('AppointmentContext.optimisticMove - Enhanced with Mock Factory', () =>
     apiMocks.moveAppointment.mockRejectedValue({ response: { status: 400, data: { errors: [{ detail: 'Not allowed transition' }] } } });
     appRender(<TestComponent />);
     
+    const user = userEvent.setup();
     await waitFor(() => expect(screen.getByTestId('cards').textContent).toContain('1-SCHEDULED-1'));
-    userEvent.click(screen.getByText('Move'));
+    await user.click(screen.getByText('Move'));
     
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('That status change is not allowed.', { key: 'move-invalid-1' }));
     expect(screen.getByTestId('cards').textContent).toContain('1-SCHEDULED-1');
@@ -132,12 +138,13 @@ describe('AppointmentContext.optimisticMove - Enhanced with Mock Factory', () =>
     apiMocks.moveAppointment.mockResolvedValue({ id: '1', status: 'IN_PROGRESS', position: 2 });
     appRender(<TestComponent />);
     
+    const user = userEvent.setup();
     await waitFor(() => expect(screen.getByTestId('cards').textContent).toContain('1-SCHEDULED-1'));
-    userEvent.click(screen.getByText('Move'));
+    await user.click(screen.getByText('Move'));
     
     await waitFor(() => {
       expect(apiMocks.moveAppointment).toHaveBeenCalledTimes(1);
-      expect(apiMocks.moveAppointment).toHaveBeenCalledWith('1', { status: 'IN_PROGRESS', position: 2 });
     });
+    expect(apiMocks.moveAppointment).toHaveBeenCalledWith('1', { status: 'IN_PROGRESS', position: 2 });
   });
 });
