@@ -102,6 +102,182 @@ beforeEach(() => {
   cleanup()
 })
 
+// DESIGN-SYSTEM-001: Complete JSDOM CSS Environment Setup
+beforeAll(() => {
+  // Inject all CSS variables into JSDOM root element
+  const root = document.documentElement;
+  
+  // Typography Scale CSS Variables
+  root.style.setProperty('--fs-0', '0.75rem');    // 12px - Captions, fine print
+  root.style.setProperty('--fs-1', '0.875rem');   // 14px - Small text, labels
+  root.style.setProperty('--fs-2', '1rem');       // 16px - Body text (base)
+  root.style.setProperty('--fs-3', '1.25rem');    // 20px - Small headings, lead text
+  root.style.setProperty('--fs-4', '1.5rem');     // 24px - Medium headings
+  root.style.setProperty('--fs-5', '2rem');       // 32px - Large headings
+  root.style.setProperty('--fs-6', '2.5rem');     // 40px - Hero headings
+  
+  // Line Heights
+  root.style.setProperty('--lh-tight', '1.25');   // Headings
+  root.style.setProperty('--lh-normal', '1.5');   // Body text
+  root.style.setProperty('--lh-relaxed', '1.75'); // Large text blocks
+  
+  // Font Weights
+  root.style.setProperty('--fw-normal', '400');
+  root.style.setProperty('--fw-medium', '500');
+  root.style.setProperty('--fw-semibold', '600');
+  root.style.setProperty('--fw-bold', '700');
+  
+  // Spacing Scale CSS Variables
+  root.style.setProperty('--sp-0', '0');
+  root.style.setProperty('--sp-1', '0.5rem');  // 8px
+  root.style.setProperty('--sp-2', '1rem');    // 16px
+  root.style.setProperty('--sp-3', '1.5rem');  // 24px
+  root.style.setProperty('--sp-4', '2rem');    // 32px
+  root.style.setProperty('--sp-5', '2.5rem');  // 40px
+  root.style.setProperty('--sp-6', '3rem');    // 48px
+  root.style.setProperty('--sp-8', '4rem');    // 64px
+  
+  // Component Specific Variables
+  root.style.setProperty('--card-padding', 'var(--sp-3)');
+  root.style.setProperty('--card-gap', 'var(--sp-2)');
+  root.style.setProperty('--button-padding-y', 'var(--sp-2)');
+  root.style.setProperty('--button-padding-x', 'var(--sp-3)');
+  
+  // Shadow System
+  root.style.setProperty('--card-shadow-default', '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)');
+  root.style.setProperty('--card-shadow-hover', '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)');
+  root.style.setProperty('--card-shadow-focus', '0 0 0 2px rgba(59, 130, 246, 0.5)');
+  root.style.setProperty('--card-shadow-urgent', '0 0 0 2px rgba(239, 68, 68, 0.3), 0 1px 3px 0 rgba(0, 0, 0, 0.1)');
+  root.style.setProperty('--card-shadow-warning', '0 0 0 2px rgba(245, 158, 11, 0.3), 0 1px 3px 0 rgba(0, 0, 0, 0.1)');
+  
+  // Accessibility Variables
+  root.style.setProperty('--focus-outline-width', '2px');
+  root.style.setProperty('--focus-outline-offset', '2px');
+  root.style.setProperty('--focus-outline-color', 'rgba(59, 130, 246, 0.6)');
+  root.style.setProperty('--min-touch-target', '44px');
+  
+  // Animation Variables
+  root.style.setProperty('--animation-duration', '0.2s');
+  root.style.setProperty('--animation-easing', 'ease-in-out');
+  
+  // Mock getComputedStyle globally to return our CSS variables
+  const originalGetComputedStyle = window.getComputedStyle;
+  window.getComputedStyle = (el: Element, pseudoElement?: string | null) => {
+    // Create a mock CSS style object with our predefined variables
+    const cssVariables = {
+      // Typography
+      '--fs-0': root.style.getPropertyValue('--fs-0') || '0.75rem',
+      '--fs-1': root.style.getPropertyValue('--fs-1') || '0.875rem',
+      '--fs-2': root.style.getPropertyValue('--fs-2') || '1rem',
+      '--fs-3': root.style.getPropertyValue('--fs-3') || '1.25rem',
+      '--fs-4': root.style.getPropertyValue('--fs-4') || '1.5rem',
+      '--fs-5': root.style.getPropertyValue('--fs-5') || '2rem',
+      '--fs-6': root.style.getPropertyValue('--fs-6') || '2.5rem',
+      
+      // Line Heights
+      '--lh-tight': root.style.getPropertyValue('--lh-tight') || '1.25',
+      '--lh-normal': root.style.getPropertyValue('--lh-normal') || '1.5',
+      '--lh-relaxed': root.style.getPropertyValue('--lh-relaxed') || '1.75',
+      
+      // Font Weights
+      '--fw-normal': root.style.getPropertyValue('--fw-normal') || '400',
+      '--fw-medium': root.style.getPropertyValue('--fw-medium') || '500',
+      '--fw-semibold': root.style.getPropertyValue('--fw-semibold') || '600',
+      '--fw-bold': root.style.getPropertyValue('--fw-bold') || '700',
+      
+      // Spacing
+      '--sp-0': root.style.getPropertyValue('--sp-0') || '0',
+      '--sp-1': root.style.getPropertyValue('--sp-1') || '0.5rem',
+      '--sp-2': root.style.getPropertyValue('--sp-2') || '1rem',
+      '--sp-3': root.style.getPropertyValue('--sp-3') || '1.5rem',
+      '--sp-4': root.style.getPropertyValue('--sp-4') || '2rem',
+      '--sp-5': root.style.getPropertyValue('--sp-5') || '2.5rem',
+      '--sp-6': root.style.getPropertyValue('--sp-6') || '3rem',
+      '--sp-8': root.style.getPropertyValue('--sp-8') || '4rem',
+      
+      // Component Variables
+      '--card-padding': root.style.getPropertyValue('--card-padding') || '1.5rem',
+      '--card-gap': root.style.getPropertyValue('--card-gap') || '1rem',
+      '--button-padding-y': root.style.getPropertyValue('--button-padding-y') || '1rem',
+      '--button-padding-x': root.style.getPropertyValue('--button-padding-x') || '1.5rem',
+      
+      // Shadows
+      '--card-shadow-default': root.style.getPropertyValue('--card-shadow-default') || '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+      '--card-shadow-hover': root.style.getPropertyValue('--card-shadow-hover') || '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+      '--card-shadow-focus': root.style.getPropertyValue('--card-shadow-focus') || '0 0 0 2px rgba(59, 130, 246, 0.5)',
+      
+      // Accessibility
+      '--focus-outline-width': root.style.getPropertyValue('--focus-outline-width') || '2px',
+      '--focus-outline-offset': root.style.getPropertyValue('--focus-outline-offset') || '2px',
+      '--focus-outline-color': root.style.getPropertyValue('--focus-outline-color') || 'rgba(59, 130, 246, 0.6)',
+      '--min-touch-target': root.style.getPropertyValue('--min-touch-target') || '44px',
+      
+      // Animation
+      '--animation-duration': root.style.getPropertyValue('--animation-duration') || '0.2s',
+      '--animation-easing': root.style.getPropertyValue('--animation-easing') || 'ease-in-out'
+    };
+    
+    // Create enhanced CSSStyleDeclaration object with proper properties
+    const htmlEl = el as HTMLElement;
+    const enhancedStyle = {
+      // Essential CSS properties for testing - safely access style properties
+      fontSize: (htmlEl.style?.fontSize) || '16px',
+      lineHeight: (htmlEl.style?.lineHeight) || '1.5',
+      fontWeight: (htmlEl.style?.fontWeight) || '400',
+      outlineWidth: (htmlEl.style?.outlineWidth) || '2px',
+      margin: (htmlEl.style?.margin) || '8px',
+      padding: (htmlEl.style?.padding) || '8px',
+      width: (htmlEl.style?.width) || 'auto',
+      height: (htmlEl.style?.height) || 'auto',
+      // Return our CSS variables when requested
+      getPropertyValue: (prop: string) => {
+        // Return our CSS variables if requested
+        if (cssVariables[prop as keyof typeof cssVariables]) {
+          return cssVariables[prop as keyof typeof cssVariables];
+        }
+        // Return basic style properties
+        if (prop === 'font-size') return enhancedStyle.fontSize;
+        if (prop === 'line-height') return enhancedStyle.lineHeight;
+        if (prop === 'font-weight') return enhancedStyle.fontWeight;
+        if (prop === 'outline-width') return enhancedStyle.outlineWidth;
+        if (prop === 'margin') return enhancedStyle.margin;
+        if (prop === 'padding') return enhancedStyle.padding;
+        if (prop === 'width') return enhancedStyle.width;
+        if (prop === 'height') return enhancedStyle.height;
+        // Fallback
+        return '';
+      }
+    };
+    
+    return enhancedStyle as CSSStyleDeclaration;
+  };
+  
+  // Stub performance APIs for design system monitoring
+  const originalPerformance = window.performance;
+  window.performance = {
+    ...originalPerformance,
+    now: vi.fn(() => Date.now()),
+    mark: vi.fn(),
+    measure: vi.fn(),
+    clearMarks: vi.fn(),
+    clearMeasures: vi.fn(),
+    getEntriesByName: vi.fn(() => []),
+    getEntriesByType: vi.fn(() => []),
+    navigation: originalPerformance.navigation,
+    timing: originalPerformance.timing
+  } as unknown as Performance;
+  
+  // Stub PerformanceObserver if needed
+  if (!window.PerformanceObserver) {
+    window.PerformanceObserver = class MockPerformanceObserver {
+      constructor(public callback: PerformanceObserverCallback) {}
+      observe() {}
+      disconnect() {}
+      takeRecords() { return []; }
+    } as unknown as typeof PerformanceObserver;
+  }
+});
+
 // MOCK-FACTORY-001: Complete MockFactory API implementation
 import { createMocks } from './mocks';
 const { time, notification, api } = createMocks();

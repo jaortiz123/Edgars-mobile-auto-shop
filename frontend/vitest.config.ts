@@ -49,7 +49,9 @@ export default defineConfig({
     // File patterns
     include: [
       'src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-      'src/tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
+      'src/tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
+      'src/**/*.it.{ts,tsx}', // Integration tests
+      'src/tests/**/*.it.{ts,tsx}' // Integration tests in tests folder
     ],
     exclude: [
       '**/node_modules/**',
@@ -58,6 +60,14 @@ export default defineConfig({
       '**/e2e/**',
       '**/.{idea,git,cache,output,temp}/**',
       '**/build/**'
+    ],
+    
+    // Environment matching for different test types
+    environmentMatchGlobs: [
+      ['**/*.it.{ts,tsx}', 'jsdom'], // Integration tests use jsdom
+      ['**/*.components.test.{ts,tsx}', 'jsdom'], // Component tests use jsdom
+      ['**/src/utils/**/*.test.{ts,tsx}', 'node'], // Utility tests use node
+      ['**/src/services/**/*.test.{ts,tsx}', 'node'] // Service tests use node
     ],
     
     // Pool configuration for better performance
