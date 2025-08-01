@@ -9,6 +9,14 @@ export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }
   const { columns, cards, optimisticMove, triggerRefresh } = useAppointments();
   const [reschedulingIds, setReschedulingIds] = useState<Set<string>>(new Set());
 
+  // Debug logging to see what data StatusBoard is receiving
+  console.log('🎪 StatusBoard render:', {
+    columnsLength: columns?.length,
+    cardsLength: cards?.length,
+    columns: columns,
+    cards: cards
+  });
+
   const byStatus = useMemo(() => {
     const map = new Map<string, typeof cards>();
     for (const col of columns) map.set(col.key, []);

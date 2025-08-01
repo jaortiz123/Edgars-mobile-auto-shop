@@ -55,50 +55,29 @@ export interface Envelope<T> {
 }
 
 export async function getBoard(params: { from?: string; to?: string; techId?: string }) {
-  console.error('CRITICAL: api.getBoard FUNCTION ENTRY - THIS SHOULD ALWAYS APPEAR IF FUNCTION IS CALLED');
-  console.error('CRITICAL: getBoard params:', params);
-  console.error('CRITICAL: getBoard function source location:', import.meta.url);
   console.log('🔧 api.getBoard: Function entry - START');
-  console.log('🔧 api.getBoard: Axios config:', {
-    baseURL: http.defaults.baseURL,
-    timeout: http.defaults.timeout,
-    headers: http.defaults.headers
-  });
+  console.log('🔧 api.getBoard: Params:', params);
+  
   try {
-    console.log('🔧 api.getBoard: Starting request with params:', params);
+    console.log('🔧 api.getBoard: Starting HTTP request...');
     const response = await http.get<{ columns: BoardColumn[]; cards: BoardCard[] }>('/admin/appointments/board', { params });
-    console.log('🔧 api.getBoard: Raw axios response:', {
+    console.log('🔧 api.getBoard: HTTP response received:', {
       status: response.status,
       statusText: response.statusText,
-      headers: response.headers,
-      data: response.data
+      dataKeys: Object.keys(response.data || {}),
+      columnsLength: response.data?.columns?.length,
+      cardsLength: response.data?.cards?.length
     });
     
     const { data } = response;
-    console.log('🔧 api.getBoard: Extracted data:', data);
-    
-    // JSON parse guard
-    try {
-      const serialized = JSON.stringify(data);
-      console.log('🔧 api.getBoard: JSON stringify successful, length:', serialized.length);
-      JSON.parse(serialized);
-      console.log('🔧 api.getBoard: JSON parse guard passed');
-    } catch (error) {
-      console.error("🔧 api.getBoard: Failed to parse board data", error);
-      return { columns: [], cards: [] };
-    }
-    
-    console.log('🔧 api.getBoard: Returning data:', { 
-      columnsCount: data?.columns?.length, 
-      cardsCount: data?.cards?.length 
-    });
+    console.log('🔧 api.getBoard: Returning data successfully');
     return data;
   } catch (error) {
-    console.error('🔧 api.getBoard: Caught error at function start:', error);
-    console.error('🔧 api.getBoard: Error details:', {
+    console.log('🔧 api.getBoard: Caught error:', {
       message: (error as Error)?.message,
       stack: (error as Error)?.stack,
-      name: (error as Error)?.name
+      name: (error as Error)?.name,
+      fullError: error
     });
     throw error;
   }
@@ -165,21 +144,65 @@ export async function getDrawer(id: string) {
 
 // Services CRUD methods
 export async function getAppointmentServices(appointmentId: string): Promise<AppointmentService[]> {
-  const resp = await http.get<Envelope<{ services: AppointmentService[] }>>(
+  const resp = await http.get<{ services: AppointmentService[] }>(
     `/appointments/${appointmentId}/services`
   );
-  return resp.data.data.services;
+  return resp.data.services;
 }
 
 export async function createAppointmentService(
   appointmentId: string, 
   service: Partial<AppointmentService>
 ): Promise<{ service: AppointmentService; appointment_total: number }> {
-  const resp = await http.post<{ service: AppointmentService; appointment_total: number }>(
-    `/appointments/${appointmentId}/services`,
-    service
-  );
-  return resp.data;
+  console.log('🔧 API: createAppointmentService called with:', { appointmentId, service });
+  console.log('🔧 API: baseURL configured as:', http.defaults.baseURL);
+  
+  // Create the service - backend returns just {id: serviceId}
+  console.log('🔧 API: About to make POST request to /appointments/' + appointmentId + '/services');
+  console.log('🔧 API: Full URL will be:', http.defaults.baseURL + '/appointments/' + appointmentId + '/services');
+  
+  try {
+    const resp = await http.post<{ id: string }>(
+      `/appointments/${appointmentId}/services`,
+      service
+    );
+    console.log('🔧 API: POST request completed successfully, response:', resp.data);
+    console.log('🔧 API: Response status:', resp.status);
+    console.log('🔧 API: Response headers:', resp.headers);
+    
+    // Refetch all services to get the complete service object and updated total
+    console.log('🔧 API: About to refetch all services');
+    const allServices = await getAppointmentServices(appointmentId);
+    console.log('🔧 API: Refetched services:', allServices);
+    
+    const newService = allServices.find(s => s.id === resp.data.id);
+    console.log('🔧 API: Found new service:', newService);
+    
+    if (!newService) {
+      throw new Error('Created service not found');
+    }
+    
+    // Calculate total from services (since backend doesn't return it)
+    const appointment_total = allServices.reduce((sum, s) => sum + (s.estimated_price || 0), 0);
+    console.log('🔧 API: Calculated total:', appointment_total);
+    
+    const result = {
+      service: newService,
+      appointment_total
+    };
+    console.log('🔧 API: Returning final result:', result);
+    
+    return result;
+  } catch (error) {
+    console.error('🔧 API: Error in createAppointmentService:', error);
+    console.error('🔧 API: Error type:', typeof error);
+    console.error('🔧 API: Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      name: error instanceof Error ? error.name : 'Unknown error type'
+    });
+    throw error;
+  }
 }
 
 export async function updateAppointmentService(

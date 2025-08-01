@@ -417,9 +417,7 @@ const handlers = [
     const services = mockServices.filter(s => s.appointment_id === appointmentId);
     
     return HttpResponse.json({
-      services,
-      errors: null,
-      meta: { request_id: generateRequestId() }
+      services
     });
   }),
 
@@ -449,11 +447,112 @@ const handlers = [
       appointment.total_amount = totalServices;
     }
 
+    // Match backend response format: just return the service ID
     return HttpResponse.json({
-      service: newService,
-      appointment_total: appointment?.total_amount || 0,
-      errors: null,
-      meta: { request_id: generateRequestId() }
+      id: newService.id
+    }, { status: 201 });
+  }),
+
+  // Services endpoints with /api prefix (for lib/api.ts calls)
+  http.get('http://localhost:3001/api/appointments/:id/services', ({ params }) => {
+    const appointmentId = params.id as string;
+    console.log('🔍 MSW: Services GET endpoint (with /api) hit!', `http://localhost:3001/api/appointments/${appointmentId}/services`);
+    const services = mockServices.filter(s => s.appointment_id === appointmentId);
+    
+    return HttpResponse.json({
+      services
+    });
+  }),
+
+  // Services endpoints with relative URLs (fallback for different configurations)
+  http.get('/api/appointments/:id/services', ({ params }) => {
+    const appointmentId = params.id as string;
+    console.log('🔍 MSW: Services GET endpoint (relative /api) hit!', `/api/appointments/${appointmentId}/services`);
+    const services = mockServices.filter(s => s.appointment_id === appointmentId);
+    
+    return HttpResponse.json({
+      services
+    });
+  }),
+
+  http.post('http://localhost:3001/api/appointments/:id/services', async ({ params, request }) => {
+    const appointmentId = params.id as string;
+    const body = await request.json() as Record<string, unknown>;
+    
+    console.log('🔍 MSW: Service creation endpoint (with /api) hit!', `http://localhost:3001/api/appointments/${appointmentId}/services`);
+    console.log('📝 MSW: Service creation payload:', body);
+    console.log('🔧 MSW: About to create service for appointment:', appointmentId);
+    
+    const newService: MockService = {
+      id: `svc-${Date.now()}`,
+      appointment_id: appointmentId,
+      name: body.name as string,
+      notes: (body.notes as string) || '',
+      estimated_hours: (body.estimated_hours as number) || 1,
+      estimated_price: (body.estimated_price as number) || 0,
+      category: (body.category as string) || 'General',
+      created_at: new Date().toISOString()
+    };
+
+    mockServices.push(newService);
+
+    // Update appointment total
+    const appointment = mockAppointments.find(apt => apt.id === appointmentId);
+    if (appointment) {
+      const totalServices = mockServices
+        .filter(s => s.appointment_id === appointmentId)
+        .reduce((sum, s) => sum + s.estimated_price, 0);
+      appointment.total_amount = totalServices;
+    }
+
+    console.log('✅ MSW: Service created successfully:', newService);
+    console.log('📊 MSW: Updated appointment total:', appointment?.total_amount);
+
+    // Match backend response format: just return the service ID
+    console.log('🎯 MSW: About to return service ID response:', { id: newService.id });
+    return HttpResponse.json({
+      id: newService.id
+    }, { status: 201 });
+  }),
+
+  // Services endpoints with relative URLs (fallback for different configurations)
+  http.post('/api/appointments/:id/services', async ({ params, request }) => {
+    const appointmentId = params.id as string;
+    const body = await request.json() as Record<string, unknown>;
+    
+    console.log('🔍 MSW: Service creation endpoint (relative /api) hit!', `/api/appointments/${appointmentId}/services`);
+    console.log('📝 MSW: Service creation payload:', body);
+    console.log('🔧 MSW: About to create service for appointment:', appointmentId);
+    
+    const newService: MockService = {
+      id: `svc-${Date.now()}`,
+      appointment_id: appointmentId,
+      name: body.name as string,
+      notes: (body.notes as string) || '',
+      estimated_hours: (body.estimated_hours as number) || 1,
+      estimated_price: (body.estimated_price as number) || 0,
+      category: (body.category as string) || 'General',
+      created_at: new Date().toISOString()
+    };
+
+    mockServices.push(newService);
+
+    // Update appointment total
+    const appointment = mockAppointments.find(apt => apt.id === appointmentId);
+    if (appointment) {
+      const totalServices = mockServices
+        .filter(s => s.appointment_id === appointmentId)
+        .reduce((sum, s) => sum + s.estimated_price, 0);
+      appointment.total_amount = totalServices;
+    }
+
+    console.log('✅ MSW: Service created successfully:', newService);
+    console.log('📊 MSW: Updated appointment total:', appointment?.total_amount);
+
+    // Match backend response format: just return the service ID
+    console.log('🎯 MSW: About to return service ID response:', { id: newService.id });
+    return HttpResponse.json({
+      id: newService.id
     }, { status: 201 });
   }),
 

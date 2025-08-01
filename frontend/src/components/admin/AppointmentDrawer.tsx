@@ -342,26 +342,49 @@ const Services = React.memo(function Services({
   };
 
   const handleAddService = async () => {
-    if (!data?.appointment?.id) return;
+    console.log('🔧 HANDLE_ADD_SERVICE: Function called');
+    console.log('🔧 HANDLE_ADD_SERVICE: data?.appointment?.id:', data?.appointment?.id);
+    console.log('🔧 HANDLE_ADD_SERVICE: newService:', newService);
+    
+    if (!data?.appointment?.id) {
+      console.log('🔧 HANDLE_ADD_SERVICE: Early return - no appointment ID');
+      return;
+    }
     
     // Validate required fields and numeric inputs
     if (!newService.name.trim()) {
+      console.log('🔧 HANDLE_ADD_SERVICE: Early return - no service name');
       return;
     }
     
     // Check if hours is provided and valid
     const hours = newService.estimated_hours.trim();
     if (hours && (isNaN(parseFloat(hours)) || parseFloat(hours) < 0)) {
+      console.log('🔧 HANDLE_ADD_SERVICE: Early return - invalid hours:', hours);
       return;
     }
     
     // Check if price is provided and valid
     const price = newService.estimated_price.trim();
     if (price && (isNaN(parseFloat(price)) || parseFloat(price) < 0)) {
+      console.log('🔧 HANDLE_ADD_SERVICE: Early return - invalid price:', price);
       return;
     }
     
+    console.log('🔧 HANDLE_ADD_SERVICE: All validations passed, about to call API');
+    console.log('🔧 HANDLE_ADD_SERVICE: API call parameters:', {
+      appointmentId: data.appointment.id,
+      serviceData: {
+        name: newService.name,
+        notes: newService.notes,
+        estimated_hours: hours ? parseFloat(hours) : undefined,
+        estimated_price: price ? parseFloat(price) : undefined,
+        category: newService.category
+      }
+    });
+    
     try {
+      console.log('🔧 HANDLE_ADD_SERVICE: About to call api.createAppointmentService');
       const response = await api.createAppointmentService(data.appointment.id, {
         name: newService.name,
         notes: newService.notes,
@@ -369,6 +392,8 @@ const Services = React.memo(function Services({
         estimated_price: price ? parseFloat(price) : undefined,
         category: newService.category
       });
+      
+      console.log('🔧 HANDLE_ADD_SERVICE: API call successful, response:', response);
       
       const updatedServices = [...services, response.service];
       setServices(updatedServices);
@@ -378,7 +403,16 @@ const Services = React.memo(function Services({
       
       // Clear form state from localStorage after successful submission
       clearFormStateFromStorage(data.appointment.id);
+      
+      console.log('🔧 HANDLE_ADD_SERVICE: Service added successfully, UI updated');
     } catch (error) {
+      console.error('🔧 HANDLE_ADD_SERVICE: Error caught:', error);
+      console.error('🔧 HANDLE_ADD_SERVICE: Error type:', typeof error);
+      if (error instanceof Error) {
+        console.error('🔧 HANDLE_ADD_SERVICE: Error constructor:', error.constructor.name);
+        console.error('🔧 HANDLE_ADD_SERVICE: Error stack:', error.stack);
+        console.error('🔧 HANDLE_ADD_SERVICE: Error message:', error.message);
+      }
       console.error('Error adding service:', error);
       if (api.handleApiError) {
         api.handleApiError(error);
