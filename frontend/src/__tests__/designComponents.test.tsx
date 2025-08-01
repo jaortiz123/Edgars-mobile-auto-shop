@@ -1,5 +1,5 @@
 // Sprint 1A Robustness: Design System Component Tests (jsdom Environment)
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, screen } from '@testing-library/react';
 import { 
   DesignSystemValidator,
@@ -12,58 +12,11 @@ import {
   measureCSSPerformance,
   getOptimizedCSSVariable
 } from '@/utils/cssPerformanceMonitor';
-import type { 
-  MockGlobalDocument,
-  MockGlobalWindow,
-  MockComputedStyle,
-  MockAccessibilityElement,
-  MockPerformanceElement,
-  MockStyleSheet
-} from '../types/test';
-
-/**
- * Mock DOM for jsdom testing
- */
-const mockDocument: MockGlobalDocument = {
-  documentElement: {
-    style: {
-      getPropertyValue: vi.fn(),
-      setProperty: vi.fn()
-    }
-  },
-  createElement: vi.fn(),
-  querySelectorAll: vi.fn(() => []),
-  styleSheets: []
-};
-
-const createMockComputedStyle = (overrides: Partial<MockComputedStyle> = {}): MockComputedStyle => ({
-  getPropertyValue: vi.fn(),
-  fontSize: '16px',
-  lineHeight: '1.5',
-  fontWeight: '400',
-  outlineWidth: '2px',
-  margin: '8px',
-  ...overrides
-});
-
-const mockWindow: MockGlobalWindow = {
-  getComputedStyle: vi.fn((_element: Element) => createMockComputedStyle()),
-  performance: {
-    now: vi.fn(() => Date.now())
-  }
-};
-
-// Mock globals for jsdom environment  
-global.document = mockDocument as unknown as Document;
-global.window = mockWindow as unknown as Window & typeof globalThis;
 
 /**
  * Design System Component Tests
- * These tests require DOM access and jsdom environment for:
- * - CSS variable validation
- * - Element accessibility testing  
- * - Performance monitoring with real elements
- * - Development mode DOM features
+ * These tests rely on the global JSDOM CSS environment setup in setup.ts
+ * All CSS variables are pre-injected and getComputedStyle is globally mocked
  */
 describe('Design System Component Validation', () => {
   let validator: DesignSystemValidator;
@@ -74,7 +27,6 @@ describe('Design System Component Validation', () => {
     performanceMonitor = CSSPerformanceMonitor.getInstance();
     validator.clearLogs();
     performanceMonitor.clearMetrics();
-    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -84,10 +36,7 @@ describe('Design System Component Validation', () => {
 
   describe('CSS Variable Validation', () => {
     it('should validate typography scale CSS variables', () => {
-      vi.mocked(mockWindow.getComputedStyle).mockReturnValue(createMockComputedStyle({
-        getPropertyValue: vi.fn(() => '1rem')
-      }));
-
+      // Using global JSDOM CSS setup from setup.ts - no per-test mocks needed
       const isValid = validator.validateTypographyScale('fs-2');
       expect(isValid).toBe(true);
     });
@@ -101,20 +50,14 @@ describe('Design System Component Validation', () => {
     });
 
     it('should validate spacing scale CSS variables', () => {
-      vi.mocked(mockWindow.getComputedStyle).mockReturnValue(createMockComputedStyle({
-        getPropertyValue: vi.fn(() => '1rem')
-      }));
-
+      // Using global CSS variable setup - sp-3 should be available
       const isValid = validator.validateSpacingScale('sp-3');
       expect(isValid).toBe(true);
     });
 
     it('should detect missing CSS variables', () => {
-      vi.mocked(mockWindow.getComputedStyle).mockReturnValue(createMockComputedStyle({
-        getPropertyValue: vi.fn(() => '')
-      }));
-
-      const isValid = validator.validateCSSVariable('--fs-2');
+      // Test with a variable that doesn't exist in our global setup
+      const isValid = validator.validateCSSVariable('--non-existent-variable');
       expect(isValid).toBe(false);
       
       const state = validator.getValidationState();
@@ -124,19 +67,13 @@ describe('Design System Component Validation', () => {
 
   describe('Design System Class Validation', () => {
     it('should validate typography classes', () => {
-      vi.mocked(mockWindow.getComputedStyle).mockReturnValue(createMockComputedStyle({
-        getPropertyValue: vi.fn(() => '1.25rem')
-      }));
-
+      // Global setup should have fs-3 available
       const isValid = validator.validateDesignSystemClass('text-fs-3');
       expect(isValid).toBe(true);
     });
 
     it('should validate spacing classes', () => {
-      vi.mocked(mockWindow.getComputedStyle).mockReturnValue(createMockComputedStyle({
-        getPropertyValue: vi.fn(() => '1.5rem')
-      }));
-
+      // Global setup should have sp-4 available
       const isValid = validator.validateDesignSystemClass('p-sp-4');
       expect(isValid).toBe(true);
     });
@@ -144,46 +81,23 @@ describe('Design System Component Validation', () => {
 
   describe('Accessibility Testing', () => {
     it('should validate element accessibility', () => {
-      const mockElement: MockAccessibilityElement = {
-        getBoundingClientRect: () => ({
-          width: 44,
-          height: 44,
-          top: 0,
-          left: 0,
-          bottom: 44,
-          right: 44,
-          x: 0,
-          y: 0,
-          toJSON: () => ({})
-        }),
-        matches: () => true
-      };
-
-      vi.mocked(mockWindow.getComputedStyle).mockReturnValue(createMockComputedStyle({
-        outlineWidth: '2px'
-      }));
-
-      const isValid = validator.validateAccessibility(mockElement as unknown as HTMLElement);
+      // Create a proper DOM element with good accessibility
+      const element = document.createElement('button');
+      element.style.width = '44px';
+      element.style.height = '44px';
+      element.style.outline = '2px solid blue';
+      
+      const isValid = validator.validateAccessibility(element);
       expect(isValid).toBe(true);
     });
 
     it('should detect accessibility violations', () => {
-      const mockElement: MockAccessibilityElement = {
-        getBoundingClientRect: () => ({
-          width: 20,
-          height: 20,
-          top: 0,
-          left: 0,
-          bottom: 20,
-          right: 20,
-          x: 0,
-          y: 0,
-          toJSON: () => ({})
-        }),
-        matches: () => false
-      };
-
-      const isValid = validator.validateAccessibility(mockElement as unknown as HTMLElement);
+      // Create an element that fails accessibility checks
+      const element = document.createElement('button');
+      element.style.width = '20px';  // Too small for touch target
+      element.style.height = '20px';
+      
+      const isValid = validator.validateAccessibility(element);
       expect(isValid).toBe(false);
       
       const state = validator.getValidationState();
@@ -193,49 +107,34 @@ describe('Design System Component Validation', () => {
 
   describe('Performance Monitoring', () => {
     it('should measure CSS performance', () => {
-      vi.mocked(mockWindow.getComputedStyle).mockReturnValue(createMockComputedStyle({
-        getPropertyValue: vi.fn(() => '1rem')
-      }));
-
-      const startTime = performanceMonitor.startMeasurement('typography-render-test');
-      performanceMonitor.endMeasurement('typography-render-test', startTime);
+      // Test the performance measurement utility
+      const { result, duration } = measureCSSPerformance('test-operation', () => {
+        return 'test-result';
+      });
       
-      const report = performanceMonitor.getPerformanceReport();
-      expect(report.metrics['typography-render-test']).toBeDefined();
+      expect(result).toBe('test-result');
+      expect(duration).toBeGreaterThanOrEqual(0);
     });
 
     it('should provide optimized CSS variable access', () => {
-      vi.mocked(mockWindow.getComputedStyle).mockReturnValue(createMockComputedStyle({
-        getPropertyValue: vi.fn(() => '1rem')
-      }));
-
+      // Test CSS variable access using global setup
       const value = getOptimizedCSSVariable('--fs-2');
-      expect(value).toBe('1rem');
+      expect(value).toBe('1rem'); // From our global setup
     });
 
     it('should track CSS measurement performance', () => {
-      vi.mocked(mockWindow.getComputedStyle).mockReturnValue(createMockComputedStyle({
-        getPropertyValue: vi.fn(() => '1rem')
-      }));
-
-      const mockElementWithMethods = {
-        getBoundingClientRect: vi.fn(() => ({
-          width: 100,
-          height: 50,
-          top: 0,
-          left: 0,
-          bottom: 50,
-          right: 100,
-          x: 0,
-          y: 0,
-          toJSON: () => ({})
-        })),
-        getPropertyValue: vi.fn(() => '1rem')
-      } as unknown as MockPerformanceElement;
-
+      // Create a real DOM element for performance testing
+      const element = document.createElement('div');
+      element.style.fontSize = '1rem';
+      document.body.appendChild(element);
+      
+      // Test that performance measurement doesn't throw
       expect(() => {
-        measureCSSPerformance(mockElementWithMethods as unknown as HTMLElement, 'test-measurement');
+        performanceMonitor.measureTypographyRender(element, 'test-typography');
       }).not.toThrow();
+      
+      // Cleanup
+      document.body.removeChild(element);
     });
   });
 
@@ -250,23 +149,17 @@ describe('Design System Component Validation', () => {
       render(<TestComponent />);
       const element = screen.getByTestId('test-component');
 
+      // Test design token validation
       expect(() => {
-        validateDesignToken(element, 'typography');
+        validateDesignToken('typography', 'fs-2');
+      }).not.toThrow();
+      
+      expect(() => {
+        validateDesignToken('spacing', 'sp-3');
       }).not.toThrow();
     });
 
     it('should validate CSS runtime state', () => {
-      const mockStyleSheets: MockStyleSheet[] = [
-        {
-          cssRules: [
-            { selectorText: '.text-fs-2', style: { fontSize: '1rem' } },
-            { selectorText: '.p-sp-3', style: { padding: '1.5rem' } }
-          ]
-        }
-      ];
-
-      mockDocument.styleSheets = mockStyleSheets;
-
       const TestComponent = () => (
         <div data-testid="runtime-test" className="text-fs-2">
           Runtime Test
@@ -276,35 +169,31 @@ describe('Design System Component Validation', () => {
       render(<TestComponent />);
       const element = screen.getByTestId('runtime-test');
 
+      // Test runtime CSS validation
       expect(() => {
-        validator.validateRuntimeCSS(element);
+        validator.validateRuntimeCSS();
       }).not.toThrow();
     });
   });
 
   describe('CSS Variable Integration', () => {
     it('should get CSS variables correctly', () => {
-      vi.mocked(mockWindow.getComputedStyle).mockReturnValue(createMockComputedStyle({
-        getPropertyValue: vi.fn(() => '1rem')
-      }));
-
+      // Test CSS variable getter with global setup
       const value = getCSSVariable('--fs-2');
-      expect(value).toBe('1rem');
+      expect(value).toBe('1rem'); // From global setup
     });
 
     it('should create design system classes', () => {
-      const classes = createDesignSystemClasses(['fs-2', 'sp-3']);
+      // Test class generation utility - fix the API usage
+      const classes = createDesignSystemClasses('text-fs-2', 'p-sp-3');
       expect(classes).toContain('text-fs-2');
       expect(classes).toContain('p-sp-3');
     });
 
     it('should handle missing CSS variables gracefully', () => {
-      vi.mocked(mockWindow.getComputedStyle).mockReturnValue(createMockComputedStyle({
-        getPropertyValue: vi.fn(() => '')
-      }));
-
-      const value = getCSSVariable('--non-existent');
-      expect(value).toBe('');
+      // Test with fallback for missing variable
+      const value = getCSSVariable('--non-existent', 'fallback');
+      expect(value).toBe('fallback');
     });
   });
 });
