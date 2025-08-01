@@ -1,3 +1,5 @@
+/* eslint-disable testing-library/prefer-user-event */
+
 import React, { useState } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { test, expect, describe } from 'vitest';

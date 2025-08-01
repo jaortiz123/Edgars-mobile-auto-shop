@@ -10,6 +10,7 @@
     "kill-port": "npx kill-port 5173",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "lint:ci": "eslint . --ext .ts,.tsx --max-warnings 0",
     "preview": "vite preview",
     "test": "vitest",
     "test:strict": "VITEST_STRICT_CONSOLE=true vitest --run",

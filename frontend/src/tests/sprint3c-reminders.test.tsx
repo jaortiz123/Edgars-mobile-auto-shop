@@ -10,7 +10,8 @@ import { addNotification, notifyLate, notifyOverdue, notifyArrival, getNotificat
 import { AppointmentReminderErrorBoundary, useErrorHandler } from '@/components/ErrorBoundaries/AppointmentReminderErrorBoundary';
 import offlineService, { useOfflineState, markArrivedWithOfflineSupport } from '@/services/offlineSupport';
 import performanceService, { usePerformanceMonitoring } from '@/services/performanceMonitoring';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 
 // =============================================================================
@@ -175,10 +176,8 @@ describe('Sprint 3C: Appointment Reminders System', () => {
       // Wait for TTL to expire
       await new Promise(resolve => setTimeout(resolve, 150));
       
-      // Trigger cleanup cycle
-      act(() => {
-        // Simulate cleanup interval
-      });
+      // Trigger cleanup cycle - no need for act() wrapper
+      // Simulate cleanup interval
       
       // Notification should be cleaned up
       // Note: In real implementation, this would be handled by the cleanup interval
@@ -223,8 +222,9 @@ describe('Sprint 3C: Appointment Reminders System', () => {
         </AppointmentReminderErrorBoundary>
       );
 
+      const user = userEvent.setup();
       const button = screen.getByText('Trigger Error');
-      fireEvent.click(button);
+      await user.click(button);
 
       // Should trigger error boundary
       expect(screen.getByText(/Something went wrong/)).toBeInTheDocument();
@@ -275,7 +275,7 @@ describe('Sprint 3C: Appointment Reminders System', () => {
       expect(state.pendingActions.some(a => a.type === 'mark_arrived')).toBe(true);
     });
 
-    test('useOfflineState hook provides current state', () => {
+    test('useOfflineState hook provides current state', async () => {
       const TestComponent = () => {
         const { isOnline, pendingActions, addAction } = useOfflineState();
         
@@ -288,12 +288,13 @@ describe('Sprint 3C: Appointment Reminders System', () => {
         );
       };
 
+      const user = userEvent.setup();
       render(<TestComponent />);
       
       expect(screen.getByTestId('online-status')).toHaveTextContent('online');
       expect(screen.getByTestId('pending-count')).toHaveTextContent('0');
       
-      fireEvent.click(screen.getByText('Add Action'));
+      await user.click(screen.getByText('Add Action'));
       expect(screen.getByTestId('pending-count')).toHaveTextContent('1');
     });
   });
@@ -352,7 +353,7 @@ describe('Sprint 3C: Appointment Reminders System', () => {
       expect(report.network).toBeDefined();
     });
 
-    test('usePerformanceMonitoring hook tracks component lifecycle', () => {
+    test('usePerformanceMonitoring hook tracks component lifecycle', async () => {
       const TestComponent = () => {
         const { trackUpdate, trackError, measure } = usePerformanceMonitoring('TestComponent');
         
@@ -370,10 +371,11 @@ describe('Sprint 3C: Appointment Reminders System', () => {
         );
       };
 
+      const user = userEvent.setup();
       render(<TestComponent />);
       
-      fireEvent.click(screen.getByText('Track Update'));
-      fireEvent.click(screen.getByText('Track Error'));
+      await user.click(screen.getByText('Track Update'));
+      await user.click(screen.getByText('Track Error'));
       
       const report = performanceService.generateReport();
       expect(report.components.TestComponent.updateCount).toBe(1);

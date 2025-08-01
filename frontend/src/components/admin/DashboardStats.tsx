@@ -44,7 +44,7 @@ export default function DashboardStats() {
         <h2 className="text-lg font-semibold">Dashboard</h2>
         <button className="text-sm underline" onClick={()=>void refreshStats()}>Refresh</button>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3" data-testid="dashboard-grid">
         {items.map((it) => (
           <div key={it.label} className="rounded-xl border p-4" data-testid={it.testid}>
             <div className="text-sm text-gray-500">{it.label}</div>
@@ -56,6 +56,7 @@ export default function DashboardStats() {
                   <div 
                     className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
                     style={{ width: `${Math.min(it.progress, 100)}%` }}
+                    data-testid="progress-bar"
                   ></div>
                 </div>
                 <div className="text-xs text-gray-500 mt-1">{it.progress}% complete</div>

@@ -25,9 +25,9 @@ export default tseslint.config(
         'warn',
         { allowConstantExport: true },
       ],
-      // Testing Library rules to prevent act() warnings
-      'testing-library/no-unnecessary-act': 'warn',
-      'testing-library/prefer-user-event': 'warn',
+      // Testing Library rules to prevent act() warnings - ALL SET TO ERROR
+      'testing-library/no-unnecessary-act': 'error',
+      'testing-library/prefer-user-event': 'error',
       'testing-library/await-async-events': 'error',
     },
   },

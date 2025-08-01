@@ -37,10 +37,10 @@ jobs:
           echo "📦 Installing frontend dependencies for linting..."
           npm ci
 
-      - name: Run ESLint
+      - name: Run ESLint (Strict CI Mode)
         run: |
-          echo "🔍 Running ESLint to check code quality..."
-          npm run lint --if-present
+          echo "🔍 Running ESLint in strict CI mode (zero warnings allowed)..."
+          npm run lint:ci
 
   # Backend flake8 - Fail fast on lint issues  
   backend-lint:

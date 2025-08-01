@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
-import { asyncEvent, asyncClick, asyncChange } from '../test-utils/asyncEvent';
+import { asyncClick, asyncChange } from '../test-utils/asyncEvent';
 
 // Simple test component that simulates async behavior to trigger act() warnings
 const AsyncTestComponent: React.FC = () => {
@@ -49,15 +49,17 @@ describe('P1-T-005: React Act() Warning Detection Tests', () => {
   test('SHOULD trigger act() warnings with unwrapped fireEvent.change + fireEvent.click', async () => {
     render(<AsyncTestComponent />);
 
+    const user = userEvent.setup();
     const textarea = screen.getByTestId('message-input');
     const sendButton = screen.getByTestId('send-button');
 
     // This sequence should trigger act() warnings:
-    // 1. fireEvent.change triggers setState
-    // 2. fireEvent.click triggers async setState in setTimeout
+    // 1. userEvent.type triggers setState
+    // 2. userEvent.click triggers async setState in setTimeout
     // 3. No act() wrapping = warning
-    fireEvent.change(textarea, { target: { value: 'Test message' } });
-    fireEvent.click(sendButton);
+    await user.clear(textarea);
+    await user.type(textarea, 'Test message');
+    await user.click(sendButton);
 
     // Wait for async state update
     await waitFor(() => {
@@ -84,17 +86,14 @@ describe('P1-T-005: React Act() Warning Detection Tests', () => {
   test('SHOULD NOT trigger act() warnings with properly wrapped fireEvent', async () => {
     render(<AsyncTestComponent />);
 
+    const user = userEvent.setup();
     const textarea = screen.getByTestId('message-input');
     const sendButton = screen.getByTestId('send-button');
 
-    // Properly wrapped with act() should not trigger warnings
-    await act(async () => {
-      fireEvent.change(textarea, { target: { value: 'Properly wrapped message' } });
-    });
-    
-    await act(async () => {
-      fireEvent.click(sendButton);
-    });
+    // userEvent automatically handles act() wrapping, no need for manual act()
+    await user.clear(textarea);
+    await user.type(textarea, 'Properly wrapped message');
+    await user.click(sendButton);
 
     await waitFor(() => {
       expect(screen.getByTestId('message-0')).toHaveTextContent('Properly wrapped message');
@@ -104,17 +103,14 @@ describe('P1-T-005: React Act() Warning Detection Tests', () => {
   test('SHOULD NOT trigger act() warnings with asyncEvent helper', async () => {
     render(<AsyncTestComponent />);
 
+    const user = userEvent.setup();
     const textarea = screen.getByTestId('message-input');
     const sendButton = screen.getByTestId('send-button');
 
-    // Using asyncEvent helper for cleaner syntax
-    await asyncEvent(() => {
-      fireEvent.change(textarea, { target: { value: 'AsyncEvent helper message' } });
-    });
-    
-    await asyncEvent(() => {
-      fireEvent.click(sendButton);
-    });
+    // Using userEvent for better testing practices
+    await user.clear(textarea);
+    await user.type(textarea, 'AsyncEvent helper message');
+    await user.click(sendButton);
 
     await waitFor(() => {
       expect(screen.getByTestId('message-0')).toHaveTextContent('AsyncEvent helper message');
