@@ -280,10 +280,85 @@ beforeAll(() => {
 
 // MOCK-FACTORY-001: Complete MockFactory API implementation
 import { createMocks } from './mocks';
-const { time, notification, api } = createMocks();
+const { notification, api } = createMocks();
 
 // Apply centralized mocks to avoid circular dependencies
-vi.mock('@/utils/time', () => time);
+vi.mock('@/utils/time', () => ({
+  getCountdownText: vi.fn().mockImplementation((startTime: Date | string | number, _options = {}) => {
+    console.log('🔧 DIRECT MOCK: getCountdownText called with startTime:', startTime);
+    const date = typeof startTime === 'string' || typeof startTime === 'number' ? new Date(startTime) : startTime;
+    const now = new Date();
+    const diffMs = date.getTime() - now.getTime();
+    const minutesUntil = Math.floor(diffMs / (1000 * 60));
+    
+    if (minutesUntil > 0) {
+      return `in ${minutesUntil}m`;
+    } else if (minutesUntil < 0) {
+      return `${Math.abs(minutesUntil)}m ago`;
+    } else {
+      return 'now';
+    }
+  }),
+  
+  minutesPast: vi.fn().mockImplementation((time: Date | string | number, _options = {}) => {
+    console.log('🔧 DIRECT MOCK: minutesPast called with time:', time);
+    const date = typeof time === 'string' || typeof time === 'number' ? new Date(time) : time;
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    return Math.max(0, diffMinutes);
+  }),
+  
+  getMinutesUntil: vi.fn().mockImplementation((startTime: Date | string | number, _options = {}) => {
+    console.log('🔧 DIRECT MOCK: getMinutesUntil called with startTime:', startTime);
+    const date = typeof startTime === 'string' || typeof startTime === 'number' ? new Date(startTime) : startTime;
+    const now = new Date();
+    const diffMs = date.getTime() - now.getTime();
+    const result = Math.floor(diffMs / (1000 * 60));
+    console.log('🔧 DIRECT MOCK: getMinutesUntil result:', result);
+    return result;
+  }),
+  
+  isStartingSoon: vi.fn().mockImplementation((startTime: Date | string | number, thresholdMinutes = 15, _options = {}) => {
+    console.log('🔧 DIRECT MOCK: isStartingSoon called with startTime:', startTime, 'thresholdMinutes:', thresholdMinutes);
+    const date = typeof startTime === 'string' || typeof startTime === 'number' ? new Date(startTime) : startTime;
+    const now = new Date();
+    const diffMs = date.getTime() - now.getTime();
+    const minutesUntil = Math.floor(diffMs / (1000 * 60));
+    const result = minutesUntil > 0 && minutesUntil <= thresholdMinutes;
+    console.log('🔧 DIRECT MOCK: isStartingSoon result:', result, 'minutesUntil:', minutesUntil);
+    return result;
+  }),
+  
+  isRunningLate: vi.fn().mockImplementation((startTime: Date | string | number, lateThresholdMinutes = 10, _options = {}) => {
+    console.log('🔧 DIRECT MOCK: isRunningLate called with startTime:', startTime, 'lateThresholdMinutes:', lateThresholdMinutes);
+    const date = typeof startTime === 'string' || typeof startTime === 'number' ? new Date(startTime) : startTime;
+    const now = new Date();
+    const diffMs = date.getTime() - now.getTime();
+    const minutesUntil = Math.floor(diffMs / (1000 * 60));
+    const result = minutesUntil < 0 && minutesUntil >= -lateThresholdMinutes;
+    console.log('🔧 DIRECT MOCK: isRunningLate result:', result, 'minutesUntil:', minutesUntil);
+    return result;
+  }),
+  
+  isOverdue: vi.fn().mockImplementation((startTime: Date | string | number, overdueThresholdMinutes = 30, _options = {}) => {
+    console.log('🔧 DIRECT MOCK: isOverdue called with startTime:', startTime, 'overdueThresholdMinutes:', overdueThresholdMinutes);
+    const date = typeof startTime === 'string' || typeof startTime === 'number' ? new Date(startTime) : startTime;
+    const now = new Date();
+    const diffMs = date.getTime() - now.getTime();
+    const minutesUntil = Math.floor(diffMs / (1000 * 60));
+    const result = minutesUntil < -overdueThresholdMinutes;
+    console.log('🔧 DIRECT MOCK: isOverdue result:', result, 'minutesUntil:', minutesUntil);
+    return result;
+  }),
+  
+  // Add other functions that might be imported
+  formatDuration: vi.fn().mockReturnValue('1h 30m'),
+  getUrgencyLevel: vi.fn().mockReturnValue('normal'),
+  clearTimeCache: vi.fn(),
+  getTimeCacheStats: vi.fn().mockReturnValue({ size: 0, hitRate: 1, memoryUsage: 0 })
+}));
+
 vi.mock('@/services/notificationService', () => notification);
 vi.mock('@/lib/api', () => api);
 
@@ -321,6 +396,23 @@ vi.mock('@/services/offlineSupport', () => ({
     addAction: vi.fn(),
     processQueue: vi.fn(),
   },
+}));
+
+// Mock authService to prevent initialization failures
+vi.mock('@/services/authService', () => ({
+  authService: {
+    isLoggedIn: vi.fn(() => false),
+    parseToken: vi.fn(() => null),
+    getProfile: vi.fn(async () => null),
+    clearToken: vi.fn(),
+    shouldRefreshToken: vi.fn(() => false),
+    login: vi.fn(async () => {}),
+    register: vi.fn(async () => {}),
+    updateProfile: vi.fn(async () => {}),
+  },
+  AuthError: class AuthError extends Error { constructor(message: string) { super(message); } },
+  NetworkError: class NetworkError extends Error { constructor(message: string) { super(message); } },
+  ValidationError: class ValidationError extends Error { constructor(message: string) { super(message); } },
 }));
 
 // Apply browser API mocks globally in beforeAll

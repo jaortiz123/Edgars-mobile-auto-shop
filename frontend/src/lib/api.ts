@@ -17,6 +17,12 @@ export const toStatus = (s: string): AppointmentStatus =>
 
 const BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
+console.log('🔧 api.ts: BASE URL configuration:', {
+  'import.meta.env.VITE_API_BASE_URL': import.meta.env.VITE_API_BASE_URL,
+  'process.env.VITE_API_BASE_URL': globalThis.process?.env?.VITE_API_BASE_URL,
+  'resolved BASE': BASE
+});
+
 const http = axios.create({
   baseURL: BASE,
   timeout: 10000,
@@ -49,15 +55,53 @@ export interface Envelope<T> {
 }
 
 export async function getBoard(params: { from?: string; to?: string; techId?: string }) {
-  const { data } = await http.get<{ columns: BoardColumn[]; cards: BoardCard[] }>('/admin/appointments/board', { params });
-  // JSON parse guard
+  console.error('CRITICAL: api.getBoard FUNCTION ENTRY - THIS SHOULD ALWAYS APPEAR IF FUNCTION IS CALLED');
+  console.error('CRITICAL: getBoard params:', params);
+  console.error('CRITICAL: getBoard function source location:', import.meta.url);
+  console.log('🔧 api.getBoard: Function entry - START');
+  console.log('🔧 api.getBoard: Axios config:', {
+    baseURL: http.defaults.baseURL,
+    timeout: http.defaults.timeout,
+    headers: http.defaults.headers
+  });
   try {
-    JSON.parse(JSON.stringify(data));
+    console.log('🔧 api.getBoard: Starting request with params:', params);
+    const response = await http.get<{ columns: BoardColumn[]; cards: BoardCard[] }>('/admin/appointments/board', { params });
+    console.log('🔧 api.getBoard: Raw axios response:', {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+      data: response.data
+    });
+    
+    const { data } = response;
+    console.log('🔧 api.getBoard: Extracted data:', data);
+    
+    // JSON parse guard
+    try {
+      const serialized = JSON.stringify(data);
+      console.log('🔧 api.getBoard: JSON stringify successful, length:', serialized.length);
+      JSON.parse(serialized);
+      console.log('🔧 api.getBoard: JSON parse guard passed');
+    } catch (error) {
+      console.error("🔧 api.getBoard: Failed to parse board data", error);
+      return { columns: [], cards: [] };
+    }
+    
+    console.log('🔧 api.getBoard: Returning data:', { 
+      columnsCount: data?.columns?.length, 
+      cardsCount: data?.cards?.length 
+    });
+    return data;
   } catch (error) {
-    console.error("Failed to parse board data", error);
-    return { columns: [], cards: [] };
+    console.error('🔧 api.getBoard: Caught error at function start:', error);
+    console.error('🔧 api.getBoard: Error details:', {
+      message: (error as Error)?.message,
+      stack: (error as Error)?.stack,
+      name: (error as Error)?.name
+    });
+    throw error;
   }
-  return data;
 }
 
 export async function getAppointments(): Promise<{ appointments: Appointment[]; nextCursor: string | null }> {
@@ -164,6 +208,11 @@ export async function patchAppointment(id: string, body: Partial<Appointment>) {
   return data;
 }
 
+export async function updateAppointment(id: string, body: Partial<Appointment>) {
+  const { data } = await http.patch<Appointment>(`/appointments/${id}`, body);
+  return data;
+}
+
 // Lightweight utilities expected by Dashboard.tsx
 export function isOnline() {
   if (typeof navigator === 'undefined') return true;
@@ -243,7 +292,7 @@ export async function getCustomerHistory(customerId: string): Promise<CustomerHi
   return data;
 }
 
-export async function checkConflict(slot: { date: string; time: string }): Promise<{ conflict: boolean; conflictingAppointment?: any }> {
+export async function checkConflict(slot: { date: string; time: string }): Promise<{ conflict: boolean; conflictingAppointment?: { id: string; customerName: string; serviceType: string; appointmentDate: string; appointmentTime: string } }> {
   return new Promise((resolve) => {
     setTimeout(() => {
       // Mock conflict logic: conflict if time is 10:00 AM on any date
@@ -277,9 +326,9 @@ export async function markArrived(id: string): Promise<void> {
 export function handleApiError(err: unknown, defaultMessage?: string): string {
   let msg: string;
   if (axios.isAxiosError(err)) {
-    msg = (err.response?.data as any)?.error || err.message || defaultMessage || 'Request failed';
+    msg = (err.response?.data as { error?: string })?.error || err.message || defaultMessage || 'Request failed';
   } else {
-    msg = (err as any)?.message || defaultMessage || 'Unknown error';
+    msg = (err as { message?: string })?.message || defaultMessage || 'Unknown error';
   }
   console.error('[api]', msg);
   return msg;

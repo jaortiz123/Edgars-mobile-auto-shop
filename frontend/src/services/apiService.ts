@@ -101,6 +101,32 @@ export async function getAppointments(): Promise<AdminAppointment[]> {
 }
 
 /**
+ * Fetches admin appointments from the proper admin endpoint.
+ * @returns The admin appointments response with proper structure.
+ */
+export async function getAdminAppointments(): Promise<{ appointments: AdminAppointment[] }> {
+  const response = await fetch(`${API_BASE_URL}/api/admin/appointments`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  if (!response.ok) {
+    let errorMessage = 'Failed to fetch admin appointments.';
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
+    } catch {
+      errorMessage = await response.text();
+    }
+    throw new Error(errorMessage);
+  }
+  const data = await response.json();
+  // Return the data.appointments from the admin endpoint response structure
+  return { appointments: data.data?.appointments || [] };
+}
+
+/**
  * Fetches today's appointments for admin dashboard.
  * @returns An array of today's appointments.
  */

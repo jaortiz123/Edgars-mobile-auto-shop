@@ -28,10 +28,9 @@ import {
 import { 
   handleApiError, 
   isOnline, 
-  getAppointments,
   updateAppointmentStatus
 } from '../lib/api';
-import { createAppointment } from '../services/apiService';
+import { createAppointment, getAdminAppointments } from '../services/apiService';
 import { parseDurationToMinutes } from '../lib/utils';
 import { format } from 'date-fns';
 import { saveLastQuickAdd } from '../lib/quickAddUtils';
@@ -137,6 +136,12 @@ export function Dashboard() {
   const [isOffline, setIsOffline] = useState(!isOnline());
   const [showScheduleDropdown, setShowScheduleDropdown] = useState(false);
   const loadingRef = useRef(false);
+  const setRefreshingRef = useRef(setRefreshing);
+  
+  // Update the ref when setRefreshing changes
+  useEffect(() => {
+    setRefreshingRef.current = setRefreshing;
+  }, [setRefreshing]);
 
   useEffect(() => {
     // Check online status
@@ -164,16 +169,16 @@ export function Dashboard() {
       console.log("⚠️ Safety timeout triggered after 10s - forcing loading to false");
       loadingRef.current = false;
       setLoading(false);
-      setRefreshing(false);
+      setRefreshingRef.current(false);
     }, 10000);
     
      loadingRef.current = true;
      setLoading(true);
-     setRefreshing(true);
+     setRefreshingRef.current(true);
      let fetchedApts: UIAppointment[] = [];
      try {
       console.log("📡 Making API calls to backend...");
-       const aptRes = await getAppointments();
+       const aptRes = await getAdminAppointments();
       console.log("✅ API calls completed", { aptRes });
       
        if (aptRes && aptRes.appointments && Array.isArray(aptRes.appointments)) {
@@ -254,16 +259,16 @@ export function Dashboard() {
         console.log("✅ Setting loading and refreshing to false");
          loadingRef.current = false;
          setLoading(false);
-         setRefreshing(false);
+         setRefreshingRef.current(false);
        }
      }
-  }, [setRefreshing]);
+  }, []); // Stable function - no dependencies needed
 
   useEffect(() => {
     // Only load once on mount, then rely on refresh triggers
     console.log("🎯 Initial dashboard load triggered");
     loadDashboardData();
-  }, [loadDashboardData]);  // Include loadDashboardData in dependencies
+  }, []); // Remove loadDashboardData dependency to prevent re-render cycles
 
   // Handle refresh triggers separately
   useEffect(() => {
@@ -271,7 +276,7 @@ export function Dashboard() {
       console.log("🔄 Refresh trigger activated:", refreshTrigger);
       loadDashboardData();
     }
-  }, [refreshTrigger, loadDashboardData]);
+  }, [refreshTrigger]); // Remove loadDashboardData dependency
 
   // Auto-refresh appointments every 2 minutes (reduced from 30 seconds)
   useEffect(() => {
@@ -282,7 +287,7 @@ export function Dashboard() {
       }
     }, 120000); // 2 minutes instead of 30 seconds
     return () => clearInterval(interval);
-  }, [isRefreshing, loadDashboardData]);
+  }, [isRefreshing]); // Remove loadDashboardData dependency
 
   // Schedule notifications for today's appointments
   useEffect(() => {

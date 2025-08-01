@@ -1,5 +1,6 @@
 /**
  * Phase 2 Task 1: MSW Integration Test Server
+ * Phase 2 Task 2: Happy Path Integration Workflow - Enhanced with Fixture Data
  * 
  * Mock Service Worker server setup for integration testing.
  * Provides realistic HTTP handlers that mirror real API endpoints.
@@ -40,63 +41,63 @@ interface MockService {
   created_at?: string;
 }
 
-// Mock data fixtures
+// Mock data fixtures - Enhanced for happy path testing
 const mockAppointments: MockAppointment[] = [
   {
-    id: 'apt-1',
+    id: 'apt-happy-1',
     status: 'SCHEDULED',
     start_ts: '2024-01-15T14:00:00Z',
     end_ts: '2024-01-15T15:00:00Z',
     total_amount: 250.00,
     paid_amount: 0,
-    customer_name: 'John Doe',
+    customer_name: 'Happy Path Customer',
     vehicle_label: '2020 Toyota Camry',
-    customer_id: 'cust-1',
-    vehicle_id: 'veh-1',
+    customer_id: 'cust-happy-1',
+    vehicle_id: 'veh-happy-1',
     tech_id: null,
-    notes: 'Oil change and inspection'
+    notes: 'Happy path test appointment'
   },
   {
-    id: 'apt-2',
+    id: 'apt-happy-2',
     status: 'IN_PROGRESS',
     start_ts: '2024-01-15T16:00:00Z',
     end_ts: '2024-01-15T17:00:00Z',
     total_amount: 450.00,
     paid_amount: 450.00,
-    customer_name: 'Jane Smith',
+    customer_name: 'Another Customer',
     vehicle_label: '2019 Honda Civic',
-    customer_id: 'cust-2',
-    vehicle_id: 'veh-2',
+    customer_id: 'cust-happy-2',
+    vehicle_id: 'veh-happy-2',
     tech_id: 'tech-1',
-    notes: 'Brake pad replacement'
+    notes: 'Secondary test appointment'
   }
 ];
 
 const mockCustomers = [
   {
-    id: 'cust-1',
-    name: 'John Doe',
-    email: 'john.doe@example.com',
+    id: 'cust-happy-1',
+    name: 'Happy Path Customer',
+    email: 'happy@example.com',
     phone: '+15551234567'
   },
   {
-    id: 'cust-2',
-    name: 'Jane Smith',
-    email: 'jane.smith@example.com',
+    id: 'cust-happy-2',
+    name: 'Another Customer',
+    email: 'another@example.com',
     phone: '+15559876543'
   }
 ];
 
 const mockVehicles = [
   {
-    id: 'veh-1',
+    id: 'veh-happy-1',
     year: 2020,
     make: 'Toyota',
     model: 'Camry',
     vin: '1HGBH41JXMN109186'
   },
   {
-    id: 'veh-2',
+    id: 'veh-happy-2',
     year: 2019,
     make: 'Honda',
     model: 'Civic',
@@ -106,8 +107,8 @@ const mockVehicles = [
 
 const mockServices: MockService[] = [
   {
-    id: 'svc-1',
-    appointment_id: 'apt-1',
+    id: 'svc-happy-1',
+    appointment_id: 'apt-happy-1',
     name: 'Oil Change',
     notes: 'Full synthetic oil',
     estimated_hours: 0.5,
@@ -115,24 +116,45 @@ const mockServices: MockService[] = [
     category: 'Maintenance'
   },
   {
-    id: 'svc-2',
-    appointment_id: 'apt-2',
+    id: 'svc-happy-2',
+    appointment_id: 'apt-happy-1',
+    name: 'Brake Inspection',
+    notes: 'Check brake pads and rotors',
+    estimated_hours: 1.0,
+    estimated_price: 175.00,
+    category: 'Inspection'
+  },
+  {
+    id: 'svc-happy-3',
+    appointment_id: 'apt-happy-2',
     name: 'Brake Pad Replacement',
     notes: 'Front brake pads',
     estimated_hours: 2.0,
     estimated_price: 350.00,
     category: 'Repair'
+  },
+  {
+    id: 'svc-happy-4',
+    appointment_id: 'apt-happy-2',
+    name: 'Engine Diagnostics',
+    notes: 'Check engine light diagnosis',
+    estimated_hours: 1.5,
+    estimated_price: 100.00,
+    category: 'Diagnostics'
   }
 ];
 
 // Request handlers
 const handlers = [
-  // Board endpoint
-  http.get('http://localhost:3001/api/admin/appointments/board', ({ request }) => {
+  // Board endpoint (note: when VITE_API_BASE_URL=http://localhost:3001, axios calls /admin/appointments/board directly)
+  http.get('http://localhost:3001/admin/appointments/board', ({ request }) => {
+    console.log('🔍 MSW: Board endpoint hit!', request.url);
     const url = new URL(request.url);
     const from = url.searchParams.get('from');
     const to = url.searchParams.get('to');
     const techId = url.searchParams.get('techId');
+
+    console.log('📊 MSW: Board query params:', { from, to, techId });
 
     // Filter appointments based on query params
     let filteredAppointments = mockAppointments;
@@ -177,7 +199,67 @@ const handlers = [
       tags: []
     }));
 
+    console.log('✅ MSW: Returning board data:', { columns: columns.length, cards: cards.length });
     return HttpResponse.json({ columns, cards });
+  }),
+
+  // Board endpoint with /api prefix (for lib/api.ts calls)
+  http.get('http://localhost:3001/api/admin/appointments/board', ({ request }) => {
+    console.log('🔍 MSW: Board endpoint (with /api) hit!', request.url);
+    const url = new URL(request.url);
+    const from = url.searchParams.get('from');
+    const to = url.searchParams.get('to');
+    const techId = url.searchParams.get('techId');
+
+    console.log('📊 MSW: Board query params:', { from, to, techId });
+
+    // Filter appointments based on query params
+    let filteredAppointments = mockAppointments;
+    
+    if (from) {
+      filteredAppointments = filteredAppointments.filter(apt => 
+        new Date(apt.start_ts) >= new Date(from)
+      );
+    }
+    
+    if (to) {
+      filteredAppointments = filteredAppointments.filter(apt => 
+        new Date(apt.end_ts || apt.start_ts) <= new Date(to)
+      );
+    }
+    
+    if (techId) {
+      filteredAppointments = filteredAppointments.filter(apt => 
+        apt.tech_id === techId
+      );
+    }
+
+    // Generate board columns
+    const columns = [
+      { key: 'SCHEDULED', title: 'Scheduled', count: 1, sum: 250.00 },
+      { key: 'IN_PROGRESS', title: 'In Progress', count: 1, sum: 450.00 },
+      { key: 'READY', title: 'Ready', count: 0, sum: 0 },
+      { key: 'COMPLETED', title: 'Completed', count: 0, sum: 0 }
+    ];
+
+    // Generate board cards
+    const cards = filteredAppointments.map((apt, index) => ({
+      id: apt.id,
+      status: apt.status,
+      position: index + 1,
+      start: apt.start_ts,
+      end: apt.end_ts,
+      customerName: apt.customer_name,
+      vehicle: apt.vehicle_label,
+      servicesSummary: apt.notes,
+      price: apt.total_amount,
+      tags: []
+    }));
+
+    const responseData = { columns, cards };
+    console.log('✅ MSW: Returning board data (with /api):', JSON.stringify(responseData, null, 2));
+    
+    return HttpResponse.json(responseData);
   }),
 
   // Admin appointments list
@@ -209,11 +291,14 @@ const handlers = [
   }),
 
   // Get single appointment (drawer payload)
-  http.get('http://localhost:3001/api/appointments/:id', ({ params }) => {
+  http.get('http://localhost:3001/appointments/:id', ({ params }) => {
     const id = params.id as string;
+    console.log('🔧 MSW: getDrawer handler called for id:', id);
+    
     const appointment = mockAppointments.find(apt => apt.id === id);
     
     if (!appointment) {
+      console.log('🔧 MSW: Appointment not found for id:', id);
       return HttpResponse.json(
         { error: 'Appointment not found' },
         { status: 404 }
@@ -224,18 +309,30 @@ const handlers = [
     const vehicle = mockVehicles.find(v => v.id === appointment.vehicle_id);
     const services = mockServices.filter(s => s.appointment_id === id);
 
-    return HttpResponse.json({
-      appointment,
+    // Transform the appointment to match DrawerPayload.appointment structure
+    const drawerPayload = {
+      appointment: {
+        id: appointment.id,
+        status: appointment.status,
+        start: appointment.start_ts,  // Map start_ts to start
+        end: appointment.end_ts,      // Map end_ts to end
+        total_amount: appointment.total_amount,
+        paid_amount: appointment.paid_amount,
+        check_in_at: null,
+        check_out_at: null,
+        tech_id: appointment.tech_id
+      },
       customer,
       vehicle,
-      services,
-      messages: [],
-      payments: []
-    });
+      services
+    };
+
+    console.log('🔧 MSW: Returning drawer payload:', JSON.stringify(drawerPayload, null, 2));
+    return HttpResponse.json(drawerPayload);
   }),
 
   // Create appointment
-  http.post('http://localhost:3001/api/admin/appointments', async ({ request }) => {
+  http.post('http://localhost:3001/admin/appointments', async ({ request }) => {
     const body = await request.json() as Record<string, unknown>;
     
     const newAppointment: MockAppointment = {
@@ -263,7 +360,7 @@ const handlers = [
   }),
 
   // Move appointment (drag and drop)
-  http.patch('http://localhost:3001/api/admin/appointments/:id/move', async ({ params, request }) => {
+  http.patch('http://localhost:3001/admin/appointments/:id/move', async ({ params, request }) => {
     const id = params.id as string;
     const body = await request.json() as Record<string, unknown>;
     
@@ -290,7 +387,7 @@ const handlers = [
   }),
 
   // Update appointment status
-  http.patch('http://localhost:3001/api/admin/appointments/:id/status', async ({ params, request }) => {
+  http.patch('http://localhost:3001/admin/appointments/:id/status', async ({ params, request }) => {
     const id = params.id as string;
     const body = await request.json() as Record<string, unknown>;
     
@@ -315,7 +412,7 @@ const handlers = [
   }),
 
   // Services endpoints
-  http.get('http://localhost:3001/api/appointments/:id/services', ({ params }) => {
+  http.get('http://localhost:3001/appointments/:id/services', ({ params }) => {
     const appointmentId = params.id as string;
     const services = mockServices.filter(s => s.appointment_id === appointmentId);
     
@@ -326,7 +423,7 @@ const handlers = [
     });
   }),
 
-  http.post('http://localhost:3001/api/appointments/:id/services', async ({ params, request }) => {
+  http.post('http://localhost:3001/appointments/:id/services', async ({ params, request }) => {
     const appointmentId = params.id as string;
     const body = await request.json() as Record<string, unknown>;
     
@@ -361,7 +458,7 @@ const handlers = [
   }),
 
   // Dashboard stats
-  http.get('http://localhost:3001/api/admin/dashboard/stats', () => {
+  http.get('http://localhost:3001/admin/dashboard/stats', () => {
     return HttpResponse.json({
       data: {
         totals: {
@@ -398,7 +495,7 @@ const handlers = [
   }),
 
   // Messages endpoints (minimal implementation)
-  http.get('http://localhost:3001/api/appointments/:id/messages', () => {
+  http.get('http://localhost:3001/appointments/:id/messages', () => {
     return HttpResponse.json({
       messages: [],
       errors: null,
@@ -406,7 +503,7 @@ const handlers = [
     });
   }),
 
-  http.post('http://localhost:3001/api/appointments/:id/messages', async ({ request }) => {
+  http.post('http://localhost:3001/appointments/:id/messages', async ({ request }) => {
     await request.json(); // Read body but don't use it
     
     return HttpResponse.json({
@@ -415,6 +512,22 @@ const handlers = [
       errors: null,
       meta: { request_id: generateRequestId() }
     }, { status: 201 });
+  }),
+
+  // Catch-all handler to log unmatched requests
+  http.all('*', ({ request }) => {
+    console.log('🚨 MSW: Unmatched request:', request.method, request.url);
+    
+    // If it's a board-related request, provide more details
+    if (request.url.includes('board')) {
+      console.log('🔍 MSW: Board request details:', {
+        url: request.url,
+        method: request.method,
+        headers: Object.fromEntries(request.headers.entries())
+      });
+    }
+    
+    return new HttpResponse(null, { status: 404 });
   })
 ];
 
@@ -430,32 +543,32 @@ export function resetMockData() {
   mockAppointments.length = 0;
   mockAppointments.push(
     {
-      id: 'apt-1',
+      id: 'apt-happy-1',
       status: 'SCHEDULED',
       start_ts: '2024-01-15T14:00:00Z',
       end_ts: '2024-01-15T15:00:00Z',
       total_amount: 250.00,
       paid_amount: 0,
-      customer_name: 'John Doe',
+      customer_name: 'Happy Path Customer',
       vehicle_label: '2020 Toyota Camry',
-      customer_id: 'cust-1',
-      vehicle_id: 'veh-1',
+      customer_id: 'cust-happy-1',
+      vehicle_id: 'veh-happy-1',
       tech_id: null,
-      notes: 'Oil change and inspection'
+      notes: 'Happy path test appointment'
     },
     {
-      id: 'apt-2',
+      id: 'apt-happy-2',
       status: 'IN_PROGRESS',
       start_ts: '2024-01-15T16:00:00Z',
       end_ts: '2024-01-15T17:00:00Z',
       total_amount: 450.00,
       paid_amount: 450.00,
-      customer_name: 'Jane Smith',
+      customer_name: 'Another Customer',
       vehicle_label: '2019 Honda Civic',
-      customer_id: 'cust-2',
-      vehicle_id: 'veh-2',
+      customer_id: 'cust-happy-2',
+      vehicle_id: 'veh-happy-2',
       tech_id: 'tech-1',
-      notes: 'Brake pad replacement'
+      notes: 'Secondary test appointment'
     }
   );
 
@@ -463,8 +576,8 @@ export function resetMockData() {
   mockServices.length = 0;
   mockServices.push(
     {
-      id: 'svc-1',
-      appointment_id: 'apt-1',
+      id: 'svc-happy-1',
+      appointment_id: 'apt-happy-1',
       name: 'Oil Change',
       notes: 'Full synthetic oil',
       estimated_hours: 0.5,
@@ -472,8 +585,17 @@ export function resetMockData() {
       category: 'Maintenance'
     },
     {
-      id: 'svc-2',
-      appointment_id: 'apt-2',
+      id: 'svc-happy-2',
+      appointment_id: 'apt-happy-1',
+      name: 'Brake Inspection',
+      notes: 'Check brake pads and rotors',
+      estimated_hours: 1.0,
+      estimated_price: 175.00,
+      category: 'Inspection'
+    },
+    {
+      id: 'svc-happy-3',
+      appointment_id: 'apt-happy-2',
       name: 'Brake Pad Replacement',
       notes: 'Front brake pads',
       estimated_hours: 2.0,
@@ -484,7 +606,7 @@ export function resetMockData() {
 }
 
 // Utility to add custom handlers for specific tests
-export function addCustomHandler(handler: any) {
+export function addCustomHandler(handler: Parameters<typeof server.use>[0]) {
   server.use(handler);
 }
 

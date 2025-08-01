@@ -1,0 +1,40 @@
+{
+  "services": [
+    {
+      "id": "svc-happy-1",
+      "appointment_id": "apt-happy-1",
+      "name": "Oil Change",
+      "notes": "Full synthetic oil",
+      "estimated_hours": 0.5,
+      "estimated_price": 75.00,
+      "category": "Maintenance"
+    },
+    {
+      "id": "svc-happy-2",
+      "appointment_id": "apt-happy-1",
+      "name": "Brake Inspection",
+      "notes": "Check brake pads and rotors",
+      "estimated_hours": 1.0,
+      "estimated_price": 175.00,
+      "category": "Inspection"
+    },
+    {
+      "id": "svc-happy-3",
+      "appointment_id": "apt-happy-2",
+      "name": "Brake Pad Replacement",
+      "notes": "Front brake pads",
+      "estimated_hours": 2.0,
+      "estimated_price": 350.00,
+      "category": "Repair"
+    },
+    {
+      "id": "svc-happy-4",
+      "appointment_id": "apt-happy-2",
+      "name": "Engine Diagnostics",
+      "notes": "Check engine light diagnosis",
+      "estimated_hours": 1.5,
+      "estimated_price": 100.00,
+      "category": "Diagnostics"
+    }
+  ]
+}

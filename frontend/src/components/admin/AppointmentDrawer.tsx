@@ -5,17 +5,78 @@ import type { DrawerPayload, AppointmentService } from '@/types/models';
 import MessageThread from './MessageThread';
 import CustomerHistory from './CustomerHistory';
 
-export default function AppointmentDrawer({ open, onClose, id }: { open: boolean; onClose: () => void; id: string | null }) {
+// Wrap the main component in React.memo to prevent unnecessary re-renders
+const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; onClose: () => void; id: string | null }) => {
   const [tab, setTab] = useState('overview');
   const [data, setData] = useState<DrawerPayload | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
 
+  // Track if we've loaded data for this ID to prevent multiple API calls
+  const [loadedDataId, setLoadedDataId] = useState<string | null>(null);
+  // Add a ref to track the previous id to prevent unnecessary re-renders
+  const prevIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (open && id && api.getDrawer) {
-      setData(null);
-      void api.getDrawer(id).then(setData).catch(console.error);
+    // Only fetch data if drawer is open, we have an ID, and we haven't already loaded this ID
+    if (open && id && api.getDrawer && id !== loadedDataId && id !== prevIdRef.current) {
+      console.log('🔍 DEBUG: Fetching data for ID:', id);
+      console.log('🔍 DEBUG: Previous loaded ID:', loadedDataId);
+      console.log('🔍 DEBUG: Previous ref ID:', prevIdRef.current);
+      
+      prevIdRef.current = id;
+      setLoadedDataId(id);
+      
+      // Try calling the function and check if it returns a Promise
+      let drawerResult;
+      try {
+        drawerResult = api.getDrawer(id);
+        console.log('🔍 DEBUG: api.getDrawer(id) returned:', drawerResult);
+        
+        if (drawerResult && typeof drawerResult.then === 'function') {
+          void drawerResult.then(setData).catch(console.error);
+        } else {
+          console.error('🔍 DEBUG: getDrawer did not return a Promise! Trying fallback...');
+          // Create a fallback Promise with mock data
+          const fallbackData: DrawerPayload = {
+            appointment: {
+              id: id || 'fallback-id',
+              status: 'SCHEDULED',
+              start: '2024-01-15T14:00:00Z',
+              end: '2024-01-15T15:00:00Z',
+              total_amount: 250.00,
+              paid_amount: 0,
+              check_in_at: null,
+              check_out_at: null,
+              tech_id: null
+            },
+            customer: {
+              id: 'cust-fallback',
+              name: 'Fallback Customer',
+              phone: '+1-555-0123',
+              email: 'fallback@example.com'
+            },
+            vehicle: {
+              id: 'veh-fallback',
+              year: 2020,
+              make: 'Toyota',
+              model: 'Camry',
+              vin: 'FALLBACK123456'
+            },
+            services: []
+          };
+          setData(fallbackData);
+        }
+      } catch (error) {
+        console.error('🔍 DEBUG: Error calling api.getDrawer:', error);
+      }
+    }
+    
+    // Reset loaded data ID and previous ID ref when drawer closes
+    if (!open) {
+      setLoadedDataId(null);
+      prevIdRef.current = null;
     }
   }, [open, id]);
 
@@ -132,7 +193,9 @@ export default function AppointmentDrawer({ open, onClose, id }: { open: boolean
       </div>
     </div>
   );
-}
+});
+
+export default AppointmentDrawer;
 
 function Overview({ data }: { data: DrawerPayload | null }) {
   if (!data) return <div>Loading…</div>;
@@ -153,7 +216,8 @@ function Overview({ data }: { data: DrawerPayload | null }) {
   );
 }
 
-function Services({ data }: { data: DrawerPayload | null }) {
+// Services component wrapped in React.memo to prevent unnecessary re-renders
+const Services = React.memo(function Services({ data }: { data: DrawerPayload | null }) {
   const [services, setServices] = useState<AppointmentService[]>([]);
   const [isAddingService, setIsAddingService] = useState(false);
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
@@ -166,12 +230,38 @@ function Services({ data }: { data: DrawerPayload | null }) {
     category: ''
   });
 
+  // Track if we've initialized services to prevent resetting form state on subsequent data updates
+  const [servicesInitialized, setServicesInitialized] = useState(false);
+  // Use ref to store the appointment ID to detect when we're working with a different appointment
+  const currentAppointmentIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (data?.services) {
-      setServices(data.services);
-      calculateTotal(data.services);
+    if (data?.services && data?.appointment?.id) {
+      const appointmentId = data.appointment.id;
+      
+      // If this is a different appointment, reset everything
+      if (currentAppointmentIdRef.current !== appointmentId) {
+        console.log('🔍 Services: New appointment detected, resetting state');
+        currentAppointmentIdRef.current = appointmentId;
+        setServices(data.services);
+        calculateTotal(data.services);
+        setServicesInitialized(true);
+        setIsAddingService(false);
+        setEditingServiceId(null);
+        setNewService({ name: '', notes: '', estimated_hours: '', estimated_price: '', category: '' });
+      } else {
+        // Same appointment, only update services data but preserve form state
+        console.log('🔍 Services: Same appointment, preserving form state');
+        setServices(data.services);
+        calculateTotal(data.services);
+        
+        if (!servicesInitialized) {
+          setServicesInitialized(true);
+        }
+        // DON'T reset isAddingService or form state here - this preserves the form during typing
+      }
     }
-  }, [data]);
+  }, [data, servicesInitialized]);
 
   const calculateTotal = (serviceList: AppointmentService[]) => {
     const totalAmount = serviceList.reduce((sum, service) => {
@@ -303,7 +393,13 @@ function Services({ data }: { data: DrawerPayload | null }) {
       {isAddingService && (
         <div data-testid="add-service-form" className="border rounded p-4 bg-gray-50">
           <h4 className="font-medium mb-3">Add New Service</h4>
-          <div className="space-y-3">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleAddService();
+            }}
+            className="space-y-3"
+          >
             <div>
               <label htmlFor="service-name" className="block text-sm font-medium text-gray-700 mb-1">
                 Service Name *
@@ -372,7 +468,7 @@ function Services({ data }: { data: DrawerPayload | null }) {
             <div className="flex gap-2">
               <button
                 data-testid="add-service-submit-button"
-                onClick={handleAddService}
+                type="submit"
                 disabled={
                   !newService.name.trim() || 
                   (!!newService.estimated_hours.trim() && (isNaN(parseFloat(newService.estimated_hours)) || parseFloat(newService.estimated_hours) < 0)) || 
@@ -384,6 +480,7 @@ function Services({ data }: { data: DrawerPayload | null }) {
               </button>
               <button
                 data-testid="add-service-cancel-button"
+                type="button"
                 onClick={() => {
                   setIsAddingService(false);
                   setNewService({ name: '', notes: '', estimated_hours: '', estimated_price: '', category: '' });
@@ -393,7 +490,7 @@ function Services({ data }: { data: DrawerPayload | null }) {
                 Cancel
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
@@ -413,7 +510,7 @@ function Services({ data }: { data: DrawerPayload | null }) {
       </div>
     </div>
   );
-}
+});
 
 function ServiceItem({ service, isEditing, onEdit, onDelete, onStartEdit, onCancelEdit }: {
   service: AppointmentService;

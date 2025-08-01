@@ -9,8 +9,8 @@ import React from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
-import { AuthProvider } from '../contexts/AuthContext';
-import ToastProvider from '../components/ToastProvider';
+import { AuthProvider } from '../contexts/AuthContextRobust';
+import { ToastProvider } from '../components/ui/Toast';
 import App from '../App';
 
 // Create a custom render function that includes all providers

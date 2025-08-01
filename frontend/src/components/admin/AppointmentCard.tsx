@@ -231,7 +231,7 @@ export default function AppointmentCard({ card, onOpen, onMove, onQuickReschedul
         hasUrgentNotification ? 'has-urgent-notification' : ''
       }`}
     >
-      <button
+      <div
         className={`card-base w-full text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
           hasUrgentNotification ? 'card-urgent' : ''
         } ${urgencyLevel === 'urgent' ? 'card-urgent' : urgencyLevel === 'soon' ? 'card-warning' : ''}`}
@@ -240,6 +240,14 @@ export default function AppointmentCard({ card, onOpen, onMove, onQuickReschedul
         onClick={handleCardClick}
         aria-label={ariaLabel}
         aria-describedby={error ? `error-${validatedCard.id}` : undefined}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleCardClick();
+          }
+        }}
       >
         <div className="card-content">
           {/* Urgency Badge with enhanced accessibility */}
@@ -320,7 +328,7 @@ export default function AppointmentCard({ card, onOpen, onMove, onQuickReschedul
             </div>
           )}
         </div>
-      </button>
+      </div>
       
       {/* Move button with enhanced accessibility */}
       <button
