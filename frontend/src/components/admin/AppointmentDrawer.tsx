@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Tabs } from '@/components/ui/Tabs';
 import * as api from '@/lib/api';
 import type { DrawerPayload, AppointmentService } from '@/types/models';
@@ -9,24 +9,26 @@ import CustomerHistory from './CustomerHistory';
 const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; onClose: () => void; id: string | null }) => {
   const [tab, setTab] = useState('overview');
   const [data, setData] = useState<DrawerPayload | null>(null);
+  const [isAddingService, setIsAddingService] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
 
+  // Memoize the setIsAddingService function to prevent unnecessary re-renders
+  const memoizedSetIsAddingService = useCallback((value: boolean) => {
+    setIsAddingService(value);
+  }, []);
+
   // Track if we've loaded data for this ID to prevent multiple API calls
-  const [loadedDataId, setLoadedDataId] = useState<string | null>(null);
-  // Add a ref to track the previous id to prevent unnecessary re-renders
-  const prevIdRef = useRef<string | null>(null);
+  const loadedDataIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Only fetch data if drawer is open, we have an ID, and we haven't already loaded this ID
-    if (open && id && api.getDrawer && id !== loadedDataId && id !== prevIdRef.current) {
+    if (open && id && api.getDrawer && id !== loadedDataIdRef.current) {
       console.log('🔍 DEBUG: Fetching data for ID:', id);
-      console.log('🔍 DEBUG: Previous loaded ID:', loadedDataId);
-      console.log('🔍 DEBUG: Previous ref ID:', prevIdRef.current);
+      console.log('🔍 DEBUG: Previous loaded ID:', loadedDataIdRef.current);
       
-      prevIdRef.current = id;
-      setLoadedDataId(id);
+      loadedDataIdRef.current = id;
       
       // Try calling the function and check if it returns a Promise
       let drawerResult;
@@ -73,10 +75,10 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
       }
     }
     
-    // Reset loaded data ID and previous ID ref when drawer closes
+    // Reset loaded data ID when drawer closes
     if (!open) {
-      setLoadedDataId(null);
-      prevIdRef.current = null;
+      loadedDataIdRef.current = null;
+      setIsAddingService(false); // Reset form state when drawer closes
     }
   }, [open, id]);
 
@@ -165,7 +167,7 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
         />
         <div className="p-4 overflow-auto flex-1">
           {tab === 'overview' && <Overview data={data} />}
-          {tab === 'services' && <Services data={data} />}
+          {tab === 'services' && <Services data={data} isAddingService={isAddingService} setIsAddingService={memoizedSetIsAddingService} />}
           {tab === 'messages' && id && <MessageThread appointmentId={id} drawerOpen={open} />}
           {tab === 'history' && data?.customer?.id && (
             <CustomerHistory 
@@ -217,9 +219,16 @@ function Overview({ data }: { data: DrawerPayload | null }) {
 }
 
 // Services component wrapped in React.memo to prevent unnecessary re-renders
-const Services = React.memo(function Services({ data }: { data: DrawerPayload | null }) {
+const Services = React.memo(function Services({ 
+  data, 
+  isAddingService, 
+  setIsAddingService 
+}: { 
+  data: DrawerPayload | null; 
+  isAddingService: boolean; 
+  setIsAddingService: (value: boolean) => void; 
+}) {
   const [services, setServices] = useState<AppointmentService[]>([]);
-  const [isAddingService, setIsAddingService] = useState(false);
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [newService, setNewService] = useState({
@@ -235,6 +244,48 @@ const Services = React.memo(function Services({ data }: { data: DrawerPayload | 
   // Use ref to store the appointment ID to detect when we're working with a different appointment
   const currentAppointmentIdRef = useRef<string | null>(null);
 
+  // Form persistence functions
+  const getFormStorageKey = useCallback((appointmentId: string) => `appointment-form-${appointmentId}`, []);
+  
+  const saveFormStateToStorage = useCallback((appointmentId: string, formState: typeof newService, isAdding: boolean) => {
+    try {
+      const storageKey = getFormStorageKey(appointmentId);
+      const state = { formState, isAdding, timestamp: Date.now() };
+      localStorage.setItem(storageKey, JSON.stringify(state));
+    } catch (error) {
+      console.warn('Failed to save form state to localStorage:', error);
+    }
+  }, [getFormStorageKey]);
+  
+  const loadFormStateFromStorage = useCallback((appointmentId: string) => {
+    try {
+      const storageKey = getFormStorageKey(appointmentId);
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const state = JSON.parse(stored);
+        // Check if the state is not too old (5 minutes)
+        if (Date.now() - state.timestamp < 5 * 60 * 1000) {
+          return state;
+        } else {
+          // Clean up old state
+          localStorage.removeItem(storageKey);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load form state from localStorage:', error);
+    }
+    return null;
+  }, [getFormStorageKey]);
+  
+  const clearFormStateFromStorage = useCallback((appointmentId: string) => {
+    try {
+      const storageKey = getFormStorageKey(appointmentId);
+      localStorage.removeItem(storageKey);
+    } catch (error) {
+      console.warn('Failed to clear form state from localStorage:', error);
+    }
+  }, [getFormStorageKey]);
+
   useEffect(() => {
     if (data?.services && data?.appointment?.id) {
       const appointmentId = data.appointment.id;
@@ -246,9 +297,18 @@ const Services = React.memo(function Services({ data }: { data: DrawerPayload | 
         setServices(data.services);
         calculateTotal(data.services);
         setServicesInitialized(true);
-        setIsAddingService(false);
         setEditingServiceId(null);
-        setNewService({ name: '', notes: '', estimated_hours: '', estimated_price: '', category: '' });
+        
+        // Try to restore form state from localStorage
+        const savedState = loadFormStateFromStorage(appointmentId);
+        if (savedState) {
+          console.log('🔍 Services: Restoring form state from localStorage');
+          setNewService(savedState.formState);
+          setIsAddingService(savedState.isAdding);
+        } else {
+          setNewService({ name: '', notes: '', estimated_hours: '', estimated_price: '', category: '' });
+          setIsAddingService(false);
+        }
       } else {
         // Same appointment, only update services data but preserve form state
         console.log('🔍 Services: Same appointment, preserving form state');
@@ -261,7 +321,18 @@ const Services = React.memo(function Services({ data }: { data: DrawerPayload | 
         // DON'T reset isAddingService or form state here - this preserves the form during typing
       }
     }
-  }, [data, servicesInitialized]);
+    // Note: setIsAddingService and servicesInitialized are intentionally omitted from dependencies to prevent infinite loops
+    // React state setters are stable and don't need to be in the dependency array
+    // servicesInitialized should not be a dependency as it's set within the effect and would cause infinite re-renders
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.services, data?.appointment?.id, loadFormStateFromStorage]);
+
+  // Save form state to localStorage whenever it changes
+  useEffect(() => {
+    if (data?.appointment?.id && (isAddingService || newService.name || newService.notes)) {
+      saveFormStateToStorage(data.appointment.id, newService, isAddingService);
+    }
+  }, [data?.appointment?.id, newService, isAddingService, saveFormStateToStorage]);
 
   const calculateTotal = (serviceList: AppointmentService[]) => {
     const totalAmount = serviceList.reduce((sum, service) => {
@@ -304,6 +375,9 @@ const Services = React.memo(function Services({ data }: { data: DrawerPayload | 
       calculateTotal(updatedServices);
       setNewService({ name: '', notes: '', estimated_hours: '', estimated_price: '', category: '' });
       setIsAddingService(false);
+      
+      // Clear form state from localStorage after successful submission
+      clearFormStateFromStorage(data.appointment.id);
     } catch (error) {
       console.error('Error adding service:', error);
       if (api.handleApiError) {
@@ -484,6 +558,10 @@ const Services = React.memo(function Services({ data }: { data: DrawerPayload | 
                 onClick={() => {
                   setIsAddingService(false);
                   setNewService({ name: '', notes: '', estimated_hours: '', estimated_price: '', category: '' });
+                  // Clear form state from localStorage when cancelling
+                  if (data?.appointment?.id) {
+                    clearFormStateFromStorage(data.appointment.id);
+                  }
                 }}
                 className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
               >
