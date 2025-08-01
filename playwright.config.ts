@@ -6,7 +6,7 @@ export default defineConfig({
   reporter: [['html', { outputFolder: 'e2e-report' }]],
   use: { trace: 'on-first-retry', screenshot: 'only-on-failure' },
   webServer: {
-    command: 'npm run dev --prefix mobile-auto-shop/frontend',
+    command: 'npm run dev --prefix frontend',
     port: 5173,
     reuseExistingServer: true,
   },

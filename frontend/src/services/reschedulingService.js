@@ -15,7 +15,7 @@
 
 import { getAvailableSlots, getNextAvailableSlot } from './availabilityService';
 import { updateAppointment } from '@/lib/api';
-import { toast } from '@/components/ui/Toast';
+import { toast } from '@/lib/toast';
 
 // Cache for performance optimization
 let rescheduleCache = new Map();

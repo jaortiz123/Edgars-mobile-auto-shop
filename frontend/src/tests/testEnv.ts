@@ -11,6 +11,7 @@ globalThis.process.env = globalThis.process.env || {};
 // Set default environment variables for tests
 globalThis.process.env.NODE_ENV = 'test';
 globalThis.process.env.VITE_API_BASE_URL = 'http://localhost:3001';
+globalThis.process.env.VITE_API_ENDPOINT_URL = 'http://localhost:3001';
 globalThis.process.env.VITE_APP_ENV = 'test';
 
 // Export for potential use in other test files
