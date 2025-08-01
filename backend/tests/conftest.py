@@ -1,17 +1,153 @@
 import os
-# Set FALLBACK_TO_MEMORY before importing local_server
+import subprocess
+import time
+import logging
+from pathlib import Path
+
+# Set FALLBACK_TO_MEMORY before importing local_server for legacy tests
 os.environ.setdefault("FALLBACK_TO_MEMORY", "true")
 
 import pytest
-from backend.local_server import app as flask_app
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
+# Import testcontainers - ignore IDE warnings, this works at runtime
+from testcontainers.postgres import PostgresContainer
+
+from local_server import app as flask_app
+
+# Set up logging for better debugging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+@pytest.fixture(scope="session")
+def pg_container():
+    """
+    PostgreSQL container fixture for integration tests.
+    Starts a containerized PostgreSQL instance, runs migrations, and loads seed data.
+    """
+    logger.info("🐘 Starting PostgreSQL container...")
+    
+    with PostgresContainer("postgres:15-alpine") as postgres:
+        # Container is now running
+        raw_db_url = postgres.get_connection_url()
+        # Fix the URL scheme for psycopg2 compatibility
+        db_url = raw_db_url.replace("postgresql+psycopg2://", "postgresql://")
+        logger.info(f"📦 PostgreSQL started on port {postgres.get_exposed_port(5432)}")
+        
+        # Set environment variables for the Flask app and Alembic
+        postgres_url_parts = db_url.replace("postgresql://", "").split("@")
+        user_pass = postgres_url_parts[0].split(":")
+        host_port_db = postgres_url_parts[1].split("/")
+        host_port = host_port_db[0].split(":")
+        
+        env_vars = {
+            "DATABASE_URL": db_url,
+            "POSTGRES_HOST": host_port[0],
+            "POSTGRES_PORT": host_port[1],
+            "POSTGRES_DB": host_port_db[1],
+            "POSTGRES_USER": user_pass[0],
+            "POSTGRES_PASSWORD": user_pass[1],
+            "FALLBACK_TO_MEMORY": "false"
+        }
+        
+        # Set environment variables
+        for key, value in env_vars.items():
+            os.environ[key] = value
+        
+        # Wait a moment for container to be fully ready
+        time.sleep(2)
+        
+        # Test connection
+        max_retries = 30
+        for i in range(max_retries):
+            try:
+                conn = psycopg2.connect(db_url)
+                conn.close()
+                logger.info("✅ Database connection test successful")
+                break
+            except Exception as e:
+                if i == max_retries - 1:
+                    raise Exception(f"Failed to connect to database after {max_retries} retries: {e}")
+                time.sleep(1)
+        
+        # Create database schema directly from SQL file
+        logger.info("🗃️ Creating database schema...")
+        schema_file = Path(__file__).parent / "test_schema.sql"
+        
+        try:
+            with open(schema_file, 'r') as f:
+                schema_sql = f.read()
+            
+            conn = psycopg2.connect(db_url)
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                # Execute the schema SQL
+                cur.execute(schema_sql)
+            conn.close()
+            
+            logger.info("✅ Database schema created successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to create schema: {e}")
+            raise Exception(f"Schema creation failed: {e}")
+        
+        # Load seed data
+        logger.info("🌱 Loading seed data...")
+        seed_file = Path(__file__).parent / "seed.sql"
+        
+        try:
+            with open(seed_file, 'r') as f:
+                seed_sql = f.read()
+            
+            conn = psycopg2.connect(db_url)
+            with conn:
+                with conn.cursor() as cur:
+                    cur.execute(seed_sql)
+            conn.close()
+            
+            logger.info("✅ Seed data loaded successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to load seed data: {e}")
+            raise Exception(f"Seed data loading failed: {e}")
+        
+        # Yield the container configuration for tests
+        yield {
+            "db_url": db_url,
+            "container": postgres,
+            "env_vars": env_vars
+        }
+        
+        # Cleanup happens automatically when context manager exits
+        logger.info("🧹 PostgreSQL container stopped and cleaned up")
+
 
 @pytest.fixture()
 def client():
+    """Flask test client fixture."""
     flask_app.testing = True
     flask_app.config["PROPAGATE_EXCEPTIONS"] = False
     with flask_app.test_client() as c:
         yield c
 
+
+@pytest.fixture()
+def db_connection(pg_container):
+    """
+    Database connection fixture that provides a real PostgreSQL connection.
+    Use this fixture for integration tests that need real database behavior.
+    """
+    db_url = pg_container["db_url"]
+    conn = psycopg2.connect(db_url, cursor_factory=RealDictCursor)
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+
+# Legacy fixtures for backward compatibility with existing unit tests
 class _FakeCursor:
     def __init__(self):
         self._q = None
@@ -95,5 +231,9 @@ class _FakeConn:
 
 @pytest.fixture()
 def fake_db(monkeypatch):
-    import backend.local_server as srv
+    """
+    Legacy fake database fixture for unit tests that don't need real database behavior.
+    This maintains backward compatibility with existing tests.
+    """
+    import local_server as srv
     monkeypatch.setattr(srv, "db_conn", lambda: _FakeConn())

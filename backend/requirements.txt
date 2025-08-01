@@ -12,6 +12,7 @@ redis
 pytest
 pytest-cov
 pytest-mock
+testcontainers
 
 # Linting dependencies
 flake8
