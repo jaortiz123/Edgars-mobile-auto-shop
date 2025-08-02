@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: 'e2e',
-  globalSetup: require.resolve('./e2e/global-setup'),
+  testMatch: 'smoke-frontend-only.spec.ts',
   
   // Cross-browser projects for P2-T-005
   projects: [
@@ -11,7 +11,7 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
     {
-      name: 'firefox',
+      name: 'firefox', 
       use: { ...devices['Desktop Firefox'] },
     },
     {
@@ -21,23 +21,8 @@ export default defineConfig({
   ],
   
   reporter: [
-    ['html', { outputFolder: 'e2e-report' }],
-    ['monocart-reporter', {
-      name: "Cross-Browser Test Report",
-      outputFile: './test-results/report.html',
-      coverage: {
-        entryFilter: (entry) => {
-          // Exclude files from node_modules
-          if (entry.url.includes('node_modules')) {
-            return false;
-          }
-          return true;
-        },
-        sourceFilter: (sourcePath) => {
-          return sourcePath.startsWith('frontend/src/');
-        }
-      }
-    }]
+    ['html', { outputFolder: 'e2e-report-smoke' }],
+    ['list'],
   ],
   
   use: { 
