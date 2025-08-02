@@ -29,11 +29,16 @@ const AdminAppointments = lazy(() => import('./pages/AdminAppointments'));
 // --- React Query Client ---
 const queryClient = new QueryClient();
 
-export default function App() {
+interface AppProps {
+  queryClient?: QueryClient;
+}
+
+export default function App({ queryClient: injectedClient }: AppProps = {}) {
+  const client = injectedClient || queryClient;
   return (
     <AuthProvider>
       <ToastProvider>
-        <QueryClientProvider client={queryClient}>
+        <QueryClientProvider client={client}>
           <BrowserRouter>
           <Routes>
             {/* === Public Routes === */}

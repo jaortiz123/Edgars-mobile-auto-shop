@@ -12,6 +12,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '../contexts/AuthContextRobust';
 import { ToastProvider } from '../components/ui/Toast';
 import App from '../App';
+import { testQueryClient } from '@/lib/test-query-client';
 
 // Create a custom render function that includes all providers
 interface IntegrationRenderOptions extends Omit<RenderOptions, 'wrapper'> {
@@ -29,6 +30,7 @@ interface IntegrationRenderOptions extends Omit<RenderOptions, 'wrapper'> {
 export function renderWithProviders(options: IntegrationRenderOptions = {}) {
   const {
     initialRoute = '/',
+    queryClient = testQueryClient,
     ...renderOptions
   } = options;
 
@@ -39,7 +41,7 @@ export function renderWithProviders(options: IntegrationRenderOptions = {}) {
 
   // Create the App wrapper to ensure proper provider setup
   function TestAppWrapper() {
-    return <App />;
+    return <App queryClient={queryClient} />;
   }
 
   // Render the App component which already includes all necessary providers
