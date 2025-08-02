@@ -411,6 +411,54 @@ const handlers = [
     });
   }),
 
+  // PATCH /appointments/:id - Main appointment update endpoint
+  http.patch('http://localhost:3001/appointments/:id', async ({ params, request }) => {
+    const id = params.id as string;
+    const body = await request.json() as Record<string, unknown>;
+    
+    const appointmentIndex = mockAppointments.findIndex(apt => apt.id === id);
+    if (appointmentIndex === -1) {
+      return HttpResponse.json(
+        { error: 'Appointment not found' },
+        { status: 404 }
+      );
+    }
+
+    // Update appointment fields
+    Object.keys(body).forEach(key => {
+      if (body[key] !== undefined && key in mockAppointments[appointmentIndex]) {
+        (mockAppointments[appointmentIndex] as unknown as Record<string, unknown>)[key] = body[key];
+      }
+    });
+
+    return HttpResponse.json({
+      ok: true
+    });
+  }),
+
+  // PATCH /api/appointments/:id - API version  
+  http.patch('http://localhost:3001/api/appointments/:id', async ({ params, request }) => {
+    const id = params.id as string;
+    const body = await request.json() as Record<string, unknown>;
+    
+    const appointmentIndex = mockAppointments.findIndex(apt => apt.id === id);
+    if (appointmentIndex === -1) {
+      return HttpResponse.json(
+        { error: 'Appointment not found' },
+        { status: 404 }
+      );
+    }
+
+    // Update appointment fields
+    Object.keys(body).forEach(key => {
+      if (body[key] !== undefined && key in mockAppointments[appointmentIndex]) {
+        (mockAppointments[appointmentIndex] as unknown as Record<string, unknown>)[key] = body[key];
+      }
+    });
+
+    return HttpResponse.json(mockAppointments[appointmentIndex]);
+  }),
+
   // Services endpoints
   http.get('http://localhost:3001/appointments/:id/services', ({ params }) => {
     const appointmentId = params.id as string;
@@ -557,7 +605,7 @@ const handlers = [
   }),
 
   // Dashboard stats
-  http.get('http://localhost:3001/admin/dashboard/stats', () => {
+  http.get('http://localhost:3001/admin/dashboard/stats', async () => {
     return HttpResponse.json({
       data: {
         totals: {
@@ -611,6 +659,69 @@ const handlers = [
       errors: null,
       meta: { request_id: generateRequestId() }
     }, { status: 201 });
+  }),
+
+  // Error scenario configuration for P2-T-006 Error Path Integration Tests
+  http.get('http://localhost:3001/admin/appointments/board/error-scenario', ({ request }) => {
+    console.log('🔍 MSW: Error scenario endpoint hit!', request.url);
+    const url = new URL(request.url);
+    const scenario = url.searchParams.get('scenario');
+
+    console.log('📊 MSW: Error scenario:', scenario);
+
+    // Trigger specific error scenario
+    switch (scenario) {
+      case 'appointmentPatch500':
+        return HttpResponse.json(
+          { error: 'Internal Server Error' },
+          { status: 500 }
+        );
+      case 'unauthorizedAccess':
+        return HttpResponse.json(
+          { error: 'Unauthorized access' },
+          { status: 401 }
+        );
+      case 'dashboardStatsDelay':
+        return new Promise(resolve => {
+          setTimeout(() => {
+            resolve(HttpResponse.json({
+              data: {
+                totals: {
+                  today_completed: 3,
+                  today_booked: 5,
+                  avg_cycle: 120,
+                  avg_cycle_formatted: '2h 0m'
+                },
+                countsByStatus: {
+                  scheduled: 8,
+                  in_progress: 3,
+                  ready: 2,
+                  completed: 11,
+                  cancelled: 1
+                },
+                carsOnPremises: [
+                  { license: 'ABC-123', customer: 'John Doe', arrival: '09:30' },
+                  { license: 'XYZ-789', customer: 'Jane Smith', arrival: '11:15' }
+                ],
+                unpaidTotal: 1250.50
+              },
+              errors: null,
+              meta: { request_id: generateRequestId() }
+            }));
+          }, 2000); // Simulate 2 seconds delay
+        });
+      case 'networkTimeout':
+        return new Promise((_, reject) => {
+          setTimeout(() => {
+            reject(new Error('Network timeout'));
+          }, 1000); // Simulate 1 second timeout
+        });
+      default:
+        return HttpResponse.json(
+          { error: 'Unknown error scenario' },
+          { status: 400 }
+        );
+    }
   }),
 
   // Catch-all handler to log unmatched requests
