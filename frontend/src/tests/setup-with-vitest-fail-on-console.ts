@@ -112,19 +112,18 @@ failOnConsole({
   
   // Enhanced error message to maintain CI-STRICT-001 branding
   errorMessage: (methodName, bold) => {
-    const boldFn = bold || ((text: string) => text); // Fallback if bold is undefined
-    return `${boldFn('[CI-STRICT-001]')} Unexpected console.${methodName} call detected. Use withConsoleErrorSpy() for tests that expect ${methodName} calls, or add patterns to allowedConsoleErrors.`;
+    return `${bold('[CI-STRICT-001]')} Unexpected console.${methodName} call detected. Use withConsoleErrorSpy() for tests that expect ${methodName} calls, or add patterns to allowedConsoleErrors.`;
   },
   
   // Skip console checking for integration tests that have different setup
   skipTest: ({ testPath }) => {
     // Skip for integration tests that use MSW setup
-    if (testPath && (testPath.includes('.it.tsx') || testPath.includes('.it.ts'))) {
+    if (testPath.includes('.it.tsx') || testPath.includes('.it.ts')) {
       return true;
     }
     
     // Skip for specific legacy test files
-    if (testPath && (testPath.includes('.old.tsx') || testPath.includes('.legacy.'))) {
+    if (testPath.includes('.old.tsx') || testPath.includes('.legacy.')) {
       return true;
     }
     
@@ -137,18 +136,28 @@ failOnConsole({
 
 /**
  * Enhanced test helper for tests that expect console errors
- * Now works with vitest-fail-on-console by using vi.mocked() to prevent the override
+ * Now works with vitest-fail-on-console by temporarily mocking console methods
  * Usage: await withConsoleErrorSpy(async () => { ... test code that should log errors ... });
  */
 export async function withConsoleErrorSpy<T>(testFn: () => T | Promise<T>): Promise<T> {
-  // Create mocks that capture calls but don't actually log or throw
-  const errorSpy = vi.fn();
-  const warnSpy = vi.fn();
-  
-  // Temporarily replace console methods with our silent spies
+  // Store original console methods
   const originalError = console.error;
   const originalWarn = console.warn;
   
+  // Create spies that don't throw
+  const errorSpy = vi.fn((...args) => {
+    // Only log to actual console in development for debugging
+    if (!process.env.CI) {
+      originalError(...args);
+    }
+  });
+  const warnSpy = vi.fn((...args) => {
+    if (!process.env.CI) {
+      originalWarn(...args);
+    }
+  });
+  
+  // Temporarily replace console methods with non-throwing versions
   console.error = errorSpy;
   console.warn = warnSpy;
   
@@ -156,7 +165,7 @@ export async function withConsoleErrorSpy<T>(testFn: () => T | Promise<T>): Prom
     const result = await Promise.resolve(testFn());
     return result;
   } finally {
-    // Restore original console methods
+    // Restore original console methods (vitest-fail-on-console will re-override them)
     console.error = originalError;
     console.warn = originalWarn;
   }

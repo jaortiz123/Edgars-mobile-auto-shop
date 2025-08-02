@@ -310,108 +310,182 @@ export const api = {
 };
 
 // Time utilities mock - Fixed to match real function signatures
-// Helper function for consistent time calculations
-const calculateMinutesUntil = (startTime: Date | string | number): number => {
-  try {
-    const date = typeof startTime === 'string' || typeof startTime === 'number' ? new Date(startTime) : startTime;
-    const now = new Date();
-    const diffMs = date.getTime() - now.getTime();
-    return Math.floor(diffMs / (1000 * 60));
-  } catch (error) {
-    console.log('🔧 MOCK: calculateMinutesUntil error:', error);
-    return 0;
-  }
-};
-
-export const getCountdownText = vi.fn().mockImplementation((startTime: Date | string | number, options: Record<string, unknown> = {}) => {
-  console.log('🔧 MOCK: getCountdownText called with startTime:', startTime, 'options:', options);
-  try {
-    const minutesUntil = calculateMinutesUntil(startTime);
-    
-    if (minutesUntil > 0) {
-      return `in ${minutesUntil}m`;
-    } else if (minutesUntil < 0) {
-      return `${Math.abs(minutesUntil)}m ago`;
-    } else {
-      return 'now';
-    }
-  } catch (error) {
-    console.log('🔧 MOCK: getCountdownText error:', error);
-    return 'now';
-  }
-});
-
-export const minutesPast = vi.fn().mockImplementation((time: Date | string | number, options: Record<string, unknown> = {}) => {
-  console.log('🔧 MOCK: minutesPast called with time:', time, 'options:', options);
-  try {
-    const minutesUntil = calculateMinutesUntil(time);
-    return Math.max(0, -minutesUntil); // Return 0 if in future
-  } catch (error) {
-    console.log('🔧 MOCK: minutesPast error:', error);
-    return 0;
-  }
-});
-
-export const getMinutesUntil = vi.fn().mockImplementation((startTime: Date | string | number, options: Record<string, unknown> = {}) => {
-  console.log('🔧 MOCK: getMinutesUntil called with startTime:', startTime, 'options:', options);
-  const result = calculateMinutesUntil(startTime);
-  console.log('🔧 MOCK: getMinutesUntil result:', result);
-  return result;
-});
-
-export const isStartingSoon = vi.fn().mockImplementation((startTime: Date | string | number, thresholdMinutes: number = 15, options: Record<string, unknown> = {}) => {
-  console.log('🔧 MOCK: isStartingSoon called with startTime:', startTime, 'thresholdMinutes:', thresholdMinutes, 'options:', options);
-  try {
-    const minutesUntil = calculateMinutesUntil(startTime);
-    const result = minutesUntil > 0 && minutesUntil <= thresholdMinutes;
-    console.log('🔧 MOCK: isStartingSoon result:', result, 'minutesUntil:', minutesUntil);
-    return result;
-  } catch (error) {
-    console.log('🔧 MOCK: isStartingSoon error:', error);
-    return false;
-  }
-});
-
-export const isRunningLate = vi.fn().mockImplementation((startTime: Date | string | number, lateThresholdMinutes: number = 10, options: Record<string, unknown> = {}) => {
-  console.log('🔧 MOCK: isRunningLate called with startTime:', startTime, 'lateThresholdMinutes:', lateThresholdMinutes, 'options:', options);
-  try {
-    const minutesUntil = calculateMinutesUntil(startTime);
-    const result = minutesUntil < 0 && minutesUntil >= -lateThresholdMinutes;
-    console.log('🔧 MOCK: isRunningLate result:', result, 'minutesUntil:', minutesUntil);
-    return result;
-  } catch (error) {
-    console.log('🔧 MOCK: isRunningLate error:', error);
-    return false;
-  }
-});
-
-export const isOverdue = vi.fn().mockImplementation((startTime: Date | string | number, overdueThresholdMinutes: number = 30, options: Record<string, unknown> = {}) => {
-  console.log('🔧 MOCK: isOverdue called with startTime:', startTime, 'overdueThresholdMinutes:', overdueThresholdMinutes, 'options:', options);
-  try {
-    const minutesUntil = calculateMinutesUntil(startTime);
-    const result = minutesUntil < -overdueThresholdMinutes;
-    console.log('🔧 MOCK: isOverdue result:', result, 'minutesUntil:', minutesUntil);
-    return result;
-  } catch (error) {
-    console.log('🔧 MOCK: isOverdue error:', error);
-    return false;
-  }
-});
+// Time functions are now created inside the factory for proper state isolation
 
 // Export factory function that test setup expects
 export function createMocks() {
+  // Local state for this mock instance
+  let localMockCurrentTime = new Date('2024-01-15T10:00:00Z').getTime();
+  
+  // Helper function for time calculations within this instance
+  const calculateMinutesUntilLocal = (startTime: Date | string | number): number => {
+    try {
+      const date = typeof startTime === 'string' || typeof startTime === 'number' ? new Date(startTime) : startTime;
+      const now = new Date(localMockCurrentTime);
+      const diffMs = date.getTime() - now.getTime();
+      return Math.floor(diffMs / (1000 * 60));
+    } catch (error) {
+      console.log('🔧 MOCK: calculateMinutesUntilLocal error:', error);
+      return 0;
+    }
+  };
+
   return {
     time: {
-      getCountdownText,
-      minutesPast,
-      getMinutesUntil,
-      isStartingSoon,
-      isRunningLate,
-      isOverdue
+      getCountdownText: vi.fn().mockImplementation((startTime: Date | string | number, options: Record<string, unknown> = {}) => {
+        console.log('🔧 MOCK: getCountdownText called with startTime:', startTime, 'options:', options);
+        try {
+          const minutesUntil = calculateMinutesUntilLocal(startTime);
+          
+          if (minutesUntil > 0) {
+            return `in ${minutesUntil}m`;
+          } else if (minutesUntil < 0) {
+            return `${Math.abs(minutesUntil)}m ago`;
+          } else {
+            return 'now';
+          }
+        } catch (error) {
+          console.log('🔧 MOCK: getCountdownText error:', error);
+          return 'now';
+        }
+      }),
+      minutesPast: vi.fn().mockImplementation((time: Date | string | number, options: Record<string, unknown> = {}) => {
+        console.log('🔧 MOCK: minutesPast called with time:', time, 'options:', options);
+        try {
+          const minutesUntil = calculateMinutesUntilLocal(time);
+          return Math.max(0, -minutesUntil); // Return 0 if in future
+        } catch (error) {
+          console.log('🔧 MOCK: minutesPast error:', error);
+          return 0;
+        }
+      }),
+      getMinutesUntil: vi.fn().mockImplementation((startTime: Date | string | number, options: Record<string, unknown> = {}) => {
+        console.log('🔧 MOCK: getMinutesUntil called with startTime:', startTime, 'options:', options);
+        const result = calculateMinutesUntilLocal(startTime);
+        console.log('🔧 MOCK: getMinutesUntil result:', result);
+        return result;
+      }),
+      isStartingSoon: vi.fn().mockImplementation((startTime: Date | string | number, thresholdMinutes: number = 15, options: Record<string, unknown> = {}) => {
+        console.log('🔧 MOCK: isStartingSoon called with startTime:', startTime, 'thresholdMinutes:', thresholdMinutes, 'options:', options);
+        try {
+          const minutesUntil = calculateMinutesUntilLocal(startTime);
+          const result = minutesUntil > 0 && minutesUntil <= thresholdMinutes;
+          console.log('🔧 MOCK: isStartingSoon result:', result, 'minutesUntil:', minutesUntil);
+          return result;
+        } catch (error) {
+          console.log('🔧 MOCK: isStartingSoon error:', error);
+          return false;
+        }
+      }),
+      isRunningLate: vi.fn().mockImplementation((startTime: Date | string | number, lateThresholdMinutes: number = 10, options: Record<string, unknown> = {}) => {
+        console.log('🔧 MOCK: isRunningLate called with startTime:', startTime, 'lateThresholdMinutes:', lateThresholdMinutes, 'options:', options);
+        try {
+          const minutesUntil = calculateMinutesUntilLocal(startTime);
+          const result = minutesUntil < 0 && Math.abs(minutesUntil) >= lateThresholdMinutes;
+          console.log('🔧 MOCK: isRunningLate result:', result, 'minutesUntil:', minutesUntil);
+          return result;
+        } catch (error) {
+          console.log('🔧 MOCK: isRunningLate error:', error);
+          return false;
+        }
+      }),
+      isOverdue: vi.fn().mockImplementation((startTime: Date | string | number, overdueThresholdMinutes: number = 30, options: Record<string, unknown> = {}) => {
+        console.log('🔧 MOCK: isOverdue called with startTime:', startTime, 'overdueThresholdMinutes:', overdueThresholdMinutes, 'options:', options);
+        try {
+          const minutesUntil = calculateMinutesUntilLocal(startTime);
+          const result = minutesUntil < -overdueThresholdMinutes;
+          console.log('🔧 MOCK: isOverdue result:', result, 'minutesUntil:', minutesUntil);
+          return result;
+        } catch (error) {
+          console.log('🔧 MOCK: isOverdue error:', error);
+          return false;
+        }
+      }),
+      setCurrentTime: vi.fn().mockImplementation((time: string) => {
+        console.log('🔧 MOCK: setCurrentTime called with:', time);
+        localMockCurrentTime = new Date(time).getTime();
+        console.log('🔧 MOCK: Set current time to:', time);
+      }),
+      getCurrentTime: vi.fn().mockImplementation(() => {
+        return new Date(localMockCurrentTime);
+      }),
+      advanceTime: vi.fn().mockImplementation((minutes: number) => {
+        console.log('🔧 MOCK: advanceTime called with:', minutes);
+        localMockCurrentTime += minutes * 60 * 1000; // Add minutes in milliseconds
+      })
     },
     notification: {
-      // Empty notification mock for setup
+      notifyArrival: vi.fn().mockImplementation((customerName: string) => {
+        console.log('🔧 MOCK: notifyArrival called with:', customerName);
+        return `arrival-${Date.now()}`;
+      }),
+      getNotificationCount: vi.fn().mockImplementation(() => 0),
+      addNotification: vi.fn().mockImplementation(() => `notif-${Date.now()}`),
+      removeNotification: vi.fn().mockImplementation(() => true),
+      markAsRead: vi.fn().mockImplementation(() => true),
+      getNotifications: vi.fn().mockImplementation(() => []),
+      clearAll: vi.fn().mockImplementation(() => {})
     },
-    api
+    api,
+    resetAll: vi.fn().mockImplementation(() => {
+      vi.clearAllMocks();
+    })
   };
 }
+
+// Type definitions for TypeScript compatibility
+interface TimeMock {
+  getCountdownText: ReturnType<typeof vi.fn>;
+  minutesPast: ReturnType<typeof vi.fn>;
+  getMinutesUntil: ReturnType<typeof vi.fn>;
+  isStartingSoon: ReturnType<typeof vi.fn>;
+  isRunningLate: ReturnType<typeof vi.fn>;
+  isOverdue: ReturnType<typeof vi.fn>;
+  setCurrentTime: ReturnType<typeof vi.fn>;
+  getCurrentTime: ReturnType<typeof vi.fn>;
+  advanceTime: ReturnType<typeof vi.fn>;
+}
+
+interface NotificationMock {
+  notifyArrival: ReturnType<typeof vi.fn>;
+  getNotificationCount: ReturnType<typeof vi.fn>;
+  addNotification: ReturnType<typeof vi.fn>;
+  removeNotification: ReturnType<typeof vi.fn>;
+  markAsRead: ReturnType<typeof vi.fn>;
+  getNotifications: ReturnType<typeof vi.fn>;
+  clearAll: ReturnType<typeof vi.fn>;
+}
+
+interface TestMocks {
+  time: TimeMock;
+  api: typeof api;
+  notification: NotificationMock;
+  resetAll: ReturnType<typeof vi.fn>;
+}
+
+// Export the main factory function that tests expect
+export default function createTestMocks(): TestMocks {
+  const mocks = createMocks();
+  return {
+    time: mocks.time as TimeMock,
+    api: mocks.api,
+    notification: mocks.notification as NotificationMock,
+    resetAll: mocks.resetAll as ReturnType<typeof vi.fn>
+  };
+}
+
+// Export withMocks helper function
+export function withMocks<T>(testFn: (mocks: TestMocks) => T | Promise<T>) {
+  return (async () => {
+    const mocks = createTestMocks();
+    try {
+      const result = await testFn(mocks);
+      return result;
+    } finally {
+      mocks.resetAll();
+    }
+  });
+}
+
+// Export types for TypeScript compatibility
+export type { TestMocks };

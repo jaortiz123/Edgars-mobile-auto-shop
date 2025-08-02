@@ -489,6 +489,47 @@ jobs:
             echo "✅ Coverage meets all CI minimum thresholds"
           fi
 
+      - name: Check critical module coverage (P2-T-004)
+        id: critical-coverage
+        run: |
+          echo "🔍 Checking critical module coverage thresholds (P2-T-004)..."
+          set -euo pipefail
+          
+          # Navigate to project root where coverage check script is located
+          cd ..
+          
+          # Verify critical modules config and coverage check script exist
+          if [ ! -f "scripts/coverage/critical-modules.json" ]; then
+            echo "❌ Critical modules configuration not found at scripts/coverage/critical-modules.json"
+            exit 1
+          fi
+          
+          if [ ! -f "scripts/coverage/check.js" ]; then
+            echo "❌ Coverage check script not found at scripts/coverage/check.js"
+            exit 1
+          fi
+          
+          # Verify coverage summary exists
+          if [ ! -f "frontend/coverage/coverage-summary.json" ]; then
+            echo "❌ Coverage summary not found at frontend/coverage/coverage-summary.json"
+            echo "📁 Available files in frontend/coverage/:"
+            ls -la frontend/coverage/ || echo "❌ Coverage directory does not exist"
+            exit 1
+          fi
+          
+          # Run critical module coverage check
+          echo "🎯 Running critical module coverage analysis..."
+          if node scripts/coverage/check.js frontend/coverage/coverage-summary.json scripts/coverage/critical-modules.json; then
+            echo "✅ All critical modules meet 70% coverage threshold"
+            echo "CRITICAL_COVERAGE_PASSED=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Critical module coverage check failed"
+            echo "🎯 Some critical modules are below the 70% coverage threshold"
+            echo "📚 See P2-T-004 coverage gap analysis for improvement guidance"
+            echo "CRITICAL_COVERAGE_PASSED=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
         if: always()
