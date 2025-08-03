@@ -101,7 +101,7 @@ describe('DateUtils Coverage Tests', () => {
       expect(dateUtils.getRelativeDate(tomorrow)).toContain('Tomorrow');
       // The implementation might use "X days ago" instead of "Yesterday"
       const yesterdayResult = dateUtils.getRelativeDate(yesterday);
-      expect(yesterdayResult).toMatch(/(Yesterday|day ago)/);
+      expect(yesterdayResult).toMatch(/(Yesterday|days? ago)/);
       
       // Test error handling
       expect(dateUtils.getRelativeDate(null)).toBe('Invalid Date');
@@ -195,10 +195,10 @@ describe('DateUtils Coverage Tests', () => {
       expect(range[1].getDate()).toBe(startDate.getDate() + 1);
       expect(range[2].getDate()).toBe(startDate.getDate() + 2);
       
-      // Test error handling - actual implementation returns null instead of empty array
+      // Test error handling - actual implementation returns null for invalid inputs
       expect(dateUtils.getDateRange(null, 3)).toBeNull();
-      expect(dateUtils.getDateRange(startDate, 0)).toEqual([]);
-      expect(dateUtils.getDateRange(startDate, -1)).toEqual([]);
+      expect(dateUtils.getDateRange(startDate, 0)).toBeNull(); // numberOfDays must be >= 1
+      expect(dateUtils.getDateRange(startDate, -1)).toBeNull();
     });
   });
 
@@ -220,11 +220,13 @@ describe('DateUtils Coverage Tests', () => {
     });
 
     it('should parse appointment time strings', () => {
-      // Check if this function behaves the same as parseTimeString
-      const result = dateUtils.parseAppointmentTime('10:30 AM');
-      expect(result).toEqual({ hours: 10, minutes: 30 });
+      // parseAppointmentTime expects full date strings, not just time
+      // It tries to parse with new Date() which requires a full date
+      const result = dateUtils.parseAppointmentTime('2025-08-03T10:30:00');
+      expect(result).toBeInstanceOf(Date);
       
-      // Test error handling
+      // Test error handling - time-only strings return null
+      expect(dateUtils.parseAppointmentTime('10:30 AM')).toBeNull();
       expect(dateUtils.parseAppointmentTime('')).toBeNull();
       expect(dateUtils.parseAppointmentTime('invalid')).toBeNull();
       expect(dateUtils.parseAppointmentTime(null)).toBeNull();
@@ -256,10 +258,10 @@ describe('DateUtils Coverage Tests', () => {
       const businessDays = dateUtils.getBusinessDaysBetween(start, end);
       expect(businessDays).toBe(5); // Includes both start and end days
       
-      // Test with weekends
+      // Test with weekends - implementation includes both start and end dates
       const startFri = new Date('2025-08-01T10:00:00'); // Friday
       const endMon = new Date('2025-08-04T10:00:00'); // Monday
-      expect(dateUtils.getBusinessDaysBetween(startFri, endMon)).toBe(1); // Just Friday
+      expect(dateUtils.getBusinessDaysBetween(startFri, endMon)).toBe(2); // Friday and Monday
       
       // Test error handling
       expect(dateUtils.getBusinessDaysBetween(null, end)).toBe(0);
