@@ -146,6 +146,63 @@ const mockServices: MockService[] = [
 
 // Request handlers
 const handlers = [
+  // Board endpoint for unit tests (when axios baseURL is '/api', resolves to localhost:3000/api/...)
+  http.get('http://localhost:3000/api/admin/appointments/board', ({ request }) => {
+    console.log('🔍 MSW: Board endpoint (unit test) hit!', request.url);
+    const url = new URL(request.url);
+    const from = url.searchParams.get('from');
+    const to = url.searchParams.get('to');
+    const techId = url.searchParams.get('techId');
+
+    console.log('📊 MSW: Board query params:', { from, to, techId });
+
+    // Filter appointments based on query params
+    let filteredAppointments = mockAppointments;
+    
+    if (from) {
+      filteredAppointments = filteredAppointments.filter(apt => 
+        new Date(apt.start_ts) >= new Date(from)
+      );
+    }
+    
+    if (to) {
+      filteredAppointments = filteredAppointments.filter(apt => 
+        new Date(apt.end_ts || apt.start_ts) <= new Date(to)
+      );
+    }
+    
+    if (techId) {
+      filteredAppointments = filteredAppointments.filter(apt => 
+        apt.tech_id === techId
+      );
+    }
+
+    // Generate board columns
+    const columns = [
+      { key: 'SCHEDULED', title: 'Scheduled', count: 1, sum: 250.00 },
+      { key: 'IN_PROGRESS', title: 'In Progress', count: 1, sum: 450.00 },
+      { key: 'READY', title: 'Ready', count: 0, sum: 0 },
+      { key: 'COMPLETED', title: 'Completed', count: 0, sum: 0 }
+    ];
+
+    // Generate board cards
+    const cards = filteredAppointments.map((apt, index) => ({
+      id: apt.id,
+      status: apt.status,
+      position: index + 1,
+      start: apt.start_ts,
+      end: apt.end_ts,
+      customerName: apt.customer_name,
+      vehicle: apt.vehicle_label,
+      servicesSummary: apt.notes,
+      price: apt.total_amount,
+      tags: []
+    }));
+
+    console.log('✅ MSW: Returning board data (unit test):', { columns: columns.length, cards: cards.length });
+    return HttpResponse.json({ columns, cards });
+  }),
+
   // Board endpoint (note: when VITE_API_BASE_URL=http://localhost:3001, axios calls /admin/appointments/board directly)
   http.get('http://localhost:3001/admin/appointments/board', ({ request }) => {
     console.log('🔍 MSW: Board endpoint hit!', request.url);
@@ -262,6 +319,75 @@ const handlers = [
     return HttpResponse.json(responseData);
   }),
 
+  // Admin appointments list for unit tests (localhost:3000)
+  http.get('http://localhost:3000/api/admin/appointments', ({ request }) => {
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+    const limit = parseInt(url.searchParams.get('limit') || '50');
+    const offset = parseInt(url.searchParams.get('offset') || '0');
+
+    let filteredAppointments = mockAppointments;
+    
+    if (status) {
+      filteredAppointments = filteredAppointments.filter(apt => 
+        apt.status.toUpperCase() === status.toUpperCase()
+      );
+    }
+
+    // Apply pagination
+    const paginatedAppointments = filteredAppointments.slice(offset, offset + limit);
+
+    return HttpResponse.json({
+      data: {
+        appointments: paginatedAppointments,
+        nextCursor: paginatedAppointments.length === limit ? 'next-page' : null
+      },
+      errors: null,
+      meta: { request_id: generateRequestId() }
+    });
+  }),
+
+  // Get single appointment (drawer payload) for unit tests (localhost:3000)
+  http.get('http://localhost:3000/api/appointments/:id', ({ params }) => {
+    const id = params.id as string;
+    console.log('🔧 MSW: getDrawer handler (unit test) called for id:', id);
+    
+    const appointment = mockAppointments.find(apt => apt.id === id);
+    
+    if (!appointment) {
+      console.log('🔧 MSW: Appointment not found for id:', id);
+      return HttpResponse.json(
+        { error: 'Appointment not found' },
+        { status: 404 }
+      );
+    }
+
+    const customer = mockCustomers.find(c => c.id === appointment.customer_id);
+    const vehicle = mockVehicles.find(v => v.id === appointment.vehicle_id);
+    const services = mockServices.filter(s => s.appointment_id === id);
+
+    // Transform the appointment to match DrawerPayload.appointment structure
+    const drawerPayload = {
+      appointment: {
+        id: appointment.id,
+        status: appointment.status,
+        start: appointment.start_ts,  // Map start_ts to start
+        end: appointment.end_ts,      // Map end_ts to end
+        total_amount: appointment.total_amount,
+        paid_amount: appointment.paid_amount,
+        check_in_at: null,
+        check_out_at: null,
+        tech_id: appointment.tech_id
+      },
+      customer,
+      vehicle,
+      services
+    };
+
+    console.log('🔧 MSW: Returning drawer payload (unit test):', JSON.stringify(drawerPayload, null, 2));
+    return HttpResponse.json(drawerPayload);
+  }),
+
   // Admin appointments list
   http.get('http://localhost:3001/api/admin/appointments', ({ request }) => {
     const url = new URL(request.url);
@@ -357,6 +483,107 @@ const handlers = [
       errors: null,
       meta: { request_id: generateRequestId() }
     }, { status: 201 });
+  }),
+
+  // Move appointment and status endpoints for unit tests (localhost:3000)
+  http.patch('http://localhost:3000/api/admin/appointments/:id/move', async ({ params, request }) => {
+    const id = params.id as string;
+    const body = await request.json() as Record<string, unknown>;
+    
+    const appointmentIndex = mockAppointments.findIndex(apt => apt.id === id);
+    if (appointmentIndex === -1) {
+      return HttpResponse.json(
+        { error: 'Appointment not found' },
+        { status: 404 }
+      );
+    }
+
+    // Update appointment status
+    mockAppointments[appointmentIndex].status = body.status as string;
+
+    return HttpResponse.json({
+      data: {
+        id,
+        status: body.status,
+        position: body.position
+      },
+      errors: null,
+      meta: { request_id: generateRequestId() }
+    });
+  }),
+
+  http.patch('http://localhost:3000/api/admin/appointments/:id/status', async ({ params, request }) => {
+    const id = params.id as string;
+    const body = await request.json() as Record<string, unknown>;
+    
+    const appointmentIndex = mockAppointments.findIndex(apt => apt.id === id);
+    if (appointmentIndex === -1) {
+      return HttpResponse.json(
+        { error: 'Appointment not found' },
+        { status: 404 }
+      );
+    }
+
+    mockAppointments[appointmentIndex].status = body.status as string;
+
+    return HttpResponse.json({
+      data: {
+        id,
+        status: body.status
+      },
+      errors: null,
+      meta: { request_id: generateRequestId() }
+    });
+  }),
+
+  http.patch('http://localhost:3000/api/appointments/:id', async ({ params, request }) => {
+    const id = params.id as string;
+    const body = await request.json() as Record<string, unknown>;
+    
+    const appointmentIndex = mockAppointments.findIndex(apt => apt.id === id);
+    if (appointmentIndex === -1) {
+      return HttpResponse.json(
+        { error: 'Appointment not found' },
+        { status: 404 }
+      );
+    }
+
+    // Update appointment fields
+    Object.keys(body).forEach(key => {
+      if (body[key] !== undefined && key in mockAppointments[appointmentIndex]) {
+        (mockAppointments[appointmentIndex] as unknown as Record<string, unknown>)[key] = body[key];
+      }
+    });
+
+    return HttpResponse.json(mockAppointments[appointmentIndex]);
+  }),
+
+  // Dashboard stats for unit tests (localhost:3000)
+  http.get('http://localhost:3000/api/admin/dashboard/stats', async () => {
+    return HttpResponse.json({
+      data: {
+        totals: {
+          today_completed: 3,
+          today_booked: 5,
+          avg_cycle: 120,
+          avg_cycle_formatted: '2h 0m'
+        },
+        countsByStatus: {
+          scheduled: 8,
+          in_progress: 3,
+          ready: 2,
+          completed: 11,
+          cancelled: 1
+        },
+        carsOnPremises: [
+          { license: 'ABC-123', customer: 'John Doe', arrival: '09:30' },
+          { license: 'XYZ-789', customer: 'Jane Smith', arrival: '11:15' }
+        ],
+        unpaidTotal: 1250.50
+      },
+      errors: null,
+      meta: { request_id: generateRequestId() }
+    });
   }),
 
   // Move appointment (drag and drop)
@@ -496,6 +723,57 @@ const handlers = [
     }
 
     // Match backend response format: just return the service ID
+    return HttpResponse.json({
+      id: newService.id
+    }, { status: 201 });
+  }),
+
+  // Services endpoints for unit tests (localhost:3000)
+  http.get('http://localhost:3000/api/appointments/:id/services', ({ params }) => {
+    const appointmentId = params.id as string;
+    console.log('🔍 MSW: Services GET endpoint (unit test) hit!', `http://localhost:3000/api/appointments/${appointmentId}/services`);
+    const services = mockServices.filter(s => s.appointment_id === appointmentId);
+    
+    return HttpResponse.json({
+      services
+    });
+  }),
+
+  http.post('http://localhost:3000/api/appointments/:id/services', async ({ params, request }) => {
+    const appointmentId = params.id as string;
+    const body = await request.json() as Record<string, unknown>;
+    
+    console.log('🔍 MSW: Service creation endpoint (unit test) hit!', `http://localhost:3000/api/appointments/${appointmentId}/services`);
+    console.log('📝 MSW: Service creation payload:', body);
+    console.log('🔧 MSW: About to create service for appointment:', appointmentId);
+    
+    const newService: MockService = {
+      id: `svc-${Date.now()}`,
+      appointment_id: appointmentId,
+      name: body.name as string,
+      notes: (body.notes as string) || '',
+      estimated_hours: (body.estimated_hours as number) || 1,
+      estimated_price: (body.estimated_price as number) || 0,
+      category: (body.category as string) || 'General',
+      created_at: new Date().toISOString()
+    };
+
+    mockServices.push(newService);
+
+    // Update appointment total
+    const appointment = mockAppointments.find(apt => apt.id === appointmentId);
+    if (appointment) {
+      const totalServices = mockServices
+        .filter(s => s.appointment_id === appointmentId)
+        .reduce((sum, s) => sum + s.estimated_price, 0);
+      appointment.total_amount = totalServices;
+    }
+
+    console.log('✅ MSW: Service created successfully (unit test):', newService);
+    console.log('📊 MSW: Updated appointment total:', appointment?.total_amount);
+
+    // Match backend response format: just return the service ID
+    console.log('🎯 MSW: About to return service ID response:', { id: newService.id });
     return HttpResponse.json({
       id: newService.id
     }, { status: 201 });

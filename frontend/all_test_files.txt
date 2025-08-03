@@ -1,0 +1,429 @@
+src/tests/integration/happyPath.it.tsx > Happy Path Integration Workflow > Core User Journey: Calendar → Board → Drawer → Add Service → Status Change > should complete the full happy path workflow successfully
+src/tests/integration/happyPath.it.tsx > Happy Path Integration Workflow > Core User Journey: Calendar → Board → Drawer → Add Service → Status Change > should handle API errors gracefully during the workflow
+src/tests/integration/happyPath.it.tsx > Happy Path Integration Workflow > Core User Journey: Calendar → Board → Drawer → Add Service → Status Change > should support keyboard navigation throughout the workflow
+src/tests/integration/happyPath.it.tsx > Happy Path Integration Workflow > Happy Path Data Verification > should load and display happy path appointment data correctly
+src/tests/integration/happyPath.it.tsx > Happy Path Integration Workflow > Happy Path Data Verification > should make real HTTP calls that are intercepted by MSW
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Edge Cases - Argument Handling > should handle mock creation with no parameters
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Edge Cases - Argument Handling > should handle repeated mock creation
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Edge Cases - Argument Handling > should handle extreme time values
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Edge Cases - Argument Handling > should handle invalid time formats gracefully
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Edge Cases - Argument Handling > should handle large time advances
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Error Handling - Exception Safety > should handle API failure simulation correctly
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Error Handling - Exception Safety > should handle API failure rate edge cases
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Error Handling - Exception Safety > should handle notification operations with extreme data
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Error Handling - Exception Safety > should handle concurrent mock operations
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Performance - Resource Usage > should handle rapid mock creation efficiently
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Performance - Resource Usage > should not leak memory with repeated operations
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Performance - Resource Usage > should handle large notification datasets efficiently
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Integration - Real-world Scenarios > should work with async/await patterns
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Integration - Real-world Scenarios > should work with Promise.all scenarios
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Integration - Real-world Scenarios > should work with withMocks helper in complex scenarios
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Integration - Real-world Scenarios > should maintain state isolation between tests
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Compatibility - Framework Integration > should work with Vitest mocking patterns
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Compatibility - Framework Integration > should integrate with existing test patterns
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Compatibility - Framework Integration > should work with error boundary simulation
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Recovery - Graceful Degradation > should reset to clean state after errors
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Recovery - Graceful Degradation > should handle resetAll multiple times safely
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Recovery - Graceful Degradation > should maintain type safety after reset
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Security - Input Validation > should handle malicious time input safely
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Security - Input Validation > should handle malicious notification content safely
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Security - Input Validation > should not expose internal implementation details
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Circular Dependencies - Prevention > should not have circular references in mock objects
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Circular Dependencies - Prevention > should work without global vi.mock interference
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Robustness Analysis > Circular Dependencies - Prevention > should isolate mock instances completely
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Performance Benchmarks > should have minimal memory footprint
+src/tests/mock-factory-robustness.test.ts > MOCK-FACTORY-001 Performance Benchmarks > should have fast setup and teardown
+src/tests/integration/errorScenarios-canonical.it.tsx > Error Path Integration Tests > Appointment Update Errors > should handle 500 errors on appointment update gracefully
+src/tests/integration/errorScenarios-canonical.it.tsx > Error Path Integration Tests > Authorization Errors > should handle 401 unauthorized access errors
+src/tests/integration/errorScenarios-canonical.it.tsx > Error Path Integration Tests > Network Timeout Handling > should handle network timeouts on board loading
+src/tests/integration/errorScenarios-canonical.it.tsx > Error Path Integration Tests > Dashboard Stats Errors > should handle 500 errors on dashboard stats loading
+src/tests/integration/errorScenarios-canonical.it.tsx > Error Path Integration Tests > Error Scenario Isolation > should properly isolate error scenarios between tests
+src/tests/appointments.optimisticMove.test.tsx > AppointmentContext.optimisticMove - Enhanced with Mock Factory > success path with enhanced mock factory
+src/tests/appointments.optimisticMove.test.tsx > AppointmentContext.optimisticMove - Enhanced with Mock Factory > generic 500 error path rolls back and shows error toast
+src/tests/appointments.optimisticMove.test.tsx > AppointmentContext.optimisticMove - Enhanced with Mock Factory > 429 rate limit path rolls back and shows rate-limit toast
+src/tests/appointments.optimisticMove.test.tsx > AppointmentContext.optimisticMove - Enhanced with Mock Factory > 400 invalid-transition path rolls back and shows invalid-transition toast
+src/tests/appointments.optimisticMove.test.tsx > AppointmentContext.optimisticMove - Enhanced with Mock Factory > should track mock factory metrics and request patterns
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > Allowlist System > should allow whitelisted console errors without failing
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > Allowlist System > should allow MSW-related warnings
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > Allowlist System > should allow AppointmentContext errors
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > Console Error Detection > should fail tests with unexpected console.error after completion
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > Console Error Detection > should fail tests with unexpected console.warn after completion
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > Console Error Detection > should allow console.log normally
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > withConsoleErrorSpy Helper > should allow expected errors when using withConsoleErrorSpy
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > withConsoleErrorSpy Helper > should handle async operations in withConsoleErrorSpy
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > Circular Reference Handling > should handle circular objects safely in allowlist checking
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > Complex Arguments > should handle multiple arguments of different types safely
+src/tests/services.crud.enhanced.test.tsx > Enhanced Services CRUD in AppointmentDrawer - userEvent Migration > displays existing services correctly
+src/tests/services.crud.enhanced.test.tsx > Enhanced Services CRUD in AppointmentDrawer - userEvent Migration > adds a new service successfully with userEvent
+src/tests/services.crud.enhanced.test.tsx > Enhanced Services CRUD in AppointmentDrawer - userEvent Migration > validates required fields when adding service
+src/tests/services.crud.enhanced.test.tsx > Enhanced Services CRUD in AppointmentDrawer - userEvent Migration > edits an existing service with userEvent
+src/tests/services.crud.enhanced.test.tsx > Enhanced Services CRUD in AppointmentDrawer - userEvent Migration > deletes a service with confirmation using userEvent
+src/tests/services.crud.enhanced.test.tsx > Enhanced Services CRUD in AppointmentDrawer - userEvent Migration > cancels delete when user declines confirmation
+src/tests/services.crud.enhanced.test.tsx > Enhanced Services CRUD in AppointmentDrawer - userEvent Migration > handles API errors gracefully
+src/tests/services.crud.enhanced.test.tsx > Enhanced Services CRUD in AppointmentDrawer - userEvent Migration > validates numeric inputs properly
+src/tests/services.crud.enhanced.test.tsx > Enhanced Services CRUD in AppointmentDrawer - userEvent Migration > shows empty state when no services exist
+src/tests/services.crud.enhanced.test.tsx > Enhanced Services CRUD in AppointmentDrawer - userEvent Migration > handles concurrent operations with userEvent
+src/tests/services.crud.enhanced.test.tsx > Enhanced Services CRUD in AppointmentDrawer - userEvent Migration > handles form clearing and reentry with userEvent
+src/tests/services.crud.enhanced.test.tsx > Enhanced Services CRUD in AppointmentDrawer - userEvent Migration > handles keyboard navigation and accessibility
+src/tests/services.crud.test.tsx > Services CRUD in AppointmentDrawer > displays existing services correctly
+src/tests/services.crud.test.tsx > Services CRUD in AppointmentDrawer > adds a new service successfully
+src/tests/services.crud.test.tsx > Services CRUD in AppointmentDrawer > validates required fields when adding service
+src/tests/services.crud.test.tsx > Services CRUD in AppointmentDrawer > edits an existing service
+src/tests/services.crud.test.tsx > Services CRUD in AppointmentDrawer > deletes a service with confirmation
+src/tests/services.crud.test.tsx > Services CRUD in AppointmentDrawer > cancels delete when user declines confirmation
+src/tests/services.crud.test.tsx > Services CRUD in AppointmentDrawer > handles API errors gracefully
+src/tests/services.crud.test.tsx > Services CRUD in AppointmentDrawer > validates numeric inputs
+src/tests/services.crud.test.tsx > Services CRUD in AppointmentDrawer > shows empty state when no services exist
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Business Hours Edge Cases > should handle exact boundary times
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Business Hours Edge Cases > should handle weekend boundary times
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Business Hours Edge Cases > should handle invalid date inputs
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Business Days Calculation Edge Cases > should handle zero business days
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Business Days Calculation Edge Cases > should handle negative input
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Business Days Calculation Edge Cases > should skip weekends correctly
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Business Days Calculation Edge Cases > should skip holidays correctly
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Business Days Calculation Edge Cases > should handle large numbers of days
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Appointment Duration Edge Cases > should handle same start and end times
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Appointment Duration Edge Cases > should handle end time before start time
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Appointment Duration Edge Cases > should handle invalid date inputs
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Appointment Duration Edge Cases > should handle very short durations
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Appointment Duration Edge Cases > should handle cross-day appointments
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Valid Appointment Time Edge Cases > should reject past appointments
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Valid Appointment Time Edge Cases > should require 15-minute intervals
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Valid Appointment Time Edge Cases > should reject holiday appointments
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Valid Appointment Time Edge Cases > should handle midnight and edge times
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Next Available Slot Edge Cases > should handle invalid preferred dates
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Next Available Slot Edge Cases > should handle invalid duration
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Next Available Slot Edge Cases > should find slot later in the day if preferred time is invalid
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Next Available Slot Edge Cases > should handle appointments that would end after business hours
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Next Available Slot Edge Cases > should return null if no slots available within search limit
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Date Formatting Edge Cases > should handle invalid dates gracefully
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Date Formatting Edge Cases > should handle extreme dates
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Date Formatting Edge Cases > should handle DST boundary dates
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Time Parsing Edge Cases > should handle various invalid inputs
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Time Parsing Edge Cases > should handle ambiguous date strings
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Time Parsing Edge Cases > should parse valid ISO strings
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Timezone Handling Edge Cases > should handle invalid dates
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Timezone Handling Edge Cases > should return numeric offset
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Holiday Detection Edge Cases > should handle invalid dates
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Holiday Detection Edge Cases > should correctly identify known holidays
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Holiday Detection Edge Cases > should handle leap year dates
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Slot Rounding Edge Cases > should handle invalid inputs
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Slot Rounding Edge Cases > should handle zero or negative slot minutes
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Slot Rounding Edge Cases > should round up correctly
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Slot Rounding Edge Cases > should handle exact slot times
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Slot Rounding Edge Cases > should handle hour boundaries
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Business Days Addition Edge Cases > should handle invalid date input
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Business Days Addition Edge Cases > should handle negative business days
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Business Days Addition Edge Cases > should handle zero business days
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Business Days Addition Edge Cases > should skip weekends when going backwards
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Weekend Detection Edge Cases > should handle invalid dates
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Weekend Detection Edge Cases > should correctly identify all days of week
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Performance and Memory Edge Cases > should handle rapid successive calls efficiently
+src/tests/coverageBackfill/dateUtils.edge.test.ts > Date Utils - Critical Edge Cases Coverage > Performance and Memory Edge Cases > should not leak memory with large date ranges
+src/__tests__/designComponents.test.tsx > Design System Component Validation > CSS Variable Validation > should validate typography scale CSS variables
+src/__tests__/designComponents.test.tsx > Design System Component Validation > CSS Variable Validation > should detect invalid typography scale
+src/__tests__/designComponents.test.tsx > Design System Component Validation > CSS Variable Validation > should validate spacing scale CSS variables
+src/__tests__/designComponents.test.tsx > Design System Component Validation > CSS Variable Validation > should detect missing CSS variables
+src/__tests__/designComponents.test.tsx > Design System Component Validation > Design System Class Validation > should validate typography classes
+src/__tests__/designComponents.test.tsx > Design System Component Validation > Design System Class Validation > should validate spacing classes
+src/__tests__/designComponents.test.tsx > Design System Component Validation > Accessibility Testing > should validate element accessibility
+src/__tests__/designComponents.test.tsx > Design System Component Validation > Accessibility Testing > should detect accessibility violations
+src/__tests__/designComponents.test.tsx > Design System Component Validation > Performance Monitoring > should measure CSS performance
+src/__tests__/designComponents.test.tsx > Design System Component Validation > Performance Monitoring > should provide optimized CSS variable access
+src/__tests__/designComponents.test.tsx > Design System Component Validation > Performance Monitoring > should track CSS measurement performance
+src/__tests__/designComponents.test.tsx > Design System Component Validation > Design Token Validation > should validate design tokens
+src/__tests__/designComponents.test.tsx > Design System Component Validation > Design Token Validation > should validate CSS runtime state
+src/__tests__/designComponents.test.tsx > Design System Component Validation > CSS Variable Integration > should get CSS variables correctly
+src/__tests__/designComponents.test.tsx > Design System Component Validation > CSS Variable Integration > should create design system classes
+src/__tests__/designComponents.test.tsx > Design System Component Validation > CSS Variable Integration > should handle missing CSS variables gracefully
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Edge Cases - Arguments Handling > should handle console.error with no arguments
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Edge Cases - Arguments Handling > should handle console.warn with no arguments
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Edge Cases - Arguments Handling > should handle console.error with undefined arguments
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Edge Cases - Arguments Handling > should handle console.error with objects
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Edge Cases - Arguments Handling > should handle console.error with circular references
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Edge Cases - Arguments Handling > should handle console.error with very long strings
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Edge Cases - Arguments Handling > should handle console.error with special characters
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Error Handling - Exception Safety > should handle errors thrown during argument processing
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Error Handling - Exception Safety > should handle console.error called from within error handlers
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Error Handling - Exception Safety > should maintain stack trace information
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Performance - Resource Usage > should handle rapid console calls efficiently
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Performance - Resource Usage > should not leak memory with repeated calls
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Integration - Real-world Scenarios > should work with async operations
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Integration - Real-world Scenarios > should work with Promise chains
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Integration - Real-world Scenarios > should work with setTimeout callbacks
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Integration - Real-world Scenarios > should work with event handlers
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Compatibility - Framework Integration > should work with React error boundaries
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Compatibility - Framework Integration > should work with Vitest mocks
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Compatibility - Framework Integration > should work with axios interceptors simulation
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Recovery - Graceful Degradation > should preserve original console methods in global scope
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Recovery - Graceful Degradation > should allow manual restoration if needed
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Configuration - Environment Handling > should respect CI environment variable
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Configuration - Environment Handling > should work in different NODE_ENV settings
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Security - Input Sanitization > should handle malicious input safely
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Robustness Analysis > Security - Input Sanitization > should not execute code in console arguments
+src/tests/ci-strict-robustness.test.ts > CI-STRICT-001 Performance Benchmarks > should have minimal overhead on test startup
+src/tests/integration/harness.it.tsx > MSW Integration Server > should provide realistic API responses
+src/tests/integration/harness.it.tsx > MSW Integration Server > should handle appointment creation
+src/tests/integration/harness.it.tsx > MSW Integration Server > should handle appointment status updates
+src/tests/integration/harness.it.tsx > MSW Integration Server > should handle services CRUD operations
+src/tests/integration/harness.it.tsx > MSW Integration Server > should provide dashboard stats
+src/tests/integration/harness.it.tsx > MSW Integration Server > should print MSW enabled message
+src/__tests__/designSystem.jsx.test.tsx > Design System JSX Environment Tests > Typography Scale Rendering > should render typography component with design system class
+src/__tests__/designSystem.jsx.test.tsx > Design System JSX Environment Tests > Typography Scale Rendering > should render different typography scales
+src/__tests__/designSystem.jsx.test.tsx > Design System JSX Environment Tests > Typography Scale Rendering > should handle custom className prop
+src/__tests__/designSystem.jsx.test.tsx > Design System JSX Environment Tests > Spacing Scale Rendering > should render spacing component with design system class
+src/__tests__/designSystem.jsx.test.tsx > Design System JSX Environment Tests > Spacing Scale Rendering > should render different spacing scales
+src/__tests__/designSystem.jsx.test.tsx > Design System JSX Environment Tests > Spacing Scale Rendering > should handle zero spacing (sp-0)
+src/__tests__/designSystem.jsx.test.tsx > Design System JSX Environment Tests > Combined Design System Usage > should render component with multiple design system classes
+src/__tests__/designSystem.jsx.test.tsx > Design System JSX Environment Tests > Combined Design System Usage > should render nested elements with design system classes
+src/__tests__/designSystem.jsx.test.tsx > Design System JSX Environment Tests > JSX Environment Validation > should have access to DOM APIs
+src/__tests__/designSystem.jsx.test.tsx > Design System JSX Environment Tests > JSX Environment Validation > should support CSS class manipulation in jsdom
+src/__tests__/designSystem.jsx.test.tsx > Design System JSX Environment Tests > JSX Environment Validation > should support React component rendering and unmounting
+src/__tests__/designSystem.jsx.test.tsx > Design System JSX Environment Tests > JSX Environment Validation > should support element attribute access
+src/__tests__/designSystem.jsx.test.tsx > Design System JSX Environment Tests > JSX Environment Validation > should support style property access
+src/__tests__/designSystem.jsx.test.tsx > Design System JSX Environment Tests > Error Boundary Testing > should handle missing props gracefully
+src/__tests__/designSystem.jsx.test.tsx > Design System JSX Environment Tests > Error Boundary Testing > should handle empty className prop
+src/__tests__/designSystem.jsx.test.tsx > Design System JSX Environment Tests > Error Boundary Testing > should handle undefined scale gracefully
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > createTestMocks() factory function > should create isolated mocks without circular dependencies
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > createTestMocks() factory function > should provide working time mocks
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > createTestMocks() factory function > should provide working API mocks
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > createTestMocks() factory function > should provide working notification mocks
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > createTestMocks() factory function > should reset all mocks correctly
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > withMocks() helper > should provide mocks to test function
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > withMocks() helper > should handle async test functions
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > withMocks() helper > should automatically reset mocks after test
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > withMocks() helper > should verify mocks were reset from previous test
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > Integration scenarios > should handle appointment timing workflow
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > Integration scenarios > should handle API error scenarios
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > Integration scenarios > should handle complex notification scenarios
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > No circular dependencies > should not have cross-references between mocks
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > No circular dependencies > should work without global vi.mock declarations
+src/tests/ci-strict-robustness-edge-cases.test.ts > CI-STRICT-001 Robustness Edge Cases > should handle circular object references safely
+src/tests/ci-strict-robustness-edge-cases.test.ts > CI-STRICT-001 Robustness Edge Cases > should handle objects with throwing toString methods
+src/tests/ci-strict-robustness-edge-cases.test.ts > CI-STRICT-001 Robustness Edge Cases > should handle null and undefined arguments
+src/tests/ci-strict-robustness-edge-cases.test.ts > CI-STRICT-001 Robustness Edge Cases > should handle complex nested objects
+src/tests/ci-strict-robustness-edge-cases.test.ts > CI-STRICT-001 Robustness Edge Cases > should handle no arguments gracefully
+src/tests/ci-strict-robustness-edge-cases.test.ts > CI-STRICT-001 Robustness Edge Cases > should handle very large objects safely
+src/tests/ci-strict-robustness-edge-cases.test.ts > CI-STRICT-001 Robustness Edge Cases > should preserve error context and stack traces
+src/tests/ci-strict-robustness-edge-cases.test.ts > CI-STRICT-001 Robustness Edge Cases > should handle mixed argument types
+src/tests/ci-strict-robustness-edge-cases.test.ts > CI-STRICT-001 Robustness Edge Cases > should handle special characters and unicode
+src/tests/ci-strict-robustness-edge-cases.test.ts > CI-STRICT-001 Robustness Edge Cases > should handle async context (preserves functionality)
+src/tests/sprint3c-simple.test.tsx > Sprint 3C: Time Utilities - Enhanced with Redesigned Mock Factory > can use dependency injection time utilities
+src/tests/sprint3c-simple.test.tsx > Sprint 3C: Time Utilities - Enhanced with Redesigned Mock Factory > appointment timing calculations with dependency injection
+src/tests/sprint3c-simple.test.tsx > Sprint 3C: Time Utilities - Enhanced with Redesigned Mock Factory > appointment status logic with dependency injection
+src/tests/sprint3c-simple.test.tsx > Sprint 3C: Time Utilities - Enhanced with Redesigned Mock Factory > time progression simulation with dependency injection
+src/tests/sprint3c-simple.test.tsx > Sprint 3C: Time Utilities - Enhanced with Redesigned Mock Factory > duration formatting with dependency injection
+src/tests/sprint3c-simple.test.tsx > Sprint 3C: Time Utilities - Enhanced with Redesigned Mock Factory > cache management with dependency injection
+src/tests/verify-ci-strict.test.ts > CI-STRICT-001 Verification > console.log should work normally
+src/tests/verify-ci-strict.test.ts > CI-STRICT-001 Verification > verify console.error is overridden
+src/tests/verify-ci-strict.test.ts > CI-STRICT-001 Verification > verify console.warn is overridden
+src/tests/verify-ci-strict.test.ts > CI-STRICT-001 Verification > should handle circular objects safely
+src/tests/verify-ci-strict.test.ts > CI-STRICT-001 Verification > should handle null and undefined
+src/tests/verify-ci-strict.test.ts > CI-STRICT-001 Verification > should handle no arguments
+src/tests/localStorage-persistence-simple.test.tsx > localStorage Persistence Solution > should save form state to localStorage with proper structure
+src/tests/localStorage-persistence-simple.test.tsx > localStorage Persistence Solution > should load form state from localStorage with expiration check
+src/tests/localStorage-persistence-simple.test.tsx > localStorage Persistence Solution > should clear form state from localStorage
+src/tests/localStorage-persistence-simple.test.tsx > localStorage Persistence Solution > should handle localStorage errors gracefully
+src/tests/localStorage-persistence-simple.test.tsx > localStorage Persistence Solution > should demonstrate the architectural solution for form persistence
+src/tests/integration/errorScenarios.it.tsx > P2-T-006: Error Path Integration Tests > API 500 Server Error Scenarios > should handle appointment update 500 error with proper error feedback
+src/tests/integration/errorScenarios.it.tsx > P2-T-006: Error Path Integration Tests > API 500 Server Error Scenarios > should handle appointment creation 500 error gracefully
+src/tests/integration/errorScenarios.it.tsx > P2-T-006: Error Path Integration Tests > Authentication Error (401) Scenarios > should handle unauthorized access and redirect to login
+src/tests/integration/errorScenarios.it.tsx > P2-T-006: Error Path Integration Tests > Authentication Error (401) Scenarios > should clear user session on 401 response
+src/tests/integration/errorScenarios.it.tsx > P2-T-006: Error Path Integration Tests > Network Delay and Timeout Scenarios > should handle dashboard stats loading delay with proper loading states
+src/tests/integration/errorScenarios.it.tsx > P2-T-006: Error Path Integration Tests > Network Delay and Timeout Scenarios > should maintain app responsiveness during network delays
+src/tests/integration/errorScenarios.it.tsx > P2-T-006: Error Path Integration Tests > Error Recovery and Retry Mechanisms > should provide retry functionality for failed operations
+src/tests/integration/errorScenarios.it.tsx > P2-T-006: Error Path Integration Tests > Error Recovery and Retry Mechanisms > should gracefully handle multiple concurrent error scenarios
+src/tests/integration/errorScenarios.it.tsx > P2-T-006: Error Path Integration Tests > Error Boundary and Fallback UI > should display appropriate fallback UI for component errors
+src/tests/integration/errorScenarios.it.tsx > P2-T-006: Error Path Integration Tests > Error Boundary and Fallback UI > should maintain core functionality when non-critical features fail
+src/tests/integration/errorScenarios.it.tsx > P2-T-006: Error Path Integration Tests > Performance and Memory Management > should not cause memory leaks during error scenarios
+src/tests/integration/errorScenarios.it.tsx > P2-T-006: Error Path Integration Tests > Performance and Memory Management > should handle rapid error scenario changes gracefully
+src/tests/integration/errorScenarios.it.tsx > P2-T-006: Error Path Integration Tests > P2-T-006: Critical Error Path Requirements > should handle PATCH /appointments/:id 500 error with error toast and retry button
+src/tests/integration/errorScenarios.it.tsx > P2-T-006: Error Path Integration Tests > P2-T-006: Critical Error Path Requirements > should handle 401 on protected endpoints with redirect to login
+src/tests/integration/errorScenarios.it.tsx > P2-T-006: Error Path Integration Tests > P2-T-006: Critical Error Path Requirements > should handle network delay >3s for GET /dashboard/stats with loading states
+src/tests/integration/errorScenarios.it.tsx > P2-T-006: Error Path Integration Tests > P2-T-006: Critical Error Path Requirements > should ensure all error interactions are wrapped in act() and handle async properly
+src/tests/integration/errorScenarios.it.tsx > P2-T-006: Error Path Integration Tests > should complete all error scenarios without uncaught promise rejections
+src/tests/console-strict.test.ts > CI-STRICT-001: Console Strict Mode > should throw when console.error is called
+src/tests/console-strict.test.ts > CI-STRICT-001: Console Strict Mode > should throw when console.warn is called
+src/tests/console-strict.test.ts > CI-STRICT-001: Console Strict Mode > should allow console.log to work normally
+src/tests/console-strict.test.ts > CI-STRICT-001: Console Strict Mode > should handle multiple arguments in console.error
+src/tests/console-strict.test.ts > CI-STRICT-001: Console Strict Mode > should handle multiple arguments in console.warn
+src/tests/console-strict.test.ts > CI-STRICT-001: Demonstration Test (REMOVE AFTER VERIFICATION) > should fail CI when console.warn is called (TEMPORARY)
+src/tests/console-override-test.test.ts > Console Override Test > should pass with normal console.log
+src/tests/console-override-test.test.ts > Console Override Test > should throw error when console.error is called
+src/tests/console-override-test.test.ts > Console Override Test > should throw error when console.warn is called
+src/tests/integration/errorScenariosThirdWay.it.tsx > P2-T-006: Third Way Error Scenarios Integration > should handle appointment update 500 error with proper fallback UI
+src/tests/integration/errorScenariosThirdWay.it.tsx > P2-T-006: Third Way Error Scenarios Integration > should handle unauthorized access with redirect behavior
+src/tests/integration/errorScenariosThirdWay.it.tsx > P2-T-006: Third Way Error Scenarios Integration > should handle network timeout with loading states
+src/tests/integration/errorScenariosThirdWay.it.tsx > P2-T-006: Third Way Error Scenarios Integration > should maintain clean state between error scenario tests
+src/tests/integration/errorScenariosThirdWay.it.tsx > P2-T-006: Third Way Error Scenarios Integration > should demonstrate withCleanErrorState utility
+src/tests/simple-act.test.ts > Simple Act Warning Test > should run basic test
+src/tests/simple-act.test.ts > Simple Act Warning Test > should verify console.error override works
+src/tests/simple-act.test.ts > Simple Act Warning Test > should verify console.warn override works
+src/tests/simple-act.test.ts > Simple Act Warning Test > console.log should work normally (not overridden)
+src/tests/integration/errorScenarios-enhanced.it.tsx > P2-T-006: Error Path Integration Tests > P2-T-006: Critical Error Path Requirements > should handle PATCH /appointments/:id 500 error with error toast and retry button
+src/tests/integration/errorScenarios-enhanced.it.tsx > P2-T-006: Error Path Integration Tests > P2-T-006: Critical Error Path Requirements > should handle 401 on protected endpoints with redirect to login
+src/tests/integration/errorScenarios-enhanced.it.tsx > P2-T-006: Error Path Integration Tests > P2-T-006: Critical Error Path Requirements > should handle network delay >3s for GET /dashboard/stats with loading states
+src/tests/integration/errorScenarios-enhanced.it.tsx > P2-T-006: Error Path Integration Tests > P2-T-006: Critical Error Path Requirements > should ensure all error interactions are wrapped in act() and handle async properly
+src/tests/integration/errorScenarios-enhanced.it.tsx > P2-T-006: Error Path Integration Tests > API 500 Server Error Scenarios > should handle appointment update 500 error with proper error feedback
+src/tests/integration/errorScenarios-enhanced.it.tsx > P2-T-006: Error Path Integration Tests > API 500 Server Error Scenarios > should handle appointment creation 500 error gracefully
+src/tests/integration/errorScenarios-enhanced.it.tsx > P2-T-006: Error Path Integration Tests > Authentication Error (401) Scenarios > should handle unauthorized access and redirect to login
+src/tests/integration/errorScenarios-enhanced.it.tsx > P2-T-006: Error Path Integration Tests > Authentication Error (401) Scenarios > should clear user session on 401 response
+src/tests/integration/errorScenarios-enhanced.it.tsx > P2-T-006: Error Path Integration Tests > Network Delay and Timeout Scenarios > should handle dashboard stats loading delay with proper loading states
+src/tests/integration/errorScenarios-enhanced.it.tsx > P2-T-006: Error Path Integration Tests > Network Delay and Timeout Scenarios > should maintain app responsiveness during network delays
+src/tests/integration/errorScenarios-enhanced.it.tsx > P2-T-006: Error Path Integration Tests > Error Recovery and Retry Mechanisms > should provide retry functionality for failed operations
+src/tests/integration/errorScenarios-enhanced.it.tsx > P2-T-006: Error Path Integration Tests > Error Recovery and Retry Mechanisms > should gracefully handle multiple concurrent error scenarios
+src/tests/integration/errorScenarios-enhanced.it.tsx > P2-T-006: Error Path Integration Tests > should complete all error scenarios without uncaught promise rejections
+src/tests/ci-strict-basic-robustness.test.ts > CI-STRICT-001 Basic Robustness > should work with basic console.error
+src/tests/time-mock-test.it.tsx > Time Utility Mocks Test > should use mocked time utility functions
+src/tests/console-guard.test.ts > CI-STRICT-001 Console Guard > should allow whitelisted console errors without failing
+src/tests/console-guard.test.ts > CI-STRICT-001 Console Guard > should allow withConsoleErrorSpy to temporarily disable strict checking
+src/tests/console-guard.test.ts > CI-STRICT-001 Console Guard > should handle nested async operations in withConsoleErrorSpy
+src/tests/act-warnings.test.tsx > P1-T-005: React act() Warnings Detection > SHOULD trigger act() warnings with unwrapped fireEvent
+src/tests/act-warnings.test.tsx > P1-T-005: React act() Warnings Detection > SHOULD NOT trigger act() warnings with userEvent
+src/tests/act-warnings.test.tsx > P1-T-005: React act() Warnings Detection > sync fireEvent should NOT trigger act() warnings
+src/tests/act-warnings.test.tsx > P1-T-005: React act() Warnings Detection > multiple rapid fireEvent calls should trigger act() warnings
+src/tests/timer-utils.test.ts > Timer Utilities > should handle flushPromises correctly
+src/tests/timer-utils.test.ts > Timer Utilities > should export timer utilities correctly
+src/tests/console-guard-working.test.ts > Console Guard Tests > should allow whitelisted console messages
+src/tests/console-guard-working.test.ts > Console Guard Tests > should use withConsoleErrorSpy for expected errors
+src/tests/act-warnings-clean.test.tsx > P1-T-005: React Act() Warning Detection Tests > SHOULD trigger act() warnings with unwrapped fireEvent.change + fireEvent.click
+src/tests/act-warnings-clean.test.tsx > P1-T-005: React Act() Warning Detection Tests > SHOULD NOT trigger act() warnings with userEvent
+src/tests/act-warnings-clean.test.tsx > P1-T-005: React Act() Warning Detection Tests > SHOULD NOT trigger act() warnings with properly wrapped fireEvent
+src/tests/act-warnings-clean.test.tsx > P1-T-005: React Act() Warning Detection Tests > SHOULD NOT trigger act() warnings with asyncEvent helper
+src/tests/act-warnings-clean.test.tsx > P1-T-005: React Act() Warning Detection Tests > SHOULD NOT trigger act() warnings with asyncEvent convenience methods
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Mock Factory Creation > should create a mock factory with all components
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Mock Factory Creation > should create time mocks with expected functions
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Mock Factory Creation > should create API mocks with expected functions
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Mock Factory Creation > should create notification mocks with expected functions
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Time Mock Functionality > should provide time manipulation functions
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Time Mock Functionality > should calculate minutes correctly
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Time Mock Functionality > should format duration correctly
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > API Mock Functionality > should provide realistic appointment data
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > API Mock Functionality > should track request count
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Notification Mock Functionality > should create and manage notifications
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Notification Mock Functionality > should handle appointment notifications
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Mock Factory Integration > should reset all mocks
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Mock Factory Integration > should apply global mocks without errors
+src/tests/MessageThread.test.tsx > MessageThread > renders message thread with messages
+src/tests/MessageThread.test.tsx > MessageThread > renders empty state when no messages
+src/tests/MessageThread.test.tsx > MessageThread > allows sending a new message
+src/tests/MessageThread.test.tsx > MessageThread > validates empty messages
+src/tests/MessageThread.test.tsx > MessageThread > handles API errors when sending messages
+src/tests/CustomerHistory.test.tsx > CustomerHistory > renders loading state initially
+src/tests/CustomerHistory.test.tsx > CustomerHistory > renders empty state when no appointments
+src/tests/CustomerHistory.test.tsx > CustomerHistory > renders error state and allows retry
+src/tests/CustomerHistory.test.tsx > CustomerHistory > renders appointments grouped by year
+src/tests/CustomerHistory.test.tsx > CustomerHistory > expands and collapses year sections
+src/tests/CustomerHistory.test.tsx > CustomerHistory > calls onAppointmentClick when appointment is clicked
+src/tests/CustomerHistory.test.tsx > CustomerHistory > displays appointment status with correct styling
+src/tests/CustomerHistory.test.tsx > CustomerHistory > shows payment information correctly
+src/tests/asyncEvent.demo.test.tsx > ACT-HELPER-001: AsyncEvent Helper Demonstration > OLD WAY: Manual act() wrapping (verbose)
+src/tests/asyncEvent.demo.test.tsx > ACT-HELPER-001: AsyncEvent Helper Demonstration > NEW WAY: asyncEvent helper (clean)
+src/tests/asyncEvent.demo.test.tsx > ACT-HELPER-001: AsyncEvent Helper Demonstration > CONVENIENCE: Using asyncChange and asyncClick helpers
+src/tests/asyncEvent.demo.test.tsx > ACT-HELPER-001: AsyncEvent Helper Demonstration > BULK OPERATIONS: Multiple events in single asyncEvent call
+src/tests/asyncEvent.demo.test.tsx > ACT-HELPER-001: AsyncEvent Helper Demonstration > SEMANTIC ALIAS: Using wrapUserAction for clarity
+src/tests/dashboardStats.v2.test.tsx > DashboardStats v2 Enhancements > renders loading skeletons when stats are null
+src/tests/dashboardStats.v2.test.tsx > DashboardStats v2 Enhancements > renders legacy stats and new v2 metrics
+src/tests/dashboardStats.v2.test.tsx > DashboardStats v2 Enhancements > displays progress bar for jobs today vs booked
+src/tests/dashboardStats.v2.test.tsx > DashboardStats v2 Enhancements > handles missing totals gracefully
+src/tests/dashboardStats.v2.test.tsx > DashboardStats v2 Enhancements > handles zero booked jobs correctly
+src/tests/dashboardStats.v2.test.tsx > DashboardStats v2 Enhancements > calls refreshStats when refresh button is clicked
+src/tests/dashboardStats.v2.test.tsx > DashboardStats v2 Enhancements > uses responsive grid layout
+src/tests/integration/renderWithProviders.it.tsx > renderWithProviders Integration Helper > should render the full app without throwing errors
+src/tests/integration/renderWithProviders.it.tsx > renderWithProviders Integration Helper > should handle authentication state
+src/tests/integration/renderWithProviders.it.tsx > renderWithProviders Integration Helper > should work with different user roles
+src/tests/integration/renderWithProviders.it.tsx > renderWithProviders Integration Helper > should print MSW enabled message
+src/components/__tests__/Button.test.tsx > renders button with text
+src/__tests__/designTokens.test.ts > Design System Token Validation > Design System Type Definitions > should have correct typography scale tokens
+src/__tests__/designTokens.test.ts > Design System Token Validation > Design System Type Definitions > should have correct spacing scale tokens
+src/__tests__/designTokens.test.ts > Design System Token Validation > Design System Type Definitions > should have fallback values for all tokens
+src/__tests__/designTokens.test.ts > Design System Token Validation > Design System Type Definitions > should have CSS variable mappings for all tokens
+src/__tests__/designTokens.test.ts > Design System Token Validation > Performance Thresholds > should have defined performance thresholds
+src/__tests__/designTokens.test.ts > Design System Token Validation > Performance Thresholds > should have accessibility requirements defined
+src/__tests__/designTokens.test.ts > Design System Token Validation > Performance Thresholds > should have focus indicator requirements
+src/__tests__/designTokens.test.ts > Design System Token Validation > Error Handling and Fallbacks > should provide fallback styles when CSS variables fail
+src/__tests__/designTokens.test.ts > Design System Token Validation > Error Handling and Fallbacks > should handle SSR environment gracefully
+src/__tests__/designTokens.test.ts > Design System Token Validation > Error Handling and Fallbacks > should validate design tokens without DOM
+src/__tests__/designTokens.test.ts > Design System Token Validation > CSS Integration Tests > should have consistent modular scale ratios
+src/__tests__/designTokens.test.ts > Design System Token Validation > CSS Integration Tests > should have consistent spacing increments
+src/__tests__/designTokens.test.ts > Design System Token Validation > CSS Integration Tests > should have accessible color contrast ratios
+src/__tests__/designTokens.test.ts > Design System Token Validation > CSS Integration Tests > should have logical typography scale progression
+src/__tests__/designTokens.test.ts > Design System Token Validation > CSS Integration Tests > should have logical spacing scale progression
+src/__tests__/designTokens.test.ts > Design System Token Validation > Utility Functions (Non-DOM) > should measure CSS performance without DOM dependencies
+src/__tests__/designTokens.test.ts > Design System Token Validation > Utility Functions (Non-DOM) > should handle initialization in Node environment
+src/__tests__/designTokens.test.ts > Design System Token Validation > Utility Functions (Non-DOM) > should handle CSS performance monitoring initialization
+src/__tests__/designTokens.test.ts > Design System Token Validation > Utility Functions (Non-DOM) > should handle validation in Node environment gracefully
+src/__tests__/designTokens.test.ts > Design System Token Validation > Token Value Validation > should have valid CSS unit values
+src/__tests__/designTokens.test.ts > Design System Token Validation > Token Value Validation > should have valid fallback unit values
+src/__tests__/designTokens.test.ts > Design System Token Validation > Token Value Validation > should have consistent rem to px conversion ratios
+src/__tests__/designTokens.test.ts > Design System Token Validation > Type Safety Validation > should have proper TypeScript types
+src/__tests__/designTokens.test.ts > Design System Token Validation > Type Safety Validation > should have consistent token naming
+src/components/__tests__/ActWarning.test.tsx > Act Warning Detection > unwrapped fireEvent should trigger act() warning
+src/__tests__/designSystem.simple.test.tsx > renders design system component with typography and spacing classes
+src/__tests__/designSystem.simple.test.tsx > renders with default design system values
+src/__tests__/designSystem.simple.test.tsx > supports custom children content
+src/__tests__/designSystem.simple.test.tsx > validates jsdom environment has DOM APIs
+src/__tests__/designSystem.simple.test.tsx > supports CSS class manipulation in jsdom
+src/__tests__/designSystem.simple.test.tsx > Design System Typography Scales > renders different typography scales correctly
+src/__tests__/designSystem.simple.test.tsx > Design System Typography Scales > handles edge case scales
+src/__tests__/designSystem.simple.test.tsx > Design System Spacing Scales > renders different spacing scales correctly
+src/__tests__/designSystem.simple.test.tsx > Design System Spacing Scales > handles zero spacing correctly
+src/components/__tests__/ServiceList.test.tsx > renders a list of services
+src/components/__tests__/ServiceCard.test.tsx > shows service name and description
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > Path Alias Resolution > resolves @/utils/* aliases correctly
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > Path Alias Resolution > resolves @/services/* aliases correctly
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > Path Alias Resolution > resolves @/components/* aliases correctly
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > Path Alias Resolution > resolves @/tests/* aliases correctly
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > jsdom Environment > provides complete DOM APIs
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > jsdom Environment > supports React component rendering
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > jsdom Environment > mocks unavailable browser APIs
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > Enhanced Mock Support > provides vi mocking utilities
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > Enhanced Mock Support > supports module mocking
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > Enhanced Mock Support > enables spying on existing functions
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > Performance and Testing Environment > loads test environment within acceptable time
+src/__tests__/designSystem.minimal.test.tsx > minimal design system jsx test
+src/tests/sprint7-t3-simple.test.tsx > Sprint 7 T3: Vitest Configuration > resolves path aliases correctly
+src/tests/sprint7-t3-simple.test.tsx > Sprint 7 T3: Vitest Configuration > supports React component testing
+src/tests/sprint7-t3-simple.test.tsx > Sprint 7 T3: Vitest Configuration > provides jsdom environment
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Labor Cost Calculation > should calculate basic labor cost correctly
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Labor Cost Calculation > should handle zero hours and rate
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Labor Cost Calculation > should throw error for negative values
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Labor Cost Calculation > should round to 2 decimal places
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Parts Cost Calculation > should calculate parts cost with default markup
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Parts Cost Calculation > should calculate parts cost with custom markup
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Parts Cost Calculation > should handle empty parts array
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Parts Cost Calculation > should handle multiple quantities correctly
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Tax Calculation > should calculate tax correctly
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Tax Calculation > should handle zero tax rate
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Tax Calculation > should handle negative subtotal
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Tax Calculation > should round to 2 decimal places
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Discount Calculation > should calculate percentage discount correctly
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Discount Calculation > should calculate fixed discount correctly
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Discount Calculation > should limit percentage discount to maximum
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Discount Calculation > should not allow fixed discount to exceed subtotal
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Discount Calculation > should handle edge cases
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Total Calculation > should calculate total correctly
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Total Calculation > should never return negative total
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Total Calculation > should handle zero values
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Business Rules Application > should apply correct modifiers for service types
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Business Rules Application > should handle unknown service types
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Business Rules Application > should round results properly
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Complete Service Price Calculation > should calculate complete service price correctly
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Complete Service Price Calculation > should handle service without parts
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Complete Service Price Calculation > should apply business rules to complete calculation
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Price Validation > should validate correct calculation
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Price Validation > should detect calculation errors
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Price Validation > should detect negative values
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Price Validation > should generate warnings for high amounts
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Price Validation > should warn about high discounts
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Edge Cases and Error Handling > should handle very small amounts
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Edge Cases and Error Handling > should handle very large amounts
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Edge Cases and Error Handling > should maintain precision with complex calculations
+src/tests/basic-mock-test.test.ts > P1-T-002: Basic Mock Factory Test > should create mocks without circular dependencies
+src/tests/basic-mock-test.test.ts > P1-T-002: Basic Mock Factory Test > should provide working time calculations
+src/tests/simple-console.test.ts > Simple console test > should pass normally
+src/tests/simple-console.test.ts > Simple console test > console test
+src/tests/ci-strict-live-test.test.ts > CI-STRICT-001 Live Test > should pass normally
+src/services/__tests__/api.integration.test.ts > serviceAPI > getAll retries on failure
+src/tests/minimal.test.ts > basic test works
+src/tests/ci-strict.test.ts > CI-STRICT-001: Console error detection > should pass when no console errors are logged
