@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --reporter=basic --maxConcurrency=4",
     "test:coverage-json": "vitest run --coverage --reporter=basic --coverage.reporter=json --maxConcurrency=4",
+    "test:coverage-check": "npm run test:coverage && node scripts/coverage/check.js",
     "test:integration": "vitest run --config vitest.config.ts src/tests/integration --maxConcurrency=4",
     "test:strict": "VITEST_STRICT_CONSOLE=true vitest --run --maxConcurrency=4",
     "test:ci": "VITEST_STRICT_CONSOLE=true vitest --run --reporter=verbose --silent=false --maxConcurrency=4",

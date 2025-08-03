@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { AppointmentProvider } from '../contexts/AppointmentContext';
+import { ToastProvider } from '../components/ui/Toast';
 
 // Mock the API module
 vi.mock('@/lib/api', () => ({
@@ -42,6 +43,18 @@ vi.mock('@/lib/api', () => ({
       estimated_price: 100,
       category: 'Test'
     }
+  }),
+  getBoard: vi.fn().mockResolvedValue({
+    appointments: [],
+    stats: { total: 0, scheduled: 0, completed: 0 }
+  }),
+  getStats: vi.fn().mockResolvedValue({
+    total: 0,
+    scheduled: 0,
+    completed: 0
+  }),
+  handleApiError: vi.fn().mockImplementation((error, defaultMessage) => {
+    return defaultMessage || 'An error occurred';
   })
 }));
 
@@ -70,11 +83,13 @@ import AppointmentDrawer from '../components/admin/AppointmentDrawer';
 // Test wrapper
 function TestWrapper({ children }: { children: React.ReactNode }) {
   return (
-    <BrowserRouter>
-      <AppointmentProvider>
-        {children}
-      </AppointmentProvider>
-    </BrowserRouter>
+    <ToastProvider>
+      <BrowserRouter>
+        <AppointmentProvider>
+          {children}
+        </AppointmentProvider>
+      </BrowserRouter>
+    </ToastProvider>
   );
 }
 
@@ -126,30 +141,44 @@ describe('localStorage Persistence Fix', () => {
 
     // Start typing in the service name field
     const serviceNameInput = screen.getByLabelText(/service name/i);
+    
+    // Clear the field first and then type
+    await user.clear(serviceNameInput);
     await user.type(serviceNameInput, 'Oil Change');
+
+    // Add a small delay to ensure typing is complete
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Wait for all typing to complete and check field value
+    await waitFor(() => {
+      expect(serviceNameInput).toHaveValue('Oil Change');
+    }, { timeout: 3000 });
 
     // Check if localStorage was updated
     await waitFor(() => {
       const storedData = localStorage.getItem(storageKey);
       expect(storedData).toBeTruthy();
-      
-      const parsed = JSON.parse(storedData!);
-      expect(parsed.formState.name).toBe('Oil Change');
-      expect(parsed.isAdding).toBe(true);
-      expect(parsed.timestamp).toBeLessThanOrEqual(Date.now());
     });
+    
+    const storedData = localStorage.getItem(storageKey);
+    const parsed = JSON.parse(storedData!);
+    expect(parsed.formState.name).toBe('Oil Change');
+    expect(parsed.isAdding).toBe(true);
+    expect(parsed.timestamp).toBeLessThanOrEqual(Date.now());
 
     // Type in notes field
     const notesInput = screen.getByLabelText(/notes/i);
     await user.type(notesInput, 'Full synthetic oil');
 
-    // Verify localStorage is updated with notes
+    // Wait for typing to complete and verify localStorage is updated with notes
     await waitFor(() => {
-      const storedData = localStorage.getItem(storageKey);
-      const parsed = JSON.parse(storedData!);
-      expect(parsed.formState.name).toBe('Oil Change');
-      expect(parsed.formState.notes).toBe('Full synthetic oil');
+      expect(notesInput).toHaveValue('Full synthetic oil');
     });
+    
+    const updatedStoredData = localStorage.getItem(storageKey);
+    const updatedParsed = JSON.parse(updatedStoredData!);
+    expect(updatedParsed.formState.name).toBe('Oil Change');
+    expect(updatedParsed.formState.notes).toBe('Full synthetic oil');
   });
 
   it('should restore form state from localStorage on component re-render', async () => {
