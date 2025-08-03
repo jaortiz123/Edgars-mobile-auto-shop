@@ -1,10 +1,34 @@
 import { vi } from 'vitest';
 import type { AdminAppointment, BoardColumn, BoardCard, DrawerPayload } from '@/types/admin';
 
-// Global variable to track mock failure rate for this specific test session
-let localMockApiFailureRate = 0;
+// Export factory function that test setup expects
+export function createMocks() {
+  // Local state for this mock instance
+  let localMockCurrentTime = new Date('2024-01-15T10:00:00Z').getTime();
+  let localMockNotifications: Array<{
+    id: string;
+    type: string;
+    message: string;
+    appointmentId?: string;
+    timestamp: Date;
+    read?: boolean;
+  }> = [];
+  let localMockApiFailureRate = 0;
+  
+  // Helper function for time calculations within this instance
+  const calculateMinutesUntilLocal = (startTime: Date | string | number): number => {
+    try {
+      const date = typeof startTime === 'string' || typeof startTime === 'number' ? new Date(startTime) : startTime;
+      const now = new Date(localMockCurrentTime);
+      const diffMs = date.getTime() - now.getTime();
+      return Math.floor(diffMs / (1000 * 60));
+    } catch (error) {
+      console.log('🔧 MOCK: calculateMinutesUntilLocal error:', error);
+      return 0;
+    }
+  };
 
-export const api = {
+  const api = {
   // Network simulation
   simulateFailureRate: (rate: number) => {
     localMockApiFailureRate = rate;
@@ -75,37 +99,29 @@ export const api = {
   // Appointment operations
   getAppointments: vi.fn().mockImplementation(() => {
     console.log('🔧 MOCK: getAppointments called');
+    if (Math.random() < localMockApiFailureRate) {
+      throw new Error('Network error');
+    }
     return Promise.resolve({
-      appointments: [
-        {
-          id: 'apt-happy-1',
-          status: 'SCHEDULED',
-          start_ts: '2024-01-15T14:00:00Z',
-          end_ts: '2024-01-15T15:00:00Z',
-          total_amount: 250.00,
-          paid_amount: 0,
-          customer_name: 'Happy Path Customer',
-          vehicle_label: '2020 Toyota Camry',
-          customer_id: 'cust-happy-1',
-          vehicle_id: 'veh-happy-1',
-          tech_id: null,
-          notes: 'Happy path test appointment'
-        },
-        {
-          id: 'apt-happy-2',
-          status: 'IN_PROGRESS',
-          start_ts: '2024-01-15T16:00:00Z',
-          end_ts: '2024-01-15T17:00:00Z',
-          total_amount: 450.00,
-          paid_amount: 450.00,
-          customer_name: 'Another Customer',
-          vehicle_label: '2019 Honda Civic',
-          customer_id: 'cust-happy-2',
-          vehicle_id: 'veh-happy-2',
-          tech_id: 'tech-1',
-          notes: 'Secondary test appointment'
-        }
-      ] as AdminAppointment[]
+      success: true,
+      data: {
+        items: [
+          {
+            id: 'apt-1',
+            customer_name: 'John Doe',
+            service: 'Oil Change',
+            appointment_time: '2024-01-15T10:00:00Z',
+            status: 'confirmed'
+          },
+          {
+            id: 'apt-2',
+            customer_name: 'Jane Smith',
+            service: 'Brake Inspection',
+            appointment_time: '2024-01-15T14:00:00Z',
+            status: 'pending'
+          }
+        ]
+      }
     });
   }),
 
@@ -316,6 +332,15 @@ export const api = {
 export function createMocks() {
   // Local state for this mock instance
   let localMockCurrentTime = new Date('2024-01-15T10:00:00Z').getTime();
+  let localMockNotifications: Array<{
+    id: string;
+    type: string;
+    message: string;
+    appointmentId?: string;
+    timestamp: Date;
+    read?: boolean;
+  }> = [];
+  let localMockApiFailureRate = 0;
   
   // Helper function for time calculations within this instance
   const calculateMinutesUntilLocal = (startTime: Date | string | number): number => {
@@ -377,11 +402,12 @@ export function createMocks() {
           return false;
         }
       }),
-      isRunningLate: vi.fn().mockImplementation((startTime: Date | string | number, lateThresholdMinutes: number = 10, options: Record<string, unknown> = {}) => {
+      isRunningLate: vi.fn().mockImplementation((startTime: Date | string | number, lateThresholdMinutes: number = 5, options: Record<string, unknown> = {}) => {
         console.log('🔧 MOCK: isRunningLate called with startTime:', startTime, 'lateThresholdMinutes:', lateThresholdMinutes, 'options:', options);
         try {
           const minutesUntil = calculateMinutesUntilLocal(startTime);
-          const result = minutesUntil < 0 && Math.abs(minutesUntil) >= lateThresholdMinutes;
+          // Running late means: past the appointment time (minutesUntil < 0) but within the threshold
+          const result = minutesUntil < 0 && Math.abs(minutesUntil) <= lateThresholdMinutes;
           console.log('🔧 MOCK: isRunningLate result:', result, 'minutesUntil:', minutesUntil);
           return result;
         } catch (error) {
@@ -389,11 +415,13 @@ export function createMocks() {
           return false;
         }
       }),
-      isOverdue: vi.fn().mockImplementation((startTime: Date | string | number, overdueThresholdMinutes: number = 30, options: Record<string, unknown> = {}) => {
+      isOverdue: vi.fn().mockImplementation((startTime: Date | string | number, overdueThresholdMinutes: number = 15, options: Record<string, unknown> = {}) => {
         console.log('🔧 MOCK: isOverdue called with startTime:', startTime, 'overdueThresholdMinutes:', overdueThresholdMinutes, 'options:', options);
         try {
           const minutesUntil = calculateMinutesUntilLocal(startTime);
-          const result = minutesUntil < -overdueThresholdMinutes;
+          // Overdue means: past the appointment time by more than the threshold
+          // minutesUntil is negative when past the appointment time
+          const result = minutesUntil < 0 && Math.abs(minutesUntil) > overdueThresholdMinutes;
           console.log('🔧 MOCK: isOverdue result:', result, 'minutesUntil:', minutesUntil);
           return result;
         } catch (error) {
@@ -412,23 +440,135 @@ export function createMocks() {
       advanceTime: vi.fn().mockImplementation((minutes: number) => {
         console.log('🔧 MOCK: advanceTime called with:', minutes);
         localMockCurrentTime += minutes * 60 * 1000; // Add minutes in milliseconds
+      }),
+      formatDuration: vi.fn().mockImplementation((minutes: number) => {
+        console.log('🔧 MOCK: formatDuration called with:', minutes);
+        if (minutes < 60) {
+          return `${minutes}m`;
+        }
+        const hours = Math.floor(minutes / 60);
+        const remainingMinutes = minutes % 60;
+        if (remainingMinutes === 0) {
+          return `${hours}h`;
+        }
+        return `${hours}h ${remainingMinutes}m`;
+      }),
+      clearTimeCache: vi.fn().mockImplementation(() => {
+        console.log('🔧 MOCK: clearTimeCache called');
+        return true;
+      }),
+      getTimeCacheStats: vi.fn().mockImplementation(() => {
+        console.log('🔧 MOCK: getTimeCacheStats called');
+        return {
+          size: 0,
+          hitRate: 0.85,
+          memoryUsage: 0
+        };
       })
     },
     notification: {
-      notifyArrival: vi.fn().mockImplementation((customerName: string) => {
-        console.log('🔧 MOCK: notifyArrival called with:', customerName);
-        return `arrival-${Date.now()}`;
+      notifyArrival: vi.fn().mockImplementation((customerName: string, appointmentId?: string) => {
+        console.log('🔧 MOCK: notifyArrival called with:', customerName, appointmentId);
+        const id = `arrival-${Date.now()}`;
+        localMockNotifications.push({
+          id,
+          type: 'arrival',
+          message: `${customerName} has arrived`,
+          appointmentId,
+          timestamp: new Date()
+        });
+        return id;
       }),
-      getNotificationCount: vi.fn().mockImplementation(() => 0),
-      addNotification: vi.fn().mockImplementation(() => `notif-${Date.now()}`),
-      removeNotification: vi.fn().mockImplementation(() => true),
-      markAsRead: vi.fn().mockImplementation(() => true),
-      getNotifications: vi.fn().mockImplementation(() => []),
-      clearAll: vi.fn().mockImplementation(() => {})
+      notifyReminder: vi.fn().mockImplementation((customerName: string, minutesUntil: number, appointmentId?: string) => {
+        console.log('🔧 MOCK: notifyReminder called with:', customerName, minutesUntil, appointmentId);
+        const id = `reminder-${Date.now()}`;
+        localMockNotifications.push({
+          id,
+          type: 'reminder',
+          message: `Reminder: ${customerName} appointment in ${minutesUntil} minutes`,
+          appointmentId,
+          timestamp: new Date()
+        });
+        return id;
+      }),
+      notifyLate: vi.fn().mockImplementation((customerName: string, minutesLate: number, appointmentId?: string) => {
+        console.log('🔧 MOCK: notifyLate called with:', customerName, minutesLate, appointmentId);
+        const id = `late-${Date.now()}`;
+        localMockNotifications.push({
+          id,
+          type: 'late',
+          message: `${customerName} is ${minutesLate} minutes late`,
+          appointmentId,
+          timestamp: new Date()
+        });
+        return id;
+      }),
+      notifyOverdue: vi.fn().mockImplementation((customerName: string, minutesOverdue: number, appointmentId?: string) => {
+        console.log('🔧 MOCK: notifyOverdue called with:', customerName, minutesOverdue, appointmentId);
+        const id = `overdue-${Date.now()}`;
+        localMockNotifications.push({
+          id,
+          type: 'overdue',
+          message: `${customerName} is ${minutesOverdue} minutes overdue`,
+          appointmentId,
+          timestamp: new Date()
+        });
+        return id;
+      }),
+      getNotificationCount: vi.fn().mockImplementation(() => {
+        console.log('🔧 MOCK: getNotificationCount called - count:', localMockNotifications.length);
+        return localMockNotifications.length;
+      }),
+      getNotificationsByType: vi.fn().mockImplementation((type: string) => {
+        console.log('🔧 MOCK: getNotificationsByType called with type:', type);
+        const filtered = localMockNotifications.filter(n => n.type === type);
+        console.log('🔧 MOCK: getNotificationsByType returning:', filtered.length, 'notifications');
+        return filtered;
+      }),
+      addNotification: vi.fn().mockImplementation((notification: unknown) => {
+        const id = `mock-${Date.now()}`;
+        localMockNotifications.push({
+          id,
+          type: 'general',
+          message: typeof notification === 'string' ? notification : (notification as { message: string }).message,
+          timestamp: new Date()
+        });
+        return id;
+      }),
+      removeNotification: vi.fn().mockImplementation((id: string) => {
+        const index = localMockNotifications.findIndex(n => n.id === id);
+        if (index > -1) {
+          localMockNotifications.splice(index, 1);
+          return true;
+        }
+        return false;
+      }),
+      markAsRead: vi.fn().mockImplementation((id: string) => {
+        const notification = localMockNotifications.find(n => n.id === id);
+        if (notification) {
+          notification.read = true;
+          return true;
+        }
+        return false;
+      }),
+      markNotificationAsRead: vi.fn().mockImplementation((id: string) => {
+        const notification = localMockNotifications.find(n => n.id === id);
+        if (notification) {
+          notification.read = true;
+          return true;
+        }
+        return false;
+      }),
+      getNotifications: vi.fn().mockImplementation(() => [...localMockNotifications]),
+      clearAll: vi.fn().mockImplementation(() => {
+        localMockNotifications.length = 0;
+      })
     },
     api,
     resetAll: vi.fn().mockImplementation(() => {
       vi.clearAllMocks();
+      localMockCurrentTime = new Date('2024-01-15T10:00:00Z').getTime();
+      localMockNotifications.length = 0;
     })
   };
 }
@@ -441,6 +581,9 @@ interface TimeMock {
   isStartingSoon: ReturnType<typeof vi.fn>;
   isRunningLate: ReturnType<typeof vi.fn>;
   isOverdue: ReturnType<typeof vi.fn>;
+  formatDuration: ReturnType<typeof vi.fn>;
+  clearTimeCache: ReturnType<typeof vi.fn>;
+  getTimeCacheStats: ReturnType<typeof vi.fn>;
   setCurrentTime: ReturnType<typeof vi.fn>;
   getCurrentTime: ReturnType<typeof vi.fn>;
   advanceTime: ReturnType<typeof vi.fn>;
@@ -448,10 +591,15 @@ interface TimeMock {
 
 interface NotificationMock {
   notifyArrival: ReturnType<typeof vi.fn>;
+  notifyReminder: ReturnType<typeof vi.fn>;
+  notifyLate: ReturnType<typeof vi.fn>;
+  notifyOverdue: ReturnType<typeof vi.fn>;
   getNotificationCount: ReturnType<typeof vi.fn>;
+  getNotificationsByType: ReturnType<typeof vi.fn>;
   addNotification: ReturnType<typeof vi.fn>;
   removeNotification: ReturnType<typeof vi.fn>;
   markAsRead: ReturnType<typeof vi.fn>;
+  markNotificationAsRead: ReturnType<typeof vi.fn>;
   getNotifications: ReturnType<typeof vi.fn>;
   clearAll: ReturnType<typeof vi.fn>;
 }

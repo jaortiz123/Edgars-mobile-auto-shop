@@ -31,7 +31,8 @@
     "@vitest/ui": "^3.2.4",
     "jest-axe": "^10.0.0",
     "monocart-reporter": "^2.9.21",
-    "start-server-and-test": "^2.0.12"
+    "start-server-and-test": "^2.0.12",
+    "why-is-node-running": "^3.2.2"
   },
   "dependencies": {
     "axios": "^1.10.0",

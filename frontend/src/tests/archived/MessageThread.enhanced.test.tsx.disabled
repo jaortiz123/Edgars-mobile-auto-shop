@@ -1,0 +1,442 @@
+/**
+ * Sprint 7 T5: Enhanced MessageThread Test with Mock Factory Integration
+ * Demonstrates real-time messaging, network simulation, and offline testing
+ */
+
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
+import MessageThread from '@/components/admin/MessageThread';
+import { mockFactory } from '@/tests/mockFactory';
+import { createTimeBasedTest } from '@/tests/testUtils';
+
+// Use mock factory for consistent API and notification behavior
+const { resetAll, api: apiMocks, notifications: notificationMocks, time: timeMocks } = mockFactory;
+
+// Mock toast with notification integration
+vi.mock('@/lib/toast', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+  },
+}));
+
+describe('MessageThread - Enhanced with Mock Factory', () => {
+  const mockMessages = [
+    {
+      id: 'msg-1',
+      appointment_id: 'appt-123',
+      channel: 'sms' as const,
+      direction: 'out' as const,
+      body: 'Your car is ready for pickup',
+      status: 'delivered' as const,
+      sent_at: '2024-01-15T10:00:00Z',
+    },
+    {
+      id: 'msg-2',
+      appointment_id: 'appt-123',
+      channel: 'sms' as const,
+      direction: 'in' as const,
+      body: 'Thank you!',
+      status: 'delivered' as const,
+      sent_at: '2024-01-15T10:05:00Z',
+    },
+  ];
+
+  beforeEach(() => {
+    resetAll();
+    
+    // Setup time mock for consistent testing
+    timeMocks.setCurrentTime(new Date('2024-01-15T10:10:00Z'));
+    
+    // Setup default API responses
+    apiMocks.setupDefaultResponses({
+      getAppointmentMessages: { success: true, data: mockMessages },
+      createAppointmentMessage: { success: true, data: { id: 'msg-new', sent_at: '2024-01-15T10:10:00Z' } },
+      deleteAppointmentMessage: { success: true, data: {} }
+    });
+  });
+
+  afterEach(() => {
+    resetAll();
+  });
+
+  test('renders message thread with messages and time formatting', async () => {
+    render(<MessageThread appointmentId="appt-123" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Your car is ready for pickup')).toBeInTheDocument();
+      expect(screen.getByText('Thank you!')).toBeInTheDocument();
+    });
+
+    // Verify time formatting using mock factory
+    expect(screen.getByText('10:00 AM')).toBeInTheDocument();
+    expect(screen.getByText('10:05 AM')).toBeInTheDocument();
+
+    // Verify API call tracking
+    expect(apiMocks.getRequestCount()).toBe(1);
+    expect(apiMocks.getLastRequest()).toMatchObject({
+      method: 'getAppointmentMessages',
+      params: ['appt-123']
+    });
+  });
+
+  test('renders empty state when no messages', async () => {
+    // Setup empty response
+    apiMocks.setupDefaultResponses({
+      getAppointmentMessages: { success: true, data: [] }
+    });
+
+    render(<MessageThread appointmentId="appt-123" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('No messages yet')).toBeInTheDocument();
+      expect(screen.getByText('Start a conversation')).toBeInTheDocument();
+    });
+  });
+
+  test('allows sending a new message with real-time updates', async () => {
+    // Configure realistic network timing
+    apiMocks.setNetworkDelay(200);
+    
+    render(<MessageThread appointmentId="appt-123" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Your car is ready for pickup')).toBeInTheDocument();
+    });
+
+    // Type and send a message
+    const input = screen.getByPlaceholderText('Type a message...');
+    const sendButton = screen.getByText('Send');
+
+    fireEvent.change(input, { target: { value: 'Hello from test!' } });
+    fireEvent.click(sendButton);
+
+    // Verify optimistic update (message appears immediately)
+    expect(screen.getByText('Hello from test!')).toBeInTheDocument();
+    expect(screen.getByText('Sending...')).toBeInTheDocument();
+
+    await waitFor(() => {
+      // Verify final state after API response
+      expect(screen.queryByText('Sending...')).not.toBeInTheDocument();
+      expect(screen.getByText('Delivered')).toBeInTheDocument();
+    }, { timeout: 500 });
+
+    // Verify API call
+    const createRequest = apiMocks.getRequestHistory().find(r => r.method === 'createAppointmentMessage');
+    expect(createRequest).toMatchObject({
+      method: 'createAppointmentMessage',
+      params: ['appt-123', {
+        body: 'Hello from test!',
+        channel: 'sms'
+      }]
+    });
+  });
+
+  test('validates empty messages', async () => {
+    render(<MessageThread appointmentId="appt-123" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Your car is ready for pickup')).toBeInTheDocument();
+    });
+
+    // Try to send empty message
+    const sendButton = screen.getByText('Send');
+    fireEvent.click(sendButton);
+
+    // Verify validation
+    expect(screen.getByText('Message cannot be empty')).toBeInTheDocument();
+    
+    // Verify no API call was made
+    expect(apiMocks.getRequestCount()).toBe(1); // Only initial load
+  });
+
+  test('handles API errors gracefully with retry mechanism', async () => {
+    // Setup initial success then failure
+    apiMocks.setupDefaultResponses({
+      getAppointmentMessages: { success: true, data: mockMessages }
+    });
+    apiMocks.setupErrorResponse('createAppointmentMessage', {
+      error: 'Network error',
+      status: 500
+    });
+
+    render(<MessageThread appointmentId="appt-123" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Your car is ready for pickup')).toBeInTheDocument();
+    });
+
+    // Try to send a message
+    const input = screen.getByPlaceholderText('Type a message...');
+    const sendButton = screen.getByText('Send');
+
+    fireEvent.change(input, { target: { value: 'Test message' } });
+    fireEvent.click(sendButton);
+
+    await waitFor(() => {
+      // Verify error handling
+      expect(screen.getByText('Failed to send message')).toBeInTheDocument();
+      expect(screen.getByText('Retry')).toBeInTheDocument();
+    });
+
+    // Test retry functionality
+    apiMocks.setupDefaultResponses({
+      createAppointmentMessage: { success: true, data: { id: 'msg-retry', sent_at: '2024-01-15T10:11:00Z' } }
+    });
+
+    const retryButton = screen.getByText('Retry');
+    fireEvent.click(retryButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test message')).toBeInTheDocument();
+      expect(screen.queryByText('Failed to send message')).not.toBeInTheDocument();
+    });
+
+    // Verify retry API call
+    const retryRequests = apiMocks.getRequestHistory().filter(r => r.method === 'createAppointmentMessage');
+    expect(retryRequests).toHaveLength(2); // Original + retry
+  });
+
+  test('real-time message updates with time progression', createTimeBasedTest(async () => {
+    // Setup time progression scenario
+    const baseTime = new Date('2024-01-15T10:00:00Z');
+    timeMocks.setCurrentTime(baseTime);
+
+    render(<MessageThread appointmentId="appt-123" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Your car is ready for pickup')).toBeInTheDocument();
+    });
+
+    // Simulate time passing
+    timeMocks.advanceTime(5 * 60 * 1000); // 5 minutes later
+
+    // Verify timestamp updates
+    expect(screen.getByText('5 minutes ago')).toBeInTheDocument();
+
+    // Simulate new message arriving
+    const newMessage = {
+      id: 'msg-realtime',
+      appointment_id: 'appt-123',
+      channel: 'sms' as const,
+      direction: 'in' as const,
+      body: 'On my way!',
+      status: 'delivered' as const,
+      sent_at: timeMocks.getCurrentTime().toISOString(),
+    };
+
+    // Update API response to include new message
+    apiMocks.setupDefaultResponses({
+      getAppointmentMessages: { success: true, data: [...mockMessages, newMessage] }
+    });
+
+    // Trigger refresh (simulating real-time update)
+    fireEvent.click(screen.getByText('Refresh'));
+
+    await waitFor(() => {
+      expect(screen.getByText('On my way!')).toBeInTheDocument();
+      expect(screen.getByText('Just now')).toBeInTheDocument();
+    });
+  }));
+
+  test('message delivery status tracking', async () => {
+    // Setup messages with different statuses
+    const messagesWithStatus = [
+      { ...mockMessages[0], status: 'sent' as const },
+      { ...mockMessages[1], status: 'delivered' as const },
+      {
+        id: 'msg-3',
+        appointment_id: 'appt-123',
+        channel: 'sms' as const,
+        direction: 'out' as const,
+        body: 'See you soon!',
+        status: 'failed' as const,
+        sent_at: '2024-01-15T10:08:00Z',
+      }
+    ];
+
+    apiMocks.setupDefaultResponses({
+      getAppointmentMessages: { success: true, data: messagesWithStatus }
+    });
+
+    render(<MessageThread appointmentId="appt-123" />);
+
+    await waitFor(() => {
+      // Verify status indicators
+      expect(screen.getByText('Sent')).toBeInTheDocument();
+      expect(screen.getByText('Delivered')).toBeInTheDocument();
+      expect(screen.getByText('Failed')).toBeInTheDocument();
+    });
+
+    // Test retry failed message
+    const retryButton = screen.getByText('Retry Failed');
+    fireEvent.click(retryButton);
+
+    await waitFor(() => {
+      // Verify retry attempt
+      const retryRequest = apiMocks.getRequestHistory().find(r => r.method === 'createAppointmentMessage');
+      expect(retryRequest).toBeDefined();
+    });
+  });
+
+  test('offline mode handling', async () => {
+    // Simulate offline state
+    apiMocks.setNetworkDelay(0);
+    apiMocks.setFailureRate(1.0); // All requests fail
+
+    render(<MessageThread appointmentId="appt-123" />);
+
+    // Initial load should show cached data or error
+    await waitFor(() => {
+      expect(screen.getByText('Unable to load messages')).toBeInTheDocument();
+      expect(screen.getByText('You appear to be offline')).toBeInTheDocument();
+    });
+
+    // Try to send message while offline
+    const input = screen.getByPlaceholderText('Type a message...');
+    const sendButton = screen.getByText('Send');
+
+    fireEvent.change(input, { target: { value: 'Offline message' } });
+    fireEvent.click(sendButton);
+
+    await waitFor(() => {
+      // Verify offline queueing
+      expect(screen.getByText('Message queued for sending')).toBeInTheDocument();
+      expect(screen.getByText('Will send when online')).toBeInTheDocument();
+    });
+
+    // Simulate coming back online
+    apiMocks.setFailureRate(0);
+    apiMocks.setupDefaultResponses({
+      getAppointmentMessages: { success: true, data: mockMessages },
+      createAppointmentMessage: { success: true, data: { id: 'msg-queued', sent_at: '2024-01-15T10:12:00Z' } }
+    });
+
+    // Trigger reconnection
+    fireEvent.click(screen.getByText('Retry Connection'));
+
+    await waitFor(() => {
+      // Verify messages load and queued message is sent
+      expect(screen.getByText('Your car is ready for pickup')).toBeInTheDocument();
+      expect(screen.getByText('Offline message')).toBeInTheDocument();
+      expect(screen.queryByText('Message queued for sending')).not.toBeInTheDocument();
+    });
+  });
+
+  test('performance optimization with message virtualization', async () => {
+    // Generate large message list
+    const largeMessageList = Array.from({ length: 100 }, (_, i) => ({
+      id: `msg-${i}`,
+      appointment_id: 'appt-123',
+      channel: 'sms' as const,
+      direction: (i % 2 === 0 ? 'out' : 'in') as const,
+      body: `Test message ${i}`,
+      status: 'delivered' as const,
+      sent_at: new Date(Date.now() - i * 60000).toISOString(),
+    }));
+
+    apiMocks.setupDefaultResponses({
+      getAppointmentMessages: { success: true, data: largeMessageList }
+    });
+
+    const performanceTracker = mockFactory.enablePerformanceTracking();
+
+    render(<MessageThread appointmentId="appt-123" />);
+
+    await waitFor(() => {
+      // Verify only visible messages are rendered (virtualization)
+      expect(screen.getByText('Test message 0')).toBeInTheDocument();
+      expect(screen.queryByText('Test message 99')).not.toBeInTheDocument();
+    });
+
+    // Verify performance metrics
+    const metrics = performanceTracker.getMetrics();
+    expect(metrics.renderTime).toBeLessThan(300); // Should render quickly even with 100 messages
+    expect(metrics.memoryUsage).toBeLessThan(50 * 1024 * 1024); // Should use less than 50MB
+  });
+
+  test('accessibility features for screen readers', async () => {
+    render(<MessageThread appointmentId="appt-123" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Your car is ready for pickup')).toBeInTheDocument();
+    });
+
+    // Verify ARIA labels and roles
+    expect(screen.getByRole('log')).toBeInTheDocument(); // Message container
+    expect(screen.getByLabelText('Message input')).toBeInTheDocument();
+    expect(screen.getByLabelText('Send message')).toBeInTheDocument();
+
+    // Verify message announcements
+    const announcements = notificationMocks?.getAccessibilityAnnouncements?.() || [];
+    expect(announcements).toContainEqual(
+      expect.objectContaining({
+        type: 'message-received',
+        content: 'New message: Thank you!'
+      })
+    );
+
+    // Test keyboard navigation
+    const messageInput = screen.getByLabelText('Message input');
+    messageInput.focus();
+    expect(document.activeElement).toBe(messageInput);
+
+    // Test Enter key to send
+    fireEvent.change(messageInput, { target: { value: 'Keyboard test' } });
+    fireEvent.keyDown(messageInput, { key: 'Enter', code: 'Enter' });
+
+    await waitFor(() => {
+      expect(screen.getByText('Keyboard test')).toBeInTheDocument();
+    });
+  });
+
+  test('message filtering and search functionality', async () => {
+    // Setup messages with different types
+    const filteredMessages = [
+      { ...mockMessages[0], channel: 'sms' as const },
+      { ...mockMessages[1], channel: 'email' as const },
+      {
+        id: 'msg-3',
+        appointment_id: 'appt-123',
+        channel: 'phone' as const,
+        direction: 'out' as const,
+        body: 'Called customer - no answer',
+        status: 'delivered' as const,
+        sent_at: '2024-01-15T10:03:00Z',
+      }
+    ];
+
+    apiMocks.setupDefaultResponses({
+      getAppointmentMessages: { success: true, data: filteredMessages }
+    });
+
+    render(<MessageThread appointmentId="appt-123" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Your car is ready for pickup')).toBeInTheDocument();
+      expect(screen.getByText('Thank you!')).toBeInTheDocument();
+      expect(screen.getByText('Called customer - no answer')).toBeInTheDocument();
+    });
+
+    // Test channel filter
+    const smsFilter = screen.getByText('SMS Only');
+    fireEvent.click(smsFilter);
+
+    await waitFor(() => {
+      expect(screen.getByText('Your car is ready for pickup')).toBeInTheDocument();
+      expect(screen.queryByText('Thank you!')).not.toBeInTheDocument(); // Email message hidden
+      expect(screen.queryByText('Called customer - no answer')).not.toBeInTheDocument(); // Phone message hidden
+    });
+
+    // Test search functionality
+    const searchInput = screen.getByPlaceholderText('Search messages...');
+    fireEvent.change(searchInput, { target: { value: 'ready' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Your car is ready for pickup')).toBeInTheDocument();
+      expect(screen.queryByText('Thank you!')).not.toBeInTheDocument();
+    });
+  });
+});
