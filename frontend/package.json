@@ -12,7 +12,7 @@
     "lint": "eslint .",
     "lint:ci": "eslint . --ext .ts,.tsx --max-warnings 0",
     "preview": "vite preview",
-    "test": "vitest run && npx why-is-node-running",
+    "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --reporter=basic",
     "test:coverage-json": "vitest run --coverage --reporter=basic --coverage.reporter=json",

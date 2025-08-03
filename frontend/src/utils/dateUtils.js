@@ -55,7 +55,30 @@ export function validateDate(input) {
     } else if (typeof input === 'string') {
       // Sanitize string input
       const sanitized = input.trim().replace(/[<>]/g, '');
-      date = new Date(sanitized);
+      
+      // Check for obviously invalid date strings
+      if (sanitized.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        // For YYYY-MM-DD format, validate components before parsing
+        const parts = sanitized.split('-');
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const day = parseInt(parts[2], 10);
+        
+        if (month < 1 || month > 12) return null;
+        if (day < 1 || day > 31) return null;
+        
+        // Check for February 30, April 31, etc.
+        const testDate = new Date(sanitized);
+        if (testDate.getFullYear() !== year || 
+            testDate.getMonth() !== month - 1 || 
+            testDate.getDate() !== day) {
+          return null; // Date was auto-corrected, so it was invalid
+        }
+        
+        date = testDate;
+      } else {
+        date = new Date(sanitized);
+      }
     } else if (typeof input === 'number') {
       date = new Date(input);
     } else {
@@ -382,4 +405,53 @@ export function roundToNearestInterval(date, intervalMinutes = 15) {
   roundedDate.setMinutes(roundedMinutes, 0, 0);
   
   return roundedDate;
+}
+
+/**
+ * Check if a date is a weekend (Saturday or Sunday)
+ * @param {Date|string} date - Date to check
+ * @returns {boolean} - True if weekend
+ */
+export function isWeekend(date) {
+  const validDate = validateDate(date);
+  if (!validDate) return false;
+  const day = validDate.getDay(); // Use local time to match test expectations
+  return day === 0 || day === 6;
+}
+
+/**
+ * Check if a date is a US holiday (Jan 1, July 4, Dec 25)
+ * @param {Date|string} date - Date to check
+ * @returns {boolean} - True if holiday
+ */
+export function isHoliday(date) {
+  const validDate = validateDate(date);
+  if (!validDate) return false;
+  const month = validDate.getMonth(); // Use local time to match test expectations
+  const day = validDate.getDate();
+  // US holidays: Jan 1, July 4, Dec 25
+  return (
+    (month === 0 && day === 1) ||
+    (month === 6 && day === 4) ||
+    (month === 11 && day === 25)
+  );
+}
+
+/**
+ * Parse appointment time string to Date object
+ * @param {string} timeString - Time string to parse
+ * @returns {Date|null} - Parsed date or null if invalid
+ */
+export function parseAppointmentTime(timeString) {
+  if (!timeString || typeof timeString !== 'string') return null;
+  
+  try {
+    const parsed = new Date(timeString);
+    if (isNaN(parsed.getTime())) return null;
+    
+    // Additional validation using our stricter validateDate
+    return validateDate(parsed);
+  } catch (error) {
+    return null;
+  }
 }

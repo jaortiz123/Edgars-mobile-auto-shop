@@ -134,6 +134,27 @@ const mockDateUtils: DateUtilsService = {
     if (!timeString || typeof timeString !== 'string') return null;
     
     try {
+      // Check for YYYY-MM-DD format and validate components
+      if (timeString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const parts = timeString.split('-');
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const day = parseInt(parts[2], 10);
+        
+        if (month < 1 || month > 12) return null;
+        if (day < 1 || day > 31) return null;
+        
+        // Check if the date gets auto-corrected (invalid)
+        const testDate = new Date(timeString);
+        if (testDate.getFullYear() !== year || 
+            testDate.getMonth() !== month - 1 || 
+            testDate.getDate() !== day) {
+          return null; // Date was auto-corrected, so it was invalid
+        }
+        
+        return testDate;
+      }
+      
       const parsed = new Date(timeString);
       if (isNaN(parsed.getTime())) return null;
       return parsed;
@@ -469,13 +490,13 @@ describe('Date Utils - Critical Edge Cases Coverage', () => {
     });
 
     it('should correctly identify known holidays', () => {
-      expect(dateUtils.isHoliday(new Date('2024-01-01'))).toBe(true); // New Year's
-      expect(dateUtils.isHoliday(new Date('2024-07-04'))).toBe(true); // July 4th
-      expect(dateUtils.isHoliday(new Date('2024-12-25'))).toBe(true); // Christmas
+      expect(dateUtils.isHoliday(new Date('2024-01-01T12:00:00Z'))).toBe(true); // New Year's
+      expect(dateUtils.isHoliday(new Date('2024-07-04T12:00:00Z'))).toBe(true); // July 4th
+      expect(dateUtils.isHoliday(new Date('2024-12-25T12:00:00Z'))).toBe(true); // Christmas
     });
 
     it('should handle leap year dates', () => {
-      expect(dateUtils.isHoliday(new Date('2024-02-29'))).toBe(false); // Leap day, not a holiday
+      expect(dateUtils.isHoliday(new Date('2024-02-29T12:00:00Z'))).toBe(false); // Leap day, not a holiday
     });
   });
 
@@ -547,13 +568,13 @@ describe('Date Utils - Critical Edge Cases Coverage', () => {
 
     it('should correctly identify all days of week', () => {
       const days = [
-        { date: new Date('2024-03-17'), expected: true },  // Sunday
-        { date: new Date('2024-03-18'), expected: false }, // Monday
-        { date: new Date('2024-03-19'), expected: false }, // Tuesday
-        { date: new Date('2024-03-20'), expected: false }, // Wednesday
-        { date: new Date('2024-03-21'), expected: false }, // Thursday
-        { date: new Date('2024-03-22'), expected: false }, // Friday
-        { date: new Date('2024-03-23'), expected: true },  // Saturday
+        { date: new Date('2024-03-17T12:00:00Z'), expected: true },  // Sunday UTC
+        { date: new Date('2024-03-18T12:00:00Z'), expected: false }, // Monday UTC
+        { date: new Date('2024-03-19T12:00:00Z'), expected: false }, // Tuesday UTC
+        { date: new Date('2024-03-20T12:00:00Z'), expected: false }, // Wednesday UTC
+        { date: new Date('2024-03-21T12:00:00Z'), expected: false }, // Thursday UTC
+        { date: new Date('2024-03-22T12:00:00Z'), expected: false }, // Friday UTC
+        { date: new Date('2024-03-23T12:00:00Z'), expected: true },  // Saturday UTC
       ];
 
       days.forEach(({ date, expected }) => {
