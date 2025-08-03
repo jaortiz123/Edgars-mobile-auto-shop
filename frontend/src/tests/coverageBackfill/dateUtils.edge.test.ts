@@ -5,25 +5,11 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-// Mock date utilities interface - these tests establish expected behavior
-interface DateUtilsService {
-  isBusinessHours(date: Date): boolean;
-  getBusinessDaysFromNow(days: number): Date;
-  calculateAppointmentDuration(start: Date, end: Date): number;
-  isValidAppointmentTime(date: Date): boolean;
-  getNextAvailableSlot(preferredDate: Date, durationMinutes: number): Date | null;
-  formatAppointmentTime(date: Date): string;
-  parseAppointmentTime(timeString: string): Date | null;
-  getTimezoneOffset(date: Date): number;
-  isHoliday(date: Date): boolean;
-  addBusinessDays(date: Date, days: number): Date;
-  getWeekdayName(date: Date): string;
-  isWeekend(date: Date): boolean;
-  roundToNearestSlot(date: Date, slotMinutes: number): Date;
-}
+// Import the actual dateUtils functions for coverage testing
+import * as dateUtils from '../../utils/dateUtils.js';
 
 // Mock implementation focusing on edge cases
-const mockDateUtils: DateUtilsService = {
+const mockDateUtils = {
   isBusinessHours(date: Date): boolean {
     if (!date || isNaN(date.getTime())) return false;
     

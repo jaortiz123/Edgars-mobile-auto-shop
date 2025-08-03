@@ -47,7 +47,8 @@ export default defineConfig({
     
     // 🎯 Coverage thresholds to prevent regression
     coverage: {
-      reporter: ['text', 'lcov'],
+      reporter: ['text', 'lcov', 'json', 'json-summary'],
+      reportsDirectory: './coverage',
       thresholds: {
         lines: 80,
         branches: 75,
