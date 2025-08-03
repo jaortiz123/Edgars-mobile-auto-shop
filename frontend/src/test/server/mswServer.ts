@@ -1019,9 +1019,6 @@ const handlers = [
   })
 ];
 
-// Create the server instance
-export const server = setupServer(...handlers);
-
 // Export handlers for potential reuse
 export { handlers };
 
@@ -1097,6 +1094,566 @@ export function resetMockData() {
 export function addCustomHandler(handler: Parameters<typeof server.use>[0]) {
   server.use(handler);
 }
+
+// ========== P2-T-006: ERROR SCENARIO CONFIGURATION ==========
+
+/**
+ * Error scenario configuration for testing failure conditions
+ */
+export interface ErrorScenarioConfig {
+  appointmentPatch500: boolean;
+  unauthorizedAccess: boolean;
+  dashboardStatsDelay: boolean;
+  dashboardStatsTimeout: boolean;
+  protectedEndpoints401: boolean;
+  networkTimeout: boolean;
+}
+
+// Global error scenario state
+const errorScenarios: ErrorScenarioConfig = {
+  appointmentPatch500: false,
+  unauthorizedAccess: false,
+  dashboardStatsDelay: false,
+  dashboardStatsTimeout: false,
+  protectedEndpoints401: false,
+  networkTimeout: false,
+};
+
+/**
+ * Enable a specific error scenario for testing
+ * @param scenario - The error scenario to enable
+ */
+export function enableErrorScenario(scenario: keyof ErrorScenarioConfig): void {
+  errorScenarios[scenario] = true;
+  console.log(`🚨 MSW: Enabled error scenario '${scenario}'`);
+}
+
+/**
+ * Disable a specific error scenario
+ * @param scenario - The error scenario to disable
+ */
+export function disableErrorScenario(scenario: keyof ErrorScenarioConfig): void {
+  errorScenarios[scenario] = false;
+  console.log(`✅ MSW: Disabled error scenario '${scenario}'`);
+}
+
+/**
+ * Reset all error scenarios to disabled state
+ */
+export function resetErrorScenarios(): void {
+  Object.keys(errorScenarios).forEach(key => {
+    errorScenarios[key as keyof ErrorScenarioConfig] = false;
+  });
+  console.log('🔄 MSW: Reset all error scenarios');
+}
+
+/**
+ * Get current error scenario configuration (for testing)
+ */
+export function getErrorScenarios(): ErrorScenarioConfig {
+  return { ...errorScenarios };
+}
+
+/**
+ * Check if error scenario should trigger for a specific request
+ * @param scenario - The scenario to check
+ * @returns True if error should be triggered
+ */
+function shouldTriggerErrorScenario(scenario: keyof ErrorScenarioConfig): boolean {
+  if (!errorScenarios[scenario]) return false;
+
+  // Additional request-based filtering can be added here if needed
+  return true;
+}
+
+/**
+ * Enhanced handlers with error scenario support
+ */
+const enhancedHandlers = [
+  // Include all original handlers first
+  ...handlers,
+
+  // ========== RELATIVE PATH HANDLERS FOR ERROR SCENARIOS ==========
+  
+  // Enhanced PATCH /api/appointments/:id with 500 error scenario (relative path)
+  http.patch('/api/appointments/:id', async ({ params, request }) => {
+    const id = params.id as string;
+    
+    // Check for 500 error scenario
+    if (shouldTriggerErrorScenario('appointmentPatch500')) {
+      console.log('🚨 MSW: Triggering 500 error for relative API appointment PATCH');
+      return HttpResponse.json(
+        { 
+          data: null,
+          errors: [{ status: '500', code: 'PROVIDER_ERROR', detail: 'Internal server error updating appointment' }],
+          meta: { request_id: generateRequestId() }
+        },
+        { status: 500 }
+      );
+    }
+
+    // Normal handler logic
+    const body = await request.json() as Record<string, unknown>;
+    const appointmentIndex = mockAppointments.findIndex(apt => apt.id === id);
+    
+    if (appointmentIndex === -1) {
+      return HttpResponse.json(
+        { error: 'Appointment not found' },
+        { status: 404 }
+      );
+    }
+
+    // Update appointment fields
+    Object.keys(body).forEach(key => {
+      if (body[key] !== undefined && key in mockAppointments[appointmentIndex]) {
+        (mockAppointments[appointmentIndex] as unknown as Record<string, unknown>)[key] = body[key];
+      }
+    });
+
+    return HttpResponse.json(mockAppointments[appointmentIndex]);
+  }),
+
+  // Enhanced dashboard stats with delay and 401 scenarios (relative path)
+  http.get('/api/admin/dashboard/stats', async () => {
+    // Check for 401 unauthorized scenario
+    if (shouldTriggerErrorScenario('unauthorizedAccess') || 
+        shouldTriggerErrorScenario('protectedEndpoints401')) {
+      console.log('🚨 MSW: Triggering 401 error for relative dashboard stats');
+      return HttpResponse.json(
+        { 
+          data: null,
+          errors: [{ status: '401', code: 'AUTH_REQUIRED', detail: 'Authentication required for admin endpoints' }],
+          meta: { request_id: generateRequestId() }
+        },
+        { status: 401 }
+      );
+    }
+
+    // Check for network delay scenario (>3s)
+    if (shouldTriggerErrorScenario('dashboardStatsDelay')) {
+      console.log('🚨 MSW: Triggering 3.5s delay for relative dashboard stats');
+      await new Promise(resolve => setTimeout(resolve, 3500)); // 3.5 second delay
+    }
+
+    // Check for network timeout scenario
+    if (shouldTriggerErrorScenario('dashboardStatsTimeout')) {
+      console.log('🚨 MSW: Triggering timeout for relative dashboard stats');
+      return new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Network timeout'));
+        }, 1000);
+      });
+    }
+
+    // Normal response
+    return HttpResponse.json({
+      data: {
+        totals: {
+          today_completed: 3,
+          today_booked: 5,
+          avg_cycle: 120,
+          avg_cycle_formatted: '2h 0m'
+        },
+        countsByStatus: {
+          scheduled: 8,
+          in_progress: 3,
+          ready: 2,
+          completed: 11,
+          cancelled: 1
+        },
+        carsOnPremises: [
+          { license: 'ABC-123', customer: 'John Doe', arrival: '09:30' },
+          { license: 'XYZ-789', customer: 'Jane Smith', arrival: '11:15' }
+        ],
+        unpaidTotal: 1250.50
+      },
+      errors: null,
+      meta: { request_id: generateRequestId() }
+    });
+  }),
+
+  // Enhanced appointment board with 401 and networkTimeout scenarios (relative path)
+  http.get('/api/admin/appointments/board', async ({ request }) => {
+    // Check for network timeout scenario
+    if (shouldTriggerErrorScenario('networkTimeout')) {
+      console.log('🚨 MSW: Triggering network timeout for relative admin appointment board');
+      return new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Network timeout'));
+        }, 1000);
+      });
+    }
+
+    // Check for 401 unauthorized scenario
+    if (shouldTriggerErrorScenario('unauthorizedAccess') || 
+        shouldTriggerErrorScenario('protectedEndpoints401')) {
+      console.log('🚨 MSW: Triggering 401 error for relative appointment board');
+      return HttpResponse.json(
+        { 
+          data: null,
+          errors: [{ status: '401', code: 'AUTH_REQUIRED', detail: 'Authentication required for admin endpoints' }],
+          meta: { request_id: generateRequestId() }
+        },
+        { status: 401 }
+      );
+    }
+
+    // Normal handler logic (from existing implementation)
+    console.log('🔍 MSW: Board endpoint (relative /api) hit!', request.url);
+    const url = new URL(request.url, 'http://localhost:3000'); // Add base URL for relative URLs
+    const from = url.searchParams.get('from');
+    const to = url.searchParams.get('to');
+    const techId = url.searchParams.get('techId');
+
+    console.log('📊 MSW: Board query params:', { from, to, techId });
+
+    // Filter appointments based on query params
+    let filteredAppointments = mockAppointments;
+    
+    if (from) {
+      filteredAppointments = filteredAppointments.filter(apt => 
+        new Date(apt.start_ts) >= new Date(from)
+      );
+    }
+    
+    if (to) {
+      filteredAppointments = filteredAppointments.filter(apt => 
+        new Date(apt.end_ts || apt.start_ts) <= new Date(to)
+      );
+    }
+    
+    if (techId) {
+      filteredAppointments = filteredAppointments.filter(apt => 
+        apt.tech_id === techId
+      );
+    }
+
+    // Generate board columns
+    const columns = [
+      { key: 'SCHEDULED', title: 'Scheduled', count: 1, sum: 250.00 },
+      { key: 'IN_PROGRESS', title: 'In Progress', count: 1, sum: 450.00 },
+      { key: 'READY', title: 'Ready', count: 0, sum: 0 },
+      { key: 'COMPLETED', title: 'Completed', count: 0, sum: 0 }
+    ];
+
+    // Generate board cards
+    const cards = filteredAppointments.map((apt, index) => ({
+      id: apt.id,
+      status: apt.status,
+      position: index + 1,
+      start: apt.start_ts,
+      end: apt.end_ts,
+      customerName: apt.customer_name,
+      vehicle: apt.vehicle_label,
+      servicesSummary: apt.notes,
+      price: apt.total_amount,
+      tags: []
+    }));
+
+    const responseData = { columns, cards };
+    console.log('✅ MSW: Returning board data (relative /api):', JSON.stringify(responseData, null, 2));
+    
+    return HttpResponse.json(responseData);
+  }),
+
+  // Handler for /api/appointments/board (used by network timeout test)
+  http.get('/api/appointments/board', async ({ request }) => {
+    // Check for network timeout scenario
+    if (shouldTriggerErrorScenario('networkTimeout')) {
+      console.log('🚨 MSW: networkTimeout - triggering network timeout for appointment board');
+      // Simulate network timeout by delaying and then returning an error response
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return HttpResponse.error();
+    }
+
+    // Check for 401 unauthorized scenario
+    if (shouldTriggerErrorScenario('unauthorizedAccess') || 
+        shouldTriggerErrorScenario('protectedEndpoints401')) {
+      console.log('🚨 MSW: Triggering 401 error for appointment board');
+      return HttpResponse.json(
+        { 
+          data: null,
+          errors: [{ status: '401', code: 'AUTH_REQUIRED', detail: 'Authentication required for admin endpoints' }],
+          meta: { request_id: generateRequestId() }
+        },
+        { status: 401 }
+      );
+    }
+
+    // Return a simple board response for testing
+    return HttpResponse.json({
+      columns: ['Scheduled', 'In Progress', 'Complete'],
+      cards: []
+    });
+  }),
+
+  // ========== ORIGINAL ENHANCED HANDLERS ==========
+  // Enhanced PATCH /appointments/:id with 500 error scenario
+  http.patch('http://localhost:3001/appointments/:id', async ({ params, request }) => {
+    const id = params.id as string;
+    
+    // Check for 500 error scenario
+    if (shouldTriggerErrorScenario('appointmentPatch500')) {
+      console.log('🚨 MSW: Triggering 500 error for appointment PATCH');
+      return HttpResponse.json(
+        { 
+          data: null,
+          errors: [{ status: '500', code: 'PROVIDER_ERROR', detail: 'Internal server error updating appointment' }],
+          meta: { request_id: generateRequestId() }
+        },
+        { status: 500 }
+      );
+    }
+
+    // Normal handler logic
+    const body = await request.json() as Record<string, unknown>;
+    const appointmentIndex = mockAppointments.findIndex(apt => apt.id === id);
+    
+    if (appointmentIndex === -1) {
+      return HttpResponse.json(
+        { error: 'Appointment not found' },
+        { status: 404 }
+      );
+    }
+
+    // Update appointment fields
+    Object.keys(body).forEach(key => {
+      if (body[key] !== undefined && key in mockAppointments[appointmentIndex]) {
+        (mockAppointments[appointmentIndex] as unknown as Record<string, unknown>)[key] = body[key];
+      }
+    });
+
+    return HttpResponse.json({
+      ok: true
+    });
+  }),
+
+  // Enhanced PATCH /api/appointments/:id with 500 error scenario  
+  http.patch('http://localhost:3001/api/appointments/:id', async ({ params, request }) => {
+    const id = params.id as string;
+    
+    // Check for 500 error scenario
+    if (shouldTriggerErrorScenario('appointmentPatch500')) {
+      console.log('🚨 MSW: Triggering 500 error for API appointment PATCH');
+      return HttpResponse.json(
+        { 
+          data: null,
+          errors: [{ status: '500', code: 'PROVIDER_ERROR', detail: 'Internal server error updating appointment' }],
+          meta: { request_id: generateRequestId() }
+        },
+        { status: 500 }
+      );
+    }
+
+    // Normal handler logic
+    const body = await request.json() as Record<string, unknown>;
+    const appointmentIndex = mockAppointments.findIndex(apt => apt.id === id);
+    
+    if (appointmentIndex === -1) {
+      return HttpResponse.json(
+        { error: 'Appointment not found' },
+        { status: 404 }
+      );
+    }
+
+    // Update appointment fields
+    Object.keys(body).forEach(key => {
+      if (body[key] !== undefined && key in mockAppointments[appointmentIndex]) {
+        (mockAppointments[appointmentIndex] as unknown as Record<string, unknown>)[key] = body[key];
+      }
+    });
+
+    return HttpResponse.json(mockAppointments[appointmentIndex]);
+  }),
+
+  // Enhanced dashboard stats with delay and 401 scenarios
+  http.get('http://localhost:3001/admin/dashboard/stats', async () => {
+    // Check for 401 unauthorized scenario
+    if (shouldTriggerErrorScenario('unauthorizedAccess') || 
+        shouldTriggerErrorScenario('protectedEndpoints401')) {
+      console.log('🚨 MSW: Triggering 401 error for dashboard stats');
+      return HttpResponse.json(
+        { 
+          data: null,
+          errors: [{ status: '401', code: 'AUTH_REQUIRED', detail: 'Authentication required for admin endpoints' }],
+          meta: { request_id: generateRequestId() }
+        },
+        { status: 401 }
+      );
+    }
+
+    // Check for network delay scenario (>3s)
+    if (shouldTriggerErrorScenario('dashboardStatsDelay')) {
+      console.log('🚨 MSW: Triggering 3.5s delay for dashboard stats');
+      await new Promise(resolve => setTimeout(resolve, 3500)); // 3.5 second delay
+    }
+
+    // Check for network timeout scenario
+    if (shouldTriggerErrorScenario('dashboardStatsTimeout')) {
+      console.log('🚨 MSW: Triggering timeout for dashboard stats');
+      return new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Network timeout'));
+        }, 1000);
+      });
+    }
+
+    // Normal response
+    return HttpResponse.json({
+      data: {
+        totals: {
+          today_completed: 3,
+          today_booked: 5,
+          avg_cycle: 120,
+          avg_cycle_formatted: '2h 0m'
+        },
+        countsByStatus: {
+          scheduled: 8,
+          in_progress: 3,
+          ready: 2,
+          completed: 11,
+          cancelled: 1
+        },
+        carsOnPremises: [
+          { license: 'ABC-123', customer: 'John Doe', arrival: '09:30' },
+          { license: 'XYZ-789', customer: 'Jane Smith', arrival: '11:15' }
+        ],
+        unpaidTotal: 1250.50
+      },
+      errors: null,
+      meta: { request_id: generateRequestId() }
+    });
+  }),
+
+  // Enhanced protected admin endpoints with 401 scenarios
+  http.get('http://localhost:3001/api/admin/dashboard/stats', async () => {
+    // Check for 401 unauthorized scenario  
+    if (shouldTriggerErrorScenario('unauthorizedAccess') || 
+        shouldTriggerErrorScenario('protectedEndpoints401')) {
+      console.log('🚨 MSW: Triggering 401 error for API dashboard stats');
+      return HttpResponse.json(
+        { 
+          data: null,
+          errors: [{ status: '401', code: 'AUTH_REQUIRED', detail: 'Authentication required for admin endpoints' }],
+          meta: { request_id: generateRequestId() }
+        },
+        { status: 401 }
+      );
+    }
+
+    // Check for network delay scenario (>3s)
+    if (shouldTriggerErrorScenario('dashboardStatsDelay')) {
+      console.log('🚨 MSW: Triggering 3.5s delay for API dashboard stats');
+      await new Promise(resolve => setTimeout(resolve, 3500)); // 3.5 second delay
+    }
+
+    // Normal response
+    return HttpResponse.json({
+      data: {
+        totals: {
+          today_completed: 3,
+          today_booked: 5,
+          avg_cycle: 120,
+          avg_cycle_formatted: '2h 0m'
+        },
+        countsByStatus: {
+          scheduled: 8,
+          in_progress: 3,
+          ready: 2,
+          completed: 11,
+          cancelled: 1
+        },
+        carsOnPremises: [
+          { license: 'ABC-123', customer: 'John Doe', arrival: '09:30' },
+          { license: 'XYZ-789', customer: 'Jane Smith', arrival: '11:15' }
+        ],
+        unpaidTotal: 1250.50
+      },
+      errors: null,
+      meta: { request_id: generateRequestId() }
+    });
+  }),
+
+  // Enhanced appointment board with 401 scenarios
+  http.get('http://localhost:3001/api/admin/appointments/board', async ({ request }) => {
+    // Check for 401 unauthorized scenario
+    if (shouldTriggerErrorScenario('unauthorizedAccess') || 
+        shouldTriggerErrorScenario('protectedEndpoints401')) {
+      console.log('🚨 MSW: Triggering 401 error for appointment board');
+      return HttpResponse.json(
+        { 
+          data: null,
+          errors: [{ status: '401', code: 'AUTH_REQUIRED', detail: 'Authentication required for admin endpoints' }],
+          meta: { request_id: generateRequestId() }
+        },
+        { status: 401 }
+      );
+    }
+
+    // Normal handler logic (from existing implementation)
+    console.log('🔍 MSW: Board endpoint (with /api) hit!', request.url);
+    const url = new URL(request.url);
+    const from = url.searchParams.get('from');
+    const to = url.searchParams.get('to');
+    const techId = url.searchParams.get('techId');
+
+    console.log('📊 MSW: Board query params:', { from, to, techId });
+
+    // Filter appointments based on query params
+    let filteredAppointments = mockAppointments;
+    
+    if (from) {
+      filteredAppointments = filteredAppointments.filter(apt => 
+        new Date(apt.start_ts) >= new Date(from)
+      );
+    }
+    
+    if (to) {
+      filteredAppointments = filteredAppointments.filter(apt => 
+        new Date(apt.end_ts || apt.start_ts) <= new Date(to)
+      );
+    }
+    
+    if (techId) {
+      filteredAppointments = filteredAppointments.filter(apt => 
+        apt.tech_id === techId
+      );
+    }
+
+    // Generate board columns
+    const columns = [
+      { key: 'SCHEDULED', title: 'Scheduled', count: 1, sum: 250.00 },
+      { key: 'IN_PROGRESS', title: 'In Progress', count: 1, sum: 450.00 },
+      { key: 'READY', title: 'Ready', count: 0, sum: 0 },
+      { key: 'COMPLETED', title: 'Completed', count: 0, sum: 0 }
+    ];
+
+    // Generate board cards
+    const cards = filteredAppointments.map((apt, index) => ({
+      id: apt.id,
+      status: apt.status,
+      position: index + 1,
+      start: apt.start_ts,
+      end: apt.end_ts,
+      customerName: apt.customer_name,
+      vehicle: apt.vehicle_label,
+      servicesSummary: apt.notes,
+      price: apt.total_amount,
+      tags: []
+    }));
+
+    const responseData = { columns, cards };
+    console.log('✅ MSW: Returning board data (with /api):', JSON.stringify(responseData, null, 2));
+    
+    return HttpResponse.json(responseData);
+  }),
+];
+
+// Replace existing handlers with enhanced versions for error scenario support
+export { enhancedHandlers };
+
+// Create the server instance with enhanced handlers for error scenario support
+export const server = setupServer(...enhancedHandlers);
 
 // Log that MSW is enabled
 console.log('🌐 MSW enabled for integration tests');

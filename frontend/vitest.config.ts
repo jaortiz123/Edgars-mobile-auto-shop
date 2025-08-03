@@ -23,6 +23,9 @@ export default defineConfig({
     // ✅ Globals are needed for libraries like testing-library
     globals: true,
     
+    // ✅ Include .it. files for integration tests
+    include: ['**/*.{test,spec,it}.?(c|m)[jt]s?(x)'],
+    
     // 🔧 Worker management to prevent runaway processes
     pool: 'threads',
     poolOptions: {

@@ -55,23 +55,42 @@ const TOKEN_KEY = 'auth_token';
 
 // Helper function for robust API calls
 const makeApiCall = async (url: string, options: RequestInit = {}): Promise<Response> => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+  // Create AbortController for timeout handling
+  let controller: AbortController | null = null;
+  let timeoutId: NodeJS.Timeout | null = null;
 
   try {
-    const response = await fetch(url, {
+    // Check if AbortController is available and working properly
+    if (typeof AbortController !== 'undefined') {
+      try {
+        controller = new AbortController();
+        timeoutId = setTimeout(() => controller?.abort(), 10000); // 10 second timeout
+      } catch {
+        // AbortController creation failed in test environment, continue without it
+        console.warn('🔧 AbortController unavailable in test environment, continuing without timeout');
+        controller = null;
+      }
+    }
+
+    const fetchOptions: RequestInit = {
       ...options,
-      signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
-    });
+    };
+
+    // Only add signal if controller was successfully created
+    if (controller?.signal) {
+      fetchOptions.signal = controller.signal;
+    }
+
+    const response = await fetch(url, fetchOptions);
     
-    clearTimeout(timeoutId);
+    if (timeoutId) clearTimeout(timeoutId);
     return response;
   } catch (error) {
-    clearTimeout(timeoutId);
+    if (timeoutId) clearTimeout(timeoutId);
     if (error instanceof Error) {
       if (error.name === 'AbortError') {
         throw new NetworkError('Request timeout');

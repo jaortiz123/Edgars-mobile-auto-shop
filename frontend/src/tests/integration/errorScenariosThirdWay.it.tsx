@@ -13,7 +13,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TestAppWrapper } from '@/test/TestAppWrapper';
-import { withErrorScenario, withCleanErrorState } from '@/test/errorTestHelpers';
+import { withErrorScenario } from '@/test/errorTestHelpers';
+import { resetErrorScenarios, getErrorScenarios } from '@/test/server/mswServer';
 import AdminAppointments from '@/pages/AdminAppointments';
 
 // Mock the API module to allow real HTTP calls to MSW server
@@ -34,7 +35,6 @@ describe('P2-T-006: Third Way Error Scenarios Integration', () => {
 
   afterEach(() => {
     // Final cleanup - ensures no scenarios leak between tests
-    const { resetErrorScenarios } = require('@/test/server/mswServer');
     resetErrorScenarios();
   });
 
@@ -153,28 +153,24 @@ describe('P2-T-006: Third Way Error Scenarios Integration', () => {
     });
 
     // Verify no error scenarios are active after tests
-    const { getErrorScenarios } = require('@/test/server/mswServer');
     const activeScenarios = getErrorScenarios();
     const hasActiveScenarios = Object.values(activeScenarios).some(Boolean);
     expect(hasActiveScenarios).toBe(false);
   });
 
-  it('should demonstrate withCleanErrorState utility', async () => {
-    await withCleanErrorState(async () => {
-      // This test runs with guaranteed clean error state
-      render(
-        <TestAppWrapper>
-          <div data-testid="clean-state-test">Clean State Test</div>
-        </TestAppWrapper>
-      );
-      
-      expect(screen.getByTestId('clean-state-test')).toBeInTheDocument();
-      
-      // Verify no error scenarios are active
-      const { getErrorScenarios } = require('@/test/server/mswServer');
-      const activeScenarios = getErrorScenarios();
-      const hasActiveScenarios = Object.values(activeScenarios).some(Boolean);
-      expect(hasActiveScenarios).toBe(false);
-    });
+  it('should demonstrate clean error state between tests', async () => {
+    // This test verifies that error scenarios are properly cleaned up
+    render(
+      <TestAppWrapper>
+        <div data-testid="clean-state-test">Clean State Test</div>
+      </TestAppWrapper>
+    );
+    
+    expect(screen.getByTestId('clean-state-test')).toBeInTheDocument();
+    
+    // Verify no error scenarios are active
+    const activeScenarios = getErrorScenarios();
+    const hasActiveScenarios = Object.values(activeScenarios).some(Boolean);
+    expect(hasActiveScenarios).toBe(false);
   });
 });
