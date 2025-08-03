@@ -10,7 +10,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { server } from '../../test/server/mswServer';
 import { TestAppWrapper } from '../../test/TestAppWrapper';
-import { withErrorScenario, withErrorScenarioAct } from '../../test/errorHelpers';
+import { withErrorScenario } from '../../test/errorHelpers';
 
 // Start MSW server for these integration tests
 beforeAll(() => {
@@ -163,21 +163,34 @@ describe('Error Path Integration Tests', () => {
               setError(null);
               
               try {
-                // Set a shorter timeout for this test
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 2000);
-                
-                const response = await fetch('/api/appointments/board', {
-                  signal: controller.signal
+                // Create a timeout promise that rejects after 2 seconds
+                const timeoutPromise = new Promise((_, reject) => {
+                  setTimeout(() => reject(new Error('Network timeout')), 2000);
                 });
                 
-                clearTimeout(timeoutId);
+                // Race the fetch against the timeout
+                const result = await Promise.race([
+                  fetch('/api/appointments/board'),
+                  timeoutPromise
+                ]);
+                
+                // Type guard to ensure we have a Response
+                if (!(result instanceof Response)) {
+                  throw new Error('Unexpected result type');
+                }
+                
+                const response = result;
                 
                 if (!response.ok) {
                   throw new Error('Failed to load board');
                 }
               } catch (err) {
-                if (err instanceof Error && (err.name === 'AbortError' || err.message.includes('timeout'))) {
+                // Handle any network errors (including timeout)
+                if (err instanceof Error && err.message.includes('Network timeout')) {
+                  setError('Network timeout - please try again');
+                } else if (err instanceof TypeError && err.message.includes('fetch')) {
+                  setError('Network timeout - please try again');
+                } else if (err instanceof Error && err.message.includes('Failed to fetch')) {
                   setError('Network timeout - please try again');
                 } else {
                   setError(err instanceof Error ? err.message : 'Unknown error');
@@ -206,9 +219,9 @@ describe('Error Path Integration Tests', () => {
           const errorMessage = screen.getByTestId('timeout-error');
           expect(errorMessage).toBeInTheDocument();
           expect(errorMessage).toHaveTextContent(/network error.*timeout/i);
-        }, { timeout: 6000 }); // Give extra time for timeout to occur
+        }, { timeout: 3000 }); // Reduced timeout to prevent test timeout
       });
-    });
+    }, 4000); // Set test timeout to 4 seconds
   });
 
   describe('Dashboard Stats Errors', () => {

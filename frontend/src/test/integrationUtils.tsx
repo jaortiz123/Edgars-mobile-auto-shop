@@ -121,12 +121,17 @@ export function createTestQueryClient() {
  * @param userId - User ID
  */
 export function mockAuthentication(role: string = 'Owner', userId: string = 'test-user') {
-  // Mock JWT token
-  const mockToken = btoa(JSON.stringify({
+  // Create a proper JWT token with three parts (header.payload.signature)
+  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const payload = btoa(JSON.stringify({
     sub: userId,
     role: role,
     exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
+    iat: Math.floor(Date.now() / 1000),
   }));
+  const signature = btoa('test-signature'); // Mock signature
+  
+  const mockToken = `${header}.${payload}.${signature}`;
 
   // Set in localStorage (simulating login)
   if (typeof localStorage !== 'undefined') {
