@@ -61,8 +61,8 @@ describe('P1-T-002: Redesigned Mock Factory', () => {
       api.simulateFailureRate(0); // No failures for this test
       
       const board = await api.getBoard();
-      expect(board.columns).toHaveLength(3);
-      expect(board.cards).toHaveLength(1);
+      expect(board.columns).toHaveLength(4); // Fixed: SCHEDULED, IN_PROGRESS, READY, COMPLETED
+      expect(board.cards).toHaveLength(2); // Fixed: Two test appointments
     });
 
     it('should provide working notification mocks', () => {

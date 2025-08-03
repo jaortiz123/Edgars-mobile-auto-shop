@@ -28,7 +28,8 @@ export default defineConfig({
       '**/node_modules/**',
       '**/dist/**',
       '**/archived/**',
-      '**/src/tests/archived/**'
+      '**/src/tests/archived/**',
+      '**/src/tests/triage-removed/**'
     ],
     
     // Optional: Keep CSS processing if your components import CSS files
