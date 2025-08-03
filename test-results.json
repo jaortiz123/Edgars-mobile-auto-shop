@@ -1,0 +1,108 @@
+
+> edgars-mobile-auto-shop@1.0.0 test
+> playwright test --reporter=json
+
+✅ Docker daemon is running
+time="2025-08-03T12:02:05-07:00" level=warning msg="/Users/jesusortiz/Edgars-mobile-auto-shop/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+{
+  "config": {
+    "configFile": "/Users/jesusortiz/Edgars-mobile-auto-shop/playwright.config.ts",
+    "rootDir": "/Users/jesusortiz/Edgars-mobile-auto-shop/e2e",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": "/Users/jesusortiz/Edgars-mobile-auto-shop/e2e/global-setup.ts",
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {},
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/Users/jesusortiz/Edgars-mobile-auto-shop/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/jesusortiz/Edgars-mobile-auto-shop/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/jesusortiz/Edgars-mobile-auto-shop/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/Users/jesusortiz/Edgars-mobile-auto-shop/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/jesusortiz/Edgars-mobile-auto-shop/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/Users/jesusortiz/Edgars-mobile-auto-shop/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.53.1",
+    "workers": 5,
+    "webServer": {
+      "command": "npm run dev --prefix frontend",
+      "port": 5173,
+      "reuseExistingServer": true,
+      "timeout": 120000
+    }
+  },
+  "suites": [],
+  "errors": [
+    {
+      "message": "Error: Backend not healthy",
+      "stack": "Error: Backend not healthy\n    at wait (/Users/jesusortiz/Edgars-mobile-auto-shop/e2e/wait-for-backend.ts:15:9)\n    at globalSetup (/Users/jesusortiz/Edgars-mobile-auto-shop/e2e/global-setup.ts:10:3)",
+      "location": {
+        "file": "/Users/jesusortiz/Edgars-mobile-auto-shop/e2e/wait-for-backend.ts",
+        "column": 9,
+        "line": 15
+      },
+      "snippet": "\u001b[90m   at \u001b[39mwait-for-backend.ts:15\n\n  13 |   const { execSync } = require('child_process');\n  14 |   execSync('docker-compose logs backend > e2e/backend-failure.log');\n> 15 |   throw new Error('Backend not healthy');\n     |         ^\n  16 | }\n  17 | export default wait;\n  18 |"
+    }
+  ],
+  "stats": {
+    "startTime": "2025-08-03T19:01:44.886Z",
+    "duration": 22142.351000000002,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}
