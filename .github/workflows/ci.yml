@@ -328,8 +328,11 @@ jobs:
           # Clean previous coverage data
           rm -rf coverage/ || true
           
-          # Run tests with proper error handling
-          if ! npm test -- --coverage --run --coverageProvider=v8 --reporter=verbose; then
+          # P2-T-009: Capture test output for retry analysis
+          echo "📝 Capturing test output for retry analysis..."
+          
+          # Run tests with proper error handling and output capture
+          if ! npm test -- --coverage --run --coverageProvider=v8 --reporter=verbose 2>&1 | tee vitest-output.log; then
             echo "❌ Tests failed, but continuing to check if coverage was generated..."
             TEST_EXIT_CODE=$?
           else
@@ -339,6 +342,11 @@ jobs:
           
           # Export test result for later steps
           echo "TEST_EXIT_CODE=$TEST_EXIT_CODE" >> $GITHUB_OUTPUT
+          
+          # Store test output for retry analysis
+          if [ -f "vitest-output.log" ]; then
+            echo "📊 Test output captured for retry analysis"
+          fi
           
           # Verify coverage files were generated
           if [ ! -d "coverage" ]; then
@@ -685,6 +693,36 @@ jobs:
             }
             }
 
+      # P2-T-009: Analyze test retries from Vitest output
+      - name: Analyze Vitest test retries
+        if: always() # Run even if tests failed
+        run: |
+          echo "🔍 P2-T-009: Analyzing Vitest test retries..."
+          cd ..
+          
+          # Run retry analysis script
+          if [ -f "scripts/aggregate-test-retries.js" ]; then
+            if [ -f "frontend/vitest-output.log" ]; then
+              VITEST_OUTPUT=$(cat frontend/vitest-output.log) node scripts/aggregate-test-retries.js
+              echo "📊 Retry analysis completed"
+            else
+              echo "⚠️ No vitest output log found for retry analysis"
+              # Still run the script to generate an empty report
+              node scripts/aggregate-test-retries.js
+            fi
+          else
+            echo "⚠️ Retry analysis script not found"
+          fi
+
+      # Upload retry report as artifact
+      - name: Upload retry report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-retry-report-${{ github.run_id }}
+          path: test-retry-report.md
+          retention-days: 30
+
   # Accessibility Tests
   accessibility-tests:
     runs-on: ubuntu-latest
@@ -747,7 +785,45 @@ jobs:
       - name: Run cross-browser smoke test
         run: |
           echo "🌐 Running smoke test on ${{ matrix.browser }}..."
-          npm run test:e2e:smoke -- --project=${{ matrix.browser }}
+          # P2-T-009: Capture Playwright output for retry analysis
+          npm run test:e2e:smoke -- --project=${{ matrix.browser }} 2>&1 | tee playwright-output-${{ matrix.browser }}.log
+
+      # P2-T-009: Analyze Playwright test retries
+      - name: Analyze Playwright test retries
+        if: always() # Run even if tests failed
+        run: |
+          echo "🔍 P2-T-009: Analyzing Playwright test retries for ${{ matrix.browser }}..."
+          
+          # Run retry analysis script with Playwright output
+          if [ -f "scripts/aggregate-test-retries.js" ]; then
+            if [ -f "playwright-output-${{ matrix.browser }}.log" ]; then
+              PLAYWRIGHT_OUTPUT=$(cat playwright-output-${{ matrix.browser }}.log) node scripts/aggregate-test-retries.js
+              echo "📊 Playwright retry analysis completed for ${{ matrix.browser }}"
+              
+              # Rename the report to include browser name
+              if [ -f "test-retry-report.md" ]; then
+                mv test-retry-report.md "test-retry-report-${{ matrix.browser }}.md"
+              fi
+            else
+              echo "⚠️ No Playwright output log found for retry analysis"
+              # Still run the script to generate an empty report
+              node scripts/aggregate-test-retries.js
+              if [ -f "test-retry-report.md" ]; then
+                mv test-retry-report.md "test-retry-report-${{ matrix.browser }}.md"
+              fi
+            fi
+          else
+            echo "⚠️ Retry analysis script not found"
+          fi
+
+      # Upload retry report as artifact
+      - name: Upload retry report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-retry-report-${{ matrix.browser }}-${{ github.run_id }}
+          path: test-retry-report-${{ matrix.browser }}.md
+          retention-days: 30
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -995,3 +1071,109 @@ jobs:
           echo "🧹 Checking for orphaned containers..."
           docker ps -a --filter "label=org.testcontainers" || true
           echo "Container cleanup verification complete"
+
+  # P2-T-009: Aggregate all retry reports from all test jobs
+  aggregate-retry-reports:
+    runs-on: ubuntu-latest
+    needs: [frontend-tests, cross-browser-smoke]
+    if: always() # Run even if some tests failed
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # Download all retry report artifacts
+      - name: Download all retry reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*retry-report*"
+          path: retry-reports/
+          merge-multiple: true
+
+      - name: Aggregate retry reports
+        run: |
+          echo "📊 P2-T-009: Aggregating all test retry reports..."
+          
+          # Create combined retry report
+          echo "# Combined Test Retry Report" > combined-retry-report.md
+          echo "" >> combined-retry-report.md
+          echo "**Generated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> combined-retry-report.md
+          echo "**CI Run:** ${{ github.run_id }}" >> combined-retry-report.md
+          echo "" >> combined-retry-report.md
+          
+          # Count total retry reports
+          REPORT_COUNT=$(find retry-reports/ -name "*.md" 2>/dev/null | wc -l)
+          echo "**Total Report Files:** $REPORT_COUNT" >> combined-retry-report.md
+          echo "" >> combined-retry-report.md
+          
+          if [ "$REPORT_COUNT" -eq 0 ]; then
+            echo "## ✅ No Retry Reports Found" >> combined-retry-report.md
+            echo "" >> combined-retry-report.md
+            echo "All test suites completed without generating retry reports." >> combined-retry-report.md
+            echo "This indicates stable test execution across all environments." >> combined-retry-report.md
+          else
+            echo "## 📋 Individual Retry Reports" >> combined-retry-report.md
+            echo "" >> combined-retry-report.md
+            
+            # Process each retry report
+            for report in retry-reports/*.md; do
+              if [ -f "$report" ]; then
+                echo "### $(basename "$report" .md)" >> combined-retry-report.md
+                echo "" >> combined-retry-report.md
+                echo '```' >> combined-retry-report.md
+                cat "$report" >> combined-retry-report.md
+                echo '```' >> combined-retry-report.md
+                echo "" >> combined-retry-report.md
+              fi
+            done
+          fi
+          
+          echo "---" >> combined-retry-report.md
+          echo "*Generated by P2-T-009: Flaky Test Detection & Retries*" >> combined-retry-report.md
+          
+          echo "📄 Combined retry report generated:"
+          ls -la combined-retry-report.md
+
+      - name: Upload combined retry report
+        uses: actions/upload-artifact@v4
+        with:
+          name: combined-retry-report-${{ github.run_id }}
+          path: combined-retry-report.md
+          retention-days: 30
+
+      - name: Display retry summary
+        run: |
+          echo "🔍 P2-T-009: Test Retry Summary"
+          echo "=============================="
+          
+          # Count total reports and look for retry indicators
+          TOTAL_REPORTS=$(find retry-reports/ -name "*.md" 2>/dev/null | wc -l)
+          echo "📊 Total retry report files: $TOTAL_REPORTS"
+          
+          if [ "$TOTAL_REPORTS" -eq 0 ]; then
+            echo "✅ No retry reports found - all tests stable"
+          else
+            echo "📋 Retry reports generated:"
+            find retry-reports/ -name "*.md" -exec echo "  - {}" \;
+            
+            # Look for retry indicators in the reports
+            RETRY_COUNT=0
+            if find retry-reports/ -name "*.md" -exec grep -l "retry\|Retry\|RETRY" {} \; 2>/dev/null | head -1 > /dev/null; then
+              RETRY_COUNT=$(find retry-reports/ -name "*.md" -exec grep -c "retry\|Retry\|RETRY" {} \; 2>/dev/null | awk '{sum += $1} END {print sum}')
+            fi
+            
+            if [ "$RETRY_COUNT" -gt 0 ]; then
+              echo "⚠️ Total retry indicators found: $RETRY_COUNT"
+              echo "📄 Check the combined retry report for details"
+            else
+              echo "✅ No retry indicators found in reports"
+            fi
+          fi
+          
+          echo ""
+          echo "📄 Combined report available as artifact: combined-retry-report-${{ github.run_id }}"

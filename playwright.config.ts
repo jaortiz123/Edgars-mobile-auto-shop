@@ -4,6 +4,9 @@ export default defineConfig({
   testDir: 'e2e',
   globalSetup: require.resolve('./e2e/global-setup'),
   
+  // P2-T-009: Retry configuration for flaky test detection
+  retries: process.env.CI ? 1 : 0, // Retry once in CI, no retries locally
+  
   // Cross-browser projects for P2-T-005 and mobile viewport for P2-T-008
   projects: [
     {
