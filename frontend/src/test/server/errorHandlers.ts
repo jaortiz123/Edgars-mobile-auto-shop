@@ -140,6 +140,66 @@ export const dashboardStatsTimeoutHandler = http.get('http://localhost:3001/admi
   });
 });
 
+/**
+ * Handler for 500 error on POST /notifications
+ */
+export const notificationPost500Handler = http.post('http://localhost:3001/notifications', async () => {
+  console.log('🚨 MSW: Simulating 500 error for POST /notifications');
+  return HttpResponse.json(
+    { 
+      data: null,
+      errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
+      meta: { request_id: generateRequestId() }
+    },
+    { status: 500 }
+  );
+});
+
+/**
+ * Handler for 500 error on POST /api/notifications (API version)
+ */
+export const notificationPostApi500Handler = http.post('http://localhost:3001/api/notifications', async () => {
+  console.log('🚨 MSW: Simulating 500 error for POST /api/notifications');
+  return HttpResponse.json(
+    { 
+      data: null,
+      errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
+      meta: { request_id: generateRequestId() }
+    },
+    { status: 500 }
+  );
+});
+
+/**
+ * Handler for 500 error on POST localhost:3000/notifications (for test environment)
+ */
+export const notificationPost500HandlerLocal = http.post('http://localhost:3000/notifications', async () => {
+  console.log('🚨 MSW: Simulating 500 error for POST localhost:3000/notifications');
+  return HttpResponse.json(
+    { 
+      data: null,
+      errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
+      meta: { request_id: generateRequestId() }
+    },
+    { status: 500 }
+  );
+});
+
+/**
+ * Handler for 500 error on POST localhost:3000/api/notifications (for test environment)
+ */
+export const notificationPostApi500HandlerLocal = http.post('http://localhost:3000/api/notifications', async () => {
+  console.log('🚨 MSW: Simulating 500 error for POST localhost:3000/api/notifications');
+  return HttpResponse.json(
+    { 
+      data: null,
+      errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
+      meta: { request_id: generateRequestId() }
+    },
+    { status: 500 }
+  );
+});
+
 // ========== CONVENIENCE COLLECTIONS ==========
 
 /**
@@ -157,6 +217,16 @@ export const appointment500Handlers = [
 export const unauthorizedHandlers = [
   unauthorizedAccessHandler,
   dashboardStats401Handler,
+];
+
+/**
+ * All notification error handlers for P2-T-007
+ */
+export const notification500Handlers = [
+  notificationPost500Handler,
+  notificationPostApi500Handler,
+  notificationPost500HandlerLocal,
+  notificationPostApi500HandlerLocal,
 ];
 
 /**

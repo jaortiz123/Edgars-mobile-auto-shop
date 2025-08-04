@@ -711,14 +711,14 @@ jobs:
           echo "♿ Running WCAG 2.2 AA accessibility tests..."
           npm run test:a11y
 
-  # Cross-Browser Smoke Tests (P2-T-005)
+  # Cross-Browser Smoke Tests (P2-T-005) + Mobile Viewport Tests (P2-T-008)
   cross-browser-smoke:
     runs-on: ubuntu-latest
     needs: [frontend-tests, backend-tests]
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, firefox, webkit]
+        browser: [chromium, firefox, webkit, mobile-chrome]
     
     steps:
       - name: Checkout code

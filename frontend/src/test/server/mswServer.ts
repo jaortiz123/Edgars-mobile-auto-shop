@@ -1002,6 +1002,218 @@ const handlers = [
     }
   }),
 
+  // ========== P2-T-007: NOTIFICATION ENDPOINTS FOR INTEGRATION TESTS ==========
+
+  // POST /notifications endpoint for reminder flow testing
+  http.post('http://localhost:3001/notifications', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    console.log('📨 MSW: Notification endpoint called with body:', JSON.stringify(body, null, 2));
+
+    // Check for error scenarios
+    if (shouldTriggerErrorScenario('notificationPost500')) {
+      console.log('🚨 MSW: Triggering 500 error for POST /notifications');
+      return HttpResponse.json(
+        { 
+          data: null,
+          errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
+          meta: { request_id: generateRequestId() }
+        },
+        { status: 500 }
+      );
+    }
+
+    // Validate notification payload
+    const notificationType = body.type as string;
+    const appointmentId = body.appointmentId as string;
+    const message = body.message as string;
+
+    if (!notificationType || !appointmentId || !message) {
+      return HttpResponse.json(
+        { 
+          data: null,
+          errors: [{ status: '400', code: 'INVALID_PAYLOAD', detail: 'Missing required notification fields' }],
+          meta: { request_id: generateRequestId() }
+        },
+        { status: 400 }
+      );
+    }
+
+    // Simulate successful notification sending
+    const notificationId = `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log('✅ MSW: Notification sent successfully:', { notificationId, type: notificationType, appointmentId });
+
+    return HttpResponse.json({
+      data: {
+        id: notificationId,
+        status: 'sent',
+        timestamp: new Date().toISOString(),
+        type: notificationType,
+        appointmentId,
+        message
+      },
+      errors: null,
+      meta: { request_id: generateRequestId() }
+    });
+  }),
+
+  // POST /api/notifications endpoint (for different base URL configurations)
+  http.post('http://localhost:3001/api/notifications', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    console.log('📨 MSW: Notification API endpoint called with body:', JSON.stringify(body, null, 2));
+
+    // Check for error scenarios
+    if (shouldTriggerErrorScenario('notificationPost500')) {
+      console.log('🚨 MSW: Triggering 500 error for POST /api/notifications');
+      return HttpResponse.json(
+        { 
+          data: null,
+          errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
+          meta: { request_id: generateRequestId() }
+        },
+        { status: 500 }
+      );
+    }
+
+    // Validate notification payload
+    const notificationType = body.type as string;
+    const appointmentId = body.appointmentId as string;
+    const message = body.message as string;
+
+    if (!notificationType || !appointmentId || !message) {
+      return HttpResponse.json(
+        { 
+          data: null,
+          errors: [{ status: '400', code: 'INVALID_PAYLOAD', detail: 'Missing required notification fields' }],
+          meta: { request_id: generateRequestId() }
+        },
+        { status: 400 }
+      );
+    }
+
+    // Simulate successful notification sending
+    const notificationId = `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log('✅ MSW: API Notification sent successfully:', { notificationId, type: notificationType, appointmentId });
+
+    return HttpResponse.json({
+      data: {
+        id: notificationId,
+        status: 'sent',
+        timestamp: new Date().toISOString(),
+        type: notificationType,
+        appointmentId,
+        message
+      },
+      errors: null,
+      meta: { request_id: generateRequestId() }
+    });
+  }),
+
+  // POST /notifications endpoint for localhost:3000 (unit test base URL)
+  http.post('http://localhost:3000/notifications', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    console.log('📨 MSW: Notification endpoint (localhost:3000) called with body:', JSON.stringify(body, null, 2));
+
+    // Check for error scenarios
+    if (shouldTriggerErrorScenario('notificationPost500')) {
+      console.log('🚨 MSW: Triggering 500 error for POST localhost:3000/notifications');
+      return HttpResponse.json(
+        { 
+          data: null,
+          errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
+          meta: { request_id: generateRequestId() }
+        },
+        { status: 500 }
+      );
+    }
+
+    // Validate notification payload
+    const notificationType = body.type as string;
+    const appointmentId = body.appointmentId as string;
+    const message = body.message as string;
+
+    if (!notificationType || !appointmentId || !message) {
+      return HttpResponse.json(
+        { 
+          data: null,
+          errors: [{ status: '400', code: 'INVALID_PAYLOAD', detail: 'Missing required notification fields' }],
+          meta: { request_id: generateRequestId() }
+        },
+        { status: 400 }
+      );
+    }
+
+    // Simulate successful notification sending
+    const notificationId = `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log('✅ MSW: Notification (localhost:3000) sent successfully:', { notificationId, type: notificationType, appointmentId });
+
+    return HttpResponse.json({
+      data: {
+        id: notificationId,
+        status: 'sent',
+        timestamp: new Date().toISOString(),
+        type: notificationType,
+        appointmentId,
+        message
+      },
+      errors: null,
+      meta: { request_id: generateRequestId() }
+    });
+  }),
+
+  // POST /api/notifications endpoint for localhost:3000 (unit test base URL with /api prefix)
+  http.post('http://localhost:3000/api/notifications', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    console.log('📨 MSW: Notification API endpoint (localhost:3000) called with body:', JSON.stringify(body, null, 2));
+
+    // Check for error scenarios
+    if (shouldTriggerErrorScenario('notificationPost500')) {
+      console.log('🚨 MSW: Triggering 500 error for POST localhost:3000/api/notifications');
+      return HttpResponse.json(
+        { 
+          data: null,
+          errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
+          meta: { request_id: generateRequestId() }
+        },
+        { status: 500 }
+      );
+    }
+
+    // Validate notification payload
+    const notificationType = body.type as string;
+    const appointmentId = body.appointmentId as string;
+    const message = body.message as string;
+
+    if (!notificationType || !appointmentId || !message) {
+      return HttpResponse.json(
+        { 
+          data: null,
+          errors: [{ status: '400', code: 'INVALID_PAYLOAD', detail: 'Missing required notification fields' }],
+          meta: { request_id: generateRequestId() }
+        },
+        { status: 400 }
+      );
+    }
+
+    // Simulate successful notification sending
+    const notificationId = `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log('✅ MSW: API Notification (localhost:3000) sent successfully:', { notificationId, type: notificationType, appointmentId });
+
+    return HttpResponse.json({
+      data: {
+        id: notificationId,
+        status: 'sent',
+        timestamp: new Date().toISOString(),
+        type: notificationType,
+        appointmentId,
+        message
+      },
+      errors: null,
+      meta: { request_id: generateRequestId() }
+    });
+  }),
+
+  // ========== END P2-T-007 NOTIFICATION ENDPOINTS ==========
+
   // Catch-all handler to log unmatched requests
   http.all('*', ({ request }) => {
     console.log('🚨 MSW: Unmatched request:', request.method, request.url);
@@ -1107,6 +1319,7 @@ export interface ErrorScenarioConfig {
   dashboardStatsTimeout: boolean;
   protectedEndpoints401: boolean;
   networkTimeout: boolean;
+  notificationPost500: boolean;
 }
 
 // Global error scenario state
@@ -1117,6 +1330,7 @@ const errorScenarios: ErrorScenarioConfig = {
   dashboardStatsTimeout: false,
   protectedEndpoints401: false,
   networkTimeout: false,
+  notificationPost500: false,
 };
 
 /**
@@ -1357,7 +1571,7 @@ const enhancedHandlers = [
   }),
 
   // Handler for /api/appointments/board (used by network timeout test)
-  http.get('/api/appointments/board', async ({ request }) => {
+  http.get('/api/appointments/board', async () => {
     // Check for network timeout scenario
     if (shouldTriggerErrorScenario('networkTimeout')) {
       console.log('🚨 MSW: networkTimeout - triggering network timeout for appointment board');

@@ -13,7 +13,8 @@ import {
   unauthorizedHandlers,
   dashboardStatsDelayHandler,
   dashboardStatsTimeoutHandler,
-  dashboardStats401Handler
+  dashboardStats401Handler,
+  notification500Handlers
 } from './server/errorHandlers';
 
 /**
@@ -24,7 +25,8 @@ export type ErrorScenario =
   | 'unauthorizedAccess' 
   | 'dashboardStatsDelay'
   | 'dashboardStatsTimeout'
-  | 'protectedEndpoints401';
+  | 'protectedEndpoints401'
+  | 'notificationPost500';
 
 /**
  * Canonical MSW pattern for error scenario testing.
@@ -76,6 +78,9 @@ function getErrorHandlers(scenario: ErrorScenario): RequestHandler[] {
       
     case 'protectedEndpoints401':
       return [dashboardStats401Handler];
+
+    case 'notificationPost500':
+      return notification500Handlers;
       
     default:
       throw new Error(`Unknown error scenario: ${scenario}`);
