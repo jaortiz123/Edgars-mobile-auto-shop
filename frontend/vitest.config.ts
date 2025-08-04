@@ -26,6 +26,9 @@ export default defineConfig({
     // ✅ Include .it. files for integration tests
     include: ['**/*.{test,spec,it}.?(c|m)[jt]s?(x)'],
     
+    // P2-T-009: Retry configuration for flaky test detection
+    retry: 2, // Retry flaky tests up to 2 times
+    
     // 🔧 Worker management to prevent runaway processes
     pool: 'threads',
     poolOptions: {

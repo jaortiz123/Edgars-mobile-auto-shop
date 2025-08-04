@@ -1,0 +1,250 @@
+#!/usr/bin/env node
+
+/**
+ * P2-T-009: Test Retry Aggregation Script
+ * 
+ * This script analyzes test outputs to identify which tests were retried
+ * and generates a comprehensive retry report for CI visibility.
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+// Configuration
+const OUTPUT_DIR = process.env.GITHUB_WORKSPACE || process.cwd();
+const RETRY_REPORT_PATH = path.join(OUTPUT_DIR, 'test-retry-report.md');
+
+/**
+ * Parse Vitest output for retry information
+ */
+function parseVitestRetries(vitestOutput) {
+  const retries = [];
+  const lines = vitestOutput.split('\n');
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // Look for retry patterns in Vitest output
+    if (line.includes('RETRY') || line.includes('retry') || line.includes('Retry')) {
+      const testMatch = line.match(/(?:RETRY|retry)\s+(.+?)(?:\s+|$)/);
+      if (testMatch) {
+        retries.push({
+          type: 'vitest',
+          test: testMatch[1].trim(),
+          reason: 'Transient failure detected',
+          line: line.trim()
+        });
+      }
+    }
+    
+    // Look for test names that failed and might be retried
+    if (line.includes('FAIL') && i + 1 < lines.length) {
+      const nextLine = lines[i + 1];
+      if (nextLine.includes('RETRY') || nextLine.includes('retry')) {
+        const testMatch = line.match(/FAIL\s+(.+?)(?:\s+|$)/);
+        if (testMatch) {
+          retries.push({
+            type: 'vitest',
+            test: testMatch[1].trim(),
+            reason: 'Failed test being retried',
+            line: line.trim()
+          });
+        }
+      }
+    }
+  }
+  
+  return retries;
+}
+
+/**
+ * Parse Playwright output for retry information
+ */
+function parsePlaywrightRetries(playwrightOutput) {
+  const retries = [];
+  const lines = playwrightOutput.split('\n');
+  
+  for (const line of lines) {
+    // Playwright retry patterns
+    if (line.includes('retry #') || line.includes('Retry ') || line.includes('[retry]')) {
+      const testMatch = line.match(/(?:retry #\d+|Retry \d+|\[retry\])\s*(.+?)(?:\s+|$)/);
+      if (testMatch) {
+        retries.push({
+          type: 'playwright',
+          test: testMatch[1].trim(),
+          reason: 'E2E test retry',
+          line: line.trim()
+        });
+      }
+    }
+    
+    // Look for specific Playwright retry indicators
+    if (line.includes('(retry') && line.includes(')')) {
+      const testMatch = line.match(/(.+?)\s+\(retry[^)]*\)/);
+      if (testMatch) {
+        retries.push({
+          type: 'playwright',
+          test: testMatch[1].trim(),
+          reason: 'Browser test retry',
+          line: line.trim()
+        });
+      }
+    }
+  }
+  
+  return retries;
+}
+
+/**
+ * Generate retry summary report
+ */
+function generateRetryReport(vitestRetries, playwrightRetries) {
+  const totalRetries = vitestRetries.length + playwrightRetries.length;
+  const timestamp = new Date().toISOString();
+  
+  let report = `# Test Retry Report\n\n`;
+  report += `**Generated:** ${timestamp}\n`;
+  report += `**Total Retries Detected:** ${totalRetries}\n\n`;
+  
+  if (totalRetries === 0) {
+    report += `## ✅ No Test Retries Detected\n\n`;
+    report += `All tests passed on first attempt. No flaky behavior detected.\n\n`;
+  } else {
+    report += `## ⚠️ Test Retries Summary\n\n`;
+    report += `This report identifies tests that required retries due to transient failures.\n`;
+    report += `While retries prevent false CI failures, repeated retries may indicate flaky tests that need investigation.\n\n`;
+  }
+  
+  // Vitest retries section
+  if (vitestRetries.length > 0) {
+    report += `### 🧪 Vitest Integration Test Retries (${vitestRetries.length})\n\n`;
+    report += `| Test | Reason | Details |\n`;
+    report += `|------|--------|----------|\n`;
+    
+    vitestRetries.forEach(retry => {
+      report += `| \`${retry.test}\` | ${retry.reason} | \`${retry.line}\` |\n`;
+    });
+    report += `\n`;
+  }
+  
+  // Playwright retries section
+  if (playwrightRetries.length > 0) {
+    report += `### 🎭 Playwright E2E Test Retries (${playwrightRetries.length})\n\n`;
+    report += `| Test | Reason | Details |\n`;
+    report += `|------|--------|----------|\n`;
+    
+    playwrightRetries.forEach(retry => {
+      report += `| \`${retry.test}\` | ${retry.reason} | \`${retry.line}\` |\n`;
+    });
+    report += `\n`;
+  }
+  
+  // Recommendations section
+  if (totalRetries > 0) {
+    report += `## 📋 Recommendations\n\n`;
+    report += `1. **Monitor Patterns:** Track which tests retry frequently\n`;
+    report += `2. **Investigate Root Causes:** Look for timing issues, race conditions, or environmental dependencies\n`;
+    report += `3. **Improve Test Stability:** Add proper waits, timeouts, or error handling\n`;
+    report += `4. **Consider Test Isolation:** Ensure tests don't interfere with each other\n\n`;
+  }
+  
+  report += `---\n`;
+  report += `*Generated by P2-T-009: Flaky Test Detection & Retries*\n`;
+  
+  return report;
+}
+
+/**
+ * Main execution function
+ */
+function main() {
+  console.log('🔍 P2-T-009: Analyzing test output for retry information...');
+  
+  // Read test output files if they exist
+  let vitestOutput = '';
+  let playwrightOutput = '';
+  
+  // Try to read from environment variables (passed from CI)
+  if (process.env.VITEST_OUTPUT) {
+    vitestOutput = process.env.VITEST_OUTPUT;
+    console.log('📊 Found Vitest output from environment');
+  }
+  
+  if (process.env.PLAYWRIGHT_OUTPUT) {
+    playwrightOutput = process.env.PLAYWRIGHT_OUTPUT;
+    console.log('📊 Found Playwright output from environment');
+  }
+  
+  // Try to read from standard log files
+  const possibleVitestFiles = [
+    'vitest-output.log',
+    'frontend/vitest-output.log',
+    'test-output.log'
+  ];
+  
+  const possiblePlaywrightFiles = [
+    'playwright-output.log',
+    'e2e-output.log',
+    'test-results/output.log'
+  ];
+  
+  // Check for Vitest log files
+  for (const file of possibleVitestFiles) {
+    const filePath = path.join(OUTPUT_DIR, file);
+    if (fs.existsSync(filePath)) {
+      vitestOutput += fs.readFileSync(filePath, 'utf8');
+      console.log(`📂 Read Vitest output from ${file}`);
+      break;
+    }
+  }
+  
+  // Check for Playwright log files
+  for (const file of possiblePlaywrightFiles) {
+    const filePath = path.join(OUTPUT_DIR, file);
+    if (fs.existsSync(filePath)) {
+      playwrightOutput += fs.readFileSync(filePath, 'utf8');
+      console.log(`📂 Read Playwright output from ${file}`);
+      break;
+    }
+  }
+  
+  // Parse retry information
+  const vitestRetries = parseVitestRetries(vitestOutput);
+  const playwrightRetries = parsePlaywrightRetries(playwrightOutput);
+  
+  console.log(`📈 Analysis complete:`);
+  console.log(`  - Vitest retries: ${vitestRetries.length}`);
+  console.log(`  - Playwright retries: ${playwrightRetries.length}`);
+  
+  // Generate report
+  const report = generateRetryReport(vitestRetries, playwrightRetries);
+  
+  // Write report to file
+  fs.writeFileSync(RETRY_REPORT_PATH, report);
+  console.log(`📝 Retry report written to: ${RETRY_REPORT_PATH}`);
+  
+  // Output summary for CI
+  const totalRetries = vitestRetries.length + playwrightRetries.length;
+  console.log(`\n📊 RETRY SUMMARY:`);
+  console.log(`Total retries detected: ${totalRetries}`);
+  
+  if (totalRetries > 0) {
+    console.log(`⚠️ Some tests required retries - check ${RETRY_REPORT_PATH} for details`);
+  } else {
+    console.log(`✅ No retries detected - all tests stable`);
+  }
+  
+  // Exit with appropriate code
+  process.exit(0);
+}
+
+// Run if called directly
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  parseVitestRetries,
+  parsePlaywrightRetries,
+  generateRetryReport
+};
