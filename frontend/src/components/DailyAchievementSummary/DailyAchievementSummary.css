@@ -1,0 +1,444 @@
+/**
+ * Sprint 4A-T-002: Daily Achievement Summary Styles
+ * 
+ * Uses design system variables: --card-shadow-default, --fs-3, --sp-2
+ * GPU-accelerated animations with accessibility support
+ */
+
+/* Modal Overlay */
+.summary-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-2);
+  
+  /* Animation setup */
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Performance optimization */
+  will-change: opacity, visibility;
+  transform: translateZ(0); /* Force GPU acceleration */
+}
+
+.summary-modal-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Modal Container */
+.summary-modal {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: var(--card-shadow-default), 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  
+  /* Animation setup */
+  transform: translateY(20px) scale(0.95) translateZ(0);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Performance optimization */
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.summary-modal.visible {
+  transform: translateY(0) scale(1) translateZ(0);
+}
+
+/* Header */
+.summary-header {
+  padding: var(--sp-4) var(--sp-4) var(--sp-2);
+  text-align: center;
+  position: relative;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.summary-title {
+  font-size: var(--fs-5);
+  font-weight: var(--fw-bold);
+  color: #1f2937;
+  margin: 0 0 var(--sp-1);
+  line-height: var(--lh-tight);
+}
+
+.summary-date {
+  font-size: var(--fs-2);
+  color: #6b7280;
+  margin: 0;
+  font-weight: var(--fw-medium);
+}
+
+.summary-close-btn {
+  position: absolute;
+  top: var(--sp-2);
+  right: var(--sp-2);
+  background: transparent;
+  border: none;
+  font-size: var(--fs-4);
+  color: #9ca3af;
+  cursor: pointer;
+  padding: var(--sp-1);
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  
+  /* Performance optimization */
+  will-change: color, background-color;
+  transform: translateZ(0);
+}
+
+.summary-close-btn:hover {
+  color: #374151;
+  background-color: #f3f4f6;
+}
+
+.summary-close-btn:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Content */
+.summary-content {
+  padding: var(--sp-2) var(--sp-4) var(--sp-4);
+}
+
+/* Summary Cards Grid */
+.summary-cards {
+  display: grid;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+@media (min-width: 640px) {
+  .summary-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Individual Summary Card */
+.summary-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: var(--sp-3);
+  box-shadow: var(--card-shadow-default);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Performance optimization */
+  will-change: transform, box-shadow;
+  transform: translateZ(0);
+}
+
+.summary-card:hover {
+  transform: translateY(-2px) translateZ(0);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Card Icon */
+.card-icon {
+  font-size: var(--fs-5);
+  margin-bottom: var(--sp-2);
+  text-align: center;
+}
+
+/* Card Content */
+.card-content {
+  text-align: center;
+}
+
+.card-title {
+  font-size: var(--fs-1);
+  font-weight: var(--fw-semibold);
+  color: #6b7280;
+  margin: 0 0 var(--sp-1);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.card-value {
+  font-size: var(--fs-3);
+  font-weight: var(--fw-bold);
+  color: #1f2937;
+  margin: 0 0 var(--sp-1);
+  line-height: var(--lh-tight);
+}
+
+.card-subtitle {
+  font-size: var(--fs-0);
+  color: #9ca3af;
+  margin: 0;
+}
+
+/* Card Type Specific Styling */
+.jobs-card .card-icon {
+  color: #10b981;
+}
+
+.revenue-card .card-icon {
+  color: #f59e0b;
+}
+
+.performer-card .card-icon {
+  color: #8b5cf6;
+}
+
+/* Summary Message */
+.summary-message {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.summary-message p {
+  margin: 0;
+  font-size: var(--fs-2);
+  color: #475569;
+  text-align: center;
+  line-height: var(--lh-normal);
+}
+
+/* Footer */
+.summary-footer {
+  padding: 0 var(--sp-4) var(--sp-4);
+  text-align: center;
+}
+
+.summary-action-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--fs-2);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  /* Performance optimization */
+  will-change: background-color, transform;
+  transform: translateZ(0);
+}
+
+.summary-action-btn:hover {
+  background: #2563eb;
+  transform: translateY(-1px) translateZ(0);
+}
+
+.summary-action-btn:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.summary-action-btn:active {
+  transform: translateY(0) translateZ(0);
+}
+
+/* Dashboard Card Component */
+.summary-dashboard-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: var(--sp-3);
+  box-shadow: var(--card-shadow-default);
+}
+
+.dashboard-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-2);
+}
+
+.dashboard-card-title {
+  font-size: var(--fs-3);
+  font-weight: var(--fw-semibold);
+  color: #1f2937;
+  margin: 0;
+}
+
+.view-recap-btn {
+  background: transparent;
+  color: #3b82f6;
+  border: 1px solid #3b82f6;
+  border-radius: 0.375rem;
+  padding: var(--sp-1) var(--sp-2);
+  font-size: var(--fs-1);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  /* Performance optimization */
+  will-change: background-color, color;
+  transform: translateZ(0);
+}
+
+.view-recap-btn:hover {
+  background: #3b82f6;
+  color: white;
+}
+
+.view-recap-btn:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Dashboard Stats Grid */
+.dashboard-summary-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--sp-2);
+}
+
+.dashboard-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--sp-2);
+  border-radius: 0.375rem;
+  background: #f8fafc;
+}
+
+.stat-icon {
+  font-size: var(--fs-3);
+  margin-bottom: var(--sp-1);
+}
+
+.stat-value {
+  font-size: var(--fs-2);
+  font-weight: var(--fw-bold);
+  color: #1f2937;
+  margin-bottom: 2px;
+}
+
+.stat-label {
+  font-size: var(--fs-0);
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .summary-modal {
+    margin: var(--sp-2);
+    max-height: calc(100vh - var(--sp-4));
+  }
+  
+  .summary-header {
+    padding: var(--sp-3) var(--sp-3) var(--sp-2);
+  }
+  
+  .summary-content {
+    padding: var(--sp-2) var(--sp-3) var(--sp-3);
+  }
+  
+  .summary-cards {
+    grid-template-columns: 1fr;
+    gap: var(--sp-2);
+  }
+  
+  .dashboard-summary-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .summary-modal {
+    background: #1f2937;
+    color: #f9fafb;
+  }
+  
+  .summary-header {
+    border-bottom-color: #374151;
+  }
+  
+  .summary-title {
+    color: #f9fafb;
+  }
+  
+  .summary-card {
+    background: #374151;
+    border-color: #4b5563;
+  }
+  
+  .card-value {
+    color: #f9fafb;
+  }
+  
+  .summary-message {
+    background: #374151;
+    border-color: #4b5563;
+  }
+  
+  .summary-message p {
+    color: #d1d5db;
+  }
+  
+  .summary-dashboard-card {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  
+  .dashboard-card-title {
+    color: #f9fafb;
+  }
+  
+  .dashboard-stat {
+    background: #374151;
+  }
+  
+  .stat-value {
+    color: #f9fafb;
+  }
+}
+
+/* Accessibility Enhancements */
+@media (prefers-reduced-motion: reduce) {
+  .summary-modal-overlay,
+  .summary-modal,
+  .summary-card,
+  .summary-action-btn,
+  .view-recap-btn {
+    transition: none;
+  }
+  
+  .summary-card:hover,
+  .summary-action-btn:hover {
+    transform: none;
+  }
+}
+
+/* Focus Management */
+.summary-modal:focus {
+  outline: none;
+}
+
+/* High Contrast Support */
+@media (prefers-contrast: high) {
+  .summary-card {
+    border-width: 2px;
+  }
+  
+  .summary-action-btn,
+  .view-recap-btn {
+    border-width: 2px;
+  }
+}

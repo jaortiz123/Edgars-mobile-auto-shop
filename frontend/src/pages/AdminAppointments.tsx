@@ -7,6 +7,11 @@ import ScheduleView from '../components/admin/ScheduleView';
 import AdvancedFilter from '../components/admin/AdvancedFilter';
 import DataExport from '../components/admin/DataExport';
 import ReportsDropdown from '../components/admin/ReportsDropdown';
+import { 
+  DailyAchievementSummary, 
+  DailyAchievementSummaryCard 
+} from '../components/DailyAchievementSummary/DailyAchievementSummary';
+import { scheduleAutomaticSummary, shouldShowDailySummary } from '../services/summaryService';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
