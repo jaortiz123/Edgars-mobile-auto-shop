@@ -74,13 +74,13 @@ const Login: React.FC = () => {
   const isFormValid = email.trim() && password.trim();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-sp-12 px-sp-4 sm:px-sp-6 lg:px-sp-8">
+      <div className="max-w-md w-full space-y-sp-8">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="mt-sp-6 text-center text-fs-4 font-extrabold text-gray-900">
             Sign in to your account
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-sp-2 text-center text-fs-1 text-gray-600">
             Or{' '}
             <Link
               to="/register"
@@ -91,16 +91,16 @@ const Login: React.FC = () => {
           </p>
         </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
+        <form className="mt-sp-8 space-y-sp-6" onSubmit={handleSubmit} noValidate>
           {error && (
-            <div className="rounded-md bg-red-50 p-4" role="alert" aria-live="polite">
-              <div className="text-sm text-red-800">{error}</div>
+            <div className="rounded-md bg-red-50 p-sp-4" role="alert" aria-live="polite">
+              <div className="text-fs-1 text-red-800">{error}</div>
             </div>
           )}
           
-          <div className="space-y-4">
+          <div className="space-y-sp-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-fs-1 font-medium text-gray-700">
                 Email address *
               </label>
               <input
@@ -111,18 +111,16 @@ const Login: React.FC = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className="mt-sp-1 appearance-none relative block w-full px-sp-3 py-sp-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-fs-1"
                 placeholder="Enter your email"
-                aria-describedby={error ? 'login-error' : undefined}
-                aria-invalid={error ? "true" : "false"}
               />
             </div>
             
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-fs-1 font-medium text-gray-700">
                 Password *
               </label>
-              <div className="mt-1 relative">
+              <div className="mt-sp-1 relative">
                 <input
                   id="password"
                   name="password"
@@ -131,14 +129,12 @@ const Login: React.FC = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                  className="appearance-none relative block w-full px-sp-3 py-sp-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-fs-1"
                   placeholder="Enter your password"
-                  aria-describedby="password-toggle"
-                  aria-invalid={error ? "true" : "false"}
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center hover:text-gray-600 focus:outline-none focus:text-gray-600"
+                  className="absolute inset-y-0 right-0 pr-sp-3 flex items-center hover:text-gray-600 focus:outline-none focus:text-gray-600"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   id="password-toggle"
@@ -163,7 +159,7 @@ const Login: React.FC = () => {
               type="submit"
               loading={isLoading}
               disabled={!isFormValid}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="group relative w-full flex justify-center py-sp-2 px-sp-4 border border-transparent text-fs-1 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               {isLoading ? 'Signing in...' : 'Sign in'}
             </LoadingButton>
@@ -172,7 +168,7 @@ const Login: React.FC = () => {
           <div className="text-center">
             <Link
               to="/forgot-password"
-              className="text-sm text-blue-600 hover:text-blue-500"
+              className="text-fs-1 text-blue-600 hover:text-blue-500"
             >
               Forgot your password?
             </Link>

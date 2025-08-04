@@ -5,7 +5,22 @@ import { expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest'
 import { toHaveNoViolations } from 'jest-axe'
 import { cleanup } from '@testing-library/react'
 import { server } from '../test/server/mswServer'
+import { createMocks } from '../test/mocks'
 // import failOnConsole from 'vitest-fail-on-console' // Disabled due to conflicts
+
+// ========================
+// CENTRALIZED MOCK SETUP (P1-T-012)
+// ========================
+const { time, api, notification, toast, storage, router } = createMocks();
+
+// Apply mocks globally to prevent circular dependencies
+vi.mock('@/utils/time', () => time);
+vi.mock('@/lib/api', () => api);
+vi.mock('@/services/notificationService', () => notification);
+vi.mock('@/components/ui/Toast', () => toast);
+vi.mock('@/lib/toast', () => toast);
+vi.mock('@/utils/storage', () => storage);
+vi.mock('react-router-dom', () => router);
 
 // Enhanced CI Console Detection - Functions preserved for future re-enablement
 // NOTE: These functions are currently unused but kept for when vitest-fail-on-console is re-enabled

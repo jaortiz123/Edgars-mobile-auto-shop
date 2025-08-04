@@ -14,21 +14,21 @@ export default function Login() {
   }
 
   return (
-    <form onSubmit={submit} className="max-w-sm mx-auto mt-20 space-y-4">
+    <form onSubmit={submit} className="max-w-sm mx-auto mt-sp-20 space-y-sp-4">
       <input
         value={username}
         onChange={(e) => setUsername(e.target.value)}
         placeholder="Username"
-        className="border p-2 w-full"
+        className="border p-sp-2 w-full"
       />
       <input
         type="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         placeholder="Password"
-        className="border p-2 w-full"
+        className="border p-sp-2 w-full"
       />
-      <button className="bg-blue-500 text-white px-4 py-2">Login</button>
+      <button className="bg-blue-500 text-white px-sp-4 py-sp-2">Login</button>
     </form>
   )
 }

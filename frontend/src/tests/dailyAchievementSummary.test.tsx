@@ -4,7 +4,10 @@
  * Unit and integration tests for summary data and display logic
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import React from 'react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import { DailyAchievementSummary, DailyAchievementSummaryCard } from '../components/DailyAchievementSummary/DailyAchievementSummary';
 import { getDailySummary, shouldShowDailySummary, markSummaryAsSeen } from '../services/summaryService';
@@ -70,7 +73,7 @@ describe('DailyAchievementSummary', () => {
       expect(screen.queryByText('🎉 Today\'s Achievements')).not.toBeInTheDocument();
     });
 
-    test('calls onClose when close button clicked', () => {
+    test('calls onClose when close button clicked', async () => {
       const mockOnClose = jest.fn();
       
       render(
@@ -84,15 +87,19 @@ describe('DailyAchievementSummary', () => {
         />
       );
 
-      fireEvent.click(screen.getByLabelText('Close summary'));
+      const user = userEvent.setup();
+      await user.click(screen.getByLabelText('Close summary'));
       
-      waitFor(() => {
+      await waitFor(() => {
         expect(markSummaryAsSeen).toHaveBeenCalled();
+      });
+      
+      await waitFor(() => {
         expect(mockOnClose).toHaveBeenCalled();
       });
     });
 
-    test('calls onClose when backdrop clicked', () => {
+    test('calls onClose when backdrop clicked', async () => {
       const mockOnClose = jest.fn();
       
       render(
@@ -106,9 +113,10 @@ describe('DailyAchievementSummary', () => {
         />
       );
 
-      fireEvent.click(screen.getByRole('dialog'));
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('dialog'));
       
-      waitFor(() => {
+      await waitFor(() => {
         expect(mockOnClose).toHaveBeenCalled();
       });
     });
@@ -195,7 +203,7 @@ describe('DailyAchievementSummary', () => {
       expect(screen.getByText('View Recap')).toBeInTheDocument();
     });
 
-    test('calls onViewDetails when button clicked', () => {
+    test('calls onViewDetails when button clicked', async () => {
       const mockOnViewDetails = jest.fn();
       
       render(
@@ -208,7 +216,8 @@ describe('DailyAchievementSummary', () => {
         />
       );
 
-      fireEvent.click(screen.getByText('View Recap'));
+      const user = userEvent.setup();
+      await user.click(screen.getByText('View Recap'));
       expect(mockOnViewDetails).toHaveBeenCalled();
     });
   });

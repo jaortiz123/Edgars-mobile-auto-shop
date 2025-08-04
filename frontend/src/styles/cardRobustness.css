@@ -184,7 +184,7 @@
   font-size: var(--fs-0);
   font-weight: var(--fw-medium);
   position: relative;
-  padding-left: 16px; /* Space for live indicator */
+  padding-left: var(--sp-2); /* 16px - Space for live indicator */
 }
 
 .countdown.starting-soon {
@@ -192,7 +192,7 @@
   background-color: #fffbeb;
   border-radius: 4px;
   padding: var(--sp-1) var(--sp-2);
-  padding-left: 20px;
+  padding-left: var(--sp-3); /* 24px - was 20px */
 }
 
 .countdown.running-late {
@@ -200,7 +200,7 @@
   background-color: #fef2f2;
   border-radius: 4px;
   padding: var(--sp-1) var(--sp-2);
-  padding-left: 20px;
+  padding-left: var(--sp-3); /* 24px - was 20px */
 }
 
 .countdown.overdue {
@@ -208,7 +208,7 @@
   background-color: #fee2e2;
   border-radius: 4px;
   padding: var(--sp-1) var(--sp-2);
-  padding-left: 20px;
+  padding-left: var(--sp-3); /* 24px - was 20px */
   font-weight: var(--fw-bold);
   animation: overdue-flash 1.5s infinite ease-in-out;
 }
@@ -220,7 +220,7 @@
 /* Live indicator with optimized animation */
 .live-indicator {
   position: absolute;
-  left: 4px;
+  left: var(--sp-0-5); /* 4px */
   top: 50%;
   transform: translateY(-50%) translateZ(0);
   width: 8px;

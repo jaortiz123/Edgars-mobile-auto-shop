@@ -22,15 +22,18 @@
   --fw-semibold: 600;
   --fw-bold: 700;
 
-  /* Spacing System - 8px Base Unit */
+  /* Spacing System - 8px Base Unit (4px increments for micro-spacing) */
   --sp-0: 0;
-  --sp-1: 0.5rem;  /* 8px */
-  --sp-2: 1rem;    /* 16px */
-  --sp-3: 1.5rem;  /* 24px */
-  --sp-4: 2rem;    /* 32px */
-  --sp-5: 2.5rem;  /* 40px */
-  --sp-6: 3rem;    /* 48px */
-  --sp-8: 4rem;    /* 64px */
+  --sp-0-5: 0.25rem; /* 4px - micro spacing */
+  --sp-1: 0.5rem;    /* 8px - base unit */
+  --sp-1-5: 0.75rem; /* 12px - 1.5x base */
+  --sp-2: 1rem;      /* 16px - 2x base */
+  --sp-3: 1.5rem;    /* 24px - 3x base */
+  --sp-4: 2rem;      /* 32px - 4x base */
+  --sp-5: 2.5rem;    /* 40px - 5x base */
+  --sp-6: 3rem;      /* 48px - 6x base */
+  --sp-7: 3.5rem;    /* 56px - 7x base */
+  --sp-8: 4rem;      /* 64px - 8x base */
 
   /* Component Specific Variables */
   --card-padding: var(--sp-3);

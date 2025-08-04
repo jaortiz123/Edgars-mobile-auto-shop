@@ -5,59 +5,6 @@ import { BrowserRouter } from 'react-router-dom';
 import { AppointmentProvider } from '../contexts/AppointmentContext';
 import { ToastProvider } from '../components/ui/Toast';
 
-// Mock the API module
-vi.mock('@/lib/api', () => ({
-  getDrawer: vi.fn().mockResolvedValue({
-    appointment: {
-      id: 'test-appointment-123',
-      status: 'SCHEDULED',
-      start: '2024-01-15T14:00:00Z',
-      end: '2024-01-15T15:00:00Z',
-      total_amount: 250.00,
-      paid_amount: 0,
-      check_in_at: null,
-      check_out_at: null,
-      tech_id: null
-    },
-    customer: {
-      id: 'cust-123',
-      name: 'Test Customer',
-      phone: '+1-555-0123',
-      email: 'test@example.com'
-    },
-    vehicle: {
-      id: 'veh-123',
-      year: 2020,
-      make: 'Toyota',
-      model: 'Camry',
-      vin: 'TEST123456'
-    },
-    services: []
-  }),
-  createAppointmentService: vi.fn().mockResolvedValue({
-    service: {
-      id: 'service-123',
-      name: 'Test Service',
-      notes: 'Test notes',
-      estimated_hours: 1,
-      estimated_price: 100,
-      category: 'Test'
-    }
-  }),
-  getBoard: vi.fn().mockResolvedValue({
-    appointments: [],
-    stats: { total: 0, scheduled: 0, completed: 0 }
-  }),
-  getStats: vi.fn().mockResolvedValue({
-    total: 0,
-    scheduled: 0,
-    completed: 0
-  }),
-  handleApiError: vi.fn().mockImplementation((error, defaultMessage) => {
-    return defaultMessage || 'An error occurred';
-  })
-}));
-
 // Mock Tabs component
 vi.mock('@/components/ui/Tabs', () => ({
   Tabs: ({ children, value, onValueChange, tabs }: any) => (
