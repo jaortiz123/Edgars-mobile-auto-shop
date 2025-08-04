@@ -357,6 +357,9 @@ jobs:
           echo "📁 Coverage files generated:"
           ls -la coverage/ || echo "❌ Cannot list coverage directory"
 
+      - name: Coverage Check
+        run: npm run test -- --coverage
+
       - name: Install bc calculator for coverage threshold checks
         run: |
           echo "🧮 Installing bc calculator for floating-point arithmetic..."

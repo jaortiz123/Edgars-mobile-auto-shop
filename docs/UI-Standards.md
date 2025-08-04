@@ -1,6 +1,14 @@
-# UI Standards
+# UI Standards Guide
+## Edgar's Mobile Auto Shop Design System
 
-This document outlines the design system for the Edgar's Mobile Auto Shop application, including typography, spacing, card design, the daily dashboard hero, the quick add appointment flow, scheduling intelligence, and the appointment reminders system.
+> **Version**: 2.0 - Enhanced with Sprint1A-T-005 improvements  
+> **Last Updated**: August 4, 2025  
+> **Status**: Active - Full Typography & Spacing System Implemented
+
+This document serves as the **single source of truth** for typography and spacing standards across Edgar's Mobile Auto Shop application. All developers and designers must reference this guide when implementing UI components.
+
+**🎯 Quick Reference**: 
+- [Typography Scale](#typography-system) | [Spacing System](#spacing-system) | [Real Examples](#real-world-examples) | [Cheat Sheet](#utility-class-cheat-sheet)
 
 ## Typography System
 
@@ -46,41 +54,59 @@ Our application uses a modular typography scale based on a 1.25 ratio (Major Thi
 
 ## Spacing System
 
-### 8px Base Unit System
-All spacing follows an 8px base unit system for visual consistency:
+### 8px Base Unit System (Enhanced)
+All spacing follows an 8px base unit system with micro-spacing support for visual consistency:
 
 ```css
---sp-0: 0;
---sp-1: 0.5rem;  /* 8px */
---sp-2: 1rem;    /* 16px */
---sp-3: 1.5rem;  /* 24px */
---sp-4: 2rem;    /* 32px */
---sp-5: 2.5rem;  /* 40px */
---sp-6: 3rem;    /* 48px */
---sp-8: 4rem;    /* 64px */
+/* Core 8px Spacing Scale */
+--sp-0: 0;          /* 0px - No spacing */
+--sp-0-5: 0.25rem;  /* 4px - Micro spacing */
+--sp-1: 0.5rem;     /* 8px - Base unit */
+--sp-1-5: 0.75rem;  /* 12px - 1.5x base unit */
+--sp-2: 1rem;       /* 16px - 2x base unit */
+--sp-3: 1.5rem;     /* 24px - 3x base unit */
+--sp-4: 2rem;       /* 32px - 4x base unit */
+--sp-5: 2.5rem;     /* 40px - 5x base unit */
+--sp-6: 3rem;       /* 48px - 6x base unit */
+--sp-7: 3.5rem;     /* 56px - 7x base unit */
+--sp-8: 4rem;       /* 64px - 8x base unit */
 ```
 
 ### Spacing Usage Guidelines
 
 #### Margins and Padding
-| Class | Size | Use Case |
-|-------|------|----------|
-| `m-sp-1`, `p-sp-1` | 8px | Tight spacing, button padding |
-| `m-sp-2`, `p-sp-2` | 16px | Standard spacing, card padding |
-| `m-sp-3`, `p-sp-3` | 24px | Generous spacing, section padding |
-| `m-sp-4`, `p-sp-4` | 32px | Large spacing, major sections |
-| `m-sp-5`, `p-sp-5` | 40px | Extra large spacing |
-| `m-sp-6`, `p-sp-6` | 48px | Section dividers |
-| `m-sp-8`, `p-sp-8` | 64px | Major layout spacing |
+| Class | Size | Use Case | Example |
+|-------|------|----------|---------|
+| `m-0`, `p-0` | 0px | Remove spacing | Reset default margins |
+| `m-0-5`, `p-0-5` | 4px | Micro spacing | Icon gaps, tight layouts |
+| `m-1`, `p-1` | 8px | Tight spacing | Button padding, small gaps |
+| `m-1-5`, `p-1-5` | 12px | Intermediate spacing | Form field spacing |
+| `m-2`, `p-2` | 16px | Standard spacing | Card padding, content spacing |
+| `m-3`, `p-3` | 24px | Generous spacing | Section padding, large cards |
+| `m-4`, `p-4` | 32px | Large spacing | Major sections, layout spacing |
+| `m-5`, `p-5` | 40px | Extra large spacing | Hero sections |
+| `m-6`, `p-6` | 48px | Section dividers | Page sections, major dividers |
+| `m-7`, `p-7` | 56px | Very large spacing | Landing page sections |
+| `m-8`, `p-8` | 64px | Maximum spacing | Major layout spacing |
+
+#### Direction-Specific Classes
+All margin and padding classes support directional variants:
+- **Top**: `mt-*`, `pt-*`
+- **Right**: `mr-*`, `pr-*`
+- **Bottom**: `mb-*`, `pb-*`
+- **Left**: `ml-*`, `pl-*`
+- **Horizontal**: `mx-*`, `px-*`
+- **Vertical**: `my-*`, `py-*`
 
 #### Gaps and Space Between Elements
 | Class | Size | Use Case |
 |-------|------|----------|
-| `gap-sp-1` | 8px | Tight grid/flex gaps |
-| `gap-sp-2` | 16px | Standard grid/flex gaps |
-| `gap-sp-3` | 24px | Generous grid/flex gaps |
-| `space-y-sp-2` | 16px | Standard vertical spacing between elements |
-| `space-y-sp-3` | 24px | Generous vertical spacing |
+| `gap-0-5` | 4px | Micro gaps, icon spacing |
+| `gap-1` | 8px | Tight grid/flex gaps |
+| `gap-1-5` | 12px | Form element gaps |
+| `gap-2` | 16px | Standard grid/flex gaps |
+| `gap-3` | 24px | Generous grid/flex gaps |
+| `gap-4` | 32px | Large layout gaps |
 
 ### Component-Specific Variables
 ```css
@@ -88,6 +114,13 @@ All spacing follows an 8px base unit system for visual consistency:
 --card-gap: var(--sp-2);          /* 16px */
 --button-padding-y: var(--sp-2);  /* 16px */
 --button-padding-x: var(--sp-3);  /* 24px */
+```
+
+### Design System Prefixed Classes
+For explicit design system usage, prefixed classes are available:
+```css
+.m-sp-0, .m-sp-0-5, .m-sp-1, .m-sp-1-5, .m-sp-2, .m-sp-3, /* ... */
+.p-sp-0, .p-sp-0-5, .p-sp-1, .p-sp-1-5, .p-sp-2, .p-sp-3, /* ... */
 ```
 
 ## Implementation Examples
@@ -1230,3 +1263,522 @@ loadFallbackStyles();
 - Accessibility enhancement modules
 - Development tool integrations
 
+---
+
+## 🎨 Real-World Examples
+
+This section provides practical, copy-paste examples from our actual components to help developers implement the design system correctly.
+
+### Example 1: Dashboard Revenue Card (RunningRevenue Component)
+
+**Implementation:**
+```tsx
+// RunningRevenue.tsx
+import './RunningRevenue.css';
+
+const RunningRevenue = ({ amount, isLoading, error }) => {
+  return (
+    <div className="running-revenue p-sp-3 space-y-sp-2">
+      <div className="revenue-label text-fs-0 font-semibold text-gray-600">
+        TODAY'S REVENUE
+      </div>
+      {isLoading ? (
+        <div className="revenue-skeleton gap-sp-1">
+          <div className="skeleton-line"></div>
+        </div>
+      ) : error ? (
+        <div className="text-fs-1 text-red-600 font-medium">
+          Error loading revenue
+        </div>
+      ) : (
+        <div className="revenue-amount text-fs-5 font-bold text-green-600">
+          ${amount.toLocaleString()}
+        </div>
+      )}
+      <div className="text-fs-1 text-gray-500">
+        +12% from yesterday
+      </div>
+    </div>
+  );
+};
+```
+
+**CSS Implementation:**
+```css
+/* RunningRevenue.css */
+.running-revenue {
+  padding: var(--sp-3); /* 24px */
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.revenue-amount {
+  font-size: var(--fs-5, 2rem); /* 32px */
+  font-weight: 700;
+  color: #059669;
+  font-feature-settings: 'tnum'; /* Tabular numbers for consistent spacing */
+  line-height: 1.2;
+}
+
+.revenue-label {
+  font-size: var(--fs-0, 0.75rem); /* 12px */
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6b7280;
+}
+
+.revenue-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1); /* 8px */
+}
+```
+
+### Example 2: Dashboard Sidebar Component
+
+**Implementation:**
+```tsx
+// DashboardSidebar.tsx
+const DashboardSidebar = ({ isCollapsed, stats }) => {
+  return (
+    <div className={`dashboard-sidebar ${isCollapsed ? 'collapsed' : ''}`}>
+      <button 
+        onClick={toggleSidebar}
+        className="p-sp-3 hover:bg-gray-100 rounded-lg transition-colors"
+      >
+        <Menu className="h-6 w-6" />
+      </button>
+      
+      {!isCollapsed && (
+        <div className="space-y-sp-3 p-sp-4">
+          {/* Stats Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-sp-2 text-fs-2">
+                <TrendingUp className="h-6 w-6 text-green-600" />
+                📊 Today's Numbers
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-sp-5">
+              <div className="grid grid-cols-2 gap-sp-4">
+                <div className="text-center">
+                  <div className="text-fs-3 font-bold text-green-800">
+                    {stats.completedToday}
+                  </div>
+                  <div className="text-fs-1 text-gray-600 font-medium">
+                    ✅ Jobs Completed
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-fs-3 font-bold text-orange-800">
+                    {stats.pendingAppointments}
+                  </div>
+                  <div className="text-fs-1 text-gray-600 font-medium">
+                    ⏳ Jobs Pending
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Quick Tools */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-sp-2 text-fs-2">
+                <Wrench className="h-6 w-6 text-orange-600" />
+                🛠️ Shop Tools
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-sp-5">
+              <div className="grid grid-cols-2 gap-sp-2">
+                <QuickToolButton 
+                  icon="📋" 
+                  label="Work Orders"
+                  onClick={handleWorkOrders}
+                />
+                <QuickToolButton 
+                  icon="🔧" 
+                  label="Parts Lookup"
+                  onClick={handlePartsLookup}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const QuickToolButton = ({ icon, label, onClick }) => (
+  <button 
+    onClick={onClick}
+    className="p-sp-4 rounded-xl hover:bg-blue-100 transition-colors flex flex-col items-center space-y-sp-2 touch-manipulation"
+  >
+    <span className="text-fs-3">{icon}</span>
+    <span className="font-medium text-fs-0">{label}</span>
+  </button>
+);
+```
+
+### Example 3: Login Form Component
+
+**Implementation:**
+```tsx
+// Login.tsx
+const Login = () => {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-sp-12 px-sp-4 sm:px-sp-6 lg:px-sp-8">
+      <div className="max-w-md w-full space-y-sp-8">
+        <div>
+          <h2 className="mt-sp-6 text-center text-fs-4 font-extrabold text-gray-900">
+            Sign in to your account
+          </h2>
+          <p className="mt-sp-2 text-center text-fs-1 text-gray-600">
+            Or{' '}
+            <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">
+              create a new account
+            </Link>
+          </p>
+        </div>
+        
+        <form className="mt-sp-8 space-y-sp-6" onSubmit={handleSubmit}>
+          {error && (
+            <div className="rounded-md bg-red-50 p-sp-4" role="alert">
+              <div className="text-fs-1 text-red-800">{error}</div>
+            </div>
+          )}
+          
+          <div className="space-y-sp-4">
+            <div>
+              <label htmlFor="email" className="block text-fs-1 font-medium text-gray-700">
+                Email address *
+              </label>
+              <input
+                id="email"
+                type="email"
+                required
+                className="mt-sp-1 appearance-none relative block w-full px-sp-3 py-sp-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-fs-1"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="password" className="block text-fs-1 font-medium text-gray-700">
+                Password *
+              </label>
+              <div className="mt-sp-1 relative">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  className="appearance-none relative block w-full px-sp-3 py-sp-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-fs-1"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-sp-3 flex items-center hover:text-gray-600 focus:outline-none focus:text-gray-600"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {/* Eye icon */}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <LoadingButton
+              type="submit"
+              loading={isLoading}
+              disabled={!isFormValid}
+              className="group relative w-full flex justify-center py-sp-2 px-sp-4 border border-transparent text-fs-1 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              {isLoading ? 'Signing in...' : 'Sign in'}
+            </LoadingButton>
+          </div>
+
+          <div className="text-center">
+            <Link
+              to="/forgot-password"
+              className="text-fs-1 text-blue-600 hover:text-blue-500"
+            >
+              Forgot your password?
+            </Link>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+```
+
+### Example 4: Admin Layout Structure
+
+**Implementation:**
+```tsx
+// AdminLayout.tsx
+const AdminLayout = () => {
+  return (
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar */}
+      <aside className="w-64 bg-white shadow-sm border-r border-gray-200">
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="px-sp-6 py-sp-4 border-b border-gray-200">
+            <h1 className="text-fs-2 font-bold text-gray-900">Edgar's Admin</h1>
+            <p className="text-fs-0 text-gray-500">Mobile Auto Shop</p>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 px-sp-4 py-sp-6 space-y-sp-1">
+            {navigation.map((item) => (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={`
+                  group flex items-center px-sp-3 py-sp-2 text-fs-1 font-medium rounded-md transition-colors
+                  ${item.current
+                    ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }
+                `}
+              >
+                <item.icon className="mr-sp-3 h-5 w-5 flex-shrink-0" />
+                {item.name}
+              </Link>
+            ))}
+          </nav>
+
+          {/* Footer */}
+          <div className="px-sp-4 py-sp-4 border-t border-gray-200">
+            <button
+              onClick={logout}
+              className="group flex items-center w-full px-sp-3 py-sp-2 text-fs-1 font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900 transition-colors"
+            >
+              <LogOut className="mr-sp-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
+              Sign out
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <main className="flex-1 overflow-auto">
+        <div className="px-sp-8 py-sp-6">
+          <Outlet />
+        </div>
+      </main>
+    </div>
+  );
+};
+```
+
+---
+
+## 📋 Utility Class Cheat Sheet
+
+### Typography Classes Quick Reference
+
+| Class | Size | Pixels | Usage |
+|-------|------|--------|--------|
+| `text-fs-0` | 0.75rem | 12px | Captions, timestamps, fine print |
+| `text-fs-1` | 0.875rem | 14px | Labels, secondary text, navigation |
+| `text-fs-2` | 1rem | 16px | Body text, buttons, primary content |
+| `text-fs-3` | 1.25rem | 20px | Subheadings, card titles, emphasis |
+| `text-fs-4` | 1.5rem | 24px | Section headings, large buttons |
+| `text-fs-5` | 2rem | 32px | Page titles, hero text, stats |
+| `text-fs-6` | 2.5rem | 40px | Display headings, marketing copy |
+
+### Spacing Classes Quick Reference
+
+#### Padding Classes
+| Class | Size | Pixels | Example Usage |
+|-------|------|--------|---------------|
+| `p-sp-0` | 0 | 0px | Reset padding |
+| `p-sp-0-5` | 0.25rem | 4px | Micro padding, tight layouts |
+| `p-sp-1` | 0.5rem | 8px | Button padding, compact spacing |
+| `p-sp-1-5` | 0.75rem | 12px | Form fields, intermediate spacing |
+| `p-sp-2` | 1rem | 16px | Standard card padding |
+| `p-sp-3` | 1.5rem | 24px | Generous card padding |
+| `p-sp-4` | 2rem | 32px | Large component padding |
+| `p-sp-5` | 2.5rem | 40px | Section padding |
+| `p-sp-6` | 3rem | 48px | Major section padding |
+| `p-sp-8` | 4rem | 64px | Hero section padding |
+
+#### Margin Classes  
+| Class | Size | Pixels | Example Usage |
+|-------|------|--------|---------------|
+| `m-sp-0` | 0 | 0px | Reset margin |
+| `m-sp-1` | 0.5rem | 8px | Small element separation |
+| `m-sp-2` | 1rem | 16px | Standard element separation |
+| `m-sp-3` | 1.5rem | 24px | Section separation |
+| `m-sp-4` | 2rem | 32px | Large component separation |
+| `m-sp-6` | 3rem | 48px | Major section separation |
+
+#### Directional Classes
+**Padding:** `pt-sp-*`, `pr-sp-*`, `pb-sp-*`, `pl-sp-*`, `px-sp-*`, `py-sp-*`  
+**Margin:** `mt-sp-*`, `mr-sp-*`, `mb-sp-*`, `ml-sp-*`, `mx-sp-*`, `my-sp-*`
+
+#### Gap Classes
+| Class | Size | Pixels | Usage |
+|-------|------|--------|-------|
+| `gap-sp-0-5` | 0.25rem | 4px | Micro gaps, icon spacing |
+| `gap-sp-1` | 0.5rem | 8px | Tight grid/flex gaps |
+| `gap-sp-2` | 1rem | 16px | Standard grid/flex gaps |
+| `gap-sp-3` | 1.5rem | 24px | Generous grid/flex gaps |
+| `gap-sp-4` | 2rem | 32px | Large layout gaps |
+
+#### Space Between Classes
+| Class | Size | Pixels | Usage |
+|-------|------|--------|-------|
+| `space-y-sp-1` | 0.5rem | 8px | Tight vertical spacing |
+| `space-y-sp-2` | 1rem | 16px | Standard vertical spacing |
+| `space-y-sp-3` | 1.5rem | 24px | Generous vertical spacing |
+| `space-y-sp-4` | 2rem | 32px | Large vertical spacing |
+| `space-x-sp-*` | | | Horizontal equivalents |
+
+### Common Component Patterns
+
+#### Card Component
+```tsx
+<div className="p-sp-3 space-y-sp-2 bg-white rounded-lg shadow">
+  <h3 className="text-fs-3 font-semibold">Title</h3>
+  <p className="text-fs-2 text-gray-600">Description</p>
+  <div className="flex gap-sp-2 mt-sp-3">
+    <button className="px-sp-3 py-sp-2 text-fs-1 bg-blue-600 text-white rounded">
+      Action
+    </button>
+  </div>
+</div>
+```
+
+#### Form Field
+```tsx
+<div className="space-y-sp-1">
+  <label className="text-fs-1 font-medium text-gray-700">Label</label>
+  <input className="p-sp-2 text-fs-2 border rounded w-full" />
+  <p className="text-fs-0 text-gray-500">Helper text</p>
+</div>
+```
+
+#### Navigation Item
+```tsx
+<Link className="flex items-center px-sp-3 py-sp-2 text-fs-1 font-medium rounded hover:bg-gray-100">
+  <Icon className="mr-sp-3 h-5 w-5" />
+  Menu Item
+</Link>
+```
+
+#### Stats Display
+```tsx
+<div className="text-center space-y-sp-1">
+  <div className="text-fs-5 font-bold text-green-600">$2,847</div>
+  <div className="text-fs-1 text-gray-500">Today's Revenue</div>
+  <div className="text-fs-0 text-gray-400">+12% from yesterday</div>
+</div>
+```
+
+---
+
+## 🚦 Implementation Best Practices
+
+### ✅ DO
+- **Use the design system consistently**: Always prefer `text-fs-2` over `text-base`
+- **Include fallbacks**: `font-size: var(--fs-2, 1rem)`
+- **Follow the 8px grid**: Use spacing values that align to the grid
+- **Apply semantic hierarchy**: Use proper heading levels (h1 → h2 → h3)
+- **Test responsively**: Verify scaling at different screen sizes
+- **Use tabular numbers**: `font-feature-settings: 'tnum'` for numeric data
+
+### ❌ DON'T
+- **Use hardcoded values**: Avoid `font-size: 18px` or `padding: 12px`
+- **Skip scale levels**: Don't jump from `fs-1` to `fs-4`
+- **Mix systems**: Don't combine old Tailwind classes with design system
+- **Ignore accessibility**: Ensure proper contrast and focus states
+- **Override without reason**: Stick to the system unless absolutely necessary
+
+### Migration Workflow
+1. **Identify** components using old spacing/typography
+2. **Map** old values to new design system tokens
+3. **Update** classes systematically
+4. **Test** visual consistency and functionality
+5. **Validate** with automated tests and code review
+
+---
+
+## 🔧 Development Tools & Validation
+
+### Automated Testing
+```typescript
+// Our spacing validation tests ensure consistency
+describe('Design System Validation', () => {
+  it('should use typography scale variables', () => {
+    // Validates components use --fs-* variables
+  });
+  
+  it('should use spacing system variables', () => {
+    // Validates components use --sp-* variables  
+  });
+  
+  it('should not have old Tailwind classes', () => {
+    // Ensures migration completeness
+  });
+});
+```
+
+### Linting Rules
+```json
+// ESLint configuration for design system enforcement
+{
+  "rules": {
+    "no-hardcoded-spacing": "error",
+    "prefer-design-system-typography": "error",
+    "spacing-grid-compliance": "warn"
+  }
+}
+```
+
+### Browser DevTools
+Use these CSS selectors to audit components:
+```css
+/* Find elements not using design system */
+*:not([class*="text-fs-"]):not([style*="var(--fs-"]) {
+  outline: 2px solid red !important;
+}
+
+*:not([class*="-sp-"]):not([style*="var(--sp-"]) {
+  outline: 2px solid orange !important;
+}
+```
+
+---
+
+## 📚 Additional Resources
+
+### Design System Files
+- `/src/styles/theme.css` - Core variables and tokens
+- `/src/styles/typography.css` - Typography utilities  
+- `/src/styles/spacing.css` - Spacing utilities
+- `/frontend/tests/spacing-validation.test.ts` - Automated validation
+
+### External References
+- [CSS Custom Properties (MDN)](https://developer.mozilla.org/en-US/docs/Web/CSS/--*)
+- [Modular Scale Calculator](https://www.modularscale.com/)  
+- [8-Point Grid System](https://spec.fm/specifics/8-pt-grid)
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+
+### Team Support
+- **Slack**: #design-system channel for questions
+- **Code Reviews**: Design system compliance checks  
+- **Office Hours**: Weekly design system Q&A sessions
+- **Documentation**: Living style guide with interactive examples
+
+---
+
+**📖 This guide is actively maintained and updated with each sprint. For questions or suggestions, reach out via the #design-system Slack channel.**

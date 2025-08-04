@@ -35,7 +35,15 @@ from pythonjsonlogger import jsonlogger
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import sqlite3
 import jwt
+import os
+import logging
+import time
+import json
+import uuid
+import traceback
+import base64
 
 # Redis for caching with graceful fallback
 try:
@@ -43,8 +51,6 @@ try:
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
-from psycopg2.extras import RealDictCursor
-import jwt
 
 # ----------------------------------------------------------------------------
 # App setup
@@ -96,6 +102,9 @@ JWT_ALG = "HS256"
 
 FALLBACK_TO_MEMORY = os.getenv("FALLBACK_TO_MEMORY", "false").lower() == "true"
 
+# SQLite fallback database path
+SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH", "/tmp/edgar_autoshop.db")
+
 # Redis configuration with graceful fallback
 _REDIS_CLIENT = None
 if REDIS_AVAILABLE:
@@ -138,6 +147,273 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def init_sqlite_db(db_path: str):
+    """Initialize SQLite database with schema and sample data"""
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row  # Enable dict-like access
+    
+    try:
+        cursor = conn.cursor()
+        
+        # Create tables (SQLite version of PostgreSQL schema)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS customers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name VARCHAR(255) NOT NULL,
+                phone VARCHAR(20),
+                email VARCHAR(255),
+                address TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS vehicles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_id INTEGER REFERENCES customers(id),
+                make VARCHAR(100),
+                model VARCHAR(100),
+                year INTEGER,
+                license_plate VARCHAR(20),
+                notes TEXT
+            )
+        ''')
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS services (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name VARCHAR(255) NOT NULL,
+                description TEXT,
+                duration_minutes INTEGER,
+                base_price DECIMAL(10,2)
+            )
+        ''')
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS appointments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_id INTEGER REFERENCES customers(id),
+                vehicle_id INTEGER REFERENCES vehicles(id),
+                service_id INTEGER REFERENCES services(id),
+                status VARCHAR(50) DEFAULT 'SCHEDULED',
+                start_ts TIMESTAMP,
+                end_ts TIMESTAMP,
+                total_amount DECIMAL(10,2) DEFAULT 0.00,
+                paid_amount DECIMAL(10,2) DEFAULT 0.00,
+                check_in_at TIMESTAMP,
+                check_out_at TIMESTAMP,
+                tech_id INTEGER,
+                location_address TEXT,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS appointment_services (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                appointment_id INTEGER REFERENCES appointments(id),
+                name VARCHAR(255) NOT NULL,
+                notes TEXT,
+                estimated_hours DECIMAL(5,2),
+                estimated_price DECIMAL(10,2),
+                category VARCHAR(100)
+            )
+        ''')
+        
+        # Insert sample services
+        cursor.execute('SELECT COUNT(*) FROM services')
+        if cursor.fetchone()[0] == 0:
+            services = [
+                ('Oil Change', 'Standard oil change with filter', 30, 45.00),
+                ('Brake Inspection', 'Complete brake system inspection', 45, 65.00),
+                ('Battery Replacement', 'Replace car battery', 20, 120.00),
+                ('Tire Rotation', 'Rotate and balance tires', 45, 50.00),
+                ('Engine Diagnostics', 'Computer diagnostic scan', 60, 95.00),
+                ('Transmission Service', 'Transmission fluid change', 90, 150.00)
+            ]
+            cursor.executemany(
+                'INSERT INTO services (name, description, duration_minutes, base_price) VALUES (?, ?, ?, ?)',
+                services
+            )
+        
+        # Insert sample customers
+        cursor.execute('SELECT COUNT(*) FROM customers')
+        if cursor.fetchone()[0] == 0:
+            customers = [
+                ('John Smith', '(555) 123-4567', 'john.smith@email.com', '123 Main St, Sacramento, CA'),
+                ('Maria Garcia', '(555) 234-5678', 'maria.garcia@email.com', '456 Oak Ave, Sacramento, CA'),
+                ('David Johnson', '(555) 345-6789', 'david.johnson@email.com', '789 Pine St, Sacramento, CA'),
+                ('Sarah Wilson', '(555) 456-7890', 'sarah.wilson@email.com', '321 Elm St, Sacramento, CA'),
+                ('Michael Brown', '(555) 567-8901', 'michael.brown@email.com', '654 Maple Dr, Sacramento, CA')
+            ]
+            cursor.executemany(
+                'INSERT INTO customers (name, phone, email, address) VALUES (?, ?, ?, ?)',
+                customers
+            )
+        
+        # Insert sample vehicles
+        cursor.execute('SELECT COUNT(*) FROM vehicles')
+        if cursor.fetchone()[0] == 0:
+            vehicles = [
+                (1, 'Toyota', 'Camry', 2020, 'ABC123', 'Regular maintenance customer'),
+                (2, 'Honda', 'Civic', 2019, 'XYZ789', 'New customer'),
+                (3, 'Ford', 'F-150', 2021, 'DEF456', 'Commercial vehicle'),
+                (4, 'Nissan', 'Altima', 2018, 'GHI789', 'Frequent service visits'),
+                (5, 'Chevrolet', 'Malibu', 2022, 'JKL012', 'Under warranty')
+            ]
+            cursor.executemany(
+                'INSERT INTO vehicles (customer_id, make, model, year, license_plate, notes) VALUES (?, ?, ?, ?, ?, ?)',
+                vehicles
+            )
+        
+        # Insert sample appointments with various statuses and times
+        cursor.execute('SELECT COUNT(*) FROM appointments')
+        if cursor.fetchone()[0] == 0:
+            from datetime import datetime, timedelta
+            now = datetime.now()
+            
+            appointments = [
+                # Today's appointments
+                (1, 1, 1, 'SCHEDULED', (now + timedelta(hours=2)).isoformat(), 
+                 (now + timedelta(hours=2, minutes=30)).isoformat(), 45.00, 0.00, None, None, None, 
+                 '123 Main St, Sacramento, CA', 'Oil change scheduled for today'),
+                
+                (2, 2, 2, 'IN_PROGRESS', (now - timedelta(minutes=30)).isoformat(), 
+                 (now + timedelta(minutes=15)).isoformat(), 65.00, 0.00, 
+                 (now - timedelta(minutes=30)).isoformat(), None, None,
+                 '456 Oak Ave, Sacramento, CA', 'Brake inspection in progress'),
+                
+                (3, 3, 3, 'READY', (now - timedelta(hours=1)).isoformat(), 
+                 now.isoformat(), 120.00, 0.00, 
+                 (now - timedelta(hours=1)).isoformat(), None, None,
+                 '789 Pine St, Sacramento, CA', 'Battery replacement complete'),
+                
+                (4, 4, 4, 'COMPLETED', (now - timedelta(hours=3)).isoformat(), 
+                 (now - timedelta(hours=2, minutes=15)).isoformat(), 50.00, 50.00,
+                 (now - timedelta(hours=3)).isoformat(), (now - timedelta(hours=2)).isoformat(), None,
+                 '321 Elm St, Sacramento, CA', 'Tire rotation completed'),
+                
+                # Tomorrow's appointments
+                (5, 5, 5, 'SCHEDULED', (now + timedelta(days=1, hours=1)).isoformat(), 
+                 (now + timedelta(days=1, hours=2)).isoformat(), 95.00, 0.00, None, None, None,
+                 '654 Maple Dr, Sacramento, CA', 'Engine diagnostics scheduled'),
+                
+                (1, 1, 6, 'SCHEDULED', (now + timedelta(days=1, hours=3)).isoformat(), 
+                 (now + timedelta(days=1, hours=4, minutes=30)).isoformat(), 150.00, 0.00, None, None, None,
+                 '123 Main St, Sacramento, CA', 'Transmission service follow-up'),
+                
+                # This week's appointments
+                (2, 2, 1, 'SCHEDULED', (now + timedelta(days=2, hours=2)).isoformat(), 
+                 (now + timedelta(days=2, hours=2, minutes=30)).isoformat(), 45.00, 0.00, None, None, None,
+                 '456 Oak Ave, Sacramento, CA', 'Regular oil change'),
+                
+                (3, 3, 2, 'SCHEDULED', (now + timedelta(days=3, hours=1)).isoformat(), 
+                 (now + timedelta(days=3, hours=1, minutes=45)).isoformat(), 65.00, 0.00, None, None, None,
+                 '789 Pine St, Sacramento, CA', 'Brake follow-up inspection'),
+            ]
+            
+            cursor.executemany('''
+                INSERT INTO appointments 
+                (customer_id, vehicle_id, service_id, status, start_ts, end_ts, total_amount, paid_amount, 
+                 check_in_at, check_out_at, tech_id, location_address, notes) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', appointments)
+            
+            # Add some appointment services
+            appointment_services = [
+                (1, 'Oil Change', 'Standard 5W-30 oil', 0.5, 45.00, 'Maintenance'),
+                (2, 'Brake Inspection', 'Full brake system check', 0.75, 65.00, 'Safety'),
+                (3, 'Battery Replacement', 'Group 24F battery', 0.33, 120.00, 'Electrical'),
+                (4, 'Tire Rotation', 'All four tires rotated', 0.75, 50.00, 'Maintenance'),
+                (5, 'Engine Diagnostics', 'OBD-II scan and analysis', 1.0, 95.00, 'Diagnostics'),
+                (6, 'Transmission Service', 'ATF drain and fill', 1.5, 150.00, 'Maintenance'),
+            ]
+            
+            cursor.executemany('''
+                INSERT INTO appointment_services 
+                (appointment_id, name, notes, estimated_hours, estimated_price, category) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', appointment_services)
+        
+        # Create indexes
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_appointments_start_ts ON appointments(start_ts)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status)')
+        
+        conn.commit()
+        log.info("SQLite database initialized with sample data at %s", db_path)
+        
+    except Exception as e:
+        log.error("Failed to initialize SQLite database: %s", e)
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class SqliteConnectionWrapper:
+    """Wrapper to make SQLite connections work with existing PostgreSQL code"""
+    def __init__(self, sqlite_conn):
+        self._conn = sqlite_conn
+        self._in_transaction = False
+    
+    def cursor(self, cursor_factory=None):
+        return SqliteCursorWrapper(self._conn.cursor())
+    
+    def commit(self):
+        self._conn.commit()
+    
+    def rollback(self):
+        self._conn.rollback()
+    
+    def close(self):
+        self._conn.close()
+    
+    def __enter__(self):
+        self._in_transaction = True
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            self.commit()
+        else:
+            self.rollback()
+        self._in_transaction = False
+
+
+class SqliteCursorWrapper:
+    """Wrapper to make SQLite cursors work with existing PostgreSQL code"""
+    def __init__(self, sqlite_cursor):
+        self._cursor = sqlite_cursor
+    
+    def execute(self, query, params=None):
+        # Simple execution - no complex conversion needed since we handle query differences at endpoint level
+        return self._cursor.execute(query, params or ())
+    
+    def fetchone(self):
+        row = self._cursor.fetchone()
+        return dict(row) if row else None
+    
+    def fetchall(self):
+        rows = self._cursor.fetchall()
+        return [dict(row) for row in rows] if rows else []
+    
+    def fetchmany(self, size=None):
+        rows = self._cursor.fetchmany(size) if size else self._cursor.fetchmany()
+        return [dict(row) for row in rows] if rows else []
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
 def db_conn():
     cfg = dict(
         host=os.getenv("POSTGRES_HOST", "db"),
@@ -153,7 +429,17 @@ def db_conn():
     except Exception as e:
         log.error("DB connect failed: %s", e)
         if FALLBACK_TO_MEMORY:
-            return None
+            # Initialize SQLite database if it doesn't exist
+            if not os.path.exists(SQLITE_DB_PATH):
+                log.info("Initializing SQLite fallback database...")
+                init_sqlite_db(SQLITE_DB_PATH)
+            
+            # Return wrapped SQLite connection
+            sqlite_conn = sqlite3.connect(SQLITE_DB_PATH)
+            sqlite_conn.row_factory = sqlite3.Row  # Enable dict-like access
+            wrapped_conn = SqliteConnectionWrapper(sqlite_conn)
+            log.info("Using SQLite fallback database at %s", SQLITE_DB_PATH)
+            return wrapped_conn
         raise RuntimeError("DB connection failed")
 
 
@@ -355,46 +641,102 @@ def get_board():
     where = ["1=1"]
     params: list[Any] = []
     if frm:
-        where.append("a.start_ts >= %s")
+        where.append("a.start_ts >= ?")
         params.append(frm)
     if to:
-        where.append("a.end_ts <= %s")
+        where.append("a.end_ts <= ?")
         params.append(to)
     if tech_id:
-        where.append("a.tech_id = %s")
+        where.append("a.tech_id = ?")
         params.append(tech_id)
 
     where_sql = " AND ".join(where)
 
     with conn:
         with conn.cursor() as cur:
-            # Cards
-            cur.execute(
-                f"""
-                SELECT a.id::text,
-                       a.status::text,
-                       a.start_ts AS start_ts,
-                       a.end_ts AS end_ts,
-                        COALESCE(a.total_amount, 0) AS price,
-                        c.name AS customer_name,
-                        CONCAT_WS(' ', v.year::text, v.make, v.model) AS vehicle_label,
-                        SUBSTRING((SELECT STRING_AGG(sv.name, ', ')
-                                  FROM appointment_services sv WHERE sv.appointment_id = a.id)::text FROM 1 FOR 120) AS services_summary,
-                       ROW_NUMBER() OVER(PARTITION BY a.status ORDER BY a.start_ts) AS position
-                FROM appointments a
-                LEFT JOIN customers c ON c.id = a.customer_id
-                LEFT JOIN vehicles v  ON v.id = a.vehicle_id
-                WHERE {where_sql}
-                ORDER BY a.status, a.start_ts
-                """,
-                params,
-            )
+            # Check if we're using SQLite (simplified query)
+            is_sqlite = isinstance(conn, SqliteConnectionWrapper)
+            
+            if is_sqlite:
+                # Simplified SQLite-compatible query
+                cur.execute(
+                    f"""
+                    SELECT CAST(a.id AS TEXT) as id,
+                           CAST(a.status AS TEXT) as status,
+                           a.start_ts AS start_ts,
+                           a.end_ts AS end_ts,
+                           COALESCE(a.total_amount, 0) AS price,
+                           c.name AS customer_name,
+                           (CAST(v.year AS TEXT) || ' ' || v.make || ' ' || v.model) AS vehicle_label,
+                           SUBSTR(
+                               (SELECT GROUP_CONCAT(sv.name, ', ')
+                                FROM appointment_services sv WHERE sv.appointment_id = a.id),
+                               1, 120
+                           ) AS services_summary,
+                           ROW_NUMBER() OVER(PARTITION BY a.status ORDER BY a.start_ts) AS position
+                    FROM appointments a
+                    LEFT JOIN customers c ON c.id = a.customer_id
+                    LEFT JOIN vehicles v ON v.id = a.vehicle_id
+                    WHERE {where_sql}
+                    ORDER BY a.status, a.start_ts
+                    """,
+                    params,
+                )
+            else:
+                # Original PostgreSQL query
+                cur.execute(
+                    f"""
+                    SELECT a.id::text,
+                           a.status::text,
+                           a.start_ts AS start_ts,
+                           a.end_ts AS end_ts,
+                            COALESCE(a.total_amount, 0) AS price,
+                            c.name AS customer_name,
+                            CONCAT_WS(' ', v.year::text, v.make, v.model) AS vehicle_label,
+                            SUBSTRING((SELECT STRING_AGG(sv.name, ', ')
+                                      FROM appointment_services sv WHERE sv.appointment_id = a.id)::text FROM 1 FOR 120) AS services_summary,
+                           ROW_NUMBER() OVER(PARTITION BY a.status ORDER BY a.start_ts) AS position
+                    FROM appointments a
+                    LEFT JOIN customers c ON c.id = a.customer_id
+                    LEFT JOIN vehicles v  ON v.id = a.vehicle_id
+                    WHERE {where_sql}
+                    ORDER BY a.status, a.start_ts
+                    """,
+                    params,
+                )
+            
             rows = cur.fetchall()
 
             cards = []
             for r in rows:
-                start_iso = r["start_ts"].astimezone(timezone.utc).isoformat() if r["start_ts"] else None
-                end_iso = r.get("end_ts") and r["end_ts"].astimezone(timezone.utc).isoformat() or None
+                # Handle date parsing for SQLite (strings) vs PostgreSQL (datetime objects)
+                start_ts = r["start_ts"]
+                end_ts = r.get("end_ts")
+                
+                if start_ts:
+                    if isinstance(start_ts, str):
+                        # SQLite returns ISO strings, parse them
+                        from datetime import datetime
+                        start_dt = datetime.fromisoformat(start_ts.replace('Z', '+00:00'))
+                        start_iso = start_dt.astimezone(timezone.utc).isoformat()
+                    else:
+                        # PostgreSQL returns datetime objects
+                        start_iso = start_ts.astimezone(timezone.utc).isoformat()
+                else:
+                    start_iso = None
+                
+                if end_ts:
+                    if isinstance(end_ts, str):
+                        # SQLite returns ISO strings, parse them
+                        from datetime import datetime
+                        end_dt = datetime.fromisoformat(end_ts.replace('Z', '+00:00'))
+                        end_iso = end_dt.astimezone(timezone.utc).isoformat()
+                    else:
+                        # PostgreSQL returns datetime objects
+                        end_iso = end_ts.astimezone(timezone.utc).isoformat()
+                else:
+                    end_iso = None
+                
                 cards.append(
                     {
                         "id": r["id"],
@@ -411,17 +753,30 @@ def get_board():
                 )
 
             # Column aggregates
-            cur.execute(
-                f"""
-                SELECT a.status::text AS key,
-                       COUNT(*) AS count,
-                       COALESCE(SUM(a.total_amount), 0) AS sum
-                FROM appointments a
-                WHERE {where_sql}
-                GROUP BY a.status
-                """,
-                params,
-            )
+            if is_sqlite:
+                cur.execute(
+                    f"""
+                    SELECT CAST(a.status AS TEXT) AS key,
+                           COUNT(*) AS count,
+                           COALESCE(SUM(a.total_amount), 0) AS sum
+                    FROM appointments a
+                    WHERE {where_sql}
+                    GROUP BY a.status
+                    """,
+                    params,
+                )
+            else:
+                cur.execute(
+                    f"""
+                    SELECT a.status::text AS key,
+                           COUNT(*) AS count,
+                           COALESCE(SUM(a.total_amount), 0) AS sum
+                    FROM appointments a
+                    WHERE {where_sql}
+                    GROUP BY a.status
+                    """,
+                    params,
+                )
             agg = {r["key"]: (int(r["count"]), float(r["sum"])) for r in cur.fetchall()}
 
     conn.close()
@@ -509,32 +864,83 @@ def get_appointment(appt_id: str):
     if conn is None:
         return jsonify({"error": "DB unavailable"}), 503
 
+    # Detect if we're using SQLite fallback and adjust query syntax
+    is_sqlite = hasattr(conn, '_conn')  # SqliteConnectionWrapper has _conn attribute
+
     with conn:
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT a.id::text, a.status::text, a.start_ts, a.end_ts, a.total_amount, a.paid_amount,
-                       a.check_in_at, a.check_out_at, a.tech_id::text,
-                       c.id::text as customer_id, c.name as customer_name, c.email, c.phone,
-                       v.id::text as vehicle_id, v.year, v.make, v.model, v.vin
-                FROM appointments a
-                LEFT JOIN customers c ON c.id = a.customer_id
-                LEFT JOIN vehicles  v ON v.id = a.vehicle_id
-                WHERE a.id = %s
-                """,
-                (appt_id,),
-            )
+            if is_sqlite:
+                # SQLite-compatible query
+                cur.execute(
+                    """
+                    SELECT CAST(a.id AS TEXT) as id, 
+                           CAST(a.status AS TEXT) as status, 
+                           a.start_ts, a.end_ts, a.total_amount, a.paid_amount,
+                           a.check_in_at, a.check_out_at, 
+                           CAST(a.tech_id AS TEXT) as tech_id,
+                           CAST(c.id AS TEXT) as customer_id, c.name as customer_name, c.email, c.phone,
+                           CAST(v.id AS TEXT) as vehicle_id, v.year, v.make, v.model, v.license_plate as vin
+                    FROM appointments a
+                    LEFT JOIN customers c ON c.id = a.customer_id
+                    LEFT JOIN vehicles  v ON v.id = a.vehicle_id
+                    WHERE a.id = ?
+                    """,
+                    (appt_id,),
+                )
+            else:
+                # PostgreSQL query
+                cur.execute(
+                    """
+                    SELECT a.id::text, a.status::text, a.start_ts, a.end_ts, a.total_amount, a.paid_amount,
+                           a.check_in_at, a.check_out_at, a.tech_id::text,
+                           c.id::text as customer_id, c.name as customer_name, c.email, c.phone,
+                           v.id::text as vehicle_id, v.year, v.make, v.model, v.vin
+                    FROM appointments a
+                    LEFT JOIN customers c ON c.id = a.customer_id
+                    LEFT JOIN vehicles  v ON v.id = a.vehicle_id
+                    WHERE a.id = %s
+                    """,
+                    (appt_id,),
+                )
+            
             a = cur.fetchone()
             if not a:
                 return jsonify({"error": "Not found"}), 404
 
-            cur.execute("SELECT id::text, appointment_id::text, name, notes, estimated_hours, estimated_price FROM appointment_services WHERE appointment_id = %s ORDER BY created_at", (appt_id,))
+            if is_sqlite:
+                # SQLite query for services
+                cur.execute(
+                    """
+                    SELECT CAST(id AS TEXT) as id, 
+                           CAST(appointment_id AS TEXT) as appointment_id, 
+                           name, notes, estimated_hours, estimated_price 
+                    FROM appointment_services 
+                    WHERE appointment_id = ? 
+                    ORDER BY id
+                    """, 
+                    (appt_id,)
+                )
+            else:
+                # PostgreSQL query for services
+                cur.execute("SELECT id::text, appointment_id::text, name, notes, estimated_hours, estimated_price FROM appointment_services WHERE appointment_id = %s ORDER BY created_at", (appt_id,))
             services = cur.fetchall()
 
     conn.close()
 
     def iso(dt):
-        return dt.astimezone(timezone.utc).isoformat() if dt else None
+        if dt is None:
+            return None
+        # Handle SQLite string timestamps vs PostgreSQL datetime objects
+        if isinstance(dt, str):
+            # SQLite returns ISO strings, parse and convert to UTC
+            try:
+                dt_obj = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+                return dt_obj.astimezone(timezone.utc).isoformat()
+            except:
+                return dt  # Return as-is if parsing fails
+        else:
+            # PostgreSQL datetime object
+            return dt.astimezone(timezone.utc).isoformat() if dt else None
 
     appointment = {
         "id": a["id"],
@@ -604,13 +1010,27 @@ def patch_appointment(appt_id: str):
     if conn is None:
         return jsonify({"ok": True})
 
+    # Detect if we're using SQLite fallback
+    is_sqlite = hasattr(conn, '_conn')
+
     with conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT id::text, status::text FROM appointments WHERE id = %s", (appt_id,))
-            old = cur.fetchone()
-            if not old:
-                return jsonify({"error": "Not found"}), 404
-            cur.execute(f"UPDATE appointments SET {', '.join(sets)} WHERE id = %s RETURNING id", (*params, appt_id))
+            if is_sqlite:
+                # SQLite-compatible queries - replace %s with ? and remove ::text casting
+                sets_sqlite = [s.replace('%s', '?') for s in sets]
+                cur.execute(f"SELECT CAST(id AS TEXT) as id, CAST(status AS TEXT) as status FROM appointments WHERE id = ?", (appt_id,))
+                old = cur.fetchone()
+                if not old:
+                    return jsonify({"error": "Not found"}), 404
+                cur.execute(f"UPDATE appointments SET {', '.join(sets_sqlite)} WHERE id = ?", (*params, appt_id))
+            else:
+                # PostgreSQL queries
+                cur.execute("SELECT id::text, status::text FROM appointments WHERE id = %s", (appt_id,))
+                old = cur.fetchone()
+                if not old:
+                    return jsonify({"error": "Not found"}), 404
+                cur.execute(f"UPDATE appointments SET {', '.join(sets)} WHERE id = %s RETURNING id", (*params, appt_id))
+            
             user_id = "system"
             audit(conn, user_id, "APPT_PATCH", "appointment", appt_id, {"status": old["status"]}, {k: body[k] for k in body.keys()})
 
@@ -691,29 +1111,54 @@ def get_admin_appointments():
     where_sql = " AND ".join(where)
 
     conn = db_conn()
-    if conn is None:
-        # DB down or connection failure: return empty envelope
-        return _ok({"appointments": [], "nextCursor": None})
+    
+    # Detect if we're using SQLite fallback and adjust query syntax
+    is_sqlite = hasattr(conn, '_conn')  # SqliteConnectionWrapper has _conn attribute
+    
+    if is_sqlite:
+        # SQLite-compatible query
+        where_sql = where_sql.replace('ILIKE', 'LIKE')  # SQLite uses LIKE instead of ILIKE
+        query = f"""
+             SELECT CAST(a.id AS TEXT) as id,
+                     a.status,
+                     a.start_ts AS start_ts,
+                     a.end_ts AS end_ts,
+                     COALESCE(a.total_amount, 0) AS total_amount,
+                     c.name as customer_name,
+                     COALESCE(v.make, '') || ' ' || COALESCE(v.model, '') as vehicle_label
+             FROM appointments a
+             LEFT JOIN customers c ON c.id = a.customer_id
+             LEFT JOIN vehicles v ON v.id = a.vehicle_id
+             WHERE {where_sql}
+             ORDER BY a.start_ts ASC, a.id ASC
+             LIMIT ? OFFSET ?
+         """
+    else:
+        # PostgreSQL query
+        query = f"""
+             SELECT a.id::text,
+                     a.status::text,
+                     a.start_ts AS start_ts,
+                     a.end_ts AS end_ts,
+                     COALESCE(a.total_amount, 0) AS total_amount,
+                     c.name as customer_name,
+                     COALESCE(v.make, '') || ' ' || COALESCE(v.model, '') as vehicle_label
+             FROM appointments a
+             LEFT JOIN customers c ON c.id = a.customer_id
+             LEFT JOIN vehicles v ON v.id = a.vehicle_id
+             WHERE {where_sql}
+             ORDER BY a.start_ts ASC, a.id ASC
+             LIMIT %s OFFSET %s
+         """
 
     with conn:
         with conn.cursor() as cur:
-            # Include vehicle join for search
-            query = f"""
-                 SELECT a.id::text,
-                         a.status::text,
-                         a.start_ts AS start_ts,
-                         a.end_ts AS end_ts,
-                         COALESCE(a.total_amount, 0) AS total_amount,
-                         c.name as customer_name,
-                         COALESCE(v.make, '') || ' ' || COALESCE(v.model, '') as vehicle_label
-                 FROM appointments a
-                 LEFT JOIN customers c ON c.id = a.customer_id
-                 LEFT JOIN vehicles v ON v.id = a.vehicle_id
-                 WHERE {where_sql}
-                 ORDER BY a.start_ts ASC, a.id ASC
-                 LIMIT %s OFFSET %s
-             """
-            cur.execute(query, (*params, limit, offset))
+            if is_sqlite:
+                # SQLite uses ? placeholders
+                cur.execute(query, (*params, limit, offset))
+            else:
+                # PostgreSQL uses %s placeholders
+                cur.execute(query, (*params, limit, offset))
             appointments = cur.fetchall()
     
     # Compute position for each appointment
@@ -728,18 +1173,38 @@ def get_admin_appointments():
         pass
 
     next_cursor = None
-    if len(appointments) == limit and appointments[-1]['start_ts'] is not None:
+    if len(appointments) == limit and appointments and appointments[-1].get('start_ts'):
         last_appt = appointments[-1]
-        cursor_data = f"{last_appt['start_ts'].isoformat()},{last_appt['id']}"
+        if is_sqlite:
+            # For SQLite, start_ts might be a string
+            start_ts_str = last_appt['start_ts']
+            if isinstance(start_ts_str, str):
+                dt = datetime.fromisoformat(start_ts_str.replace('Z', '+00:00'))
+                cursor_data = f"{dt.isoformat()},{last_appt['id']}"
+            else:
+                cursor_data = f"{start_ts_str.isoformat()},{last_appt['id']}"
+        else:
+            # PostgreSQL datetime object
+            cursor_data = f"{last_appt['start_ts'].isoformat()},{last_appt['id']}"
         next_cursor = base64.b64encode(cursor_data.encode('utf-8')).decode('utf-8')
 
     # Serialize appointment fields for JSON
     for appt in appointments:
         # Convert datetime to ISO strings
         if appt.get('start_ts'):
-            appt['start_ts'] = appt['start_ts'].astimezone(timezone.utc).isoformat()
+            if is_sqlite and isinstance(appt['start_ts'], str):
+                # SQLite returns strings, convert to proper ISO format
+                dt = datetime.fromisoformat(appt['start_ts'].replace('Z', '+00:00'))
+                appt['start_ts'] = dt.astimezone(timezone.utc).isoformat()
+            else:
+                # PostgreSQL datetime object
+                appt['start_ts'] = appt['start_ts'].astimezone(timezone.utc).isoformat()
         if appt.get('end_ts'):
-            appt['end_ts'] = appt['end_ts'].astimezone(timezone.utc).isoformat()
+            if is_sqlite and isinstance(appt['end_ts'], str):
+                dt = datetime.fromisoformat(appt['end_ts'].replace('Z', '+00:00'))
+                appt['end_ts'] = dt.astimezone(timezone.utc).isoformat()
+            else:
+                appt['end_ts'] = appt['end_ts'].astimezone(timezone.utc).isoformat()
         # Convert Decimal numeric to float
         if 'total_amount' in appt:
             try:

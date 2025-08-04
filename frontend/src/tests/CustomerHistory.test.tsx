@@ -5,24 +5,8 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import CustomerHistory from '../components/admin/CustomerHistory';
 import * as api from '@/lib/api';
 
-// Mock the API module completely
-vi.mock('@/lib/api', () => ({
-  getCustomerHistory: vi.fn(),
-  handleApiError: vi.fn((err, defaultMessage) => defaultMessage || 'Unknown error')
-}));
-
-// Get the mocked function
+// Get the mocked function from centralized setup
 const mockGetCustomerHistory = vi.mocked(api.getCustomerHistory);
-
-// Mock the toast library  
-vi.mock('../lib/toast', () => ({
-  setToastPush: vi.fn(),
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-    info: vi.fn()
-  }
-}));
 
 describe('CustomerHistory', () => {
   const mockOnAppointmentClick = vi.fn();

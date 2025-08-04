@@ -4,24 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import MessageThread from '../components/admin/MessageThread';
 
-// Mock the API module before importing the component
-vi.mock('@/lib/api', () => ({
-  getAppointmentMessages: vi.fn(),
-  createAppointmentMessage: vi.fn(),
-  handleApiError: vi.fn((error, defaultMessage) => defaultMessage)
-}));
-
-// Mock the toast library  
-vi.mock('@/lib/toast', () => ({
-  setToastPush: vi.fn(),
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-    info: vi.fn()
-  }
-}));
-
-// Import the mocked functions after the mock is defined
+// Import the mocked functions from centralized setup
 import { getAppointmentMessages, createAppointmentMessage } from '@/lib/api';
 
 describe('MessageThread', () => {

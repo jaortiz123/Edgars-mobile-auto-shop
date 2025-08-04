@@ -17,6 +17,12 @@ export default defineConfig({
     // This is the most critical fix.
     environment: 'jsdom',
     
+    // ✅ P1-T-013: Environment-specific test execution (using deprecated but working approach)
+    environmentMatchGlobs: [
+      ['**/*.utils.test.ts', 'node'],
+      ['**/*.components.test.tsx', 'jsdom']
+    ],
+    
     // ✅ Point to a single, reliable setup file.
     setupFiles: ['src/tests/setup.ts'],
     
@@ -57,8 +63,8 @@ export default defineConfig({
       reportsDirectory: './coverage',
       thresholds: {
         lines: 80,
-        branches: 75,
-        functions: 75,
+        branches: 80,
+        functions: 80,
         statements: 80
       }
     },

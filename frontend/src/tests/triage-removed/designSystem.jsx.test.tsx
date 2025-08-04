@@ -171,11 +171,11 @@ describe('Design System JSX Environment Tests', () => {
     });
 
     it('should support style property access', () => {
-      render(<div data-testid="style-test" style={{ color: 'red', fontSize: '16px' }} />);
+      render(<div data-testid="style-test" style={{ color: 'red', fontSize: 'var(--fs-2, 1rem)' }} />);
       
       const element = screen.getByTestId('style-test');
       expect(element.style.color).toBe('red');
-      expect(element.style.fontSize).toBe('16px');
+      expect(element.style.fontSize).toBe('var(--fs-2, 1rem)');
     });
   });
 
