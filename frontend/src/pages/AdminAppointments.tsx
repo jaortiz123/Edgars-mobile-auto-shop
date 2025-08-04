@@ -87,6 +87,10 @@ export default function AdminAppointments() {
   useEffect(() => {
     if (loading) return; // Don't setup interval during initial load
     
+    // TEMP: Disabled polling to fix infinite request loop
+    console.log('Appointment polling disabled to prevent infinite requests');
+    return;
+    
     const interval = setInterval(() => {
       console.log('🔄 Auto-refreshing appointments...');
       // Only refresh if we're not already loading to prevent race conditions

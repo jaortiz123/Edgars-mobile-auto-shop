@@ -133,11 +133,13 @@ export function AppointmentProvider({ children }: { children: React.ReactNode })
    }, [cards, refreshStats, toast]);
 
   useEffect(() => {
+    console.log('🎯 AppointmentContext: useEffect running - mount only');
     void refreshBoard();
     void refreshStats();
-    const t = setInterval(() => void refreshStats(), 60000);
-    return () => clearInterval(t);
-  }, [refreshBoard, refreshStats]);
+    // TEMP: Disabled polling to fix infinite request loop
+    // const t = setInterval(() => void refreshStats(), 60000);
+    // return () => clearInterval(t);
+  }, []); // Empty dependency array - run only on mount to prevent infinite loop
 
   const value = useMemo(
     () => ({ 

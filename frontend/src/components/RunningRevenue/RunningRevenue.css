@@ -1,0 +1,405 @@
+/**
+ * Sprint 4A-T-003: Running Revenue Component Styles
+ * 
+ * Provides smooth animations and professional styling for live revenue display
+ */
+
+/* Main Running Revenue Component */
+.running-revenue {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.running-revenue:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  border-color: #94a3b8;
+}
+
+.running-revenue.updating {
+  animation: revenueUpdate 0.3s ease-in-out;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* Revenue Content Layout */
+.revenue-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.running-revenue.horizontal .revenue-content {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Revenue Label */
+.revenue-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+/* Revenue Amount */
+.revenue-amount {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1;
+  font-feature-settings: 'tnum';
+  transition: color 0.3s ease;
+}
+
+.revenue-amount.error {
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Update Animation */
+@keyframes revenueUpdate {
+  0% { 
+    transform: scale(1); 
+    background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+  }
+  50% { 
+    transform: scale(1.02); 
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  }
+  100% { 
+    transform: scale(1); 
+    background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+  }
+}
+
+/* Breakdown Section */
+.revenue-breakdown {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.breakdown-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.breakdown-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.breakdown-value {
+  font-size: 12px;
+  font-weight: 600;
+  font-feature-settings: 'tnum';
+}
+
+.breakdown-value.paid {
+  color: #059669;
+}
+
+.breakdown-value.pending {
+  color: #d97706;
+}
+
+/* Last Updated Indicator */
+.revenue-updated {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 10px;
+  color: #64748b;
+}
+
+.update-indicator {
+  color: #10b981;
+  animation: pulse 2s infinite;
+}
+
+.update-time {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Loading States */
+.running-revenue.loading {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+.revenue-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton-line {
+  height: 12px;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: skeleton 1.5s infinite;
+}
+
+.skeleton-line.short {
+  width: 60px;
+  height: 8px;
+}
+
+.skeleton-line:not(.short) {
+  width: 80px;
+  height: 16px;
+}
+
+@keyframes skeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Error State */
+.running-revenue.error {
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  border-color: #fca5a5;
+}
+
+/* Compact Version */
+.running-revenue-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  transition: all 0.2s ease;
+}
+
+.running-revenue-compact:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: #cbd5e1;
+}
+
+.running-revenue-compact.loading {
+  background: #f8fafc;
+}
+
+.skeleton-compact {
+  width: 60px;
+  height: 16px;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: skeleton 1.5s infinite;
+}
+
+.revenue-icon {
+  font-size: 12px;
+}
+
+.revenue-text {
+  font-feature-settings: 'tnum';
+}
+
+/* Card Version */
+.running-revenue-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.running-revenue-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-color: #cbd5e1;
+}
+
+.running-revenue-card.trend-up {
+  background: linear-gradient(135deg, #f0fdf4, white);
+  border-color: #bbf7d0;
+}
+
+.running-revenue-card.trend-down {
+  background: linear-gradient(135deg, #fef2f2, white);
+  border-color: #fecaca;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.trend-indicator {
+  font-size: 16px;
+}
+
+.card-amount {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 16px;
+  font-feature-settings: 'tnum';
+}
+
+.card-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.breakdown-row .breakdown-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.breakdown-row .breakdown-value {
+  font-weight: 600;
+  color: #1e293b;
+  font-feature-settings: 'tnum';
+}
+
+.card-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card-skeleton .skeleton-line {
+  width: 100%;
+}
+
+.card-skeleton .skeleton-line.large {
+  height: 28px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .running-revenue {
+    padding: 6px 12px;
+  }
+  
+  .revenue-amount {
+    font-size: 16px;
+  }
+  
+  .revenue-breakdown {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .breakdown-item {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  
+  .running-revenue-card {
+    padding: 16px;
+  }
+  
+  .card-amount {
+    font-size: 24px;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .running-revenue {
+    background: linear-gradient(135deg, #1e293b, #334155);
+    border-color: #475569;
+    color: #f1f5f9;
+  }
+  
+  .revenue-label {
+    color: #94a3b8;
+  }
+  
+  .revenue-amount {
+    color: #f1f5f9;
+  }
+  
+  .running-revenue-card {
+    background: #1e293b;
+    border-color: #475569;
+    color: #f1f5f9;
+  }
+  
+  .card-title {
+    color: #94a3b8;
+  }
+  
+  .card-amount {
+    color: #f1f5f9;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .running-revenue {
+    border-width: 2px;
+    box-shadow: none;
+  }
+  
+  .revenue-amount {
+    font-weight: 800;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .running-revenue,
+  .running-revenue-compact,
+  .running-revenue-card {
+    transition: none;
+  }
+  
+  .revenueUpdate,
+  .skeleton,
+  .pulse {
+    animation: none;
+  }
+}
