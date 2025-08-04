@@ -60,7 +60,7 @@ class RequestIdFilter(logging.Filter):
         return True
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True, origins=['http://localhost:5173'])
 
 app.config.setdefault("PROPAGATE_EXCEPTIONS", False)
 app.config.setdefault("TRAP_HTTP_EXCEPTIONS", False)
@@ -1348,7 +1348,24 @@ def stats():
 
     conn = db_conn()
     if conn is None:
-        raise RuntimeError("DB unavailable")
+        # Fallback stats when DB is unavailable
+        fallback_stats = {
+            "jobsToday": 0,
+            "carsOnPremises": 0,
+            "scheduled": 0,
+            "inProgress": 0,
+            "ready": 0,
+            "completed": 0,
+            "noShow": 0,
+            "unpaidTotal": 0.0,
+            "totals": {
+                "today_completed": 0,
+                "today_booked": 0,
+                "avg_cycle": None,
+                "avg_cycle_formatted": "N/A"
+            }
+        }
+        return jsonify(fallback_stats)
 
     today = date.today()
     with conn:

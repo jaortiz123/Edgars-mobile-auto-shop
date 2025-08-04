@@ -14,6 +14,7 @@ import { getViewMode, setViewMode, ViewMode } from '../lib/prefs';
 import StatusBoard from '../components/admin/StatusBoard';
 import FloatingActionButton from '../components/ui/FloatingActionButton';
 import { scheduleReminder } from '@/services/notificationService';
+import RunningRevenue from '../components/RunningRevenue/RunningRevenue';
 import '@/styles/appointment-reminders.css';
 import { 
   Calendar,
@@ -278,15 +279,16 @@ export function Dashboard() {
     }
   }, [refreshTrigger]); // Remove loadDashboardData dependency
 
-  // Auto-refresh appointments every 2 minutes (reduced from 30 seconds)
+  // Auto-refresh appointments disabled to prevent infinite requests
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (isOnline() && !loadingRef.current && !isRefreshing) {
-        console.log("⏰ Auto-refresh triggered");
-        loadDashboardData();
-      }
-    }, 120000); // 2 minutes instead of 30 seconds
-    return () => clearInterval(interval);
+    console.log("⏰ Auto-refresh disabled to prevent infinite requests");
+    // const interval = setInterval(() => {
+    //   if (isOnline() && !loadingRef.current && !isRefreshing) {
+    //     console.log("⏰ Auto-refresh triggered");
+    //     loadDashboardData();
+    //   }
+    // }, 120000); // 2 minutes instead of 30 seconds
+    // return () => clearInterval(interval);
   }, [isRefreshing]); // Remove loadDashboardData dependency
 
   // Schedule notifications for today's appointments
@@ -547,6 +549,7 @@ export function Dashboard() {
             <p className="text-fs-1 text-gray-600 mt-sp-1">Welcome back! Here's what's happening today.</p>
           </div>
           <div className="flex items-center gap-sp-2">
+            <RunningRevenue className="hidden sm:flex" />
             <button
               onClick={() => {
                 console.log('🔄 Manual refresh triggered');

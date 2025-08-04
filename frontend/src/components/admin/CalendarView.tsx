@@ -39,6 +39,10 @@ export const CalendarView: React.FC = () => {
 
   // Auto-refresh appointments every 30 seconds
   useEffect(() => {
+    // TEMP: Disabled polling to fix infinite request loop
+    console.log('Calendar polling disabled to prevent infinite requests');
+    return;
+    
     const interval = setInterval(() => {
       if (!loading) {
         console.log('🔄 Auto-refreshing calendar appointments...');
