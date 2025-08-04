@@ -1,0 +1,209 @@
+/**
+ * Sprint 4A-T-001: Completion Animation CSS
+ * 
+ * Fade-out + slide-down animations for appointment cards
+ * Duration: 300ms with proper easing from design tokens
+ */
+
+/* ===========================================
+   COMPLETION ANIMATIONS
+   =========================================== */
+
+/* Main completion animation - fade out + slide down */
+@keyframes fadeOutSlideDown {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1) translateZ(0);
+  }
+  
+  50% {
+    opacity: 0.5;
+    transform: translateY(10px) scale(0.98) translateZ(0);
+  }
+  
+  100% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95) translateZ(0);
+  }
+}
+
+/* Completion animation class */
+.complete-animation {
+  animation: fadeOutSlideDown 300ms cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+  
+  /* GPU acceleration for smooth performance */
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  
+  /* Prevent interaction during animation */
+  pointer-events: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Alternative slide-out animation for different contexts */
+@keyframes slideOutRight {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1) translateZ(0);
+  }
+  
+  100% {
+    opacity: 0;
+    transform: translateX(100%) scale(0.9) translateZ(0);
+  }
+}
+
+.complete-animation-slide {
+  animation: slideOutRight 300ms cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  pointer-events: none;
+}
+
+/* Success completion with bounce effect */
+@keyframes completeBounce {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1) translateZ(0);
+  }
+  
+  30% {
+    transform: translateY(-5px) scale(1.02) translateZ(0);
+  }
+  
+  50% {
+    opacity: 0.8;
+    transform: translateY(2px) scale(0.99) translateZ(0);
+  }
+  
+  100% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95) translateZ(0);
+  }
+}
+
+.complete-animation-bounce {
+  animation: completeBounce 350ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  pointer-events: none;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .complete-animation,
+  .complete-animation-slide,
+  .complete-animation-bounce {
+    animation: fadeOutQuick 150ms ease-out forwards;
+  }
+  
+  @keyframes fadeOutQuick {
+    to {
+      opacity: 0;
+      transform: translateZ(0);
+    }
+  }
+}
+
+/* ===========================================
+   COMPLETION STATE STYLING
+   =========================================== */
+
+/* Completed card styling before animation */
+.appointment-card.completed {
+  background-color: var(--success-light, #f0fdf4);
+  border-color: var(--success, #22c55e);
+  box-shadow: 0 1px 3px rgba(34, 197, 94, 0.1);
+}
+
+/* Loading state during completion */
+.appointment-card.completing {
+  position: relative;
+  overflow: hidden;
+}
+
+.appointment-card.completing::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(34, 197, 94, 0.1),
+    transparent
+  );
+  animation: completingShimmer 1.5s infinite;
+  z-index: 1;
+}
+
+@keyframes completingShimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* ===========================================
+   ACCESSIBILITY ENHANCEMENTS
+   =========================================== */
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .appointment-card.completed {
+    border-width: 2px;
+    border-color: #000;
+    background-color: #fff;
+  }
+  
+  .complete-animation,
+  .complete-animation-slide,
+  .complete-animation-bounce {
+    border: 2px solid #000;
+  }
+}
+
+/* Focus management during animations */
+.complete-animation:focus,
+.complete-animation-slide:focus,
+.complete-animation-bounce:focus {
+  outline: none; /* Remove focus during exit animation */
+}
+
+/* ===========================================
+   PERFORMANCE OPTIMIZATIONS
+   =========================================== */
+
+/* Optimize for mobile devices */
+@media (max-width: 768px) {
+  .complete-animation,
+  .complete-animation-slide,
+  .complete-animation-bounce {
+    /* Slightly faster on mobile for better perceived performance */
+    animation-duration: 250ms;
+  }
+}
+
+/* Print styles */
+@media print {
+  .complete-animation,
+  .complete-animation-slide,
+  .complete-animation-bounce,
+  .appointment-card.completing {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  
+  .appointment-card.completing::before {
+    display: none;
+  }
+}

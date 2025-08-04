@@ -15,8 +15,10 @@ import {
   CardAccessibility,
   IntervalManager
 } from '@/utils/cardRobustness';
+import { safeAnimateCompletion } from '@/animations/completionAnimations';
 import '@/styles/appointment-reminders.css';
 import '@/styles/cardRobustness.css';
+import '@/styles/completionAnimations.css';
 
 interface AppointmentCardProps {
   card: BoardCard;
@@ -24,9 +26,21 @@ interface AppointmentCardProps {
   onMove: (id: string) => void;
   onQuickReschedule: (id: string) => void;
   isRescheduling?: boolean;
+  onCompleteJob?: (id: string) => void;
+  isCompleting?: boolean;
+  onCardRemoved?: (id: string) => void;
 }
 
-export default function AppointmentCard({ card, onOpen, onMove, onQuickReschedule, isRescheduling = false }: AppointmentCardProps) {
+export default function AppointmentCard({ 
+  card, 
+  onOpen, 
+  onMove, 
+  onQuickReschedule, 
+  isRescheduling = false,
+  onCompleteJob,
+  isCompleting = false,
+  onCardRemoved
+}: AppointmentCardProps) {
   // Always call all hooks first to maintain hooks order
   const [minutesUntil, setMinutesUntil] = useState(0);
   const [hasArrived, setHasArrived] = useState(false);
@@ -140,6 +154,44 @@ export default function AppointmentCard({ card, onOpen, onMove, onQuickReschedul
     }
   }, [isLoading, validatedCard]);
 
+  // Sprint 4A-T-001: Completion animation handler
+  const handleCompleteJob = useCallback(async () => {
+    if (!validatedCard || !onCompleteJob || isCompleting) return;
+
+    try {
+      // Start completion flow
+      onCompleteJob(validatedCard.id);
+      
+      // Announce completion to screen readers
+      CardAccessibility.announceToScreenReader(
+        `Completing appointment for ${validatedCard.customerName}`,
+        'polite'
+      );
+    } catch (error) {
+      console.error('Error completing job:', error);
+      setError('Failed to complete job. Please try again.');
+      
+      CardAccessibility.announceToScreenReader(
+        'Failed to complete appointment',
+        'assertive'
+      );
+    }
+  }, [validatedCard, onCompleteJob, isCompleting]);
+
+  // Sprint 4A-T-001: Handle completion animation when status changes to completed
+  useEffect(() => {
+    if (!validatedCard || !cardRef.current) return;
+    
+    if (validatedCard.status === 'COMPLETED') {
+      safeAnimateCompletion(cardRef.current, () => {
+        // Remove card from DOM after animation completes
+        if (onCardRemoved) {
+          onCardRemoved(validatedCard.id);
+        }
+      });
+    }
+  }, [validatedCard, onCardRemoved]);
+
   // Urgent notification flag
   const hasUrgentNotification = useMemo(() => {
     if (!validatedCard?.start) return false;
@@ -229,7 +281,10 @@ export default function AppointmentCard({ card, onOpen, onMove, onQuickReschedul
       ref={cardRef}
       className={`appointment-card relative group ${isDragging ? 'opacity-50' : 'opacity-100'} ${
         hasUrgentNotification ? 'has-urgent-notification' : ''
+      } ${isCompleting ? 'completing' : ''} ${
+        validatedCard.status === 'COMPLETED' ? 'completed' : ''
       }`}
+      data-testid={`appointment-card-${validatedCard.id}`}
     >
       <div
         className={`card-base w-full text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
@@ -312,6 +367,41 @@ export default function AppointmentCard({ card, onOpen, onMove, onQuickReschedul
               {isLoading && (
                 <span className="sr-only" aria-live="polite">
                   Marking customer as arrived...
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Sprint 4A-T-001: Completion Button for in-progress appointments */}
+          {validatedCard.status === 'IN_PROGRESS' && onCompleteJob && (
+            <div className="mt-sp-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCompleteJob();
+                }}
+                disabled={isCompleting}
+                className={`w-full py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                  isCompleting 
+                    ? 'bg-gray-300 text-gray-600 cursor-not-allowed' 
+                    : 'bg-green-600 text-white hover:bg-green-700 focus:bg-green-700'
+                }`}
+                aria-label={`Complete appointment for ${validatedCard.customerName}`}
+              >
+                {isCompleting ? (
+                  <>
+                    <span className="inline-block animate-spin mr-2" aria-hidden="true">⟳</span>
+                    Completing...
+                  </>
+                ) : (
+                  <>
+                    ✅ Complete Job
+                  </>
+                )}
+              </button>
+              {isCompleting && (
+                <span className="sr-only" aria-live="polite">
+                  Completing appointment...
                 </span>
               )}
             </div>
