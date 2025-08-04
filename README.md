@@ -20,6 +20,33 @@ This repository contains the serverless backend for "Edgar's Mobile Auto Repair 
 
 For information on the design system, including typography and spacing, please see the [UI Standards documentation](docs/UI-Standards.md).
 
+## Testing
+
+The project includes comprehensive testing infrastructure across multiple layers:
+
+### Test Suites
+- **Unit Tests**: Backend (pytest) and Frontend (Vitest)
+- **Integration Tests**: End-to-end testing with Playwright
+- **Cross-Browser Testing**: Chrome, Firefox, Safari support
+- **Performance Tests**: Latency monitoring for critical endpoints
+- **Accessibility Tests**: Automated a11y compliance checks
+
+### Running Tests
+```bash
+# All tests
+npm test
+
+# Specific test suites
+npm run test:backend     # Backend unit tests
+npm run test:frontend    # Frontend unit tests  
+npm run test:e2e         # End-to-end tests
+npm run test:browsers    # Cross-browser tests
+npm run test:perf        # Performance smoke tests
+```
+
+### CI/CD Integration
+All tests run automatically on pull requests and main branch pushes. Performance tests enforce a P95 latency threshold of 500ms for critical endpoints, failing the build if exceeded.
+
 ---
 
 ## Architecture

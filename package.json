@@ -20,6 +20,7 @@
     "test:e2e": "playwright test",
     "test:e2e:smoke": "start-server-and-test 'npm run dev:frontend' http://localhost:5173 'playwright test --config=playwright-smoke.config.ts'",
     "test:browsers": "start-server-and-test 'npm run dev:frontend' http://localhost:5173 'playwright test --config=playwright-smoke.config.ts --project=chromium --project=firefox --project=webkit'",
+    "test:perf": "node tests/perf/endpointLatency.test.js",
     "test:backend": "pytest -q || true",
     "test:frontend": "cd frontend && npm test -- --run"
   },
@@ -37,6 +38,7 @@
   "dependencies": {
     "axios": "^1.10.0",
     "react-dnd": "^16.0.1",
-    "react-dnd-html5-backend": "^16.0.1"
+    "react-dnd-html5-backend": "^16.0.1",
+    "undici": "^6.21.3"
   }
 }
