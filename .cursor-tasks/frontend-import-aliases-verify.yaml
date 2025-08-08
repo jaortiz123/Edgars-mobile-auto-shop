@@ -1,0 +1,25 @@
+name: Verify frontend import aliases before PR merge
+description: |
+  Check that the frontend build works, dev server runs, and imports resolve after alias changes.
+steps:
+  - name: Build frontend
+    command: |
+      cd frontend
+      npm ci
+      npm run build
+  - name: Run dev server
+    command: |
+      cd frontend
+      npm run dev &
+      sleep 10
+      kill $!  # Stop the dev server after check
+  - name: Validate imports
+    command: |
+      cd frontend
+      npm run typecheck
+      npx tsc --noEmit --project tsconfig.app.json
+      echo "Check a few random imports in VS Code to ensure no red squiggles."
+notes: |
+  - Make sure `vite.config.ts` and `tsconfig.json` alias entries match.
+  - Resolve any missing imports before merging.
+
