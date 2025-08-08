@@ -188,10 +188,105 @@ export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }
     }
   };
 
+  const TodaysFocusHero = () => {
+    const { cards } = useAppointments();
+    const now = new Date();
+
+    const nextAppointment = cards
+      .filter(card => card.status === 'SCHEDULED' && typeof card.timeUntilStart === 'number' && card.timeUntilStart > 0)
+      .sort((a, b) => (a.timeUntilStart || 0) - (b.timeUntilStart || 0))[0];
+
+    const overdueAppointments = cards.filter(card => card.isOverdue);
+    const completedToday = cards.filter(card => card.status === 'COMPLETED');
+    const inProgressCount = cards.filter(card => card.status === 'IN_PROGRESS').length;
+    const scheduledCount = cards.filter(card => card.status === 'SCHEDULED').length;
+    const totalJobs = cards.length;
+
+    return (
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="col-span-2">
+            <h2 className="text-lg font-bold text-gray-900 mb-2">Right Now Focus</h2>
+            {overdueAppointments.length > 0 ? (
+              <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-3">
+                <div className="flex items-center">
+                  <span className="text-red-500 mr-2">🚨</span>
+                  <div>
+                    <p className="font-bold text-red-800">{overdueAppointments.length} appointment{overdueAppointments.length > 1 ? 's' : ''} running late</p>
+                    <p className="text-sm text-red-600">{overdueAppointments[0].servicesSummary} is {overdueAppointments[0].minutesLate}m overdue</p>
+                  </div>
+                </div>
+              </div>
+            ) : nextAppointment ? (
+              <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                <div className="flex items-center">
+                  <span className="text-green-500 mr-2">✅</span>
+                  <div>
+                    <p className="font-bold text-green-800">Next up: {nextAppointment.servicesSummary}</p>
+                    <p className="text-sm text-green-600">{nextAppointment.customerName} • Starting in {nextAppointment.timeUntilStart}m</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
+                <div className="flex items-center">
+                  <span className="text-gray-500 mr-2">😌</span>
+                  <div>
+                    <p className="font-bold text-gray-800">You're caught up!</p>
+                    <p className="text-sm text-gray-600">No immediate appointments pending</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Today's Progress</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Completed</span>
+                <span className="font-bold text-green-600">{completedToday.length} jobs</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">In Progress</span>
+                <span className="font-bold text-blue-600">{inProgressCount} jobs</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Scheduled</span>
+                <span className="font-bold text-gray-600">{scheduledCount} jobs</span>
+              </div>
+              <div className="pt-2">
+                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                  <span>Daily Progress</span>
+                  <span>{Math.round((completedToday.length / Math.max(totalJobs, 1)) * 100)}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-green-500 h-2 rounded-full transition-all duration-300" style={{ width: `${Math.min((completedToday.length / Math.max(totalJobs, 1)) * 100, 100)}%` }} />
+                </div>
+              </div>
+              {completedToday.length > 0 && (
+                <div className="pt-2 border-t border-gray-200">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-green-600">✅ On track</span>
+                    <span className="font-semibold text-green-600">Great pace!</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="overflow-x-auto pb-4" role="region" aria-label="Status Board">
+<<<<<<< Current (Your changes)
         <div className="px-6 py-4">
+=======
+        <div className="px-6 py-4 bg-gray-50">
+>>>>>>> Incoming (Background Agent changes)
           <TodaysFocusHero />
         </div>
         <div className="flex gap-4 min-w-max">

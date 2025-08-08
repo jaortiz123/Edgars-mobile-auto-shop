@@ -5,10 +5,28 @@ import pg8000.native
 from datetime import datetime, timedelta
 import logging
 
-# Initialize AWS clients
-sns = boto3.client('sns')
-dynamodb = boto3.resource('dynamodb')
-cloudwatch = boto3.client('cloudwatch')
+# Defer boto3 client/resource initialization to runtime (avoid requiring region at import)
+_SNS_CLIENT = None
+_DDB_RESOURCE = None
+_CLOUDWATCH_CLIENT = None
+
+def get_sns_client():
+    global _SNS_CLIENT
+    if _SNS_CLIENT is None:
+        _SNS_CLIENT = boto3.client('sns')
+    return _SNS_CLIENT
+
+def get_dynamodb_resource():
+    global _DDB_RESOURCE
+    if _DDB_RESOURCE is None:
+        _DDB_RESOURCE = boto3.resource('dynamodb')
+    return _DDB_RESOURCE
+
+def get_cloudwatch_client():
+    global _CLOUDWATCH_CLIENT
+    if _CLOUDWATCH_CLIENT is None:
+        _CLOUDWATCH_CLIENT = boto3.client('cloudwatch')
+    return _CLOUDWATCH_CLIENT
 
 # Set up logging
 logger = logging.getLogger()
@@ -41,7 +59,7 @@ def lambda_handler(event, context):
         
         # Get database connection
         conn = get_db_connection(db_secret_arn)
-        tracking_table = dynamodb.Table(notification_tracking_table)
+        tracking_table = get_dynamodb_resource().Table(notification_tracking_table)
         
         # Query for appointments in next 24-26 hours
         upcoming_appointments = query_upcoming_appointments(conn)
@@ -252,7 +270,8 @@ def send_appointment_reminder(topic_arn, appointment):
             'notes': appointment['notes']
         }
         
-        response = sns.publish(
+        sns_client = get_sns_client()
+        response = sns_client.publish(
             TopicArn=topic_arn,
             Message=json.dumps(reminder_data),
             Subject='Edgar Auto Shop - 24h Reminder'
@@ -296,13 +315,10 @@ def create_test_appointment(event, context):
         
         conn = get_db_connection(db_secret_arn)
         
-        # Calculate test appointment time (25 hours from now)
-        now = datetime.utcnow()
-        test_time = now + timedelta(hours=25)
-        scheduled_date = test_time.date()
-        scheduled_time = test_time.time()
+        # Query for appointments in next 24-26 hours
+        upcoming_appointments = query_upcoming_appointments(conn)
         
-        logger.info(f"Creating test appointment for: {test_time}")
+        logger.info(f"Creating test appointment for: {upcoming_appointments[0]['appointment_datetime']}")
         
         # Check if test customer exists
         results = conn.run("SELECT id FROM customers WHERE phone = '+15551234567'")
@@ -362,8 +378,8 @@ def create_test_appointment(event, context):
         """, 
             customer_id=customer_id,
             service_id=service_id,
-            scheduled_date=scheduled_date,
-            scheduled_time=scheduled_time
+            scheduled_date=upcoming_appointments[0]['scheduled_date'],
+            scheduled_time=upcoming_appointments[0]['scheduled_time']
         )
         appointment_id = appointment_results[0][0]
         
@@ -371,7 +387,7 @@ def create_test_appointment(event, context):
         logger.info(f"   Appointment ID: {appointment_id}")
         logger.info(f"   Customer: Test Customer SMS (+15551234567)")
         logger.info(f"   Service: {service_name}")
-        logger.info(f"   Scheduled: {test_time}")
+        logger.info(f"   Scheduled: {upcoming_appointments[0]['appointment_datetime']}")
         logger.info(f"   SMS Consent: TRUE")
         
         conn.close()
@@ -382,7 +398,7 @@ def create_test_appointment(event, context):
                 'message': 'Test appointment created successfully',
                 'appointment_id': appointment_id,
                 'customer_id': customer_id,
-                'scheduled_time': test_time.isoformat(),
+                'scheduled_time': upcoming_appointments[0]['appointment_datetime'],
                 'service': service_name
             })
         }
@@ -397,7 +413,8 @@ def create_test_appointment(event, context):
 def publish_reminder_metrics(appointments_found: int, reminders_sent: int):
     """Publish custom CloudWatch metrics for monitoring"""
     try:
-        cloudwatch.put_metric_data(
+        cloudwatch_client = get_cloudwatch_client()
+        cloudwatch_client.put_metric_data(
             Namespace='Edgar/SMS',
             MetricData=[
                 {
