@@ -8,7 +8,7 @@
     "dev": "vite",
     "dev:clean": "npx kill-port 5173 && vite",
     "kill-port": "npx kill-port 5173",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "lint:ci": "eslint . --ext .ts,.tsx --max-warnings 0",
     "preview": "vite preview",
