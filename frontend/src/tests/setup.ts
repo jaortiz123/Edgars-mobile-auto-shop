@@ -1,5 +1,7 @@
 import '@testing-library/jest-dom/vitest'
 import 'whatwg-fetch'
+import './testEnv'
+import './setup-original-ci-strict-001'
 
 import { expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest'
 import { toHaveNoViolations } from 'jest-axe'

@@ -8,7 +8,18 @@ export default defineConfig({
   // ✅ A SINGLE, CORRECT ALIAS CONFIGURATION
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      "@": path.resolve(__dirname, "./src"),
+      "@lib": path.resolve(__dirname, "./src/lib"),
+      "@/components": path.resolve(__dirname, "./src/components"),
+      "@/contexts": path.resolve(__dirname, "./src/contexts"),
+      "@/hooks": path.resolve(__dirname, "./src/hooks"),
+      "@/lib": path.resolve(__dirname, "./src/lib"),
+      "@/services": path.resolve(__dirname, "./src/services"),
+      "@/utils": path.resolve(__dirname, "./src/utils"),
+      "@/types": path.resolve(__dirname, "./src/types"),
+      "@/tests": path.resolve(__dirname, "./src/tests"),
+      "@/pages": path.resolve(__dirname, "./src/pages"),
+      "@/containers": path.resolve(__dirname, "./src/containers"),
     },
   },
 
