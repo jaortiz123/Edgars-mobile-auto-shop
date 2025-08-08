@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "lint:ci": "eslint . --ext .ts,.tsx --max-warnings 0",
     "preview": "vite preview",
+    "preview:spa": "npm run build && npx serve -s dist",
     "pretest": "pkill -f \"node .*vitest\" || true",
     "test": "vitest run --maxConcurrency=4",
     "test:watch": "vitest",
