@@ -282,11 +282,7 @@ export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="overflow-x-auto pb-4" role="region" aria-label="Status Board">
-<<<<<<< Current (Your changes)
-        <div className="px-6 py-4">
-=======
-        <div className="px-6 py-4 bg-gray-50">
->>>>>>> Incoming (Background Agent changes)
+
           <TodaysFocusHero />
         </div>
         <div className="flex gap-4 min-w-max">

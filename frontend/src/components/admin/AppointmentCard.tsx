@@ -315,16 +315,8 @@ export default function AppointmentCard({
           )}
           
           <div className="flex items-center justify-between gap-sp-1">
-<<<<<<< Current (Your changes)
-            {/* Service as primary hero text */}
-            <h3 className="text-lg font-bold text-gray-900 leading-tight">{validatedCard.servicesSummary || 'Service Details Missing'}</h3>
-            {/* Price removed from prominent position - kept small/discrete below */}
-=======
-            <div className="flex items-start gap-3">
-              <TimeDisplay card={validatedCard} minutesUntil={minutesUntil} />
-              <h3 className="text-fs-3 font-semibold text-gray-900">{validatedCard.customerName}</h3>
             </div>
->>>>>>> Incoming (Background Agent changes)
+
           </div>
 
           {/* Customer as secondary */}
