@@ -11,18 +11,23 @@
 
 /* Enhanced Card Base Styles with Performance Optimization */
 .card-base {
-  border-radius: 0.75rem; /* More rounded */
-  background-color: white;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px 0 rgba(0,0,0,0.08), 0 1px 2px 0 rgba(0,0,0,0.04);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: transform, box-shadow;
-  transform: translateZ(0);
+  background: white;
+  border: 1px solid rgba(231, 229, 228, 0.8);
+  border-radius: 12px;
+  box-shadow: 
+    0 1px 2px 0 rgba(0, 0, 0, 0.05),
+    0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
 }
 
 .card-base:hover {
-  box-shadow: 0 6px 18px -6px rgba(0,0,0,0.12), 0 4px 8px -4px rgba(0,0,0,0.06);
-  transform: translateY(-1px) translateZ(0);
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(59, 130, 246, 0.1);
+  transform: translateY(-1px);
+  border-color: rgba(147, 197, 253, 0.5);
 }
 
 .card-base:focus {
@@ -397,19 +402,27 @@
 
 /* Time-based urgency styling (Week 2 additions) */
 .card-overdue {
+  background: linear-gradient(135deg, #fef2f2 0%, white 100%);
   border-left: 4px solid #dc2626;
-  background: linear-gradient(to right, #fef2f2, white);
-  animation: pulse-red 2s infinite;
+  box-shadow: 
+    0 4px 6px -1px rgba(220, 38, 38, 0.1),
+    0 2px 4px -1px rgba(220, 38, 38, 0.06);
 }
 
 .card-starting-soon {
-  border-left: 4px solid #ea580c;
-  background: linear-gradient(to right, #fff7ed, white);
+  background: linear-gradient(135deg, #fffbeb 0%, white 100%);
+  border-left: 4px solid #d97706;
+  box-shadow: 
+    0 4px 6px -1px rgba(217, 119, 6, 0.1),
+    0 2px 4px -1px rgba(217, 119, 6, 0.06);
 }
 
 .card-in-progress {
-  border-left: 4px solid #059669;
-  background: linear-gradient(to right, #f0fdf4, white);
+  background: linear-gradient(135deg, #f0fdf4 0%, white 100%);
+  border-left: 4px solid #16a34a;
+  box-shadow: 
+    0 4px 6px -1px rgba(22, 163, 74, 0.1),
+    0 2px 4px -1px rgba(22, 163, 74, 0.06);
 }
 
 .card-next-up {
@@ -421,4 +434,18 @@
 @keyframes pulse-red {
   0%, 100% { border-left-color: #dc2626; }
   50% { border-left-color: #f87171; }
+}
+
+.column-header {
+  background: linear-gradient(135deg, rgb(248 250 252) 0%, rgb(241 245 249) 100%);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+.floating-element {
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(16px);
 }
