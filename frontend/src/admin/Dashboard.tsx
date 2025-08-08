@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Card, CardContent } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
-import { AppointmentCalendar } from '../components/admin/AppointmentCalendar';
-import AppointmentDrawer from '../components/admin/AppointmentDrawer';
-import { AppointmentFormModal } from '../components/admin/AppointmentFormModal';
-import QuickAddModal from '../components/QuickAddModal/QuickAddModal';
-import DailyFocusHero from '../components/admin/DailyFocusHero';
-import ScheduleFilterToggle from '../components/admin/ScheduleFilterToggle';
-import NotificationCenter from '../components/admin/NotificationCenter';
-import type { AppointmentFormData } from '../components/admin/AppointmentFormModal';
-import { useAppointments } from '../contexts/AppointmentContext';
-import { getViewMode, setViewMode, ViewMode } from '../lib/prefs';
-import StatusBoard from '../components/admin/StatusBoard';
-import FloatingActionButton from '../components/ui/FloatingActionButton';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { AppointmentCalendar } from '@/components/admin/AppointmentCalendar';
+import AppointmentDrawer from '@/components/admin/AppointmentDrawer';
+import { AppointmentFormModal } from '@/components/admin/AppointmentFormModal';
+import QuickAddModal from '@/components/QuickAddModal/QuickAddModal';
+import DailyFocusHero from '@/components/admin/DailyFocusHero';
+import ScheduleFilterToggle from '@/components/admin/ScheduleFilterToggle';
+import NotificationCenter from '@/components/admin/NotificationCenter';
+import type { AppointmentFormData } from '@/components/admin/AppointmentFormModal';
+import { useAppointments } from '@/contexts/AppointmentContext';
+import { getViewMode, setViewMode, ViewMode } from '@lib/prefs';
+import StatusBoard from '@/components/admin/StatusBoard';
+import FloatingActionButton from '@/components/ui/FloatingActionButton';
 import { scheduleReminder } from '@/services/notificationService';
 import RunningRevenue from '../components/RunningRevenue/RunningRevenue';
 import '@/styles/appointment-reminders.css';
@@ -30,11 +30,11 @@ import {
   handleApiError, 
   isOnline, 
   updateAppointmentStatus
-} from '../lib/api';
-import { createAppointment, getAdminAppointments } from '../services/apiService';
-import { parseDurationToMinutes } from '../lib/utils';
+} from '@lib/api';
+import { createAppointment, getAdminAppointments } from '@/services/apiService';
+import { parseDurationToMinutes } from '@lib/utils';
 import { format } from 'date-fns';
-import { saveLastQuickAdd } from '../lib/quickAddUtils';
+import { saveLastQuickAdd } from '@lib/quickAddUtils';
 
 // Utility function to convert 12-hour format to 24-hour format
 const convertTo24Hour = (time12h: string): string => {
