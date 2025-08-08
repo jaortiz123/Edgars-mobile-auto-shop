@@ -345,40 +345,34 @@
   }
 }
 
-/* Dark Mode Support Enhancement */
+/* Dark Mode Support Enhancement
+   Cards should remain white with dark text to match the requested design.
+   Force `.card-base` to use light appearance even when the user prefers dark mode. */
 @media (prefers-color-scheme: dark) {
   .card-base {
-    background-color: #1f2937;
-    border-color: #374151;
-    color: #f9fafb;
+    background-color: white !important;
+    border-color: #e5e7eb !important;
+    color: #111827 !important; /* dark text */
   }
-  
-  .urgency-status.urgent {
-    background-color: #431a1a;
-    border-color: #991b1b;
-    color: #fca5a5;
+
+  /* Ensure common utility text classes inside cards stay dark */
+  .card-base .text-gray-900,
+  .card-base .text-gray-800,
+  .card-base .text-gray-700,
+  .card-base .text-gray-600,
+  .card-base .text-gray-500,
+  .card-base .text-gray-400 {
+    color: #111827 !important;
   }
-  
-  .urgency-status.soon {
-    background-color: #451a03;
-    border-color: #92400e;
-    color: #fbbf24;
-  }
-  
-  .countdown.overdue {
-    background-color: #431a1a;
-    color: #fca5a5;
-  }
-  
-  .countdown.running-late {
-    background-color: #431a1a;
-    color: #fca5a5;
-  }
-  
-  .countdown.starting-soon {
-    background-color: #451a03;
-    color: #fbbf24;
-  }
+
+  /* Keep urgency/status highlight colors as-is (they're intentionally colored)
+     but ensure their text remains readable on the white card background. */
+  .urgency-status.urgent { color: #7f1d1d; }
+  .urgency-status.soon { color: #744210; }
+
+  .countdown.overdue { color: #991b1b; }
+  .countdown.running-late { color: #dc2626; }
+  .countdown.starting-soon { color: #b45309; }
 }
 
 /* Performance optimization for large lists */

@@ -18,11 +18,20 @@ export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }
   });
 
   const byStatus = useMemo(() => {
+    // Build a map of status => cards. Start with known columns but
+    // also ensure we include any statuses present on cards even if the
+    // API did not return a column for them (prevents cards from
+    // disappearing when, e.g., a COMPLETED column is missing).
     const map = new Map<string, typeof cards>();
     for (const col of columns) map.set(col.key, []);
     for (const c of cards) {
-      const arr = map.get(c.status as string);
-      if (arr) arr.push(c);
+      const statusKey = String(c.status || 'UNKNOWN');
+      if (!map.has(statusKey)) {
+        // Create a placeholder column bucket for unknown/missing statuses
+        map.set(statusKey, []);
+      }
+      const arr = map.get(statusKey)!;
+      arr.push(c);
     }
     for (const [, arr] of map) arr.sort((a, b) => a.position - b.position);
     return map;

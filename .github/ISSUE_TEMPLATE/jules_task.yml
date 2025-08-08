@@ -1,0 +1,42 @@
+name: "Jules Task"
+description: "Scoped, test-first task for Jules/Copilot"
+labels: ["agent", "automation"]
+body:
+  - type: dropdown
+    id: task_type
+    attributes:
+      label: Task Type
+      options: ["tests", "bugfix", "dependency-bump", "scoped-feature"]
+      default: 0
+  - type: textarea
+    id: context
+    attributes:
+      label: Context (paths, feature, why now)
+      placeholder: |
+        Example:
+          paths: ["frontend/src/components/admin/AppointmentDrawer.tsx", "backend/local_server.py"]
+          feature: "appointments"
+          reason: "cover critical flows before refactor"
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints & Invariants
+      placeholder: |
+        do not modify public API or DB schema
+        offLimits: ["/api/payments/*"]
+  - type: textarea
+    id: dod
+    attributes:
+      label: Definition of Done
+      placeholder: |
+        tests added; coverage-delta: FE +10%, BE +10%
+        docs updated; audio changelog
+  - type: input
+    id: budgets
+    attributes:
+      label: Change Budgets
+      placeholder: "maxFiles: 8, maxLoc: 300"
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes for Reviewer
