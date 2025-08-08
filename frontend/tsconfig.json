@@ -23,5 +23,8 @@
     "composite": true
   },
   "include": ["src"],
+  "exclude": [
+    "src/**/*.backup.*"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
