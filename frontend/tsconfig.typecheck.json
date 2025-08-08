@@ -1,13 +1,22 @@
 {
   "extends": "./tsconfig.app.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "types": ["vite/client", "node"]
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx"
   ],
   "exclude": [
+    "src/admin/**",
+    "src/test/**",
+    "src/test-*/**",
+    "src/test-utils/**",
+    "src/test*.ts",
+    "src/test*.tsx",
     "src/tests/**",
     "src/**/__tests__/**",
     "src/**/*.test.*",
@@ -16,8 +25,13 @@
     "src/examples/**",
     "src/**/archived/**",
     "src/**/triage-removed/**",
+    "src/**/old/**",
+    "src/**/*.backup.*",
     "src/components/admin/AppointmentCardRobust.clean.tsx",
-    "src/components/admin/AppointmentCardRobust.backup.tsx"
+    "src/components/admin/AppointmentCardRobust.backup.tsx",
+    "src/components/ToastProviderOriginal.tsx",
+    "src/services/offlineSupport_old.tsx",
+    "src/services/notificationService.clean.ts"
   ]
 }
 

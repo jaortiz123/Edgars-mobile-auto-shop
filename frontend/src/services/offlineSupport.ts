@@ -28,7 +28,7 @@ class OfflineSupportService {
   };
 
   private listeners: Set<(state: OfflineState) => void> = new Set();
-  private syncTimer: NodeJS.Timeout | null = null;
+  private syncTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     this.init();

@@ -27,7 +27,7 @@ interface ErrorBoundaryProps {
  * Enhanced Error Boundary with automatic recovery and detailed logging
  */
 export class AppointmentReminderErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  private retryTimer: NodeJS.Timeout | null = null;
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(props: ErrorBoundaryProps) {
     super(props);
@@ -62,7 +62,7 @@ export class AppointmentReminderErrorBoundary extends Component<ErrorBoundaryPro
         Sentry.withScope((scope) => {
           scope.setTag('component', this.props.component || 'AppointmentReminder');
           scope.setTag('sprint', '3C');
-          scope.setContext('errorInfo', errorInfo);
+          scope.setContext('errorInfo', { componentStack: errorInfo.componentStack });
           scope.setLevel('error');
           Sentry.captureException(error);
         });

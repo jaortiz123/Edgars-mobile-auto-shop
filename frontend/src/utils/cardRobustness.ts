@@ -221,7 +221,7 @@ export function createDebouncedFunction<T extends (...args: unknown[]) => unknow
   func: T,
   delay: number
 ): T {
-  let timeoutId: NodeJS.Timeout;
+  let timeoutId: ReturnType<typeof setTimeout>;
   
   return ((...args: Parameters<T>) => {
     clearTimeout(timeoutId);
@@ -233,15 +233,15 @@ export function createDebouncedFunction<T extends (...args: unknown[]) => unknow
  * Memory-safe interval manager
  */
 export class IntervalManager {
-  private intervals: Set<NodeJS.Timeout> = new Set();
+  private intervals: Set<ReturnType<typeof setTimeout>> = new Set();
   
-  create(callback: () => void, delay: number): NodeJS.Timeout {
+  create(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
     const intervalId = setInterval(callback, delay);
     this.intervals.add(intervalId);
     return intervalId;
   }
   
-  clear(intervalId: NodeJS.Timeout): void {
+  clear(intervalId: ReturnType<typeof setTimeout>): void {
     clearInterval(intervalId);
     this.intervals.delete(intervalId);
   }

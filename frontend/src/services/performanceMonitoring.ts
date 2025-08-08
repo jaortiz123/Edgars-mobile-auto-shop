@@ -61,7 +61,7 @@ class PerformanceMonitoringService {
   private componentMetrics: Map<string, ComponentMetrics> = new Map();
   private observers: Set<PerformanceObserver> = new Set();
   private measurementQueue: PerformanceMetric[] = [];
-  private flushTimer: NodeJS.Timeout | null = null;
+  private flushTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     this.init();
