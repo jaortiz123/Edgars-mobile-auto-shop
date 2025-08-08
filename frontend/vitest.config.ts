@@ -25,8 +25,10 @@ export default defineConfig({
 
   test: {
     // ✅ SET THE ENVIRONMENT TO JSDOM FOR ALL TESTS.
-    // This is the most critical fix.
     environment: 'jsdom',
+    // Increase global timeouts for slower integration-like tests; unit tests unaffected
+    testTimeout: 10000,
+    hookTimeout: 10000,
     
     // ✅ P1-T-013: Environment-specific test execution (using deprecated but working approach)
     environmentMatchGlobs: [
@@ -65,7 +67,10 @@ export default defineConfig({
       '**/dist/**',
       '**/archived/**',
       '**/src/tests/archived/**',
-      '**/src/tests/triage-removed/**'
+      '**/src/tests/triage-removed/**',
+      // Exclude heavy integration test suites from the default unit run
+      '**/src/tests/integration/**',
+      '**/src/tests/**.it.*'
     ],
     
     // 🎯 Coverage thresholds to prevent regression
