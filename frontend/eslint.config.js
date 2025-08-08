@@ -31,6 +31,21 @@ export default tseslint.config(
       'testing-library/await-async-events': 'error',
     },
   },
+  // Restrict deep relative imports only within admin app code
+  {
+    files: ['src/admin/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            '../..*',
+            '../../..*'
+          ]
+        }
+      ],
+    },
+  },
   // Specific rules for test files
   {
     files: ['**/*.test.{ts,tsx}', '**/__tests__/**/*.{ts,tsx}'],

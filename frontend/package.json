@@ -8,10 +8,11 @@
     "dev": "vite",
     "dev:clean": "npx kill-port 5173 && vite",
     "kill-port": "npx kill-port 5173",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "lint:ci": "eslint . --ext .ts,.tsx --max-warnings 0",
     "preview": "vite preview",
+    "preview:spa": "npm run build && npx serve -s dist",
     "pretest": "pkill -f \"node .*vitest\" || true",
     "test": "vitest run --maxConcurrency=4",
     "test:watch": "vitest",
@@ -24,7 +25,8 @@
     "test:ci-serial": "VITEST_STRICT_CONSOLE=true vitest --run --reporter=verbose --silent=false --maxConcurrency=1",
     "test:a11y": "vitest run src/tests/accessibility.test.tsx --reporter=verbose --maxConcurrency=4",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
-    "clean": "rm -rf node_modules/.cache .vite .next dist"
+    "clean": "rm -rf node_modules/.cache .vite .next dist",
+    "typecheck": "tsc -p tsconfig.typecheck.json --pretty"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
