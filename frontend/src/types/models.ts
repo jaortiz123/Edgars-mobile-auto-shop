@@ -62,6 +62,7 @@ export interface BoardCard {
   position: number;
   start?: string | null; // ISO timestamp for countdown calculations
   end?: string | null;   // ISO timestamp
+<<<<<<< Current (Your changes)
   
   // NEW: Time-aware fields (Week 2 enhancements)
   scheduledTime?: string; // human-friendly like "10:30 AM"
@@ -69,6 +70,15 @@ export interface BoardCard {
   isOverdue?: boolean;
   minutesLate?: number; // minutes past expected end or start threshold
   timeUntilStart?: number; // minutes until appointment start
+=======
+
+  // NEW: Time-aware fields
+  scheduledTime?: string; // "10:30 AM"
+  appointmentDate?: string; // ISO date
+  isOverdue?: boolean;
+  minutesLate?: number;
+  timeUntilStart?: number; // minutes until appointment
+>>>>>>> Incoming (Background Agent changes)
   estimatedDuration?: number; // minutes
 }
 

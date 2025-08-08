@@ -315,9 +315,16 @@ export default function AppointmentCard({
           )}
           
           <div className="flex items-center justify-between gap-sp-1">
+<<<<<<< Current (Your changes)
             {/* Service as primary hero text */}
             <h3 className="text-lg font-bold text-gray-900 leading-tight">{validatedCard.servicesSummary || 'Service Details Missing'}</h3>
             {/* Price removed from prominent position - kept small/discrete below */}
+=======
+            <div className="flex items-start gap-3">
+              <TimeDisplay card={validatedCard} minutesUntil={minutesUntil} />
+              <h3 className="text-fs-3 font-semibold text-gray-900">{validatedCard.customerName}</h3>
+            </div>
+>>>>>>> Incoming (Background Agent changes)
           </div>
 
           {/* Customer as secondary */}
@@ -419,6 +426,8 @@ export default function AppointmentCard({
               {error}
             </div>
           )}
+          {/* Quick actions */}
+          <QuickActions card={validatedCard} />
         </div>
       </div>
       
@@ -455,3 +464,97 @@ export default function AppointmentCard({
     </div>
   );
 }
+
+// TimeDisplay: prominent time badge for the card
+const TimeDisplay = ({ card, minutesUntil }: { card: BoardCard; minutesUntil: number }) => {
+  if (!card) return null;
+
+  if (card.isOverdue && card.status === 'IN_PROGRESS') {
+    return (
+      <div className={"inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-red-100 text-red-800 border-red-200"}>
+        <span className="mr-1">⚠️</span>
+        {card.minutesLate}m overdue
+      </div>
+    );
+  }
+
+  if (typeof card.timeUntilStart === 'number' && card.timeUntilStart <= 30 && card.timeUntilStart > 0) {
+    return (
+      <div className={"inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-orange-100 text-orange-800 border-orange-200"}>
+        <span className="mr-1">🕐</span>
+        Starting in {card.timeUntilStart}m
+      </div>
+    );
+  }
+
+  if (card.scheduledTime && card.status === 'SCHEDULED') {
+    return (
+      <div className={"inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-blue-100 text-blue-800 border-blue-200"}>
+        <span className="mr-1">📅</span>
+        {card.scheduledTime}
+      </div>
+    );
+  }
+
+  if (card.status === 'IN_PROGRESS' && card.start) {
+    const elapsed = Math.floor((Date.now() - new Date(card.start).getTime()) / 60000);
+    return (
+      <div className={"inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-green-100 text-green-800 border-green-200"}>
+        <span className="mr-1">⚙️</span>
+        {elapsed}m in progress
+      </div>
+    );
+  }
+
+  return null;
+};
+
+// QuickActions: context-aware quick action buttons
+const QuickActions = ({ card }: { card: BoardCard }) => {
+  const getActions = () => {
+    if (card.isOverdue) {
+      return [
+        { label: 'Mark Started', action: 'start', urgent: true },
+        { label: 'Contact Customer', action: 'contact', urgent: false },
+        { label: 'Reschedule', action: 'reschedule', urgent: false },
+      ];
+    }
+
+    if (typeof card.timeUntilStart === 'number' && card.timeUntilStart <= 15 && card.timeUntilStart > 0) {
+      return [
+        { label: 'Start Now', action: 'start', urgent: true },
+        { label: 'Prep Workspace', action: 'prep', urgent: false },
+      ];
+    }
+
+    if (card.status === 'IN_PROGRESS') {
+      return [
+        { label: 'Mark Complete', action: 'complete', urgent: true },
+        { label: 'Add Note', action: 'note', urgent: false },
+      ];
+    }
+
+    return [];
+  };
+
+  const actions = getActions();
+  if (actions.length === 0) return null;
+
+  return (
+    <div className="mt-3 pt-3 border-t border-gray-200">
+      <div className="flex flex-wrap gap-2">
+        {actions.map(action => (
+          <button
+            key={action.action}
+            className={
+              `text-xs px-3 py-1 rounded-full font-medium transition-colors ${action.urgent ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`
+            }
+            onClick={(e) => { e.stopPropagation(); /* action handlers live in parent */ }}
+          >
+            {action.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
