@@ -87,9 +87,9 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
   });
 
   const [errors, setErrors] = useState<Partial<AppointmentFormData>>({});
-  const [templates, setTemplates] = useState([]);
+  const [templates, setTemplates] = useState<{ id: string; name: string; fields: Partial<AppointmentFormData> }[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
-  const [availableSlots, setAvailableSlots] = useState([]);
+  const [availableSlots, setAvailableSlots] = useState<{ date: string; time: string }[]>([]);
   const [conflict, setConflict] = useState<any>(null);
   const [overrideConflict, setOverrideConflict] = useState(false);
 
@@ -138,9 +138,12 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
     }
   };
 
-  const handleTemplateSelect = (templateId: string) => {
+  const handleTemplateSelect = (templateIdOrTemplate: string | { id: string; name: string; fields: Partial<AppointmentFormData> }) => {
+    const templateId = typeof templateIdOrTemplate === 'string' ? templateIdOrTemplate : templateIdOrTemplate.id;
     setSelectedTemplateId(templateId);
-    const selectedTemplate = templates.find(t => t.id === templateId);
+    const selectedTemplate = typeof templateIdOrTemplate === 'string' 
+      ? templates.find(t => t.id === templateIdOrTemplate)
+      : templateIdOrTemplate;
     if (selectedTemplate) {
       setFormData(prev => ({
         ...prev,
@@ -287,8 +290,8 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
           <div className="mb-4">
             <h3 className="text-base font-semibold text-gray-900 mb-2">Apply Template</h3>
             <TemplateSelector
-              templates={templates}
-              onSelect={handleTemplateSelect}
+              templates={templates as any}
+              onSelect={handleTemplateSelect as any}
               selectedTemplateId={selectedTemplateId}
             />
           </div>

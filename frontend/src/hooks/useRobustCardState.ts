@@ -81,7 +81,7 @@ export function useRobustCardState(
   // Refs for cleanup and performance
   const intervalManagerRef = useRef<IntervalManager>(new IntervalManager());
   const previousUrgencyRef = useRef<string>('normal');
-  const notificationTimeoutsRef = useRef<Set<NodeJS.Timeout>>(new Set());
+  const notificationTimeoutsRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
   // Initialize interval manager
   // (moved to useRef initialization above)

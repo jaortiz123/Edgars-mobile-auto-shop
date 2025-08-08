@@ -51,7 +51,7 @@ interface TemplateSelectorProps {
  * @param category - Template category
  * @returns CSS classes for styling
  */
-const getCategoryColor = (category: string): string => {
+const getCategoryColor = (category?: string): string => {
   const categoryMap: Record<string, string> = {
     'Emergency': 'bg-red-100 text-red-800 border-red-200',
     'Safety': 'bg-orange-100 text-orange-800 border-orange-200',
@@ -61,7 +61,7 @@ const getCategoryColor = (category: string): string => {
     'General': 'bg-gray-100 text-gray-800 border-gray-200'
   };
   
-  return categoryMap[category] || categoryMap['General'];
+  return category ? (categoryMap[category] || categoryMap['General']) : categoryMap['General'];
 };
 
 /**
@@ -476,7 +476,7 @@ function TemplateCard({ template, isSelected, onSelect, disabled = false }: Temp
             </span>
             <span className="flex items-center">
               <DollarSign className="h-3 w-3 mr-1" aria-hidden="true" />
-              ${template.estimatedPrice.toFixed(2)}
+              ${(template.estimatedPrice ?? 0).toFixed(2)}
             </span>
           </div>
         </div>

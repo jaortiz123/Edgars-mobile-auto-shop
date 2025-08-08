@@ -57,7 +57,7 @@ const TOKEN_KEY = 'auth_token';
 const makeApiCall = async (url: string, options: RequestInit = {}): Promise<Response> => {
   // Create AbortController for timeout handling
   let controller: AbortController | null = null;
-  let timeoutId: NodeJS.Timeout | null = null;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
   try {
     // Check if AbortController is available and working properly

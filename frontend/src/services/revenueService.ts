@@ -33,7 +33,7 @@ type RevenueSubscriber = (revenue: RevenueData) => void;
 const POLLING_INTERVAL = 30000; // 30 seconds
 const subscribers = new Set<RevenueSubscriber>();
 let currentRevenue: RevenueData | null = null;
-let pollingTimer: NodeJS.Timeout | null = null;
+let pollingTimer: ReturnType<typeof setTimeout> | null = null;
 let isPolling = false;
 
 /**

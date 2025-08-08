@@ -563,6 +563,7 @@ export function UnifiedDashboard() {
         onClose={() => setShowAppointmentForm(false)}
         onSubmit={handleAppointmentSubmit}
         isSubmitting={isSubmittingAppointment}
+        onQuickSchedule={() => setShowAppointmentForm(true)}
       />
     </div>
   );

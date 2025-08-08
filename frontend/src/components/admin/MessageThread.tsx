@@ -16,7 +16,7 @@ export default function MessageThread({ appointmentId, drawerOpen }: MessageThre
   const [channel, setChannel] = useState<MessageChannel>('sms');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const pollingRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const pollingRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Load messages function
   const loadMessages = useCallback(async () => {
