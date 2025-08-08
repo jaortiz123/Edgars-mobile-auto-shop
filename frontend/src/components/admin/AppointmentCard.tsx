@@ -315,20 +315,18 @@ export default function AppointmentCard({
           )}
           
           <div className="flex items-center justify-between gap-sp-1">
-            <div className="flex items-start gap-3">
-              <TimeDisplay card={validatedCard} minutesUntil={minutesUntil} />
-              <h3 className="text-fs-3 font-semibold text-gray-900">{validatedCard.customerName}</h3>
             </div>
+
           </div>
-          <div className="text-fs-1 text-gray-600 mt-sp-1 font-normal">{validatedCard.vehicle}</div>
-          {validatedCard.servicesSummary && (
-            <div className="text-fs-1 text-gray-600 mt-sp-1 font-normal">{validatedCard.servicesSummary}</div>
-          )}
-          {formattedPrice && (
-            <div className="text-fs-2 mt-sp-2 font-medium text-gray-900">
-              {formattedPrice}
-            </div>
-          )}
+
+          {/* Customer as secondary */}
+          <div className="text-sm font-medium text-gray-600 mt-1">{validatedCard.customerName && validatedCard.customerName !== 'Unknown Customer' ? validatedCard.customerName : 'Walk-in Customer'}</div>
+
+          {/* Vehicle as prominent (what Edgar is actually working on) */}
+          <div className="text-sm font-semibold text-blue-700 mt-1">{validatedCard.vehicle && validatedCard.vehicle !== 'Unknown Vehicle' ? validatedCard.vehicle : 'Vehicle TBD'}</div>
+
+          {/* Price small/discrete */}
+          <div className="text-xs text-gray-500 mt-2">{formattedPrice ? formattedPrice : '$0.00'}</div>
           
           {/* Urgency Status Line with ARIA support */}
           {urgencyLevel !== 'normal' && (

@@ -11,26 +11,23 @@
 
 /* Enhanced Card Base Styles with Performance Optimization */
 .card-base {
-  border-radius: 0.5rem;
+  border-radius: 0.75rem; /* More rounded */
   background-color: white;
   border: 1px solid #e5e7eb;
-  box-shadow: var(--card-shadow-default);
+  box-shadow: 0 1px 3px 0 rgba(0,0,0,0.08), 0 1px 2px 0 rgba(0,0,0,0.04);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  
-  /* Performance optimization */
   will-change: transform, box-shadow;
-  transform: translateZ(0); /* Force GPU acceleration */
-  backface-visibility: hidden; /* Prevent flickering */
+  transform: translateZ(0);
 }
 
 .card-base:hover {
-  box-shadow: var(--card-shadow-hover);
-  transform: translateY(-2px) translateZ(0);
+  box-shadow: 0 6px 18px -6px rgba(0,0,0,0.12), 0 4px 8px -4px rgba(0,0,0,0.06);
+  transform: translateY(-1px) translateZ(0);
 }
 
 .card-base:focus {
   outline: none;
-  box-shadow: var(--card-shadow-focus);
+  box-shadow: 0 6px 18px -6px rgba(37,99,235,0.25), 0 0 0 3px rgba(37,99,235,0.06);
   transform: translateY(-1px) translateZ(0);
 }
 

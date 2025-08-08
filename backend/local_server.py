@@ -808,6 +808,13 @@ def get_board():
                 cust = r.get("customer_name") or None
                 veh = r.get("vehicle_label") or None
 
+                # Provide friendlier fallbacks to avoid 'Unknown Customer' showing in the UI
+                customer_name = cust if cust and str(cust).strip() else 'Walk-in Customer'
+                vehicle_label = veh if veh and str(veh).strip() else 'Vehicle TBD'
+                service_summary = r.get('services_summary')
+                if not service_summary or not str(service_summary).strip():
+                    service_summary = f"Service #{str(r.get('id') or 'TBD')[:8]}"
+
                 cards.append(
                     {
                         "id": r["id"],
@@ -815,13 +822,14 @@ def get_board():
                         "position": int(r["position"]),
                         "start": start_iso,
                         "end": end_iso,
-                        "customerName": cust if cust and str(cust).strip() else "Unknown Customer",
-                        "vehicle": veh if veh and str(veh).strip() else "Unknown Vehicle",
-                        "servicesSummary": r.get("services_summary") or None,
+                        "customerName": customer_name,
+                        "vehicle": vehicle_label,
+                        "servicesSummary": service_summary,
                         "price": float(r.get("price") or 0),
                         "tags": [],
                     }
                 )
+
 
             # Enrich cards with time-aware context
             for c in cards:
@@ -846,6 +854,7 @@ def get_board():
                 column_cards.sort(key=sort_priority)
                 for i, card in enumerate(column_cards):
                     card['position'] = i
+
 
             # Column aggregates
             if is_sqlite:
