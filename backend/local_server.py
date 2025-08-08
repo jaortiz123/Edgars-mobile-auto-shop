@@ -830,55 +830,7 @@ def get_board():
                     }
                 )
 
-<<<<<<< Current (Your changes)
-            # --- Time-aware context (Week 2 enhancements) ---
-            try:
-                from datetime import datetime
-                now = datetime.now(timezone.utc)
-                for card in cards:
-                    try:
-                        # defaults
-                        card.setdefault('scheduledTime', None)
-                        card.setdefault('appointmentDate', None)
-                        card.setdefault('isOverdue', False)
-                        card.setdefault('minutesLate', None)
-                        card.setdefault('timeUntilStart', None)
-                        card.setdefault('estimatedDuration', 120)
 
-                        start_iso_card = card.get('start')
-                        if start_iso_card:
-                            try:
-                                sched_dt = datetime.fromisoformat(start_iso_card.replace('Z', '+00:00'))
-                                card['scheduledTime'] = sched_dt.astimezone(timezone.utc).strftime('%I:%M %p')
-                                card['appointmentDate'] = sched_dt.date().isoformat()
-                                diff_min = int((sched_dt - now).total_seconds() / 60)
-                                card['timeUntilStart'] = diff_min
-                                if diff_min < -15:
-                                    card['isOverdue'] = True
-                                    card['minutesLate'] = abs(diff_min)
-                            except Exception:
-                                pass
-
-                        # estimated duration default (minutes)
-                        card['estimatedDuration'] = int(card.get('estimatedDuration') or 120)
-
-                        # If in progress, check elapsed vs expected
-                        if start_iso_card and card.get('status') == 'IN_PROGRESS':
-                            try:
-                                start_dt = datetime.fromisoformat(start_iso_card.replace('Z', '+00:00'))
-                                elapsed = int((now - start_dt).total_seconds() / 60)
-                                if elapsed > card['estimatedDuration']:
-                                    card['isOverdue'] = True
-                                    card['minutesLate'] = int(elapsed - card['estimatedDuration'])
-                            except Exception:
-                                pass
-                    except Exception:
-                        # skip problematic card
-                        continue
-            except Exception:
-                # do not fail the entire board if time parsing errors occur
-                pass
-=======
             # Enrich cards with time-aware context
             for c in cards:
                 try:
@@ -902,7 +854,7 @@ def get_board():
                 column_cards.sort(key=sort_priority)
                 for i, card in enumerate(column_cards):
                     card['position'] = i
->>>>>>> Incoming (Background Agent changes)
+
 
             # Column aggregates
             if is_sqlite:
