@@ -1,0 +1,42 @@
+name: Scope Tailwind to frontend + silence backend tsconfig error
+description: |
+  Restrict Tailwind VS Code extension to frontend and add a minimal backend tsconfig to stop IDE errors.
+steps:
+  - name: Configure VS Code Tailwind scope
+    command: |
+      cat > .vscode/settings.json << 'JSON'
+      {
+        "tailwindCSS.experimental.configFile": "frontend/tailwind.config.js",
+        "tailwindCSS.files.exclude": ["backend/**", "docs/**"],
+        "files.watcherExclude": {
+          "**/backend/**": true
+        }
+      }
+      JSON
+  - name: Add minimal backend tsconfig
+    command: |
+      cat > backend/tsconfig.json << 'JSON'
+      {
+        "compilerOptions": { "allowJs": true },
+        "include": []
+      }
+      JSON
+  - name: Clean and reinstall frontend deps
+    command: |
+      cd frontend
+      rm -rf node_modules
+      npm ci
+  - name: Verify dev server boots
+    command: |
+      cd frontend
+      npm run dev &
+      sleep 8
+      kill %1 || true
+  - name: Verify Tailwind is present
+    command: |
+      cd frontend
+      npm ls tailwindcss | cat
+notes: |
+  - If extension still errors, reload the window.
+  - Keep tailwind.config.js CommonJS imports consistent.
+

@@ -7,6 +7,7 @@ export default defineConfig({
     resolve: {
         alias: {
             "@": path.resolve(__dirname, "./src"),
+            "@lib": path.resolve(__dirname, "./src/lib"),
             // Enhanced path aliases for comprehensive resolution
             "@/components": path.resolve(__dirname, "./src/components"),
             "@/contexts": path.resolve(__dirname, "./src/contexts"),
