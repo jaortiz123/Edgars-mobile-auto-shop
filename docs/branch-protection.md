@@ -73,7 +73,6 @@ Pending CI verification of passing checks, plan for `main`:
 
 Final enforced contexts will match those that are actually passing on `main` and on this PR.
 
-
 ### Local defaults
 
 - Ensure remote HEAD is set to `main` using: `git remote set-head origin -a`.
