@@ -4,118 +4,20 @@ import StatusColumn from './StatusColumn';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import type { AppointmentStatus } from '@/types/models';
+import { format } from 'date-fns';
 
 export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }) {
   const { columns, cards, optimisticMove, triggerRefresh } = useAppointments();
   const [reschedulingIds, setReschedulingIds] = useState<Set<string>>(new Set());
 
-  // Today's Focus hero component (Week 2)
-  const TodaysFocusHero = () => {
-    const now = new Date();
-    const todaysCards = cards.filter(c => {
-      try {
-        return c.start && new Date(c.start).toDateString() === now.toDateString();
-      } catch (e) {
-        return false;
-      }
-    });
-
-    const nextAppointment = todaysCards
-      .filter(c => c.status === 'SCHEDULED' && typeof c.timeUntilStart === 'number' && c.timeUntilStart > 0)
-      .sort((a, b) => (a.timeUntilStart || 0) - (b.timeUntilStart || 0))[0];
-
-    const overdueAppointments = todaysCards.filter(c => c.isOverdue);
-
-    const completedToday = todaysCards.filter(c => c.status === 'COMPLETED');
-    const inProgressCount = todaysCards.filter(c => c.status === 'IN_PROGRESS').length;
-    const scheduledCount = todaysCards.filter(c => c.status === 'SCHEDULED').length;
-    const totalJobs = todaysCards.length || cards.length;
-
-    return (
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="col-span-2">
-            <h2 className="text-lg font-bold text-gray-900 mb-2">Right Now Focus</h2>
-            {overdueAppointments.length > 0 ? (
-              <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-3">
-                <div className="flex items-center">
-                  <span className="text-red-500 mr-2">🚨</span>
-                  <div>
-                    <p className="font-bold text-red-800">{overdueAppointments.length} appointment{overdueAppointments.length > 1 ? 's' : ''} running late</p>
-                    <p className="text-sm text-red-600">{overdueAppointments[0].servicesSummary} is {overdueAppointments[0].minutesLate}m overdue</p>
-                  </div>
-                </div>
-              </div>
-            ) : nextAppointment ? (
-              <div className="bg-green-50 border border-green-200 rounded-md p-3">
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✅</span>
-                  <div>
-                    <p className="font-bold text-green-800">Next up: {nextAppointment.servicesSummary}</p>
-                    <p className="text-sm text-green-600">{nextAppointment.customerName} • Starting in {nextAppointment.timeUntilStart}m</p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
-                <div className="flex items-center">
-                  <span className="text-gray-500 mr-2">😌</span>
-                  <div>
-                    <p className="font-bold text-gray-800">You're caught up!</p>
-                    <p className="text-sm text-gray-600">No immediate appointments pending</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Today's Progress</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Completed</span>
-                <span className="font-bold text-green-600">{completedToday.length} jobs</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">In Progress</span>
-                <span className="font-bold text-blue-600">{inProgressCount} jobs</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Scheduled</span>
-                <span className="font-bold text-gray-600">{scheduledCount} jobs</span>
-              </div>
-              <div className="pt-2">
-                <div className="flex justify-between text-xs text-gray-500 mb-1">
-                  <span>Daily Progress</span>
-                  <span>{Math.round((completedToday.length / Math.max(totalJobs, 1)) * 100)}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-green-500 h-2 rounded-full" style={{ width: `${Math.min((completedToday.length / Math.max(totalJobs, 1)) * 100, 100)}%` }} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  const getTimeGreeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 18) return 'Good afternoon';
+    return 'Good evening';
   };
 
-  // Debug logging to see what data StatusBoard is receiving
-  console.log('🎪 StatusBoard render:', {
-    columnsLength: columns?.length,
-    cardsLength: cards?.length,
-    columns: columns,
-    cards: cards
-  });
-
   const byStatus = useMemo(() => {
-    // Build a map of status => cards. Start with known columns but
-    // also ensure we include any statuses present on cards even if the
-    // API did not return a column for them (prevents cards from
-    // disappearing when, e.g., a COMPLETED column is missing).
-    // Limit visible cards on the board to a small, work-focused set
-    // to avoid overwhelming the UI during demos or heavy test data.
-    // Prefer today's appointments; fall back to the earliest ones.
     const map = new Map<string, typeof cards>();
     const today = new Date();
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -131,21 +33,16 @@ export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }
     });
 
     if (!visible || visible.length === 0) {
-      // no "today" items, show the earliest ones instead
       visible = [...cards].sort((a, b) => (a.position || 0) - (b.position || 0));
     }
 
-    // Cap board to first 5 visible appointments to keep the board scannable
     const MAX_VISIBLE = 5;
     visible = visible.slice(0, MAX_VISIBLE);
 
     for (const col of columns) map.set(col.key, []);
     for (const c of visible) {
       const statusKey = String(c.status || 'UNKNOWN');
-      if (!map.has(statusKey)) {
-        // Create a placeholder column bucket for unknown/missing statuses
-        map.set(statusKey, []);
-      }
+      if (!map.has(statusKey)) map.set(statusKey, []);
       const arr = map.get(statusKey)!;
       arr.push(c);
     }
@@ -154,31 +51,16 @@ export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }
   }, [columns, cards]);
 
   const handleQuickReschedule = async (id: string) => {
-    if (reschedulingIds.has(id)) return; // Prevent double-clicking
-
+    if (reschedulingIds.has(id)) return;
     setReschedulingIds(prev => new Set(prev).add(id));
-
     try {
-      // Get appointment details for service type
       const appointment = cards.find(card => card.id === id);
       const serviceType = appointment?.servicesSummary || 'default';
-      
-      // Use rescheduling service with direct path
       const reschedulingModule = await import('../../services/reschedulingService.js');
-      const result = await reschedulingModule.quickRescheduleToNext(id, serviceType, {
-        daysAhead: 7,
-        reason: 'Quick reschedule from status board'
-      });
-      
-      if (result?.success) {
-        triggerRefresh();
-      } else {
-        console.error('Rescheduling failed:', result?.error || 'Unknown error');
-      }
+      const result = await reschedulingModule.quickRescheduleToNext(id, serviceType, { daysAhead: 7, reason: 'Quick reschedule from status board' });
+      if (result?.success) triggerRefresh();
     } catch (error) {
       console.error('Error in quick reschedule:', error);
-      // Show user feedback for failed rescheduling
-      // Note: In a real app, you'd show a toast notification
     } finally {
       setReschedulingIds(prev => {
         const newSet = new Set(prev);
@@ -189,91 +71,71 @@ export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }
   };
 
   const TodaysFocusHero = () => {
-    const { cards } = useAppointments();
     const now = new Date();
+    const todaysCards = cards.filter(c => {
+      try { return c.start && new Date(c.start).toDateString() === now.toDateString(); } catch (e) { return false; }
+    });
 
-    const nextAppointment = cards
-      .filter(card => card.status === 'SCHEDULED' && typeof card.timeUntilStart === 'number' && card.timeUntilStart > 0)
+    const nextAppointment = todaysCards
+      .filter(c => c.status === 'SCHEDULED' && typeof c.timeUntilStart === 'number' && c.timeUntilStart > 0)
       .sort((a, b) => (a.timeUntilStart || 0) - (b.timeUntilStart || 0))[0];
 
-    const overdueAppointments = cards.filter(card => card.isOverdue);
-    const completedToday = cards.filter(card => card.status === 'COMPLETED');
-    const inProgressCount = cards.filter(card => card.status === 'IN_PROGRESS').length;
-    const scheduledCount = cards.filter(card => card.status === 'SCHEDULED').length;
-    const totalJobs = cards.length;
+    const overdueAppointments = todaysCards.filter(c => c.isOverdue);
+    const completedToday = todaysCards.filter(c => c.status === 'COMPLETED');
+    const inProgressCount = todaysCards.filter(c => c.status === 'IN_PROGRESS').length;
+    const scheduledCount = todaysCards.filter(c => c.status === 'SCHEDULED').length;
+    const totalJobs = todaysCards.length || cards.length;
 
     return (
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="col-span-2">
-            <h2 className="text-lg font-bold text-gray-900 mb-2">Right Now Focus</h2>
-            {overdueAppointments.length > 0 ? (
-              <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-3">
-                <div className="flex items-center">
-                  <span className="text-red-500 mr-2">🚨</span>
-                  <div>
-                    <p className="font-bold text-red-800">{overdueAppointments.length} appointment{overdueAppointments.length > 1 ? 's' : ''} running late</p>
-                    <p className="text-sm text-red-600">{overdueAppointments[0].servicesSummary} is {overdueAppointments[0].minutesLate}m overdue</p>
-                  </div>
-                </div>
-              </div>
-            ) : nextAppointment ? (
-              <div className="bg-green-50 border border-green-200 rounded-md p-3">
-                <div className="flex items-center">
-                  <span className="text-green-500 mr-2">✅</span>
-                  <div>
-                    <p className="font-bold text-green-800">Next up: {nextAppointment.servicesSummary}</p>
-                    <p className="text-sm text-green-600">{nextAppointment.customerName} • Starting in {nextAppointment.timeUntilStart}m</p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
-                <div className="flex items-center">
-                  <span className="text-gray-500 mr-2">😌</span>
-                  <div>
-                    <p className="font-bold text-gray-800">You're caught up!</p>
-                    <p className="text-sm text-gray-600">No immediate appointments pending</p>
-                  </div>
-                </div>
-              </div>
-            )}
+      <div className="bg-gradient-to-r from-neutral-50 to-steel-50 border-b border-neutral-200 px-6 py-6 rounded-lg mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-neutral-900 tracking-tight">Edgar's Shop Dashboard</h1>
+            <p className="text-lg font-medium text-neutral-600 mt-2">{getTimeGreeting()}, Edgar • {format(new Date(), 'EEEE, MMMM do')}</p>
           </div>
 
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Today's Progress</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Completed</span>
-                <span className="font-bold text-green-600">{completedToday.length} jobs</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">In Progress</span>
-                <span className="font-bold text-blue-600">{inProgressCount} jobs</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Scheduled</span>
-                <span className="font-bold text-gray-600">{scheduledCount} jobs</span>
-              </div>
-              <div className="pt-2">
-                <div className="flex justify-between text-xs text-gray-500 mb-1">
-                  <span>Daily Progress</span>
-                  <span>{Math.round((completedToday.length / Math.max(totalJobs, 1)) * 100)}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-green-500 h-2 rounded-full transition-all duration-300" style={{ width: `${Math.min((completedToday.length / Math.max(totalJobs, 1)) * 100, 100)}%` }} />
-                </div>
-              </div>
-              {completedToday.length > 0 && (
-                <div className="pt-2 border-t border-gray-200">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-green-600">✅ On track</span>
-                    <span className="font-semibold text-green-600">Great pace!</span>
-                  </div>
-                </div>
-              )}
+          <div className="flex items-center space-x-6">
+            <div className="bg-white/50 backdrop-blur-sm rounded-lg px-4 py-3 border border-neutral-200">
+              <p className="text-sm font-medium text-neutral-500">Jobs Today</p>
+              <p className="text-3xl font-bold text-primary-600">{completedToday.length}/{totalJobs}</p>
+              <p className="text-xs text-neutral-500">completed</p>
+            </div>
+
+            <div className="flex space-x-3">
+              <button className="px-4 py-2 bg-white border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 hover:border-neutral-400 transition-all duration-200 shadow-sm" onClick={() => triggerRefresh()}>
+                Refresh
+              </button>
             </div>
           </div>
+        </div>
+
+        {/* Focus content below */}
+        <div className="mt-6">
+          {overdueAppointments.length > 0 ? (
+            <div className="bg-danger-50 border border-danger-200 rounded-lg p-4 mb-3 urgent-pulse">
+              <div className="flex items-center">
+                <div className="w-10 h-10 rounded-full bg-danger-100 flex items-center justify-center mr-3"><span className="text-danger-600 font-bold">⚠️</span></div>
+                <div className="flex-1">
+                  <p className="font-bold text-danger-800 text-lg">{overdueAppointments.length} appointment{overdueAppointments.length > 1 ? 's' : ''} need attention</p>
+                  <p className="text-sm text-danger-600">{overdueAppointments[0].servicesSummary} is {overdueAppointments[0].minutesLate}m overdue</p>
+                </div>
+                <button className="btn-primary bg-danger-600 hover:bg-danger-700 ml-4">Take Action</button>
+              </div>
+            </div>
+          ) : nextAppointment ? (
+            <div className="bg-white/60 backdrop-blur-md rounded-lg p-4 border border-white/20 shadow-sm">
+              <div className="flex items-center">
+                <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center mr-3"><span className="text-primary-600 font-bold">🔧</span></div>
+                <div className="flex-1">
+                  <p className="font-bold text-neutral-900 text-lg">Next up: {nextAppointment.servicesSummary}</p>
+                  <p className="text-sm text-neutral-600">{nextAppointment.customerName} • Starting in {nextAppointment.timeUntilStart}m</p>
+                </div>
+                <button className="btn-primary ml-4">Prep</button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white/60 backdrop-blur-md rounded-lg p-4 border border-white/20 shadow-sm">You're caught up!</div>
+          )}
         </div>
       </div>
     );
@@ -282,10 +144,8 @@ export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="overflow-x-auto pb-4" role="region" aria-label="Status Board">
-
-          <TodaysFocusHero />
-        </div>
-        <div className="flex gap-4 min-w-max">
+        <TodaysFocusHero />
+        <div className="flex gap-4 min-w-max mt-4">
           {columns.map((col) => (
             <StatusColumn
               key={col.key}

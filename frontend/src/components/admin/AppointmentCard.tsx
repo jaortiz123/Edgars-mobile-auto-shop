@@ -19,6 +19,8 @@ import { safeAnimateCompletion } from '@/animations/completionAnimations';
 import '@/styles/appointment-reminders.css';
 import '@/styles/cardRobustness.css';
 import '@/styles/completionAnimations.css';
+import '@/styles/animations.css';
+import StatusIcons, { ServiceTypeIcons } from '../common/StatusIcons';
 
 interface AppointmentCardProps {
   card: BoardCard;
@@ -154,15 +156,12 @@ export default function AppointmentCard({
     }
   }, [isLoading, validatedCard]);
 
-  // Sprint 4A-T-001: Completion animation handler
+  // Completion handler
   const handleCompleteJob = useCallback(async () => {
     if (!validatedCard || !onCompleteJob || isCompleting) return;
 
     try {
-      // Start completion flow
       onCompleteJob(validatedCard.id);
-      
-      // Announce completion to screen readers
       CardAccessibility.announceToScreenReader(
         `Completing appointment for ${validatedCard.customerName}`,
         'polite'
@@ -170,7 +169,6 @@ export default function AppointmentCard({
     } catch (error) {
       console.error('Error completing job:', error);
       setError('Failed to complete job. Please try again.');
-      
       CardAccessibility.announceToScreenReader(
         'Failed to complete appointment',
         'assertive'
@@ -178,13 +176,11 @@ export default function AppointmentCard({
     }
   }, [validatedCard, onCompleteJob, isCompleting]);
 
-  // Sprint 4A-T-001: Handle completion animation when status changes to completed
   useEffect(() => {
     if (!validatedCard || !cardRef.current) return;
     
     if (validatedCard.status === 'COMPLETED') {
       safeAnimateCompletion(cardRef.current, () => {
-        // Remove card from DOM after animation completes
         if (onCardRemoved) {
           onCardRemoved(validatedCard.id);
         }
@@ -192,7 +188,6 @@ export default function AppointmentCard({
     }
   }, [validatedCard, onCardRemoved]);
 
-  // Urgent notification flag
   const hasUrgentNotification = useMemo(() => {
     if (!validatedCard?.start) return false;
     return withCardErrorBoundary(
@@ -202,7 +197,6 @@ export default function AppointmentCard({
     );
   }, [validatedCard?.start, appointmentTime, hasArrived]);
 
-  // Initialize minutes until
   useEffect(() => {
     if (validatedCard) {
       setMinutesUntil(getMinutesUntil(appointmentTime));
@@ -220,17 +214,14 @@ export default function AppointmentCard({
           const newMinutesUntil = getMinutesUntil(appointmentTime);
           setMinutesUntil(newMinutesUntil);
 
-          // Check for running late notifications (only if not arrived)
           if (!hasArrived && validatedCard.start) {
             const minutes_past = minutesPast(appointmentTime);
             
-            // Running late notification (10+ minutes past start)
             if (minutes_past > 10 && !notifiedLate) {
               notifyLate(validatedCard.customerName, validatedCard.id, minutes_past);
               setNotifiedLate(true);
             }
             
-            // Overdue notification (30+ minutes past start)
             if (minutes_past > 30 && !notifiedOverdue) {
               notifyOverdue(validatedCard.customerName, validatedCard.id, minutes_past);
               setNotifiedOverdue(true);
@@ -242,10 +233,7 @@ export default function AppointmentCard({
       );
     };
 
-    // Initial update
     updateCardState();
-
-    // Set up interval with memory-safe manager
     const intervalId = intervalManager.create(updateCardState, 60000);
 
     return () => {
@@ -253,7 +241,6 @@ export default function AppointmentCard({
     };
   }, [appointmentTime, validatedCard, hasArrived, notifiedLate, notifiedOverdue]);
 
-  // Cleanup on unmount
   useEffect(() => {
     const intervalManager = intervalManagerRef.current;
     return () => {
@@ -261,7 +248,6 @@ export default function AppointmentCard({
     };
   }, []);
 
-  // Early return for invalid cards AFTER all hooks
   if (!validatedCard) {
     console.error('Invalid card data provided to AppointmentCard:', card);
     return (
@@ -273,197 +259,89 @@ export default function AppointmentCard({
     );
   }
 
-  // Safe price formatting
   const formattedPrice = formatCardPrice(validatedCard.price);
+
+  const getServiceIcon = (service: string) => {
+    const svc = (service || '').toLowerCase();
+    if (svc.includes('brake')) return ServiceTypeIcons.brake();
+    if (svc.includes('oil')) return ServiceTypeIcons.oil();
+    if (svc.includes('diagnostic')) return ServiceTypeIcons.diagnostic();
+    return ServiceTypeIcons.general();
+  };
 
   return (
     <div
       ref={cardRef}
-      className={`appointment-card relative group ${isDragging ? 'opacity-50' : 'opacity-100'} ${
-        hasUrgentNotification ? 'has-urgent-notification' : ''
-      } ${isCompleting ? 'completing' : ''} ${
-        validatedCard.status === 'COMPLETED' ? 'completed' : ''
-      }`}
-      data-testid={`appointment-card-${validatedCard.id}`}
+      className={`card-base p-4 transition-all duration-300 ease-out card-enter ${hasUrgentNotification ? 'urgent-pulse' : ''} ${isDragging ? 'card-drag-preview' : ''}`}
+      onClick={handleCardClick}
+      aria-label={ariaLabel}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleCardClick();
+        }
+      }}
     >
-      <div
-        className={`card-base w-full text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-          hasUrgentNotification ? 'card-urgent' : ''
-        } ${urgencyLevel === 'urgent' ? 'card-urgent' : urgencyLevel === 'soon' ? 'card-warning' : ''}`}
-        data-card-id={validatedCard.id}
-        data-testid={`board-card-${validatedCard.id}`}
-        onClick={handleCardClick}
-        aria-label={ariaLabel}
-        aria-describedby={error ? `error-${validatedCard.id}` : undefined}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleCardClick();
-          }
-        }}
-      >
-        <div className="card-content">
-          {/* Urgency Badge with enhanced accessibility */}
-          {validatedCard.urgency && (
-            <span 
-              className={`urgency-badge ${urgencyLevel}`}
-              aria-label={`${urgencyLevel} priority`}
-              role="status"
-            />
-          )}
-          
-          <div className="flex items-center justify-between gap-sp-1">
-            </div>
-
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center space-x-3">
+          {getServiceIcon(validatedCard.servicesSummary || '')}
+          <div>
+            <h3 className="text-lg font-bold text-neutral-900 leading-tight mb-1 truncate">{validatedCard.servicesSummary || 'Service'}</h3>
+            <div className="text-sm text-neutral-600">{validatedCard.customerName || 'Walk-in Customer'}</div>
           </div>
+        </div>
 
-          {/* Customer as secondary */}
-          <div className="text-sm font-medium text-gray-600 mt-1">{validatedCard.customerName && validatedCard.customerName !== 'Unknown Customer' ? validatedCard.customerName : 'Walk-in Customer'}</div>
-
-          {/* Vehicle as prominent (what Edgar is actually working on) */}
-          <div className="text-sm font-semibold text-blue-700 mt-1">{validatedCard.vehicle && validatedCard.vehicle !== 'Unknown Vehicle' ? validatedCard.vehicle : 'Vehicle TBD'}</div>
-
-          {/* Price small/discrete */}
-          <div className="text-xs text-gray-500 mt-2">{formattedPrice ? formattedPrice : '$0.00'}</div>
-          
-          {/* Urgency Status Line with ARIA support */}
-          {urgencyLevel !== 'normal' && (
-            <div 
-              className={`urgency-status ${urgencyLevel}`}
-              role="status"
-              aria-live="polite"
-            >
-              <span className={`urgency-icon ${urgencyLevel}`} aria-hidden="true" />
-              {urgencyLevel === 'urgent' ? 'Urgent' : urgencyLevel === 'soon' ? 'Starting Soon' : ''}
-            </div>
-          )}
-          
-          {/* Live Countdown Timer with accessibility */}
-          <div 
-            className={`countdown mt-sp-2 ${
-              !validatedCard.start ? 'normal' :
-              isOverdue(appointmentTime) ? 'overdue' :
-              isRunningLate(appointmentTime) ? 'running-late' :
-              isStartingSoon(appointmentTime) ? 'starting-soon' :
-              'normal'
-            }`}
-            role="timer"
-            aria-live="polite"
-            aria-label={`Appointment timing: ${getCountdownText(minutesUntil)}`}
-          >
-            <span className="live-indicator" aria-hidden="true" />
-            {getCountdownText(minutesUntil)}
-          </div>
-          
-          {/* Customer Arrived Check-in */}
-          {!hasArrived && minutesUntil < 60 && minutesUntil > -30 && (
-            <div className="mt-sp-2">
-              <ArrivalButton 
-                onClick={handleMarkArrived} 
-                disabled={isLoading}
-                aria-label={`Mark ${validatedCard.customerName} as arrived`}
-              />
-              {isLoading && (
-                <span className="sr-only" aria-live="polite">
-                  Marking customer as arrived...
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Sprint 4A-T-001: Completion Button for in-progress appointments */}
-          {validatedCard.status === 'IN_PROGRESS' && onCompleteJob && (
-            <div className="mt-sp-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCompleteJob();
-                }}
-                disabled={isCompleting}
-                className={`w-full py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                  isCompleting 
-                    ? 'bg-gray-300 text-gray-600 cursor-not-allowed' 
-                    : 'bg-green-600 text-white hover:bg-green-700 focus:bg-green-700'
-                }`}
-                aria-label={`Complete appointment for ${validatedCard.customerName}`}
-              >
-                {isCompleting ? (
-                  <>
-                    <span className="inline-block animate-spin mr-2" aria-hidden="true">⟳</span>
-                    Completing...
-                  </>
-                ) : (
-                  <>
-                    ✅ Complete Job
-                  </>
-                )}
-              </button>
-              {isCompleting && (
-                <span className="sr-only" aria-live="polite">
-                  Completing appointment...
-                </span>
-              )}
-            </div>
-          )}
-          
-          {/* Error display */}
-          {error && (
-            <div 
-              id={`error-${validatedCard.id}`}
-              className="mt-sp-2 text-red-600 text-fs-0"
-              role="alert"
-            >
-              {error}
-            </div>
-          )}
-          {/* Quick actions */}
-          <QuickActions card={validatedCard} />
+        <div className="flex flex-col items-end">
+          <TimeDisplay card={validatedCard} minutesUntil={minutesUntil} />
+          {validatedCard.price ? (
+            <div className="text-xs text-neutral-400 mt-2">${validatedCard.price.toFixed(2)}</div>
+          ) : null}
         </div>
       </div>
-      
-      {/* Move button with enhanced accessibility */}
-      <button
-        className="absolute top-sp-2 right-sp-2 text-fs-0 text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-sp-1 hover:bg-gray-100 transition-colors"
-        aria-label={`Move appointment for ${validatedCard.customerName} to different status`}
-        onClick={handleMoveClick}
-        tabIndex={0}
-      >
-        <span aria-hidden="true">⋮</span>
-      </button>
-      
-      {/* Quick reschedule button with enhanced accessibility */}
-      <button
-        className={`absolute bottom-sp-2 right-sp-2 p-sp-1 text-white rounded-full opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-300 ${
-          isRescheduling 
-            ? 'bg-gray-500 cursor-not-allowed' 
-            : 'bg-blue-500 hover:bg-blue-600'
-        }`}
-        onClick={handleQuickReschedule}
-        aria-label={`Quick reschedule appointment for ${validatedCard.customerName}`}
-        tabIndex={0}
-        disabled={isRescheduling}
-      >
-        <RefreshCw 
-          className={`h-4 w-4 ${isRescheduling ? 'animate-spin' : ''}`} 
-          aria-hidden="true" 
-        />
-        {isRescheduling && (
-          <span className="sr-only">Rescheduling...</span>
-        )}
-      </button>
+
+      <div className={`transition-all duration-200 ${isDragging ? 'opacity-80' : 'opacity-100'}`}>
+        <div className="text-sm text-neutral-500 mb-2">
+          <svg className="w-4 h-4 inline mr-2 text-neutral-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
+            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+          </svg>
+          {validatedCard.vehicle || 'Vehicle TBD'}
+        </div>
+
+        <QuickActions card={validatedCard} />
+      </div>
+
+      <div className="absolute top-3 right-3">
+        <button
+          className="text-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-300 rounded p-1 hover:bg-neutral-100 transition-colors"
+          aria-label={`Move appointment for ${validatedCard.customerName}`}
+          onClick={(e) => { e.stopPropagation(); handleMoveClick(e as any); }}
+        >
+          ⋮
+        </button>
+      </div>
+
+      <div className="absolute bottom-3 right-3">
+        <button
+          className={`p-2 rounded-full transition-opacity focus:outline-none focus:ring-2 focus:ring-primary-300 ${isRescheduling ? 'bg-neutral-500' : 'bg-primary-600 hover:bg-primary-700'} text-white`}
+          onClick={(e) => { e.stopPropagation(); handleQuickReschedule(); }}
+          aria-label={`Quick reschedule appointment for ${validatedCard.customerName}`}
+          disabled={isRescheduling}
+        >
+          <RefreshCw className={`${isRescheduling ? 'animate-spin' : ''} h-4 w-4`} aria-hidden />
+        </button>
+      </div>
     </div>
   );
 }
 
-// TimeDisplay: prominent time badge for the card
 const TimeDisplay = ({ card, minutesUntil }: { card: BoardCard; minutesUntil: number }) => {
   if (!card) return null;
 
   if (card.isOverdue && card.status === 'IN_PROGRESS') {
     return (
-      <div className={"inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-red-100 text-red-800 border-red-200"}>
+      <div className={"inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-danger-50 text-danger-800 border-danger-200"}>
         <span className="mr-1">⚠️</span>
         {card.minutesLate}m overdue
       </div>
@@ -472,7 +350,7 @@ const TimeDisplay = ({ card, minutesUntil }: { card: BoardCard; minutesUntil: nu
 
   if (typeof card.timeUntilStart === 'number' && card.timeUntilStart <= 30 && card.timeUntilStart > 0) {
     return (
-      <div className={"inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-orange-100 text-orange-800 border-orange-200"}>
+      <div className={"inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-warning-50 text-warning-800 border-warning-200"}>
         <span className="mr-1">🕐</span>
         Starting in {card.timeUntilStart}m
       </div>
@@ -481,7 +359,7 @@ const TimeDisplay = ({ card, minutesUntil }: { card: BoardCard; minutesUntil: nu
 
   if (card.scheduledTime && card.status === 'SCHEDULED') {
     return (
-      <div className={"inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-blue-100 text-blue-800 border-blue-200"}>
+      <div className={"inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-primary-50 text-primary-700 border-primary-200"}>
         <span className="mr-1">📅</span>
         {card.scheduledTime}
       </div>
@@ -491,7 +369,7 @@ const TimeDisplay = ({ card, minutesUntil }: { card: BoardCard; minutesUntil: nu
   if (card.status === 'IN_PROGRESS' && card.start) {
     const elapsed = Math.floor((Date.now() - new Date(card.start).getTime()) / 60000);
     return (
-      <div className={"inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-green-100 text-green-800 border-green-200"}>
+      <div className={"inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-success-50 text-success-700 border-success-200"}>
         <span className="mr-1">⚙️</span>
         {elapsed}m in progress
       </div>
@@ -501,7 +379,6 @@ const TimeDisplay = ({ card, minutesUntil }: { card: BoardCard; minutesUntil: nu
   return null;
 };
 
-// QuickActions: context-aware quick action buttons
 const QuickActions = ({ card }: { card: BoardCard }) => {
   const getActions = () => {
     if (card.isOverdue) {
@@ -533,13 +410,13 @@ const QuickActions = ({ card }: { card: BoardCard }) => {
   if (actions.length === 0) return null;
 
   return (
-    <div className="mt-3 pt-3 border-t border-gray-200">
+    <div className="mt-3 pt-3 border-t border-neutral-200">
       <div className="flex flex-wrap gap-2">
         {actions.map(action => (
           <button
             key={action.action}
             className={
-              `text-xs px-3 py-1 rounded-full font-medium transition-colors ${action.urgent ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`
+              `text-xs px-3 py-1 rounded-full font-medium transition-colors ${action.urgent ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`
             }
             onClick={(e) => { e.stopPropagation(); /* action handlers live in parent */ }}
           >
