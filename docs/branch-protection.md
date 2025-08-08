@@ -73,6 +73,33 @@ Pending CI verification of passing checks, plan for `main`:
 
 Final enforced contexts will match those that are actually passing on `main` and on this PR.
 
+### CI verification snapshot (PR #25)
+
+- Checks observed on the docs-only PR:
+  - accessibility: FAILURE
+  - Terraform Lint & Plan: FAILURE
+  - frontend-lint: FAILURE
+  - backend-lint: FAILURE
+  - Deploy & Smoke Tests: SKIPPED
+  - accessibility-tests: FAILURE
+  - db-migration: FAILURE
+  - frontend-tests: SKIPPED
+  - backend-tests: SKIPPED
+  - no-db-smoke-tests: SKIPPED
+  - docs-curl: SKIPPED
+  - cross-browser-smoke: SKIPPED
+  - e2e-tests: SKIPPED
+  - build-and-scan: SKIPPED
+  - coverage-summary: FAILURE
+  - backend-integration-tests: SKIPPED
+  - performance-smoke-tests: SKIPPED
+  - docker-deploy: SKIPPED
+  - aggregate-retry-reports: SUCCESS
+  - Vercel: FAILURE
+  - Vercel Preview Comments: SUCCESS
+
+- At this time, none of the intended gating checks are passing on the docs PR. We will not enforce status check requirements until the core gating jobs are green on `main` and on this PR.
+
 ### Local defaults
 
 - Ensure remote HEAD is set to `main` using: `git remote set-head origin -a`.
