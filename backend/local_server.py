@@ -626,7 +626,7 @@ def audit_log(*args, **kwargs):
 # ----------------------------------------------------------------------------
 
 def handle_http_exception(e: HTTPException):
-    # Don’t treat these as 500s.
+    # Don't treat these as 500s.
     status = e.code or 500
     # Optional: map to stable codes
     code_map = {
@@ -822,6 +822,30 @@ def get_board():
                     }
                 )
 
+            # Enrich cards with time-aware context
+            for c in cards:
+                try:
+                    time_ctx = calculate_time_context(c)
+                    c.update(time_ctx)
+                except Exception:
+                    pass
+
+            # Sort cards within each column by priority: overdue first, then soonest, then original position
+            def sort_priority(card):
+                if card.get('isOverdue'):
+                    # sort most overdue first (larger minutesLate -> higher urgency)
+                    return (0, -int(card.get('minutesLate', 0)))
+                if card.get('timeUntilStart') is not None:
+                    return (1, int(card.get('timeUntilStart')))
+                return (2, int(card.get('position', 999)))
+
+            # Recompute positions per column
+            for key, title in _ordered_columns():
+                column_cards = [c for c in cards if c.get('status') == key]
+                column_cards.sort(key=sort_priority)
+                for i, card in enumerate(column_cards):
+                    card['position'] = i
+
             # Column aggregates
             if is_sqlite:
                 cur.execute(
@@ -873,6 +897,61 @@ def _ordered_columns():
         ("COMPLETED", "Completed"),
         ("NO_SHOW", "No-Show"),
     ]
+
+def calculate_time_context(card: dict, current_time: Optional[datetime] = None) -> dict:
+    """Calculate time-aware context for a card dict (expects UTC ISO strings in card['start'])."""
+    if current_time is None:
+        current_time = utcnow()
+
+    out = {}
+    start_iso = card.get('start')
+    if start_iso:
+        try:
+            scheduled_dt = datetime.fromisoformat(start_iso.replace('Z', '+00:00'))
+        except Exception:
+            try:
+                scheduled_dt = datetime.fromisoformat(start_iso)
+            except Exception:
+                scheduled_dt = None
+        if scheduled_dt:
+            # Ensure scheduled_dt is timezone-aware (UTC)
+            if scheduled_dt.tzinfo is None:
+                scheduled_dt = scheduled_dt.replace(tzinfo=timezone.utc)
+            scheduled_dt = scheduled_dt.astimezone(timezone.utc)
+            out['scheduledTime'] = scheduled_dt.strftime('%I:%M %p')
+            out['appointmentDate'] = scheduled_dt.date().isoformat()
+
+            time_diff = (scheduled_dt - current_time).total_seconds() / 60.0
+            if time_diff > 0:
+                out['timeUntilStart'] = int(time_diff)
+            else:
+                # If appointment is more than 15 minutes late, mark overdue
+                if time_diff < -15:
+                    out['isOverdue'] = True
+                    out['minutesLate'] = int(abs(time_diff))
+                else:
+                    out['timeUntilStart'] = int(time_diff)
+
+    # If appointment is in progress, compute elapsed and compare to expected duration
+    if card.get('status') == 'IN_PROGRESS' and card.get('start'):
+        try:
+            start_dt = datetime.fromisoformat(card['start'].replace('Z', '+00:00'))
+            start_dt = start_dt.astimezone(timezone.utc)
+            elapsed_minutes = (current_time - start_dt).total_seconds() / 60.0
+            expected_duration = int(card.get('estimatedDuration') or 120)
+            if elapsed_minutes > expected_duration:
+                out['isOverdue'] = True
+                out['minutesLate'] = int(elapsed_minutes - expected_duration)
+        except Exception:
+            pass
+
+    # Ensure numeric fields are integers where appropriate
+    if 'minutesLate' in out:
+        out['minutesLate'] = int(out['minutesLate'])
+    if 'timeUntilStart' in out:
+        out['timeUntilStart'] = int(out['timeUntilStart'])
+
+    return out
 
 # ----------------------------------------------------------------------------
 # Move endpoint

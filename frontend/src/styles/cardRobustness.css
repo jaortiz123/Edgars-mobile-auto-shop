@@ -397,3 +397,31 @@
     opacity: 1; /* Always show buttons on touch devices */
   }
 }
+
+/* Time-based urgency styling (Week 2 additions) */
+.card-overdue {
+  border-left: 4px solid #dc2626;
+  background: linear-gradient(to right, #fef2f2, white);
+  animation: pulse-red 2s infinite;
+}
+
+.card-starting-soon {
+  border-left: 4px solid #ea580c;
+  background: linear-gradient(to right, #fff7ed, white);
+}
+
+.card-in-progress {
+  border-left: 4px solid #059669;
+  background: linear-gradient(to right, #f0fdf4, white);
+}
+
+.card-next-up {
+  border: 2px solid #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: linear-gradient(to right, #eff6ff, white);
+}
+
+@keyframes pulse-red {
+  0%, 100% { border-left-color: #dc2626; }
+  50% { border-left-color: #f87171; }
+}
