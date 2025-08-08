@@ -157,7 +157,7 @@ export class CSSPerformanceMonitor {
     let accessCount = 0;
     let totalTime = 0;
 
-    window.getComputedStyle = function(...args: any[]) {
+    window.getComputedStyle = function(...args: [elt: Element, pseudoElt?: string | null | undefined]) {
       const start = performance.now();
       const result = originalGetComputedStyle.apply(this, args);
       const end = performance.now();

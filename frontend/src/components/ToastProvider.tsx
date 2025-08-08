@@ -20,7 +20,7 @@ const toastReducer = (state: ToastState, action: ToastAction): ToastState => {
 
 const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(toastReducer, { toasts: [] });
-  const timeoutRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const timeoutRefs = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // Cleanup all timeouts on unmount
   useEffect(() => {

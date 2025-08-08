@@ -41,6 +41,12 @@ export interface UseDailyAchievementSummaryReturn {
   loadSummary: (date?: Date | string) => Promise<DailySummary | null>;
 }
 
+// Runtime components exist in .jsx, declare here for TS consumers
+export declare function DailyAchievementSummary(props: DailyAchievementSummaryProps): JSX.Element;
+export declare function DailyAchievementSummaryCard(props: DailyAchievementSummaryCardProps): JSX.Element;
+declare const _default: typeof DailyAchievementSummary;
+export default _default;
+
 export declare function getDailySummary(date?: Date | string): Promise<DailySummary>;
 export declare function shouldShowDailySummary(): boolean;
 export declare function markSummaryAsSeen(): void;
