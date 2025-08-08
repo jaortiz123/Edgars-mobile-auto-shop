@@ -807,6 +807,13 @@ def get_board():
                 cust = r.get("customer_name") or None
                 veh = r.get("vehicle_label") or None
 
+                # Provide friendlier fallbacks to avoid 'Unknown Customer' showing in the UI
+                customer_name = cust if cust and str(cust).strip() else 'Walk-in Customer'
+                vehicle_label = veh if veh and str(veh).strip() else 'Vehicle TBD'
+                service_summary = r.get('services_summary')
+                if not service_summary or not str(service_summary).strip():
+                    service_summary = f"Service #{str(r.get('id') or 'TBD')[:8]}"
+
                 cards.append(
                     {
                         "id": r["id"],
@@ -814,13 +821,61 @@ def get_board():
                         "position": int(r["position"]),
                         "start": start_iso,
                         "end": end_iso,
-                        "customerName": cust if cust and str(cust).strip() else "Unknown Customer",
-                        "vehicle": veh if veh and str(veh).strip() else "Unknown Vehicle",
-                        "servicesSummary": r.get("services_summary") or None,
+                        "customerName": customer_name,
+                        "vehicle": vehicle_label,
+                        "servicesSummary": service_summary,
                         "price": float(r.get("price") or 0),
                         "tags": [],
                     }
                 )
+
+            # --- Time-aware context (Week 2 enhancements) ---
+            try:
+                from datetime import datetime
+                now = datetime.now(timezone.utc)
+                for card in cards:
+                    try:
+                        # defaults
+                        card.setdefault('scheduledTime', None)
+                        card.setdefault('appointmentDate', None)
+                        card.setdefault('isOverdue', False)
+                        card.setdefault('minutesLate', None)
+                        card.setdefault('timeUntilStart', None)
+                        card.setdefault('estimatedDuration', 120)
+
+                        start_iso_card = card.get('start')
+                        if start_iso_card:
+                            try:
+                                sched_dt = datetime.fromisoformat(start_iso_card.replace('Z', '+00:00'))
+                                card['scheduledTime'] = sched_dt.astimezone(timezone.utc).strftime('%I:%M %p')
+                                card['appointmentDate'] = sched_dt.date().isoformat()
+                                diff_min = int((sched_dt - now).total_seconds() / 60)
+                                card['timeUntilStart'] = diff_min
+                                if diff_min < -15:
+                                    card['isOverdue'] = True
+                                    card['minutesLate'] = abs(diff_min)
+                            except Exception:
+                                pass
+
+                        # estimated duration default (minutes)
+                        card['estimatedDuration'] = int(card.get('estimatedDuration') or 120)
+
+                        # If in progress, check elapsed vs expected
+                        if start_iso_card and card.get('status') == 'IN_PROGRESS':
+                            try:
+                                start_dt = datetime.fromisoformat(start_iso_card.replace('Z', '+00:00'))
+                                elapsed = int((now - start_dt).total_seconds() / 60)
+                                if elapsed > card['estimatedDuration']:
+                                    card['isOverdue'] = True
+                                    card['minutesLate'] = int(elapsed - card['estimatedDuration'])
+                            except Exception:
+                                pass
+                    except Exception:
+                        # skip problematic card
+                        continue
+            except Exception:
+                # do not fail the entire board if time parsing errors occur
+                pass
 
             # Column aggregates
             if is_sqlite:

@@ -14,7 +14,7 @@ import { getViewMode, setViewMode, ViewMode } from '@lib/prefs';
 import StatusBoard from '@/components/admin/StatusBoard';
 import FloatingActionButton from '@/components/ui/FloatingActionButton';
 import { scheduleReminder } from '@/services/notificationService';
-import RunningRevenue from '../components/RunningRevenue/RunningRevenue';
+// RunningRevenue removed for work-focused dashboard
 import '@/styles/appointment-reminders.css';
 import { 
   Calendar,
@@ -83,6 +83,13 @@ const convertTo24Hour = (time12h: string): string => {
     return '12:00'; // Safe fallback
   }
 };
+
+function getTimeGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
 
 
 // Local UI appointment type used by the dashboard
@@ -269,7 +276,7 @@ export function Dashboard() {
     // Only load once on mount, then rely on refresh triggers
     console.log("🎯 Initial dashboard load triggered");
     loadDashboardData();
-  }, []); // Remove loadDashboardData dependency to prevent re-render cycles
+  }, [loadDashboardData]);
 
   // Handle refresh triggers separately
   useEffect(() => {
@@ -277,7 +284,7 @@ export function Dashboard() {
       console.log("🔄 Refresh trigger activated:", refreshTrigger);
       loadDashboardData();
     }
-  }, [refreshTrigger]); // Remove loadDashboardData dependency
+  }, [refreshTrigger, loadDashboardData]);
 
   // Auto-refresh appointments disabled to prevent infinite requests
   useEffect(() => {
@@ -545,11 +552,16 @@ export function Dashboard() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-sp-3">
           <div>
-            <h1 className="text-fs-4 sm:text-fs-5 font-bold text-gray-900">🔧 Edgar's Shop Dashboard</h1>
-            <p className="text-fs-1 text-gray-600 mt-sp-1">Welcome back! Here's what's happening today.</p>
+            <h1 className="text-4xl font-bold text-gray-900 tracking-tight">🔧 Edgar's Shop Dashboard</h1>
+            <p className="text-lg font-medium text-gray-600 mt-1">{getTimeGreeting()}, Edgar • {format(new Date(), 'EEEE, MMMM do')}</p>
           </div>
           <div className="flex items-center gap-sp-2">
-            <RunningRevenue className="hidden sm:flex" />
+            {/* Work progress display - show jobs completed vs total */}
+            <div className="hidden sm:block text-right mr-2">
+              <p className="text-sm font-medium text-gray-500">Jobs Today</p>
+              <p className="text-2xl font-bold text-blue-600">{(filteredAppointments || []).filter(a => a.status === 'completed').length}/{(filteredAppointments || []).length}</p>
+              <p className="text-xs text-gray-500">completed</p>
+            </div>
             <button
               onClick={() => {
                 console.log('🔄 Manual refresh triggered');
@@ -580,7 +592,6 @@ export function Dashboard() {
                     setViewMode('calendar');
                   }
                 }}
-                aria-pressed={view === 'calendar' ? 'true' : 'false'}
                 aria-label="Switch to calendar view"
                 className={view === 'calendar' ? 'px-sp-2 py-sp-1 bg-blue-500 text-white rounded' : 'px-sp-2 py-sp-1 bg-gray-200 text-gray-700 rounded'}
               >
@@ -596,7 +607,6 @@ export function Dashboard() {
                     setViewMode('board');
                   }
                 }}
-                aria-pressed={view === 'board' ? 'true' : 'false'}
                 aria-label="Switch to board view"
                 className={view === 'board' ? 'px-sp-2 py-sp-1 bg-blue-500 text-white rounded' : 'px-sp-2 py-sp-1 bg-gray-200 text-gray-700 rounded'}
               >
