@@ -1,0 +1,105 @@
+repo:
+  monorepo: false
+  scope: ["backend", "frontend"]
+  runtimes:
+    node: "18.x"
+    packageManager: "npm"
+    python: "3.9"
+  frameworks:
+    frontend: "React+Vite"
+    backend: "Flask"
+    tests: ["Jest", "Pytest"]
+  db:
+    engine: "PostgreSQL"
+    fallback: "SQLite"
+    containerization: "Docker"
+    seed: "init_db.py"
+    envFiles: [".env"]
+
+auth:
+  mechanism: "JWT Bearer tokens"
+  csrf: false
+  roles: ["Owner", "Advisor", "Customer"]
+  sensitiveRoutes: ["/api/admin/*", "/api/customers/*/history"]
+  testAccounts:
+    owner: "owner@example.com"
+    advisor: "advisor@example.com"
+  invariants: ["auth-required-for-admin"]
+
+api:
+  openapi: null
+  offLimits: ["/api/payments/*"]
+  realVsMock:
+    real: ["/api/appointments/*", "/api/admin/*"]
+    mock: []
+
+ci:
+  requiredChecks: ["npm audit", "safety"]
+  coverage:
+    frontend: 0.60
+    backend: 0.60
+  flakyJobs: ["performance", "accessibility"]
+  previews: false
+
+testing:
+  locations: ["frontend/src/__tests__/**", "backend/tests/**"]
+  criticalFlows: ["appointment-create", "appointment-update", "status-board"]
+  brittleAreas: ["appointment history", "customer messaging"]
+  uiStrategy: "React Testing Library"
+
+boundaries:
+  offLimitsPaths: []
+  maxComponentSize: 500
+  noRefactorWithoutADR: ["auth middleware"]
+
+dependencies:
+  pinned:
+    frontend: true
+    backend: false
+  doNotBump: []
+  advisories: ["form-data"]
+
+budgets:
+  maxFiles: 8
+  maxLoc: 300
+  DoD: ["tests", "coverage-delta", "docs"]
+  rollback: "git revert"
+
+risk:
+  criticalFlows: ["authentication", "appointment-board", "appointment-creation", "customer-history", "payment-processing"]
+  sensitiveDataAreas: ["/api/customers/*", "/api/appointments/*"]
+  blackoutDates: []
+
+owners:
+  auth: ["@jesusortiz"]
+  database: ["@jesusortiz"]
+  securitySignoff: "@jesusortiz"
+
+plan:
+  targetPaths: ["backend/local_server.py", "frontend/src/components/admin/AppointmentDrawer.tsx"]
+  coverageDelta:
+    frontend: 0.10
+    backend: 0.10
+  inScopeBehaviors: ["appointment history load", "board view rendering", "calendar view rendering"]
+  outOfScope: ["payment processing"]
+  fixtures: ["backend/init_db.py"]
+  knownFlakes: []
+
+secrets:
+  logRedaction: ["email", "phone", "jwt"]
+  approvedTestUsers: []
+
+commands:
+  lint: "cd frontend && npm run lint"
+  typecheck: "cd frontend && npm run typecheck"
+  unit:
+    frontend: "cd frontend && npm test"
+    backend: "cd backend && pytest"
+  apiSmoke: "curl http://localhost:3001/health"
+  e2e: "cd frontend && npm run test:e2e"
+  dbReset: "python init_db.py"
+  dbSeed: "python init_db_simple.py"
+  start: "./quick-start.sh"
+  stop: "./stop-dev.sh"
+
+
