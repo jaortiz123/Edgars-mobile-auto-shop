@@ -4,6 +4,12 @@ import time
 import logging
 from pathlib import Path
 
+# Add backend to sys.path so tests can import local modules without PYTHONPATH
+import sys
+tests_dir = Path(__file__).resolve().parent
+backend_dir = tests_dir.parent
+sys.path.insert(0, str(backend_dir))
+
 # Set FALLBACK_TO_MEMORY before importing local_server for legacy tests
 os.environ.setdefault("FALLBACK_TO_MEMORY", "true")
 
