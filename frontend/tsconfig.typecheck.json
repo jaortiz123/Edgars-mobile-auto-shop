@@ -1,26 +1,21 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "./tsconfig.app.json",
   "compilerOptions": {
-    "composite": false,
-
+    "noEmit": true
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx"
   ],
   "exclude": [
-    // Tests and test utilities
     "src/tests/**",
     "src/**/__tests__/**",
     "src/**/*.test.*",
     "src/**/*.spec.*",
-    // Stories and examples
     "src/**/*.stories.*",
     "src/examples/**",
-    // Archived or deprecated code paths
     "src/**/archived/**",
     "src/**/triage-removed/**",
-    // Experimental/backup variants not part of app build
     "src/components/admin/AppointmentCardRobust.clean.tsx",
     "src/components/admin/AppointmentCardRobust.backup.tsx"
   ]
