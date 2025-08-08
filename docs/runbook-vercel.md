@@ -13,5 +13,8 @@ Notes
 - Local defaults exist (`http://localhost:3001` or `http://localhost:5001`), but production must set the `VITE_*` env vars.
 - CI runs a build to validate: see `.github/workflows/frontend-build.yml`.
 - TypeScript errors are checked in a separate CI job: `.github/workflows/frontend-typecheck.yml`.
-
-
+ 
+Local SPA deep-link test
+- Run: `npm run preview:spa` from `frontend`
+- Open a deep route directly (e.g., `/admin/dashboard`) to confirm the catch-all rewrite serves `index.html` and client-side routing takes over.
+ 
