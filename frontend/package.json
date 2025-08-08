@@ -24,7 +24,8 @@
     "test:ci-serial": "VITEST_STRICT_CONSOLE=true vitest --run --reporter=verbose --silent=false --maxConcurrency=1",
     "test:a11y": "vitest run src/tests/accessibility.test.tsx --reporter=verbose --maxConcurrency=4",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
-    "clean": "rm -rf node_modules/.cache .vite .next dist"
+    "clean": "rm -rf node_modules/.cache .vite .next dist",
+    "typecheck": "tsc -p tsconfig.typecheck.json --pretty"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
