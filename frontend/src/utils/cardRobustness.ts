@@ -35,20 +35,20 @@ export function validateCardData(card: unknown): ValidatedCard | null {
     return null;
   }
 
-  if (!cardObj.customerName || typeof cardObj.customerName !== 'string') {
-    console.warn('Card data validation failed: Missing or invalid customerName', card);
+  if (typeof cardObj.customerName !== 'string') {
+    console.warn('Card data validation failed: Invalid customerName type', card);
     return null;
   }
 
-  if (!cardObj.vehicle || typeof cardObj.vehicle !== 'string') {
-    console.warn('Card data validation failed: Missing or invalid vehicle', card);
+  if (typeof cardObj.vehicle !== 'string') {
+    console.warn('Card data validation failed: Invalid vehicle type', card);
     return null;
   }
 
   return {
     ...cardObj,
-    customerName: cardObj.customerName.trim(),
-    vehicle: cardObj.vehicle.trim(),
+    customerName: cardObj.customerName.trim() || 'Unknown Customer',
+    vehicle: cardObj.vehicle.trim() || 'Unknown Vehicle',
     servicesSummary: typeof cardObj.servicesSummary === 'string' ? cardObj.servicesSummary.trim() : '',
     price: typeof cardObj.price === 'number' && !isNaN(cardObj.price) ? cardObj.price : undefined,
     urgency: ['urgent', 'soon'].includes(cardObj.urgency as string) ? cardObj.urgency as 'urgent' | 'soon' : undefined,
