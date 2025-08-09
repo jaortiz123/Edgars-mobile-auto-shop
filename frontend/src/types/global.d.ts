@@ -13,7 +13,7 @@ declare module "classnames" {
 }
 
 // Allow process.env usage in browser code under Node types
-declare var process: {
+declare let process: {
   env: Record<string, string | undefined>;
 };
 

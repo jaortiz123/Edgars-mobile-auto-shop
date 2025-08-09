@@ -106,7 +106,7 @@ const allowedConsoleErrors: RegExp[] = [
  * Helper function to safely convert arguments to string for pattern matching
  * Preserves the sophisticated serialization from our original implementation
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 function safeArgsToString(args: unknown[]): string {
   const seen = new WeakSet<object>();
   
@@ -147,7 +147,7 @@ function safeArgsToString(args: unknown[]): string {
 /**
  * Helper function to check if a console message should be allowed
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 function isAllowedConsoleMessage(message: string): boolean {
   return allowedConsoleErrors.some(pattern => pattern.test(message));
 }
