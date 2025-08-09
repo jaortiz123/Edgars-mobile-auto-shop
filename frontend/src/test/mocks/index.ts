@@ -43,6 +43,12 @@ export function createMocks() {
       formatTime: vi.fn((date: Date) => date.toLocaleTimeString()),
       
       formatDate: vi.fn((date: Date) => date.toLocaleDateString()),
+      // expose getMinutesUntil used by tests
+      getMinutesUntil: vi.fn((date: Date | string) => {
+        const target = typeof date === 'string' ? new Date(date) : date;
+        const diffMs = target.getTime() - Date.now();
+        return Math.max(0, Math.round(diffMs / 60000));
+      }),
     },
 
     api: {
@@ -80,6 +86,40 @@ export function createMocks() {
       
       deleteService: vi.fn().mockResolvedValue({}),
       
+      getAppointmentServices: vi.fn().mockImplementation((appointmentId: string) => {
+        // Return an empty service list by default; tests can override via vi.mocked
+        return Promise.resolve([]);
+      }),
+      getAppointmentMessages: vi.fn().mockImplementation((appointmentId: string) => {
+        // Return an empty message list by default; tests can override via vi.mocked
+        return Promise.resolve([]);
+      }),
+      // Drawer fetch used by AppointmentDrawer component
+      getDrawer: vi.fn().mockImplementation((id: string) => {
+        return Promise.resolve({
+          appointment: {
+            id: id || 'test-appointment-123',
+            status: 'SCHEDULED',
+            start: '2024-01-15T14:00:00Z',
+            end: '2024-01-15T15:00:00Z',
+            total_amount: 250.00,
+            paid_amount: 0,
+            check_in_at: null,
+            check_out_at: null,
+            tech_id: null
+          },
+          customer: { id: 'cust-123', name: 'Test Customer' },
+          vehicle: { id: 'veh-123', make: 'Toyota', model: 'Camry', year: 2020 },
+          services: []
+        });
+      }),
+      createAppointmentMessage: vi.fn().mockImplementation((appointmentId: string, message: any) => {
+        return Promise.resolve({ id: `msg-${Date.now()}`, status: 'sent' });
+      }),
+      getCustomerHistory: vi.fn().mockImplementation((customerId: string) => {
+        return Promise.resolve({ success: true, data: { pastAppointments: [], payments: [] }, errors: null });
+      }),
+      
       // Simulation controls
       simulateFailureRate: vi.fn((rate: number) => {
         // Mock implementation that can be configured per test
@@ -99,32 +139,122 @@ export function createMocks() {
       }),
     },
 
-    notification: {
-      // Notification service mocks
-      notifyArrival: vi.fn().mockResolvedValue({}),
-      
-      notifyLate: vi.fn().mockResolvedValue({}),
-      
-      notifyCompletion: vi.fn().mockResolvedValue({}),
-      
-      notifyReminder: vi.fn().mockResolvedValue({}),
-      
-      sendSMS: vi.fn().mockResolvedValue({ messageId: 'mock-sms-id' }),
-      
-      sendEmail: vi.fn().mockResolvedValue({ messageId: 'mock-email-id' }),
-      
-      // Simulation controls
-      simulateDeliveryFailure: vi.fn((shouldFail: boolean) => {
-        console.log(`🔧 Notification Mock: Setting delivery failure to ${shouldFail}`);
-      }),
-      
-      simulateDelay: vi.fn((ms: number) => {
-        console.log(`🔧 Notification Mock: Setting delay to ${ms}ms`);
-      }),
-    },
+    // Build notification object with closure references so functions work when imported standalone
+    notification: (() => {
+      const notif: any = {};
+      notif._config = { maxNotifications: 100, retentionPeriod: 24*60*60*1000, rateLimitPerType: 3, enablePersistence: true, enableAnalytics: true, accessibilityEnabled: true };
+      notif._analytics = [];
+      notif._rateLimitMap = {} as Record<string, number[]>;
+      notif._notifications = [] as any[];
+
+      notif.addNotification = vi.fn(function(type: string, message: string, options: any = {}) {
+        const sanitized = String(message).replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+        const now = Date.now();
+        const key = String(type);
+        if (!notif._rateLimitMap[key]) notif._rateLimitMap[key] = [];
+        notif._rateLimitMap[key] = notif._rateLimitMap[key].filter((ts: number) => ts > now - 60000);
+        if (notif._rateLimitMap[key].length >= (notif._config?.rateLimitPerType ?? 3)) {
+          return '';
+        }
+        notif._rateLimitMap[key].push(now);
+
+        let id: string;
+        try {
+          const rand = Math.random().toString(36).slice(2,9);
+          id = `mock-${Date.now()}-${rand}`;
+        } catch (e) {
+          return '';
+        }
+
+        const notification = { id, type, message: sanitized, timestamp: new Date(), read: false, priority: options.priority || (type === 'error' ? 'critical' : 'medium'), expiresAt: options.expiresAt || new Date(Date.now() + (notif._config?.retentionPeriod || 24*60*60*1000)), retryCount: 0, source: 'mock', ...options };
+        notif._notifications.push(notification);
+
+        if (notif._config?.enableAnalytics) notif._analytics.push({ type: 'notification_created', notificationType: type, timestamp: new Date(), metadata: { priority: notification.priority } });
+
+        if (notif._config?.enablePersistence && typeof globalThis.localStorage !== 'undefined') {
+          try {
+            const serialized = JSON.stringify(notif._notifications.map((n: any) => ({ ...n, timestamp: n.timestamp.toISOString(), expiresAt: n.expiresAt?.toISOString() })));
+            globalThis.localStorage.setItem('notifications', serialized);
+          } catch (e) {}
+        }
+
+        if (notif._observers && Array.isArray(notif._observers)) {
+          notif._observers.forEach((obs: any) => { try { obs([...notif._notifications]); } catch (err) {} });
+        }
+
+        try {
+          if (notif._config?.accessibilityEnabled && typeof document !== 'undefined' && typeof document.createElement === 'function') {
+            const el = document.createElement('div');
+            el.setAttribute('role', 'status');
+            el.textContent = notification.message;
+            if (document.body && document.body.appendChild) { document.body.appendChild(el); setTimeout(() => { try { document.body.removeChild(el); } catch (e) {} }, 0); }
+          }
+        } catch (e) {}
+
+        return id;
+      });
+
+      notif.notifyArrival = vi.fn((customerName: string, appointmentId: string) => notif.addNotification('arrival', `${customerName} has arrived for their appointment`, { appointmentId, customerName }));
+      notif.notifyLate = vi.fn((customerName: string, appointmentId: string, minutesLate: number) => notif.addNotification('late', `${customerName} is running ${minutesLate} minutes late`, { appointmentId, customerName, metadata: { minutesLate } }));
+      notif.notifyOverdue = vi.fn((customerName: string, appointmentId: string, minutesOverdue: number) => notif.addNotification('overdue', `${customerName}'s appointment is ${minutesOverdue} minutes overdue`, { appointmentId, customerName, metadata: { minutesOverdue } }));
+      notif.notifyReminder = vi.fn((customerName: string, appointmentId: string, minutesUntil: number) => notif.addNotification('reminder', `Reminder: ${customerName}'s appointment is in ${minutesUntil} minutes`, { appointmentId, customerName, metadata: { minutesUntil } }));
+      notif.scheduleReminder = vi.fn((appointmentId: string, customerName: string, minutesUntil: number) => notif.notifyReminder(customerName, appointmentId, minutesUntil));
+
+      notif.getNotifications = vi.fn(() => {
+        const now = new Date();
+        notif._notifications = notif._notifications.filter((n: any) => !(n.expiresAt && new Date(n.expiresAt) < now));
+        const max = notif._config?.maxNotifications || 100;
+        if (notif._notifications.length > max) notif._notifications = notif._notifications.slice(-max);
+        return [...notif._notifications];
+      });
+      notif.getNotificationsByType = vi.fn((type: string) => notif._notifications.filter((n: any) => n.type === type));
+      notif.getUnreadNotifications = vi.fn(() => notif._notifications.filter((n: any) => !n.read));
+      notif.getAnalytics = vi.fn(() => [...notif._analytics]);
+      notif.clearAnalytics = vi.fn(() => { notif._analytics = []; });
+
+      notif.initializeService = vi.fn(() => {
+        try {
+          if (notif._config?.enablePersistence && typeof globalThis.localStorage !== 'undefined') {
+            const stored = globalThis.localStorage.getItem('notifications');
+            if (stored) {
+              try { const parsed = JSON.parse(stored); notif._notifications = parsed.map((n: any) => ({ ...n, timestamp: n.timestamp ? new Date(n.timestamp) : new Date(), expiresAt: n.expiresAt ? new Date(n.expiresAt) : undefined })); } catch (e) { notif._notifications = []; }
+            }
+          }
+        } catch (e) { notif._notifications = []; }
+      });
+      notif.cleanup = vi.fn(() => { notif._notifications = []; notif._observers = []; notif._analytics = []; });
+
+      notif._observers = [] as Function[];
+      notif.subscribe = vi.fn((observer: (notifications: any[]) => void) => { notif._observers.push(observer); return () => { const idx = notif._observers.indexOf(observer); if (idx !== -1) notif._observers.splice(idx,1); }; });
+
+      notif.updateConfig = vi.fn((cfg: any) => { notif._config = { ...notif._config, ...cfg }; });
+      notif.getConfig = vi.fn(() => ({ ...(notif._config || { maxNotifications: 100, retentionPeriod: 24*60*60*1000, rateLimitPerType: 3, enablePersistence: true, enableAnalytics: true, accessibilityEnabled: true }) }));
+      notif.getStats = vi.fn(() => {
+        const total = notif._notifications.length;
+        const byType: Record<string, number> = {};
+        notif._notifications.forEach((n: any) => { byType[n.type] = (byType[n.type] || 0) + 1; });
+        const delivered = notif._notifications.filter((n: any) => !n.retryCount || n.retryCount === 0).length;
+        const deliveryRate = total > 0 ? (delivered / total) * 100 : 100;
+        const errors = notif._notifications.filter((n: any) => n.type === 'error').length;
+        const errorRate = total > 0 ? (errors / total) * 100 : 0;
+        return { total, byType, deliveryRate, errorRate, avgResponseTime: 0 };
+      });
+
+      notif.getAnalytics = vi.fn(() => notif._analytics || []);
+      notif.clearAnalytics = vi.fn(() => { notif._analytics = []; });
+
+      notif.markAsRead = vi.fn((id: string) => { const n = notif._notifications.find((x: any) => x.id === id); if (n) { n.read = true; return true; } return false; });
+      notif.markNotificationAsRead = vi.fn((id: string) => notif.markAsRead(id));
+      notif.markAllAsRead = vi.fn(() => { notif._notifications.forEach((n: any) => n.read = true); });
+      notif.removeNotification = vi.fn((id: string) => { const idx = notif._notifications.findIndex((x: any) => x.id === id); if (idx !== -1) { notif._notifications.splice(idx,1); return true; } return false; });
+      notif.clearAllNotifications = vi.fn(() => { notif._notifications = []; });
+      notif.clearAll = vi.fn(() => { notif._notifications = []; });
+
+      return notif;
+    })(),
 
     toast: {
-      // Toast notification mocks
+      // Minimal Toast mock used by components
       push: vi.fn(),
       success: vi.fn(),
       error: vi.fn(),
@@ -132,6 +262,28 @@ export function createMocks() {
       info: vi.fn(),
       remove: vi.fn(),
       clear: vi.fn(),
+      // Export a simple provider component for tests that mount components requiring it
+      ToastProvider: ({ children }: { children: any }) => children,
+      // For code that imports `useToast` or `toast` named export
+      useToast: () => ({
+        push: vi.fn(),
+        success: vi.fn(),
+        error: vi.fn(),
+        warning: vi.fn(),
+        info: vi.fn(),
+        remove: vi.fn(),
+        clear: vi.fn(),
+      }),
+      // Some modules expect a default `toast` object
+      toast: {
+        push: vi.fn(),
+        success: vi.fn(),
+        error: vi.fn(),
+        warning: vi.fn(),
+        info: vi.fn(),
+        remove: vi.fn(),
+        clear: vi.fn(),
+      }
     },
 
     storage: {

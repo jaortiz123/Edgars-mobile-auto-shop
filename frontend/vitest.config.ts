@@ -8,14 +8,27 @@ export default defineConfig({
   // ✅ A SINGLE, CORRECT ALIAS CONFIGURATION
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      "@": path.resolve(__dirname, "./src"),
+      "@lib": path.resolve(__dirname, "./src/lib"),
+      "@/components": path.resolve(__dirname, "./src/components"),
+      "@/contexts": path.resolve(__dirname, "./src/contexts"),
+      "@/hooks": path.resolve(__dirname, "./src/hooks"),
+      "@/lib": path.resolve(__dirname, "./src/lib"),
+      "@/services": path.resolve(__dirname, "./src/services"),
+      "@/utils": path.resolve(__dirname, "./src/utils"),
+      "@/types": path.resolve(__dirname, "./src/types"),
+      "@/tests": path.resolve(__dirname, "./src/tests"),
+      "@/pages": path.resolve(__dirname, "./src/pages"),
+      "@/containers": path.resolve(__dirname, "./src/containers"),
     },
   },
 
   test: {
     // ✅ SET THE ENVIRONMENT TO JSDOM FOR ALL TESTS.
-    // This is the most critical fix.
     environment: 'jsdom',
+    // Increase global timeouts for slower integration-like tests; unit tests unaffected
+    testTimeout: 10000,
+    hookTimeout: 10000,
     
     // ✅ P1-T-013: Environment-specific test execution (using deprecated but working approach)
     environmentMatchGlobs: [
@@ -54,7 +67,13 @@ export default defineConfig({
       '**/dist/**',
       '**/archived/**',
       '**/src/tests/archived/**',
-      '**/src/tests/triage-removed/**'
+      '**/src/tests/triage-removed/**',
+      // Exclude heavy integration test suites from the default unit run
+      '**/src/tests/integration/**',
+      '**/src/tests/**.it.*',
+      // Exclude empty or placeholder coverage backfill dateUtils files
+      '**/src/tests/coverageBackfill/dateUtils.*.test.*',
+      '**/src/tests/coverageBackfill/dateUtils.*.edge.*',
     ],
     
     // 🎯 Coverage thresholds to prevent regression

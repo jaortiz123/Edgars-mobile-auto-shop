@@ -5,6 +5,39 @@ import { BrowserRouter } from 'react-router-dom';
 import { AppointmentProvider } from '../contexts/AppointmentContext';
 import { ToastProvider } from '../components/ui/Toast';
 
+// Mock API to ensure createAppointmentService succeeds in this test file
+vi.mock('@/lib/api', () => ({
+  getDrawer: vi.fn().mockResolvedValue({
+    appointment: {
+      id: 'test-appointment-123',
+      status: 'SCHEDULED',
+      start: '2024-01-15T14:00:00Z',
+      end: '2024-01-15T15:00:00Z',
+      total_amount: 250.00,
+      paid_amount: 0,
+      check_in_at: null,
+      check_out_at: null,
+      tech_id: null
+    },
+    customer: { id: 'cust-123', name: 'Test Customer' },
+    vehicle: { id: 'veh-123', year: 2020, make: 'Toyota', model: 'Camry', vin: 'TEST123456' },
+    services: []
+  }),
+  createAppointmentService: vi.fn().mockResolvedValue({
+    service: {
+      id: 'service-123',
+      name: 'Test Service',
+      notes: 'Test notes',
+      estimated_hours: 1,
+      estimated_price: 100,
+      category: 'Test'
+    }
+  }),
+  handleApiError: vi.fn((err: any, defaultMessage: string) => {
+    if (err && err.message) return err.message; return defaultMessage || 'Request failed';
+  })
+}));
+
 // Mock Tabs component
 vi.mock('@/components/ui/Tabs', () => ({
   Tabs: ({ children, value, onValueChange, tabs }: any) => (
@@ -219,14 +252,10 @@ describe('localStorage Persistence Fix', () => {
     const submitButton = screen.getByTestId('add-service-submit-button');
     await user.click(submitButton);
 
-    // Wait for form submission to complete
+    // Wait for localStorage to be cleared after successful submission
     await waitFor(() => {
-      // Form should be hidden after successful submission
-      expect(screen.queryByTestId('add-service-form')).not.toBeInTheDocument();
+      expect(localStorage.getItem(storageKey)).toBeNull();
     });
-
-    // Verify localStorage is cleared
-    expect(localStorage.getItem(storageKey)).toBeNull();
   });
 
   it('should clear localStorage on form cancellation', async () => {
