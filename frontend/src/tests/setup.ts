@@ -17,18 +17,22 @@ const jest = {
 (globalThis as any).jest = jest;
 
 // Ensure localStorage.clear exists as a function (some environments provide a non-callable localStorage shim)
-if (typeof globalThis.localStorage === 'object' && typeof globalThis.localStorage.clear !== 'function') {
+if (typeof globalThis.localStorage !== 'object' || !globalThis.localStorage) {
+  // Provide a simple in-memory localStorage mock
+  const _store: Record<string, string> = {};
+  globalThis.localStorage = {
+    getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
+    setItem: (k: string, v: string) => { _store[k] = String(v); },
+    removeItem: (k: string) => { delete _store[k]; },
+    clear: () => { Object.keys(_store).forEach(k => delete _store[k]); }
+  } as unknown as Storage;
+} else {
+  // Ensure required functions exist on existing localStorage
   try {
-    // If clear is missing or overwritten, create a wrapper that removes keys
-    (globalThis.localStorage as any).clear = function() {
-      try {
-        for (const key of Object.keys(this)) {
-          if (typeof key === 'string') delete this[key];
-        }
-      } catch (e) {
-        // swallow errors
-      }
-    };
+    if (typeof (globalThis.localStorage as any).getItem !== 'function') (globalThis.localStorage as any).getItem = (k: string) => null;
+    if (typeof (globalThis.localStorage as any).setItem !== 'function') (globalThis.localStorage as any).setItem = (k: string, v: string) => {};
+    if (typeof (globalThis.localStorage as any).removeItem !== 'function') (globalThis.localStorage as any).removeItem = (k: string) => {};
+    if (typeof (globalThis.localStorage as any).clear !== 'function') (globalThis.localStorage as any).clear = () => {};
   } catch (e) {
     // ignore
   }
@@ -53,14 +57,8 @@ vi.mock('@/lib/toast', () => toast);
 vi.mock('@/utils/storage', () => storage);
 vi.mock('react-router-dom', () => router);
 
-// Provide a global mock for the summary service so legacy tests that rely on jest.mock hoisting
-// and direct imports receive mock functions they can control in tests.
-vi.mock('../services/summaryService', () => ({
-  getDailySummary: vi.fn(),
-  shouldShowDailySummary: vi.fn(),
-  markSummaryAsSeen: vi.fn(),
-  scheduleAutomaticSummary: vi.fn(),
-}));
+// (summaryService is intentionally not globally mocked here so individual tests
+//  can mock it locally with full control/hoisting semantics)
 
 // Enhanced CI Console Detection - Functions preserved for future re-enablement
 // NOTE: These functions are currently unused but kept for when vitest-fail-on-console is re-enabled
@@ -269,9 +267,22 @@ beforeAll(() => {
   console.log('🌐 MSW enabled for unit tests')
 })
 
-// Auto cleanup after each test
+// Auto cleanup and reset localStorage before each test
 beforeEach(() => {
-  cleanup()
+  // Provide a fresh in-memory localStorage for each test to avoid leakage
+  const _store: Record<string, string> = {};
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    writable: true,
+    value: {
+      getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
+      setItem: (k: string, v: string) => { _store[k] = String(v); },
+      removeItem: (k: string) => { delete _store[k]; },
+      clear: () => { Object.keys(_store).forEach(k => delete _store[k]); }
+    } as unknown as Storage
+  });
+
+  cleanup();
 })
 
 // SAFETY-NET-002: Global afterEach safety-nets for test stability
