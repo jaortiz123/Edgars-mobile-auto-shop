@@ -3,6 +3,36 @@ import 'whatwg-fetch'
 import './testEnv'
 
 import { expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest'
+// Minimal jest shim for legacy tests using `jest.*` (keeps API surface small)
+/* eslint-disable @typescript-eslint/no-unused-vars */
+const jest = {
+  fn: vi.fn,
+  mock: function() { return vi.mock.apply(null, arguments); },
+  clearAllMocks: function() { return vi.clearAllMocks(); },
+  spyOn: function() { return vi.spyOn.apply(null, arguments); },
+  restoreAllMocks: function() { return vi.restoreAllMocks(); },
+};
+
+// Expose globally
+(globalThis as any).jest = jest;
+
+// Ensure localStorage.clear exists as a function (some environments provide a non-callable localStorage shim)
+if (typeof globalThis.localStorage === 'object' && typeof globalThis.localStorage.clear !== 'function') {
+  try {
+    // If clear is missing or overwritten, create a wrapper that removes keys
+    (globalThis.localStorage as any).clear = function() {
+      try {
+        for (const key of Object.keys(this)) {
+          if (typeof key === 'string') delete this[key];
+        }
+      } catch (e) {
+        // swallow errors
+      }
+    };
+  } catch (e) {
+    // ignore
+  }
+}
 import { toHaveNoViolations } from 'jest-axe'
 import { cleanup } from '@testing-library/react'
 import { server } from '../test/server/mswServer'
@@ -22,6 +52,15 @@ vi.mock('@/components/ui/Toast', () => toast);
 vi.mock('@/lib/toast', () => toast);
 vi.mock('@/utils/storage', () => storage);
 vi.mock('react-router-dom', () => router);
+
+// Provide a global mock for the summary service so legacy tests that rely on jest.mock hoisting
+// and direct imports receive mock functions they can control in tests.
+vi.mock('../services/summaryService', () => ({
+  getDailySummary: vi.fn(),
+  shouldShowDailySummary: vi.fn(),
+  markSummaryAsSeen: vi.fn(),
+  scheduleAutomaticSummary: vi.fn(),
+}));
 
 // Enhanced CI Console Detection - Functions preserved for future re-enablement
 // NOTE: These functions are currently unused but kept for when vitest-fail-on-console is re-enabled
