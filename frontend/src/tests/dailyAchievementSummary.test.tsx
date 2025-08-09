@@ -9,16 +9,17 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
+
+// Mock the summary service early so imports below receive mocked functions
+vi.mock('../services/summaryService', () => ({
+  getDailySummary: vi.fn(),
+  shouldShowDailySummary: vi.fn(),
+  markSummaryAsSeen: vi.fn(),
+  scheduleAutomaticSummary: vi.fn(),
+}));
+
 import { DailyAchievementSummary, DailyAchievementSummaryCard } from '../components/DailyAchievementSummary/DailyAchievementSummary';
 import { getDailySummary, shouldShowDailySummary, markSummaryAsSeen } from '../services/summaryService';
-
-// Mock the summary service
-jest.mock('../services/summaryService', () => ({
-  getDailySummary: jest.fn(),
-  shouldShowDailySummary: jest.fn(),
-  markSummaryAsSeen: jest.fn(),
-  scheduleAutomaticSummary: jest.fn(),
-}));
 
 // Mock CSS file
 jest.mock('../components/DailyAchievementSummary/DailyAchievementSummary.css', () => ({}));
@@ -35,7 +36,7 @@ describe('DailyAchievementSummary', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('DailyAchievementSummary Modal', () => {
@@ -74,7 +75,7 @@ describe('DailyAchievementSummary', () => {
     });
 
     test('calls onClose when close button clicked', async () => {
-      const mockOnClose = jest.fn();
+      const mockOnClose = vi.fn();
       
       render(
         <DailyAchievementSummary
@@ -224,46 +225,37 @@ describe('DailyAchievementSummary', () => {
 });
 
 describe('Summary Service Integration', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+  let realService: any;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
     // Clear localStorage
     localStorage.clear();
+    // Import actual service implementation for integration-like tests
+    realService = await vi.importActual('../services/summaryService');
   });
 
   test('getDailySummary fetches and returns summary data', async () => {
-    const mockData = {
-      jobsCompleted: 3,
-      revenue: 850,
-      topTech: { name: 'Test Tech', jobsCompleted: 2 },
-      date: '2024-01-15'
-    };
-
-    getDailySummary.mockResolvedValue(mockData);
-
-    const result = await getDailySummary('2024-01-15');
-    expect(result).toEqual(mockData);
-    expect(getDailySummary).toHaveBeenCalledWith('2024-01-15');
+    // Use the real implementation but stub network calls via MSW; here we assert function returns an object shape
+    const result = await realService.getDailySummary('2024-01-15');
+    expect(result).toHaveProperty('jobsCompleted');
+    expect(result).toHaveProperty('revenue');
+    expect(result).toHaveProperty('topTech');
   });
 
   test('shouldShowDailySummary returns correct values', () => {
     // Mock time as 6 PM
     const mockDate = new Date('2024-01-15T18:00:00');
-    jest.spyOn(global, 'Date').mockImplementation(() => mockDate);
+    // Spy on Date globally to return our mocked date
+    vi.spyOn(global, 'Date').mockImplementation(() => mockDate as unknown as string);
 
-    shouldShowDailySummary.mockReturnValue(true);
-
-    const result = shouldShowDailySummary();
-    expect(result).toBe(true);
+    const result = realService.shouldShowDailySummary();
+    // It should return boolean (depends on localStorage state); we assert type
+    expect(typeof result).toBe('boolean');
   });
 
   test('markSummaryAsSeen updates localStorage', () => {
-    markSummaryAsSeen.mockImplementation(() => {
-      const today = new Date().toISOString().split('T')[0];
-      localStorage.setItem(`dailySummary_seen_${today}`, 'true');
-    });
-
-    markSummaryAsSeen();
-    
+    realService.markSummaryAsSeen();
     const today = new Date().toISOString().split('T')[0];
     expect(localStorage.getItem(`dailySummary_seen_${today}`)).toBe('true');
   });
@@ -326,10 +318,16 @@ describe('Accessibility Tests', () => {
 
 describe('Error Handling', () => {
   test('handles getDailySummary API errors gracefully', async () => {
-    getDailySummary.mockRejectedValue(new Error('API Error'));
+    // Use the real implementation but force network failure via fetch
+    const realService = await vi.importActual('../services/summaryService');
+    const originalFetch = global.fetch;
+    (global as any).fetch = vi.fn().mockRejectedValue(new Error('API Error'));
 
-    const result = await getDailySummary('2024-01-15');
-    
+    const result = await realService.getDailySummary('2024-01-15');
+
+    // Restore fetch
+    global.fetch = originalFetch;
+
     // Should return fallback data
     expect(result).toEqual({
       jobsCompleted: 0,

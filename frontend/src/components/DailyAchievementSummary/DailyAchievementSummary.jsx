@@ -271,7 +271,5 @@ export function useDailyAchievementSummary(autoShow = true) {
   };
 }
 
-// Export named components for easy importing
-export { DailyAchievementSummary, DailyAchievementSummaryCard };
-
+// Default export (named functions already exported above)
 export default DailyAchievementSummary;

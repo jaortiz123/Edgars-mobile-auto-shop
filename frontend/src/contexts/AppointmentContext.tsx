@@ -32,9 +32,15 @@ export function AppointmentProvider({ children }: { children: React.ReactNode })
   const [cards, setCards] = useState<BoardCard[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(false);
-  const [view, setViewState] = useState<'calendar' | 'board'>(() =>
-    (localStorage.getItem('adm.view') as 'calendar' | 'board') || 'calendar'
-  );
+  const [view, setViewState] = useState<'calendar' | 'board'>(() => {
+    try {
+      const v = localStorage.getItem('adm.view');
+      return (v as 'calendar' | 'board') || 'calendar';
+    } catch (e) {
+      console.warn('Failed to read adm.view from localStorage during init:', e);
+      return 'calendar';
+    }
+  });
   // Persist view preference
   const setView = useCallback((v: 'calendar' | 'board') => {
     setViewState(v);

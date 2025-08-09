@@ -14,6 +14,17 @@ globalThis.process.env.VITE_API_BASE_URL = 'http://localhost:3001';
 globalThis.process.env.VITE_API_ENDPOINT_URL = 'http://localhost:3001';
 globalThis.process.env.VITE_APP_ENV = 'test';
 
+// Provide a robust global localStorage mock for tests
+if (typeof globalThis.localStorage === 'undefined' || !globalThis.localStorage) {
+  const _store: Record<string, string> = {};
+  globalThis.localStorage = {
+    getItem: (key: string) => (_store.hasOwnProperty(key) ? _store[key] : null),
+    setItem: (key: string, value: string) => { _store[key] = String(value); },
+    removeItem: (key: string) => { delete _store[key]; },
+    clear: () => { Object.keys(_store).forEach(k => delete _store[k]); }
+  } as unknown as Storage;
+}
+
 // Export for potential use in other test files
 export const testEnv = {
   NODE_ENV: 'test',
