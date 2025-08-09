@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
 import { AppointmentCalendar } from '@/components/admin/AppointmentCalendar';
 import AppointmentDrawer from '@/components/admin/AppointmentDrawer';
 import { AppointmentFormModal } from '@/components/admin/AppointmentFormModal';
 import QuickAddModal from '@/components/QuickAddModal/QuickAddModal';
-import DailyFocusHero from '@/components/admin/DailyFocusHero';
+// import DailyFocusHero from '@/components/admin/DailyFocusHero';
+// Removed PersonalizedHeader (duplicate hero) per design simplification
+// import PersonalizedHeader from '@/components/admin/PersonalizedHeader';
 import ScheduleFilterToggle from '@/components/admin/ScheduleFilterToggle';
 import NotificationCenter from '@/components/admin/NotificationCenter';
 import type { AppointmentFormData } from '@/components/admin/AppointmentFormModal';
@@ -21,7 +22,7 @@ import {
   Phone,
   Wrench,
   Car,
-  RefreshCw,
+  // RefreshCw, // removed with refresh button
   PlusCircle
 } from 'lucide-react';
 import { 
@@ -34,7 +35,6 @@ import { parseDurationToMinutes } from '@lib/utils';
 import { format } from 'date-fns';
 import { saveLastQuickAdd } from '@lib/quickAddUtils';
 import IntelligentWorkflowPanel from '@/components/admin/IntelligentWorkflowPanel';
-import offlineService from '@/services/offlineSupport';
 
 // Utility function to convert 12-hour format to 24-hour format
 const convertTo24Hour = (time12h: string): string => {
@@ -141,7 +141,6 @@ export function Dashboard() {
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const openDrawer = (id: string) => setDrawerId(id);
   const closeDrawer = () => setDrawerId(null);
-  const [isOffline, setIsOffline] = useState(!offlineService.isOnline());
   const [showScheduleDropdown, setShowScheduleDropdown] = useState(false);
   const [showAssistant, setShowAssistant] = useState(false);
   const loadingRef = useRef(false);
@@ -151,12 +150,6 @@ export function Dashboard() {
   useEffect(() => {
     setRefreshingRef.current = setRefreshing;
   }, [setRefreshing]);
-
-  useEffect(() => {
-    // Check online status via offlineService to respect internal state
-    const unsubscribe = offlineService.subscribe((state) => setIsOffline(!state.isOnline));
-    return () => unsubscribe();
-  }, []);
 
   const loadDashboardData = useCallback(async () => {
     // Prevent rapid successive calls
@@ -371,7 +364,7 @@ export function Dashboard() {
 
       console.log('📤 Sending appointment data:', appointmentData);
 
-      if (offlineService.isOnline()) {
+      if (isOnline()) {
         const response = await createAppointment(appointmentData);
         console.log('📥 API response:', response);
         
@@ -547,44 +540,14 @@ export function Dashboard() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-sp-3">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 tracking-tight">🔧 Edgar's Shop Dashboard</h1>
+            <h1 className="text-4xl font-bold text-gray-900 tracking-tight">Edgar's Shop Dashboard</h1>
             <p className="text-lg font-medium text-gray-600 mt-1">{getTimeGreeting()}, Edgar • {format(new Date(), 'EEEE, MMMM do')}</p>
           </div>
-          <div className="flex items-center gap-sp-2">
-            {/* Work progress display - show jobs completed vs total (hide in board view) */}
-            {view !== 'board' && (
-              <div className="hidden sm:block text-right mr-2">
-                <p className="text-sm font-medium text-gray-500">Jobs Today</p>
-                <p className="text-2xl font-bold text-blue-600">{(filteredAppointments || []).filter(a => a.status === 'completed').length}/{(filteredAppointments || []).length}</p>
-                <p className="text-xs text-gray-500">completed</p>
-              </div>
-            )}
-            {/* Refresh button (hide in board view) */}
-            {view !== 'board' && (
-              <button
-                onClick={() => {
-                  console.log('🔄 Manual refresh triggered');
-                  triggerRefresh();
-                }}
-                disabled={isRefreshing}
-                className="flex items-center gap-sp-2 px-sp-3 py-sp-2 bg-white text-blue-900 rounded-lg border border-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={`h-5 w-5 ${(isRefreshing) ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
-            )}
-            {/* Shop status badge (hide in board view) */}
-            {view !== 'board' && (
-              <Badge variant={isOffline ? "destructive" : "success"}>
-                {isOffline ? "Offline Mode" : "Shop Open"}
-              </Badge>
-            )}
-            {/* Always-visible items */}
+          <div className="flex items-center gap-sp-3">
+            {/* Keep only bell and clock */}
             <NotificationCenter />
-            <span className="text-fs-0 text-gray-500">
-              {new Date().toLocaleTimeString()}
-            </span>
-            {/* View Mode Toggles */}
+            <span className="text-2xl font-semibold text-gray-700">{format(new Date(), 'h:mm a')}</span>
+            {/* Primary view toggles */}
             <div className="flex items-center gap-sp-2">
               <button 
                 data-testid="toggle-calendar" 
@@ -597,7 +560,12 @@ export function Dashboard() {
                   }
                 }}
                 aria-label="Switch to calendar view"
-                className={view === 'calendar' ? 'px-sp-2 py-sp-1 bg-blue-500 text-white rounded' : 'px-sp-2 py-sp-1 bg-gray-200 text-gray-700 rounded'}
+                className={
+                  `px-4 py-2 rounded-lg shadow font-semibold transition-colors ` +
+                  (view === 'calendar' 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                    : 'bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-50')
+                }
               >
                 Calendar
               </button>
@@ -612,7 +580,12 @@ export function Dashboard() {
                   }
                 }}
                 aria-label="Switch to board view"
-                className={view === 'board' ? 'px-sp-2 py-sp-1 bg-blue-500 text-white rounded' : 'px-sp-2 py-sp-1 bg-gray-200 text-gray-700 rounded'}
+                className={
+                  `px-4 py-2 rounded-lg shadow font-semibold transition-colors ` +
+                  (view === 'board' 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                    : 'bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-50')
+                }
               >
                 Board
               </button>
@@ -626,7 +599,6 @@ export function Dashboard() {
             <button
               onClick={() => setShowAssistant(v => !v)}
               className="text-sm text-blue-700 hover:underline"
-              aria-expanded={showAssistant}
               aria-controls="assistant-panel"
             >
               {showAssistant ? 'Hide Assistant' : 'Show Assistant'}
@@ -637,7 +609,9 @@ export function Dashboard() {
         {/* Main View Section */}
         {view === 'calendar' ? (
           <div data-testid="calendar-view">
-            <DailyFocusHero nextAppointment={nextAppointment} appointments={filteredAppointments} />
+            {/* Removed duplicate hero header section */}
+            {/* <DailyFocusHero nextAppointment={nextAppointment} appointments={filteredAppointments} /> */}
+            {/* <PersonalizedHeader /> */}
             <div className="mt-sp-3">
               <ScheduleFilterToggle onFilterChange={handleFilterChange} activeFilter={filter} />
             </div>

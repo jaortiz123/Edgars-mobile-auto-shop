@@ -4,6 +4,7 @@
 @import './styles/typography.css';
 @import './styles/spacing.css';
 @import './styles/accessibilityEnhancements.css';
+@import './styles/microInteractions.css';
 
 /* Smooth scrolling for premium UX with reduced motion support */
 html {
