@@ -74,10 +74,6 @@ export default defineConfig({
       // Exclude empty or placeholder coverage backfill dateUtils files
       '**/src/tests/coverageBackfill/dateUtils.*.test.*',
       '**/src/tests/coverageBackfill/dateUtils.*.edge.*',
-      // Exclude the entire coverageBackfill suite for iterative debugging
-      '**/src/tests/coverageBackfill/**',
-      // Exclude triage-removed legacy tests
-      '**/src/tests/triage-removed/**',
     ],
     
     // 🎯 Coverage thresholds to prevent regression

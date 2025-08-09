@@ -139,175 +139,119 @@ export function createMocks() {
       }),
     },
 
-    notification: {
-      _config: { maxNotifications: 100, retentionPeriod: 24*60*60*1000, rateLimitPerType: 3, enablePersistence: true, enableAnalytics: true, accessibilityEnabled: true },
-      _analytics: [] as any[],
-      _rateLimitMap: {} as Record<string, number[]>,
-      _notifications: [] as any[],
-      addNotification: vi.fn(function(type: string, message: string, options: any = {}) {
-        // Simple sanitize to strip script tags
-        const sanitized = String(message).replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+    // Build notification object with closure references so functions work when imported standalone
+    notification: (() => {
+      const notif: any = {};
+      notif._config = { maxNotifications: 100, retentionPeriod: 24*60*60*1000, rateLimitPerType: 3, enablePersistence: true, enableAnalytics: true, accessibilityEnabled: true };
+      notif._analytics = [];
+      notif._rateLimitMap = {} as Record<string, number[]>;
+      notif._notifications = [] as any[];
 
-        // Rate limiting per type using _config.rateLimitPerType
+      notif.addNotification = vi.fn(function(type: string, message: string, options: any = {}) {
+        const sanitized = String(message).replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
         const now = Date.now();
         const key = String(type);
-        if (!(this as any)._rateLimitMap[key]) (this as any)._rateLimitMap[key] = [];
-        // Remove timestamps older than 1 minute
-        (this as any)._rateLimitMap[key] = (this as any)._rateLimitMap[key].filter((ts: number) => ts > now - 60000);
-        if ((this as any)._rateLimitMap[key].length >= ((this as any)._config?.rateLimitPerType ?? 3)) {
-          // Drop notification due to rate limiting - return empty id to indicate drop
+        if (!notif._rateLimitMap[key]) notif._rateLimitMap[key] = [];
+        notif._rateLimitMap[key] = notif._rateLimitMap[key].filter((ts: number) => ts > now - 60000);
+        if (notif._rateLimitMap[key].length >= (notif._config?.rateLimitPerType ?? 3)) {
           return '';
         }
-        (this as any)._rateLimitMap[key].push(now);
+        notif._rateLimitMap[key].push(now);
 
-        // Robust id generation - guard against Math.random throwing in tests
         let id: string;
         try {
           const rand = Math.random().toString(36).slice(2,9);
           id = `mock-${Date.now()}-${rand}`;
         } catch (e) {
-          // If randomness throws, treat as error and return empty id to indicate failure (tests expect this)
           return '';
         }
-        const notification = {
-          id,
-          type,
-          message: sanitized,
-          timestamp: new Date(),
-          read: false,
-          priority: options.priority || (type === 'error' ? 'critical' : 'medium'),
-          expiresAt: options.expiresAt || new Date(Date.now() + ((this as any)._config?.retentionPeriod || 24 * 60 * 60 * 1000)),
-          retryCount: 0,
-          source: 'mock',
-          ...options
-        };
 
-        // store
-        (this as any)._notifications.push(notification);
+        const notification = { id, type, message: sanitized, timestamp: new Date(), read: false, priority: options.priority || (type === 'error' ? 'critical' : 'medium'), expiresAt: options.expiresAt || new Date(Date.now() + (notif._config?.retentionPeriod || 24*60*60*1000)), retryCount: 0, source: 'mock', ...options };
+        notif._notifications.push(notification);
 
-        // Analytics
-        if ((this as any)._config?.enableAnalytics) {
-          (this as any)._analytics.push({ type: 'notification_created', notificationType: type, timestamp: new Date(), metadata: { priority: notification.priority } });
-        }
+        if (notif._config?.enableAnalytics) notif._analytics.push({ type: 'notification_created', notificationType: type, timestamp: new Date(), metadata: { priority: notification.priority } });
 
-        // Persistence
-        if ((this as any)._config?.enablePersistence && typeof globalThis.localStorage !== 'undefined') {
+        if (notif._config?.enablePersistence && typeof globalThis.localStorage !== 'undefined') {
           try {
-            const serialized = JSON.stringify((this as any)._notifications.map((n: any) => ({ ...n, timestamp: n.timestamp.toISOString(), expiresAt: n.expiresAt?.toISOString() })));
+            const serialized = JSON.stringify(notif._notifications.map((n: any) => ({ ...n, timestamp: n.timestamp.toISOString(), expiresAt: n.expiresAt?.toISOString() })));
             globalThis.localStorage.setItem('notifications', serialized);
-          } catch (e) {
-            // ignore localStorage errors in mock
-          }
+          } catch (e) {}
         }
 
-        // Notify observers
-        if ((this as any)._observers && Array.isArray((this as any)._observers)) {
-          (this as any)._observers.forEach((obs: any) => {
-            try { obs([...((this as any)._notifications)]); } catch (err) { /* ignore */ }
-          });
+        if (notif._observers && Array.isArray(notif._observers)) {
+          notif._observers.forEach((obs: any) => { try { obs([...notif._notifications]); } catch (err) {} });
         }
 
-        // Accessibility: announce to screen readers when enabled
         try {
-          if ((this as any)._config?.accessibilityEnabled && typeof document !== 'undefined' && typeof document.createElement === 'function') {
+          if (notif._config?.accessibilityEnabled && typeof document !== 'undefined' && typeof document.createElement === 'function') {
             const el = document.createElement('div');
             el.setAttribute('role', 'status');
             el.textContent = notification.message;
-            // Append & remove quickly in tests
-            if (document.body && document.body.appendChild) {
-              document.body.appendChild(el);
-              setTimeout(() => { try { document.body.removeChild(el); } catch (e) {} }, 0);
-            }
+            if (document.body && document.body.appendChild) { document.body.appendChild(el); setTimeout(() => { try { document.body.removeChild(el); } catch (e) {} }, 0); }
           }
-        } catch (e) { /* ignore */ }
+        } catch (e) {}
 
         return id;
-      }),
+      });
 
-      notifyArrival: vi.fn().mockImplementation(function(customerName: string, appointmentId: string) {
-        return (this as any).addNotification('arrival', `${customerName} has arrived for their appointment`, { appointmentId, customerName });
-      }),
-      notifyLate: vi.fn().mockImplementation(function(customerName: string, appointmentId: string, minutesLate: number) {
-        return (this as any).addNotification('late', `${customerName} is running ${minutesLate} minutes late`, { appointmentId, customerName, metadata: { minutesLate } });
-      }),
-      notifyOverdue: vi.fn().mockImplementation(function(customerName: string, appointmentId: string, minutesOverdue: number) {
-        return (this as any).addNotification('overdue', `${customerName}'s appointment is ${minutesOverdue} minutes overdue`, { appointmentId, customerName, metadata: { minutesOverdue } });
-      }),
-      notifyReminder: vi.fn().mockImplementation(function(customerName: string, appointmentId: string, minutesUntil: number) {
-        return (this as any).addNotification('reminder', `Reminder: ${customerName}'s appointment is in ${minutesUntil} minutes`, { appointmentId, customerName, metadata: { minutesUntil } });
-      }),
-      scheduleReminder: vi.fn().mockImplementation(function(appointmentId: string, customerName: string, minutesUntil: number) {
-        return (this as any).notifyReminder(customerName, appointmentId, minutesUntil);
-      }),
+      notif.notifyArrival = vi.fn((customerName: string, appointmentId: string) => notif.addNotification('arrival', `${customerName} has arrived for their appointment`, { appointmentId, customerName }));
+      notif.notifyLate = vi.fn((customerName: string, appointmentId: string, minutesLate: number) => notif.addNotification('late', `${customerName} is running ${minutesLate} minutes late`, { appointmentId, customerName, metadata: { minutesLate } }));
+      notif.notifyOverdue = vi.fn((customerName: string, appointmentId: string, minutesOverdue: number) => notif.addNotification('overdue', `${customerName}'s appointment is ${minutesOverdue} minutes overdue`, { appointmentId, customerName, metadata: { minutesOverdue } }));
+      notif.notifyReminder = vi.fn((customerName: string, appointmentId: string, minutesUntil: number) => notif.addNotification('reminder', `Reminder: ${customerName}'s appointment is in ${minutesUntil} minutes`, { appointmentId, customerName, metadata: { minutesUntil } }));
+      notif.scheduleReminder = vi.fn((appointmentId: string, customerName: string, minutesUntil: number) => notif.notifyReminder(customerName, appointmentId, minutesUntil));
 
-      // Transport helpers
-      sendSMS: vi.fn().mockResolvedValue({ messageId: 'mock-sms-id' }),
-      sendEmail: vi.fn().mockResolvedValue({ messageId: 'mock-email-id' }),
-
-      // Stateful accessors
-      getNotifications: vi.fn(function() {
-        // Cleanup expired
+      notif.getNotifications = vi.fn(() => {
         const now = new Date();
-        (this as any)._notifications = (this as any)._notifications.filter((n: any) => !(n.expiresAt && new Date(n.expiresAt) < now));
-        // Enforce maxNotifications
-        const max = (this as any)._config?.maxNotifications || 100;
-        if ((this as any)._notifications.length > max) {
-          (this as any)._notifications = (this as any)._notifications.slice(-max);
-        }
-        return [...(this as any)._notifications];
-      }),
-      getNotificationsByType: vi.fn(function(type: string) {
-        return (this as any)._notifications.filter(n => n.type === type);
-      }),
-      getUnreadNotifications: vi.fn(function() {
-        return (this as any)._notifications.filter(n => !n.read);
-      }),
-      getAnalytics: vi.fn(function() { return [...((this as any)._analytics || [])]; }),
-      _analytics: [] as any[],
-      clearAnalytics: vi.fn(function() { (this as any)._analytics = []; }),
+        notif._notifications = notif._notifications.filter((n: any) => !(n.expiresAt && new Date(n.expiresAt) < now));
+        const max = notif._config?.maxNotifications || 100;
+        if (notif._notifications.length > max) notif._notifications = notif._notifications.slice(-max);
+        return [...notif._notifications];
+      });
+      notif.getNotificationsByType = vi.fn((type: string) => notif._notifications.filter((n: any) => n.type === type));
+      notif.getUnreadNotifications = vi.fn(() => notif._notifications.filter((n: any) => !n.read));
+      notif.getAnalytics = vi.fn(() => [...notif._analytics]);
+      notif.clearAnalytics = vi.fn(() => { notif._analytics = []; });
 
-      // Lifecycle
-      initializeService: vi.fn(function() { /* no-op for mock */ }),
-      cleanup: vi.fn(function() { (this as any)._notifications = []; (this as any)._observers = []; (this as any)._analytics = []; }),
+      notif.initializeService = vi.fn(() => {
+        try {
+          if (notif._config?.enablePersistence && typeof globalThis.localStorage !== 'undefined') {
+            const stored = globalThis.localStorage.getItem('notifications');
+            if (stored) {
+              try { const parsed = JSON.parse(stored); notif._notifications = parsed.map((n: any) => ({ ...n, timestamp: n.timestamp ? new Date(n.timestamp) : new Date(), expiresAt: n.expiresAt ? new Date(n.expiresAt) : undefined })); } catch (e) { notif._notifications = []; }
+            }
+          }
+        } catch (e) { notif._notifications = []; }
+      });
+      notif.cleanup = vi.fn(() => { notif._notifications = []; notif._observers = []; notif._analytics = []; });
 
-      // Simulation controls
-      simulateDeliveryFailure: vi.fn((shouldFail: boolean) => { /* no-op */ }),
-      simulateDelay: vi.fn((ms: number) => { /* no-op */ }),
+      notif._observers = [] as Function[];
+      notif.subscribe = vi.fn((observer: (notifications: any[]) => void) => { notif._observers.push(observer); return () => { const idx = notif._observers.indexOf(observer); if (idx !== -1) notif._observers.splice(idx,1); }; });
 
-      // Observer pattern
-      _observers: [] as Function[],
-      subscribe: vi.fn(function(observer: (notifications: any[]) => void) {
-        (this as any)._observers.push(observer);
-        return () => {
-          const idx = (this as any)._observers.indexOf(observer);
-          if (idx !== -1) (this as any)._observers.splice(idx,1);
-        };
-      }),
+      notif.updateConfig = vi.fn((cfg: any) => { notif._config = { ...notif._config, ...cfg }; });
+      notif.getConfig = vi.fn(() => ({ ...(notif._config || { maxNotifications: 100, retentionPeriod: 24*60*60*1000, rateLimitPerType: 3, enablePersistence: true, enableAnalytics: true, accessibilityEnabled: true }) }));
+      notif.getStats = vi.fn(() => {
+        const total = notif._notifications.length;
+        const byType: Record<string, number> = {};
+        notif._notifications.forEach((n: any) => { byType[n.type] = (byType[n.type] || 0) + 1; });
+        const delivered = notif._notifications.filter((n: any) => !n.retryCount || n.retryCount === 0).length;
+        const deliveryRate = total > 0 ? (delivered / total) * 100 : 100;
+        const errors = notif._notifications.filter((n: any) => n.type === 'error').length;
+        const errorRate = total > 0 ? (errors / total) * 100 : 0;
+        return { total, byType, deliveryRate, errorRate, avgResponseTime: 0 };
+      });
 
-      // Config & analytics
-      updateConfig: vi.fn(function(cfg: any) { this._config = { ...(this as any)._config, ...cfg }; }),
-      getConfig: vi.fn(function() { return (this as any)._config || { maxNotifications: 100, retentionPeriod: 24*60*60*1000, rateLimitPerType: 10, enablePersistence: true, enableAnalytics: true, accessibilityEnabled: true }; }),
-      getStats: vi.fn(function() { return { total: (this as any)._notifications.length, byType: {}, deliveryRate: 100, errorRate: 0, avgResponseTime: 0 }; }),
-      getAnalytics: vi.fn(function() { return (this as any)._analytics || []; }),
-      clearAnalytics: vi.fn(function() { (this as any)._analytics = []; }),
+      notif.getAnalytics = vi.fn(() => notif._analytics || []);
+      notif.clearAnalytics = vi.fn(() => { notif._analytics = []; });
 
-      // Mutators
-      markAsRead: vi.fn(function(id: string) {
-        const n = (this as any)._notifications.find(x => x.id === id);
-        if (n) { n.read = true; return true; }
-        return false;
-      }),
-      markNotificationAsRead: vi.fn(function(id: string) { return (this as any).markAsRead(id); }),
-      markAllAsRead: vi.fn(function() { (this as any)._notifications.forEach(n => n.read = true); }),
-      removeNotification: vi.fn(function(id: string) {
-        const idx = (this as any)._notifications.findIndex(x => x.id === id);
-        if (idx !== -1) { (this as any)._notifications.splice(idx,1); return true; }
-        return false;
-      }),
-      clearAllNotifications: vi.fn(function() { (this as any)._notifications = []; }),
-      // alias used by some tests
-      clearAll: vi.fn(function() { (this as any)._notifications = []; }),
-    },
+      notif.markAsRead = vi.fn((id: string) => { const n = notif._notifications.find((x: any) => x.id === id); if (n) { n.read = true; return true; } return false; });
+      notif.markNotificationAsRead = vi.fn((id: string) => notif.markAsRead(id));
+      notif.markAllAsRead = vi.fn(() => { notif._notifications.forEach((n: any) => n.read = true); });
+      notif.removeNotification = vi.fn((id: string) => { const idx = notif._notifications.findIndex((x: any) => x.id === id); if (idx !== -1) { notif._notifications.splice(idx,1); return true; } return false; });
+      notif.clearAllNotifications = vi.fn(() => { notif._notifications = []; });
+      notif.clearAll = vi.fn(() => { notif._notifications = []; });
+
+      return notif;
+    })(),
 
     toast: {
       // Minimal Toast mock used by components
