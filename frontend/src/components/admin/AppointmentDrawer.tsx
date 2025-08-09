@@ -10,6 +10,7 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
   const [tab, setTab] = useState('overview');
   const [data, setData] = useState<DrawerPayload | null>(null);
   const [isAddingService, setIsAddingService] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
@@ -27,20 +28,49 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
     if (open && id && api.getDrawer && id !== loadedDataIdRef.current) {
       console.log('🔍 DEBUG: Fetching data for ID:', id);
       console.log('🔍 DEBUG: Previous loaded ID:', loadedDataIdRef.current);
-      
       loadedDataIdRef.current = id;
-      
-      // Try calling the function and check if it returns a Promise
-      let drawerResult;
+
+      // reset state for new load
+      setError(null);
+      setData(null);
+
+      let cancelled = false;
       try {
-        drawerResult = api.getDrawer(id);
+        const drawerResult: unknown = api.getDrawer(id);
         console.log('🔍 DEBUG: api.getDrawer(id) returned:', drawerResult);
-        
-        if (drawerResult && typeof drawerResult.then === 'function') {
-          void drawerResult.then(setData).catch(console.error);
+
+        const isPromise = (v: unknown): v is Promise<DrawerPayload> => {
+          return !!v && typeof (v as { then?: unknown }).then === 'function';
+        };
+
+        if (isPromise(drawerResult)) {
+          void drawerResult.then((payload) => {
+            if (!cancelled) setData(payload);
+          }).catch((err: unknown) => {
+            console.error('🔍 DEBUG: Error resolving getDrawer Promise:', err);
+            if (cancelled) return;
+            setError('Failed to load appointment');
+            // Fallback minimal payload so Overview can render something instead of staying on Loading…
+            const fallbackData: DrawerPayload = {
+              appointment: {
+                id: id || 'fallback-id',
+                status: 'SCHEDULED',
+                start: null as unknown as string,
+                end: null as unknown as string,
+                total_amount: 0,
+                paid_amount: 0,
+                check_in_at: null,
+                check_out_at: null,
+                tech_id: null
+              },
+              customer: { id: 'cust-fallback', name: '—', phone: '', email: '' },
+              vehicle: { id: 'veh-fallback', year: 0, make: '', model: '', vin: '' },
+              services: []
+            };
+            setData(fallbackData);
+          });
         } else {
-          console.error('🔍 DEBUG: getDrawer did not return a Promise! Trying fallback...');
-          // Create a fallback Promise with mock data
+          console.error('🔍 DEBUG: getDrawer did not return a Promise! Using fallback payload…');
           const fallbackData: DrawerPayload = {
             appointment: {
               id: id || 'fallback-id',
@@ -68,13 +98,16 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
             },
             services: []
           };
-          setData(fallbackData);
+          if (!cancelled) setData(fallbackData);
         }
-      } catch (error) {
-        console.error('🔍 DEBUG: Error calling api.getDrawer:', error);
+      } catch (err) {
+        console.error('🔍 DEBUG: Error calling api.getDrawer:', err);
+        if (!cancelled) setError('Failed to load appointment');
       }
+
+      return () => { cancelled = true; };
     }
-    
+
     // Reset loaded data ID when drawer closes
     if (!open) {
       loadedDataIdRef.current = null;
@@ -155,6 +188,11 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
             ✕
           </button>
         </div>
+        {error && (
+          <div className="px-4 py-2 text-sm text-red-700 bg-red-50 border-b border-red-200" role="alert">
+            {error}
+          </div>
+        )}
         <Tabs
           value={tab}
           onValueChange={setTab}
@@ -617,8 +655,8 @@ const Services = React.memo(function Services({
             onDelete={() => handleDeleteService(service.id)}
             onStartEdit={() => setEditingServiceId(service.id)}
             onCancelEdit={() => setEditingServiceId(null)}
-          />
-        ))}
+          />)
+        )}
       </div>
     </div>
   );

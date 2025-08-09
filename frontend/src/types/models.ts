@@ -62,8 +62,6 @@ export interface BoardCard {
   position: number;
   start?: string | null; // ISO timestamp for countdown calculations
   end?: string | null;   // ISO timestamp
-
-
   // NEW: Time-aware fields
   scheduledTime?: string; // "10:30 AM"
   appointmentDate?: string; // ISO date
@@ -71,7 +69,43 @@ export interface BoardCard {
   minutesLate?: number;
   timeUntilStart?: number; // minutes until appointment
 
+  // NEW: Enhanced intelligence fields
   estimatedDuration?: number; // minutes
+  actualDuration?: number; // minutes (for learning)
+  techAssigned?: string | null;
+  customerPhoto?: string | null;
+  lastServiceDate?: string | null;
+  serviceHistory?: ServiceHistoryItem[];
+  partsRequired?: Part[];
+  workspacePreference?: 'bay1' | 'bay2' | 'bay3' | string;
+  complexity?: 'simple' | 'moderate' | 'complex';
+  customerNotes?: string;
+  internalNotes?: string;
+  recommendedNextService?: string;
+  vehicleYear?: number | null;
+  vehicleMake?: string | null;
+  vehicleModel?: string | null;
+  mileage?: number | null;
+  appointmentSource?: 'phone' | 'walk-in' | 'online' | 'repeat' | string;
+  isRepeatCustomer?: boolean;
+  priorityReason?: string | null;
+}
+
+export interface ServiceHistoryItem {
+  date: string; // ISO
+  service: string;
+  mileage?: number | null;
+  techName?: string | null;
+  outcome: 'completed' | 'partial' | 'rescheduled';
+}
+
+export interface Part {
+  name: string;
+  partNumber?: string | null;
+  quantity: number;
+  inStock: boolean;
+  vendor?: string | null;
+  estimatedCost?: number | null;
 }
 
 export interface DashboardStats {

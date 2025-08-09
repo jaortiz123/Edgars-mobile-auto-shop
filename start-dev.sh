@@ -108,7 +108,7 @@ fi
 # Start backend with correct configuration
 echo -e "${BLUE}⚙️ Starting backend server...${NC}"
 cd backend
-POSTGRES_HOST=localhost python3 local_server.py &
+FALLBACK_TO_MEMORY=true POSTGRES_HOST=localhost POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD} POSTGRES_DB=${POSTGRES_DB} python3 local_server.py &
 BACKEND_PID=$!
 cd ..
 
