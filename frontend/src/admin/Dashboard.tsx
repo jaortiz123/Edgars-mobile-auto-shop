@@ -14,7 +14,6 @@ import { getViewMode, setViewMode, ViewMode } from '@lib/prefs';
 import StatusBoard from '@/components/admin/StatusBoard';
 import FloatingActionButton from '@/components/ui/FloatingActionButton';
 import { scheduleReminder } from '@/services/notificationService';
-// RunningRevenue removed for work-focused dashboard
 import '@/styles/appointment-reminders.css';
 import { 
   Calendar,
@@ -35,6 +34,7 @@ import { createAppointment, getAdminAppointments } from '@/services/apiService';
 import { parseDurationToMinutes } from '@lib/utils';
 import { format } from 'date-fns';
 import { saveLastQuickAdd } from '@lib/quickAddUtils';
+import IntelligentWorkflowPanel from '@/components/admin/IntelligentWorkflowPanel';
 
 // Utility function to convert 12-hour format to 24-hour format
 const convertTo24Hour = (time12h: string): string => {
@@ -764,6 +764,9 @@ export function Dashboard() {
           </div>
         ) : (
           <div data-testid="board-view">
+            <div className="mb-4">
+              <IntelligentWorkflowPanel />
+            </div>
             <StatusBoard onOpen={openDrawer} />
           </div>
         )}

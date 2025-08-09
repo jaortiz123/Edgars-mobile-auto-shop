@@ -309,7 +309,26 @@ export default function AppointmentCard({
           {validatedCard.vehicle || 'Vehicle TBD'}
         </div>
 
-        <QuickActions card={validatedCard} />
+        <div className="flex space-x-2">
+          <button
+            onClick={(e) => { e.stopPropagation(); handleMoveClick(e as any); }}
+            className="p-2 rounded-md bg-neutral-100 text-neutral-700 hover:bg-neutral-200 transition-colors"
+            aria-label={`Move appointment for ${validatedCard.customerName}`}
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
+              <path d="M10 3a1 1 0 011 1v4h4a1 1 0 110 2h-4v4a1 1 0 11-2 0v-4H6a1 1 0 110-2h4V4a1 1 0 011-1z" />
+            </svg>
+          </button>
+
+          <button
+            onClick={(e) => { e.stopPropagation(); handleQuickReschedule(); }}
+            className={`p-2 rounded-md transition-opacity focus:outline-none focus:ring-2 focus:ring-primary-300 ${isRescheduling ? 'bg-neutral-500' : 'bg-primary-600 hover:bg-primary-700'} text-white`}
+            aria-label={`Quick reschedule appointment for ${validatedCard.customerName}`}
+            disabled={isRescheduling}
+          >
+            <RefreshCw className={`${isRescheduling ? 'animate-spin' : ''} h-4 w-4`} aria-hidden />
+          </button>
+        </div>
       </div>
 
       <div className="absolute top-3 right-3">
@@ -377,53 +396,4 @@ const TimeDisplay = ({ card, minutesUntil }: { card: BoardCard; minutesUntil: nu
   }
 
   return null;
-};
-
-const QuickActions = ({ card }: { card: BoardCard }) => {
-  const getActions = () => {
-    if (card.isOverdue) {
-      return [
-        { label: 'Mark Started', action: 'start', urgent: true },
-        { label: 'Contact Customer', action: 'contact', urgent: false },
-        { label: 'Reschedule', action: 'reschedule', urgent: false },
-      ];
-    }
-
-    if (typeof card.timeUntilStart === 'number' && card.timeUntilStart <= 15 && card.timeUntilStart > 0) {
-      return [
-        { label: 'Start Now', action: 'start', urgent: true },
-        { label: 'Prep Workspace', action: 'prep', urgent: false },
-      ];
-    }
-
-    if (card.status === 'IN_PROGRESS') {
-      return [
-        { label: 'Mark Complete', action: 'complete', urgent: true },
-        { label: 'Add Note', action: 'note', urgent: false },
-      ];
-    }
-
-    return [];
-  };
-
-  const actions = getActions();
-  if (actions.length === 0) return null;
-
-  return (
-    <div className="mt-3 pt-3 border-t border-neutral-200">
-      <div className="flex flex-wrap gap-2">
-        {actions.map(action => (
-          <button
-            key={action.action}
-            className={
-              `text-xs px-3 py-1 rounded-full font-medium transition-colors ${action.urgent ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`
-            }
-            onClick={(e) => { e.stopPropagation(); /* action handlers live in parent */ }}
-          >
-            {action.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
 };

@@ -564,23 +564,13 @@ def require_auth_role(required: Optional[str] = None) -> Dict[str, Any]:
     return payload
 
 
-def rate_limit(key: str, max_calls: Optional[int] = None, window_seconds: Optional[int] = None):
-    """Simple rate limiter.
-
-    Backwards compatible: existing callers use rate_limit(key).
-    New callers may pass max_calls and window_seconds (e.g., rate_limit(key, 5, 3600)).
-    """
-    if max_calls is None:
-        max_calls = RATE_LIMIT_PER_MINUTE
-    if window_seconds is None:
-        window_seconds = 60
-
+def rate_limit(key: str):
     now = time.time()
     count, start = _RATE.get(key, (0, now))
-    if now - start >= float(window_seconds):
+    if now - start >= 60.0:
         _RATE[key] = (1, now)
         return
-    if count + 1 > int(max_calls):
+    if count + 1 > RATE_LIMIT_PER_MINUTE:
         raise Forbidden("Rate limit exceeded")
     _RATE[key] = (count + 1, start)
 
@@ -614,20 +604,29 @@ def audit_log(*args, **kwargs):
     action = args[1] if len(args) > 1 else kwargs.get('action')
     details = args[2] if len(args) > 2 else kwargs.get('details', {})
 
-    # For simple calls (user_id, action, details) avoid opening DB connections
-    # Tests expect audit_log to be called but not necessarily write to DB.
     try:
-        log.info("audit_log: user=%s action=%s details=%s", user_id, action, details)
-        return
+        conn = db_conn()
+        if conn is None:
+            return
+        # Map to the audit() call: entity and entity_id optional in details
+        entity = details.get('entity', '') if isinstance(details, dict) else ''
+        entity_id = details.get('entity_id', '') if isinstance(details, dict) else ''
+        audit(conn, user_id, action, entity, entity_id, {}, details if isinstance(details, dict) else {})
     except Exception as e:
         log.warning("audit_log simple failed: %s", e)
+    finally:
+        try:
+            if 'conn' in locals() and conn is not None:
+                conn.close()
+        except Exception:
+            pass
 
 # ----------------------------------------------------------------------------
 # Error Handler
 # ----------------------------------------------------------------------------
 
 def handle_http_exception(e: HTTPException):
-    # Don't treat these as 500s.
+    # Don’t treat these as 500s.
     status = e.code or 500
     # Optional: map to stable codes
     code_map = {
@@ -719,7 +718,7 @@ def get_board():
     with conn:
         with conn.cursor() as cur:
             # Check if we're using SQLite (simplified query)
-            is_sqlite = type(conn).__name__ == 'SqliteConnectionWrapper'
+            is_sqlite = isinstance(conn, SqliteConnectionWrapper)
             
             if is_sqlite:
                 # Simplified SQLite-compatible query with COALESCE defaults for customer and vehicle
@@ -808,13 +807,6 @@ def get_board():
                 cust = r.get("customer_name") or None
                 veh = r.get("vehicle_label") or None
 
-                # Provide friendlier fallbacks to avoid 'Unknown Customer' showing in the UI
-                customer_name = cust if cust and str(cust).strip() else 'Walk-in Customer'
-                vehicle_label = veh if veh and str(veh).strip() else 'Vehicle TBD'
-                service_summary = r.get('services_summary')
-                if not service_summary or not str(service_summary).strip():
-                    service_summary = f"Service #{str(r.get('id') or 'TBD')[:8]}"
-
                 cards.append(
                     {
                         "id": r["id"],
@@ -822,39 +814,13 @@ def get_board():
                         "position": int(r["position"]),
                         "start": start_iso,
                         "end": end_iso,
-                        "customerName": customer_name,
-                        "vehicle": vehicle_label,
-                        "servicesSummary": service_summary,
+                        "customerName": cust if cust and str(cust).strip() else "Unknown Customer",
+                        "vehicle": veh if veh and str(veh).strip() else "Unknown Vehicle",
+                        "servicesSummary": r.get("services_summary") or None,
                         "price": float(r.get("price") or 0),
                         "tags": [],
                     }
                 )
-
-
-            # Enrich cards with time-aware context
-            for c in cards:
-                try:
-                    time_ctx = calculate_time_context(c)
-                    c.update(time_ctx)
-                except Exception:
-                    pass
-
-            # Sort cards within each column by priority: overdue first, then soonest, then original position
-            def sort_priority(card):
-                if card.get('isOverdue'):
-                    # sort most overdue first (larger minutesLate -> higher urgency)
-                    return (0, -int(card.get('minutesLate', 0)))
-                if card.get('timeUntilStart') is not None:
-                    return (1, int(card.get('timeUntilStart')))
-                return (2, int(card.get('position', 999)))
-
-            # Recompute positions per column
-            for key, title in _ordered_columns():
-                column_cards = [c for c in cards if c.get('status') == key]
-                column_cards.sort(key=sort_priority)
-                for i, card in enumerate(column_cards):
-                    card['position'] = i
-
 
             # Column aggregates
             if is_sqlite:
@@ -907,61 +873,6 @@ def _ordered_columns():
         ("COMPLETED", "Completed"),
         ("NO_SHOW", "No-Show"),
     ]
-
-def calculate_time_context(card: dict, current_time: Optional[datetime] = None) -> dict:
-    """Calculate time-aware context for a card dict (expects UTC ISO strings in card['start'])."""
-    if current_time is None:
-        current_time = utcnow()
-
-    out = {}
-    start_iso = card.get('start')
-    if start_iso:
-        try:
-            scheduled_dt = datetime.fromisoformat(start_iso.replace('Z', '+00:00'))
-        except Exception:
-            try:
-                scheduled_dt = datetime.fromisoformat(start_iso)
-            except Exception:
-                scheduled_dt = None
-        if scheduled_dt:
-            # Ensure scheduled_dt is timezone-aware (UTC)
-            if scheduled_dt.tzinfo is None:
-                scheduled_dt = scheduled_dt.replace(tzinfo=timezone.utc)
-            scheduled_dt = scheduled_dt.astimezone(timezone.utc)
-            out['scheduledTime'] = scheduled_dt.strftime('%I:%M %p')
-            out['appointmentDate'] = scheduled_dt.date().isoformat()
-
-            time_diff = (scheduled_dt - current_time).total_seconds() / 60.0
-            if time_diff > 0:
-                out['timeUntilStart'] = int(time_diff)
-            else:
-                # If appointment is more than 15 minutes late, mark overdue
-                if time_diff < -15:
-                    out['isOverdue'] = True
-                    out['minutesLate'] = int(abs(time_diff))
-                else:
-                    out['timeUntilStart'] = int(time_diff)
-
-    # If appointment is in progress, compute elapsed and compare to expected duration
-    if card.get('status') == 'IN_PROGRESS' and card.get('start'):
-        try:
-            start_dt = datetime.fromisoformat(card['start'].replace('Z', '+00:00'))
-            start_dt = start_dt.astimezone(timezone.utc)
-            elapsed_minutes = (current_time - start_dt).total_seconds() / 60.0
-            expected_duration = int(card.get('estimatedDuration') or 120)
-            if elapsed_minutes > expected_duration:
-                out['isOverdue'] = True
-                out['minutesLate'] = int(elapsed_minutes - expected_duration)
-        except Exception:
-            pass
-
-    # Ensure numeric fields are integers where appropriate
-    if 'minutesLate' in out:
-        out['minutesLate'] = int(out['minutesLate'])
-    if 'timeUntilStart' in out:
-        out['timeUntilStart'] = int(out['timeUntilStart'])
-
-    return out
 
 # ----------------------------------------------------------------------------
 # Move endpoint
@@ -1024,7 +935,7 @@ def get_appointment(appt_id: str):
         return jsonify({"error": "DB unavailable"}), 503
 
     # Detect if we're using SQLite fallback and adjust query syntax
-    is_sqlite = type(conn).__name__ == 'SqliteConnectionWrapper'
+    is_sqlite = hasattr(conn, '_conn')  # SqliteConnectionWrapper has _conn attribute
 
     with conn:
         with conn.cursor() as cur:
@@ -1170,7 +1081,7 @@ def patch_appointment(appt_id: str):
         return jsonify({"ok": True})
 
     # Detect if we're using SQLite fallback
-    is_sqlite = type(conn).__name__ == 'SqliteConnectionWrapper'
+    is_sqlite = hasattr(conn, '_conn')
 
     with conn:
         with conn.cursor() as cur:
@@ -1270,12 +1181,9 @@ def get_admin_appointments():
     where_sql = " AND ".join(where)
 
     conn = db_conn()
-    # If DB is unavailable, return empty list (S1 memory fallback behavior)
-    if conn is None:
-        return jsonify({"appointments": [], "nextCursor": None})
     
     # Detect if we're using SQLite fallback and adjust query syntax
-    is_sqlite = type(conn).__name__ == 'SqliteConnectionWrapper'
+    is_sqlite = hasattr(conn, '_conn')  # SqliteConnectionWrapper has _conn attribute
     
     if is_sqlite:
         # SQLite-compatible query
@@ -1519,8 +1427,7 @@ def create_appointment_service(appt_id: str):
 
     conn = db_conn()
     if conn is None:
-        # Legacy flat error for CSV endpoints
-        return jsonify({"error_code": "DB_UNAVAILABLE", "detail": "Database unavailable"}), HTTPStatus.SERVICE_UNAVAILABLE
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
 
     new_service_id = None
     with conn:
@@ -1589,8 +1496,7 @@ def update_appointment_service(appt_id: str, service_id: str):
 
     conn = db_conn()
     if conn is None:
-        # Legacy flat error for CSV endpoints
-        return jsonify({"error_code": "DB_UNAVAILABLE", "detail": "Database unavailable"}), HTTPStatus.SERVICE_UNAVAILABLE
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
 
     with conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -1681,7 +1587,7 @@ def get_appointment_messages(appt_id: str):
         return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
 
     # Check if we're using SQLite fallback
-    using_sqlite = type(conn).__name__ == 'SqliteConnectionWrapper'
+    using_sqlite = isinstance(conn, SqliteConnectionWrapper)
     
     if using_sqlite:
         # SQLite compatible query
@@ -1908,7 +1814,7 @@ def get_customer_history(customer_id: str):
         return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
 
     # Check if we're using SQLite fallback
-    using_sqlite = type(conn).__name__ == 'SqliteConnectionWrapper'
+    using_sqlite = isinstance(conn, SqliteConnectionWrapper)
     
     if using_sqlite:
         # SQLite compatible query
@@ -2065,109 +1971,137 @@ def stats():
         return jsonify(fallback_stats)
 
     today = date.today()
+    today_str = today.isoformat()
+    # Detect SQLite fallback
+    using_sqlite = isinstance(conn, SqliteConnectionWrapper) or type(conn).__name__ == 'SqliteConnectionWrapper'
+
     with conn:
         with conn.cursor() as cur:
-            # counts by status
-            cur.execute("SELECT status::text, COUNT(*) FROM appointments GROUP BY status")
-            results = cur.fetchall()
-            # Build counts mapping, handling dict or tuple rows
-            counts = {}
-            for r in results:
-                if isinstance(r, dict):
-                    key = r.get('status')
-                    val = r.get('count', 0)
-                else:
-                    key = r[0] if len(r) > 0 else None
-                    val = r[1] if len(r) > 1 else 0
+            if using_sqlite:
+                # counts by status
+                cur.execute("SELECT status as status, COUNT(*) as count FROM appointments GROUP BY status")
+                results = cur.fetchall()
+                counts = { (r.get('status') if isinstance(r, dict) else r[0]): int((r.get('count') if isinstance(r, dict) else r[1]) or 0) for r in results }
+
+                # cars on premises
+                cur.execute("SELECT COUNT(*) as count FROM appointments WHERE check_in_at IS NOT NULL AND check_out_at IS NULL")
+                cars_row = cur.fetchone() or {}
+                cars = int((cars_row.get('count') if isinstance(cars_row, dict) else (cars_row[0] if cars_row else 0)) or 0)
+
+                # jobs today
+                cur.execute("SELECT COUNT(*) as count FROM appointments WHERE date(start_ts) = ?", (today_str,))
+                jobs_row = cur.fetchone() or {}
+                jobs_today = int((jobs_row.get('count') if isinstance(jobs_row, dict) else (jobs_row[0] if jobs_row else 0)) or 0)
+
+                # unpaid total
+                cur.execute("SELECT COALESCE(SUM(COALESCE(total_amount,0) - COALESCE(paid_amount,0)),0) as unpaid FROM appointments")
+                unpaid_row = cur.fetchone() or {}
+                unpaid = float((unpaid_row.get('unpaid') if isinstance(unpaid_row, dict) else (unpaid_row[0] if unpaid_row else 0.0)) or 0.0)
+
+                # today completed
+                cur.execute("""
+                    SELECT COUNT(*) as count FROM appointments 
+                    WHERE date(start_ts) = ? AND status = 'COMPLETED'
+                """, (today_str,))
+                comp_row = cur.fetchone() or {}
+                today_completed = int((comp_row.get('count') if isinstance(comp_row, dict) else (comp_row[0] if comp_row else 0)) or 0)
+
+                # average cycle time in hours using julianday
+                cur.execute("""
+                    SELECT AVG((julianday(end_ts) - julianday(start_ts)) * 24.0) AS avg_hours
+                    FROM appointments
+                    WHERE end_ts IS NOT NULL AND start_ts IS NOT NULL AND status = 'COMPLETED'
+                """)
+                avg_row = cur.fetchone() or {}
+                avg_cycle_hours = avg_row.get('avg_hours') if isinstance(avg_row, dict) else (avg_row[0] if avg_row else None)
+                avg_cycle_hours = float(avg_cycle_hours) if avg_cycle_hours is not None else None
+            else:
+                # PostgreSQL
+                # counts by status
+                cur.execute("SELECT status::text, COUNT(*) FROM appointments GROUP BY status")
+                results = cur.fetchall()
+                counts = {}
+                for r in results:
+                    if isinstance(r, dict):
+                        key = r.get('status')
+                        val = r.get('count', 0)
+                    else:
+                        key = r[0] if len(r) > 0 else None
+                        val = r[1] if len(r) > 1 else 0
+                    try:
+                        counts[key] = int(val)
+                    except Exception:
+                        counts[key] = 0
+
+                # cars on premises
+                cur.execute("SELECT COUNT(*) FROM appointments WHERE check_in_at IS NOT NULL AND check_out_at IS NULL")
+                cars_result = cur.fetchone()
+                cars = 0
+                if cars_result:
+                    try:
+                        if isinstance(cars_result, dict):
+                            cars = int(cars_result.get('count', 0))
+                        else:
+                            cars = int(cars_result[0]) if len(cars_result) > 0 else 0
+                    except (IndexError, TypeError, ValueError):
+                        cars = 0
+
+                # jobs today (based on canonical start_ts)
+                cur.execute("SELECT COUNT(*) FROM appointments WHERE start_ts::date = %s", (today,))
+                jobs_result = cur.fetchone()
+                jobs_today = 0
+                if jobs_result:
+                    try:
+                        if isinstance(jobs_result, dict):
+                            jobs_today = int(jobs_result.get('count', 0))
+                        else:
+                            jobs_today = int(jobs_result[0]) if len(jobs_result) > 0 else 0
+                    except (IndexError, TypeError, ValueError):
+                        jobs_today = 0
+
+                # unpaid total
+                cur.execute("SELECT COALESCE(SUM(COALESCE(total_amount,0) - COALESCE(paid_amount,0)),0) FROM appointments")
+                unpaid_result = cur.fetchone()
+                unpaid = 0.0
+                if unpaid_result:
+                    try:
+                        if isinstance(unpaid_result, dict):
+                            unpaid = float(unpaid_result.get('coalesce', 0))
+                        else:
+                            unpaid = float(unpaid_result[0]) if len(unpaid_result) > 0 else 0.0
+                    except (IndexError, TypeError, ValueError):
+                        unpaid = 0.0
+
+                # today_completed - completed appointments today
+                cur.execute("""
+                    SELECT COUNT(*) FROM appointments 
+                    WHERE start_ts::date = %s AND status = 'COMPLETED'
+                """, (today,))
+                completed_result = cur.fetchone()
+                today_completed = 0
+                if completed_result:
+                    try:
+                        if isinstance(completed_result, dict):
+                            today_completed = int(completed_result.get('count', 0))
+                        else:
+                            today_completed = int(completed_result[0]) if len(completed_result) > 0 else 0
+                    except (IndexError, TypeError, ValueError):
+                        today_completed = 0
+
+                # today_booked - same as jobs_today
+                # avg_cycle_time - average time from start to completion (in hours)
+                cur.execute("""
+                    SELECT AVG(EXTRACT(EPOCH FROM end_ts - start_ts)) / 3600 as avg_hours
+                    FROM appointments 
+                    WHERE end_ts IS NOT NULL AND start_ts IS NOT NULL
+                      AND status = 'COMPLETED'
+                """)
+                avg_row = cur.fetchone()
                 try:
-                    counts[key] = int(val)
+                    avg_cycle_hours = float(avg_row[0] if not isinstance(avg_row, dict) else avg_row.get('avg_hours')) if avg_row else None
                 except Exception:
-                    counts[key] = 0
-
-            # cars on premises
-            cur.execute("SELECT COUNT(*) FROM appointments WHERE check_in_at IS NOT NULL AND check_out_at IS NULL")
-            cars_result = cur.fetchone()
-            cars = 0
-            if cars_result:
-                try:
-                    # Handle both dict (RealDictCursor) and tuple results
-                    if isinstance(cars_result, dict):
-                        cars = int(cars_result.get('count', 0))
-                    else:
-                        cars = int(cars_result[0]) if len(cars_result) > 0 else 0
-                except (IndexError, TypeError, ValueError):
-                    cars = 0
-
-            # jobs today (based on canonical start_ts)
-            cur.execute("SELECT COUNT(*) FROM appointments WHERE start_ts::date = %s", (today,))
-            jobs_result = cur.fetchone()
-            jobs_today = 0
-            if jobs_result:
-                try:
-                    if isinstance(jobs_result, dict):
-                        jobs_today = int(jobs_result.get('count', 0))
-                    else:
-                        jobs_today = int(jobs_result[0]) if len(jobs_result) > 0 else 0
-                except (IndexError, TypeError, ValueError):
-                    jobs_today = 0
-
-            # unpaid total
-            cur.execute("SELECT COALESCE(SUM(COALESCE(total_amount,0) - COALESCE(paid_amount,0)),0) FROM appointments")
-            unpaid_result = cur.fetchone()
-            unpaid = 0.0
-            if unpaid_result:
-                try:
-                    if isinstance(unpaid_result, dict):
-                        unpaid = float(unpaid_result.get('coalesce', 0))
-                    else:
-                        unpaid = float(unpaid_result[0]) if len(unpaid_result) > 0 else 0.0
-                except (IndexError, TypeError, ValueError):
-                    unpaid = 0.0
-
-            # NEW METRICS FOR v2
-
-            # today_completed - completed appointments today
-            cur.execute("""
-                SELECT COUNT(*) FROM appointments 
-                WHERE start_ts::date = %s AND status = 'COMPLETED'
-            """, (today,))
-            completed_result = cur.fetchone()
-            today_completed = 0
-            if completed_result:
-                try:
-                    if isinstance(completed_result, dict):
-                        today_completed = int(completed_result.get('count', 0))
-                    else:
-                        today_completed = int(completed_result[0]) if len(completed_result) > 0 else 0
-                except (IndexError, TypeError, ValueError):
-                    today_completed = 0
-
-            # today_booked - all appointments scheduled for today (regardless of status)
-            # This is the same as jobs_today but more explicit
-            today_booked = jobs_today
-
-            # avg_cycle_time - average time from start to completion (in hours)
-            cur.execute("""
-                SELECT AVG(EXTRACT(EPOCH FROM end_ts - start_ts)) / 3600 as avg_hours
-                FROM appointments 
-                WHERE end_ts IS NOT NULL AND start_ts IS NOT NULL
-                  AND status = 'COMPLETED'
-                  AND start_ts >= %s
-            """, (today - timedelta(days=30),))  # Last 30 days for better average
-            
-            avg_result = cur.fetchone()
-            avg_cycle_hours = None
-            if avg_result:
-                try:
-                    if isinstance(avg_result, dict):
-                        avg_cycle_hours = float(avg_result.get('avg_hours', 0)) if avg_result.get('avg_hours') is not None else None
-                    else:
-                        avg_cycle_hours = float(avg_result[0]) if len(avg_result) > 0 and avg_result[0] is not None else None
-                except (IndexError, TypeError, ValueError):
                     avg_cycle_hours = None
 
-    conn.close()
-    
     # Build enhanced response structure
     response_data = {
         # Legacy fields for backward compatibility
@@ -2179,11 +2113,10 @@ def stats():
         "completed": counts.get("COMPLETED", 0),
         "noShow": counts.get("NO_SHOW", 0),
         "unpaidTotal": round(unpaid, 2),
-        
         # NEW: Enhanced totals object for v2
         "totals": {
             "today_completed": today_completed,
-            "today_booked": today_booked,
+            "today_booked": jobs_today,
             "avg_cycle": avg_cycle_hours,
             "avg_cycle_formatted": format_duration_hours(avg_cycle_hours) if avg_cycle_hours else "N/A"
         }
@@ -2201,39 +2134,74 @@ def cars_on_premises():
     if conn is None:
         return jsonify({"cars_on_premises": []})
 
+    using_sqlite = isinstance(conn, SqliteConnectionWrapper) or type(conn).__name__ == 'SqliteConnectionWrapper'
+
     with conn:
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT a.id::text,
-                       a.check_in_at,
-                       c.name AS owner,
-                       v.year, v.make, v.model
-                FROM appointments a
-                LEFT JOIN customers c ON c.id = a.customer_id
-                LEFT JOIN vehicles v  ON v.id = a.vehicle_id
-                WHERE a.check_in_at IS NOT NULL AND a.check_out_at IS NULL
-                ORDER BY a.check_in_at ASC
-                """
-            )
+            if using_sqlite:
+                cur.execute(
+                    """
+                    SELECT 
+                        a.id AS id,
+                        COALESCE(c.name, '') AS owner,
+                        COALESCE(v.make, '') AS make,
+                        COALESCE(v.model, '') AS model,
+                        a.check_in_at AS check_in_at
+                    FROM appointments a
+                    LEFT JOIN customers c ON c.id = a.customer_id
+                    LEFT JOIN vehicles v  ON v.id = a.vehicle_id
+                    WHERE a.check_in_at IS NOT NULL AND a.check_out_at IS NULL
+                    ORDER BY a.check_in_at DESC
+                    """
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT 
+                        a.id::text AS id,
+                        COALESCE(c.name, '') AS owner,
+                        COALESCE(v.make, '') AS make,
+                        COALESCE(v.model, '') AS model,
+                        a.check_in_at AS check_in_at
+                    FROM appointments a
+                    LEFT JOIN customers c ON c.id = a.customer_id
+                    LEFT JOIN vehicles v  ON v.id = a.vehicle_id
+                    WHERE a.check_in_at IS NOT NULL AND a.check_out_at IS NULL
+                    ORDER BY a.check_in_at DESC
+                    """
+                )
             rows = cur.fetchall()
 
     conn.close()
+
+    def to_iso_utc(dt):
+        if not dt:
+            return None
+        if isinstance(dt, str):
+            try:
+                dt_obj = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+                return dt_obj.astimezone(timezone.utc).isoformat()
+            except Exception:
+                return dt
+        try:
+            return dt.astimezone(timezone.utc).isoformat()
+        except Exception:
+            return str(dt)
+
     out = []
     for r in rows:
         out.append(
             {
-                "id": r["id"],
-                "owner": r.get("owner") or "",
-                "make": r.get("make") or "",
-                "model": r.get("model") or "",
-                "arrivalTime": r["check_in_at"].astimezone(timezone.utc).isoformat() if r.get("check_in_at") else None,
+                "id": r.get("id") if isinstance(r, dict) else r[0],
+                "owner": (r.get("owner") if isinstance(r, dict) else r[1]) or "",
+                "make": (r.get("make") if isinstance(r, dict) else r[2]) or "",
+                "model": (r.get("model") if isinstance(r, dict) else r[3]) or "",
+                "arrivalTime": to_iso_utc(r.get("check_in_at") if isinstance(r, dict) else r[4]),
                 "status": "IN_PROGRESS",
                 "pickupTime": None,
             }
         )
     return jsonify({"cars_on_premises": out})
-
 # ----------------------------------------------------------------------------
 # Wrap admin appointments GET responses to ensure envelope shape
 @app.after_request
@@ -2246,10 +2214,7 @@ def wrap_admin_appointments(response):
         # Already enveloped?
         if isinstance(orig, dict) and any(k in orig for k in ("data", "errors", "meta")):
             return response
-        # Return a Response object (avoid returning a tuple which breaks other after_request handlers)
-        new_resp = jsonify({"data": orig, "errors": None, "meta": {"request_id": _req_id()}})
-        new_resp.status_code = response.status_code
-        return new_resp
+        return jsonify({"data": orig, "errors": None, "meta": {"request_id": _req_id()}}), response.status_code
     return response
 
 # ----------------------------------------------------------------------------
@@ -2282,8 +2247,7 @@ def export_appointments():
 
     conn = db_conn()
     if conn is None:
-        # Legacy flat error for CSV endpoints
-        return jsonify({"error_code": "DB_UNAVAILABLE", "detail": "Database unavailable"}), HTTPStatus.SERVICE_UNAVAILABLE
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
 
     try:
         with conn:
@@ -2378,8 +2342,7 @@ def export_payments():
         if user_role not in ["Owner", "Advisor"]:
             return _fail(HTTPStatus.FORBIDDEN, "RBAC_FORBIDDEN", "Only Owner and Advisor can export payments")
     except Exception:
-        # Legacy clients expect a flat error object for CSV endpoints
-        return jsonify({"error_code": "AUTH_REQUIRED", "detail": "Authentication required"}), HTTPStatus.FORBIDDEN
+        return _fail(HTTPStatus.FORBIDDEN, "AUTH_REQUIRED", "Authentication required")
 
     # Query parameters
     frm = request.args.get("from")
@@ -2388,8 +2351,7 @@ def export_payments():
 
     conn = db_conn()
     if conn is None:
-        # Legacy flat error for CSV endpoints
-        return jsonify({"error_code": "DB_UNAVAILABLE", "detail": "Database unavailable"}), HTTPStatus.SERVICE_UNAVAILABLE
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
 
     try:
         with conn:
@@ -2459,18 +2421,16 @@ def export_appointments_csv():
         user = require_auth_role()
         user_role = user.get("role", "Advisor")
         if user_role not in ["Owner", "Advisor", "Accountant"]:
-            # Legacy clients expect a flat error object for CSV endpoints
-            return jsonify({"error_code": "RBAC_FORBIDDEN", "detail": "Only Owner, Advisor, and Accountant can export CSV"}), HTTPStatus.FORBIDDEN
+            return _fail(HTTPStatus.FORBIDDEN, "RBAC_FORBIDDEN", "Only Owner, Advisor, and Accountant can export CSV")
     except Exception:
-        # Legacy clients expect a flat error object for CSV endpoints
-        return jsonify({"error_code": "AUTH_REQUIRED", "detail": "Authentication required"}), HTTPStatus.FORBIDDEN
+        return _fail(HTTPStatus.FORBIDDEN, "AUTH_REQUIRED", "Authentication required")
 
     # Rate limiting for exports (5 per user per hour)
     user_id = user.get("user_id", user.get("sub", "unknown"))
     rate_limit_key = f"csv_export_{user_id}"
     try:
         rate_limit(rate_limit_key, 5, 3600)
-    except Exception:
+    except Forbidden:
         return _fail(HTTPStatus.TOO_MANY_REQUESTS, "RATE_LIMIT", "Export rate limit exceeded")
 
     # Query parameter validation
@@ -2489,31 +2449,27 @@ def export_appointments_csv():
             where_conditions.append("a.start_ts >= %s")
             params.append(from_date)
         except ValueError:
-            return jsonify({"error_code": "INVALID_DATE_FORMAT", "detail": "Invalid 'from' date format. Use ISO 8601 format."}), HTTPStatus.BAD_REQUEST
+            return _fail(HTTPStatus.BAD_REQUEST, "INVALID_DATE", "Invalid 'from' date format. Use ISO 8601 format.")
     
     if to_date:
         try:
             datetime.fromisoformat(to_date.replace('Z', '+00:00'))
-            where_conditions.append("a.end_ts <= %s")
+            where_conditions.append("a.start_ts <= %s")
             params.append(to_date)
         except ValueError:
-            return jsonify({"error_code": "INVALID_DATE_FORMAT", "detail": "Invalid 'to' date format. Use ISO 8601 format."}), HTTPStatus.BAD_REQUEST
+            return _fail(HTTPStatus.BAD_REQUEST, "INVALID_DATE", "Invalid 'to' date format. Use ISO 8601 format.")
     
     if status_filter:
         try:
             normalized_status = norm_status(status_filter)
-            # Validate against known statuses
-            if normalized_status not in {"SCHEDULED", "IN_PROGRESS", "READY", "COMPLETED", "NO_SHOW", "CANCELED"}:
-                return jsonify({"error_code": "INVALID_STATUS", "detail": "Invalid status value"}), HTTPStatus.BAD_REQUEST
             where_conditions.append("a.status = %s")
             params.append(normalized_status)
         except BadRequest:
-            return jsonify({"error_code": "INVALID_STATUS", "detail": "Invalid status value"}), HTTPStatus.BAD_REQUEST
+            return _fail(HTTPStatus.BAD_REQUEST, "INVALID_STATUS", "Invalid status value")
 
     conn = db_conn()
     if conn is None:
-        # Legacy flat error for CSV endpoints
-        return jsonify({"error_code": "DB_UNAVAILABLE", "detail": "Database unavailable"}), HTTPStatus.SERVICE_UNAVAILABLE
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
 
     try:
         with conn:
@@ -2542,12 +2498,7 @@ def export_appointments_csv():
         writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
         
         # Write header row (RFC4180 compliant)
-        writer.writerow([
-            "ID", "Status", "Start", "End", "Total Amount", "Paid Amount",
-            "Customer Name", "Customer Email", "Customer Phone",
-            "Vehicle Year", "Vehicle Make", "Vehicle Model", "Vehicle VIN",
-            "Services"
-        ])
+        writer.writerow(['id', 'customer', 'vehicle', 'start', 'status', 'total_amount', 'paid_amount'])
         
         # Write data rows (defensive access)
         for appointment in appointments:
@@ -2558,19 +2509,12 @@ def export_appointments_csv():
                 start_str = str(start_val) if start_val else ''
             writer.writerow([
                 appointment.get('id', ''),
-                appointment.get('status', ''),
+                appointment.get('customer', ''),
+                appointment.get('vehicle', ''),
                 start_str,
-                appointment.get('end_ts', '') if appointment.get('end_ts') else '',
+                appointment.get('status', ''),
                 float(appointment.get('total_amount') or 0),
                 float(appointment.get('paid_amount') or 0),
-                appointment.get('customer_name', ''),
-                appointment.get('customer_email', '') if appointment.get('customer_email') else '',
-                appointment.get('customer_phone', '') if appointment.get('customer_phone') else '',
-                appointment.get('year', '') if appointment.get('year') else '',
-                appointment.get('make', '') if appointment.get('make') else '',
-                appointment.get('model', '') if appointment.get('model') else '',
-                appointment.get('vin', '') if appointment.get('vin') else '',
-                appointment.get('services_summary', '') if appointment.get('services_summary') else '',
             ])
 
         csv_content = output.getvalue()
@@ -2578,7 +2522,7 @@ def export_appointments_csv():
 
         # Create response with proper headers for file download
         response = Response(csv_content, mimetype='text/csv')
-        response.headers['Content-Disposition'] = 'attachment;filename=appointments_export.csv'
+        response.headers['Content-Disposition'] = 'attachment; filename=appointments.csv'
         response.headers['Content-Type'] = 'text/csv; charset=utf-8'
         
         # Log the export for audit trail (simple signature expected by tests)
@@ -2606,15 +2550,14 @@ def export_payments_csv():
         if user_role not in ["Owner", "Advisor", "Accountant"]:
             return _fail(HTTPStatus.FORBIDDEN, "RBAC_FORBIDDEN", "Only Owner, Advisor, and Accountant can export CSV")
     except Exception:
-        # Legacy clients expect a flat error object for CSV endpoints
-        return jsonify({"error_code": "AUTH_REQUIRED", "detail": "Authentication required"}), HTTPStatus.FORBIDDEN
+        return _fail(HTTPStatus.FORBIDDEN, "AUTH_REQUIRED", "Authentication required")
 
     # Rate limiting for exports
     user_id = user.get("user_id", user.get("sub", "unknown"))
     rate_limit_key = f"csv_export_{user_id}"
     try:
         rate_limit(rate_limit_key, 5, 3600)
-    except Exception:
+    except Forbidden:
         return _fail(HTTPStatus.TOO_MANY_REQUESTS, "RATE_LIMIT", "Export rate limit exceeded")
 
     # Query parameter validation
@@ -2631,8 +2574,7 @@ def export_payments_csv():
             where_conditions.append("p.created_at >= %s")
             params.append(from_date)
         except ValueError:
-            # Legacy clients expect flat error objects for CSV endpoints
-            return jsonify({"error_code": "INVALID_DATE_FORMAT", "detail": "Invalid 'from' date format. Use ISO 8601 format."}), HTTPStatus.BAD_REQUEST
+            return _fail(HTTPStatus.BAD_REQUEST, "INVALID_DATE", "Invalid 'from' date format. Use ISO 8601 format.")
     
     if to_date:
         try:
@@ -2640,13 +2582,11 @@ def export_payments_csv():
             where_conditions.append("p.created_at <= %s")
             params.append(to_date)
         except ValueError:
-            # Legacy clients expect flat error objects for CSV endpoints
-            return jsonify({"error_code": "INVALID_DATE_FORMAT", "detail": "Invalid 'to' date format. Use ISO 8601 format."}), HTTPStatus.BAD_REQUEST
+            return _fail(HTTPStatus.BAD_REQUEST, "INVALID_DATE", "Invalid 'to' date format. Use ISO 8601 format.")
 
     conn = db_conn()
     if conn is None:
-        # Legacy flat error for CSV endpoints
-        return jsonify({"error_code": "DB_UNAVAILABLE", "detail": "Database unavailable"}), HTTPStatus.SERVICE_UNAVAILABLE
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
 
     try:
         with conn:
@@ -2671,20 +2611,16 @@ def export_payments_csv():
         writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
         
         # Write header row (RFC4180 compliant)
-        writer.writerow([
-            "ID", "Appointment ID", "Amount", "Payment Method", "Transaction ID", "Payment Date", "Status"
-        ])
+        writer.writerow(['id', 'appointment_id', 'amount', 'method', 'created_at'])
         
         # Write data rows
         for payment in payments:
             writer.writerow([
-                payment.get('id', ''),
-                payment.get('appointment_id', ''),
-                float(payment.get('amount') or 0),
-                payment.get('method', ''),
-                payment.get('transaction_id', ''),
-                payment.get('created_at').isoformat() if payment.get('created_at') else '',
-                payment.get('status', '')
+                payment['id'],
+                payment['appointment_id'],
+                float(payment['amount']),
+                payment['method'],
+                payment['created_at'].isoformat() if payment['created_at'] else ''
             ])
 
         csv_content = output.getvalue()
@@ -2692,7 +2628,7 @@ def export_payments_csv():
 
         # Create response with proper headers for file download
         response = Response(csv_content, mimetype='text/csv')
-        response.headers['Content-Disposition'] = 'attachment;filename=payments_export.csv'
+        response.headers['Content-Disposition'] = 'attachment; filename=payments.csv'
         response.headers['Content-Type'] = 'text/csv; charset=utf-8'
         
         # Log the export for audit trail (simple signature expected by tests)
@@ -2708,6 +2644,164 @@ def export_payments_csv():
             conn.close()
         except AttributeError:
             pass
+
+# ----------------------------------------------------------------------------
+# Dev utilities: reset and seed appointments for next Monday (5 detailed appts)
+# ----------------------------------------------------------------------------
+
+def _next_monday_utc(now: Optional[datetime] = None) -> datetime:
+    now = now or utcnow()
+    # Monday = 0
+    days_ahead = (0 - now.weekday() + 7) % 7
+    if days_ahead == 0:
+        days_ahead = 7
+    tgt_date = (now + timedelta(days=days_ahead)).date()
+    return datetime(tgt_date.year, tgt_date.month, tgt_date.day, tzinfo=timezone.utc)
+
+
+@app.route("/api/admin/dev/reset-appointments-to-monday-five", methods=["POST"])  # nosec - dev tool
+def dev_reset_appointments_to_monday_five():
+    """Dev-only: Remove all appointments and seed exactly 5 SCHEDULED for next Monday (UTC).
+    Also inserts appointment_services so cards show detailed summaries.
+    """
+    # Optional simple guard; enable without guard in local dev
+    # if os.getenv("DEV_TOOLS_ENABLED", "true").lower() != "true":
+    #     return _fail(HTTPStatus.FORBIDDEN, "DEV_TOOLS_DISABLED", "Dev tools disabled")
+
+    conn = db_conn()
+    if conn is None:
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "DB_UNAVAILABLE", "Database unavailable")
+
+    is_sqlite = type(conn).__name__ == 'SqliteConnectionWrapper'
+
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                # Clean existing data (children first)
+                for tbl in [
+                    "appointment_services",
+                    "messages",
+                    "payments",
+                    "inspection_items",
+                    "inspection_checklists",
+                ]:
+                    try:
+                        cur.execute(f"DELETE FROM {tbl}")
+                    except Exception:
+                        # Tables may not exist depending on schema
+                        pass
+                cur.execute("DELETE FROM appointments")
+
+                # Ensure at least 5 customers
+                cur.execute("SELECT id FROM customers ORDER BY id")
+                cust_rows = cur.fetchall() or []
+                while len(cust_rows) < 5:
+                    idx = len(cust_rows) + 1
+                    cur.execute(
+                        "INSERT INTO customers (name, phone, email, address, created_at) VALUES (%s,%s,%s,%s, now())",
+                        (f"Dev Customer {idx}", f"+1-555-01{idx:02d}", f"dev{idx}@example.com", f"{idx} Dev St")
+                    )
+                    cur.execute("SELECT id FROM customers ORDER BY id")
+                    cust_rows = cur.fetchall()
+                cust_ids = [r["id"] for r in cust_rows][:5]
+
+                # Ensure at least 5 vehicles (1 per selected customer)
+                cur.execute("SELECT id, customer_id FROM vehicles ORDER BY id")
+                veh_rows = cur.fetchall() or []
+                # Map customer -> an existing vehicle id
+                cust_to_veh: Dict[Any, Any] = {}
+                for r in veh_rows:
+                    if r.get("customer_id") in cust_ids and r.get("customer_id") not in cust_to_veh:
+                        cust_to_veh[r.get("customer_id")] = r.get("id")
+                # Create vehicles for customers without one
+                for i, cid in enumerate(cust_ids, start=1):
+                    if cid not in cust_to_veh:
+                        make_model = [
+                            ("Honda", "Civic"),
+                            ("Toyota", "Camry"),
+                            ("Ford", "F-150"),
+                            ("Nissan", "Altima"),
+                            ("Chevrolet", "Malibu"),
+                        ][(i-1) % 5]
+                        cur.execute(
+                            "INSERT INTO vehicles (customer_id, make, model, year, license_plate, notes) VALUES (%s,%s,%s,%s,%s,%s)",
+                            (cid, make_model[0], make_model[1], 2020 + ((i-1) % 5), f"DEV{i:03d}", "seed vehicle")
+                        )
+                        # Fetch id back
+                        if is_sqlite:
+                            cur.execute("SELECT last_insert_rowid() as id")
+                            vid = cur.fetchone()["id"]
+                        else:
+                            cur.execute("SELECT id FROM vehicles WHERE customer_id = %s ORDER BY id DESC LIMIT 1", (cid,))
+                            vid = cur.fetchone()["id"]
+                        cust_to_veh[cid] = vid
+
+                # Build Monday slots
+                monday = _next_monday_utc()
+                def iso_at(h: int, m: int) -> str:
+                    return datetime(monday.year, monday.month, monday.day, h, m, tzinfo=timezone.utc).isoformat()
+                slots = [
+                    (9, 0, 60),   # 09:00-10:00
+                    (10, 30, 60), # 10:30-11:30
+                    (12, 0, 90),  # 12:00-13:30
+                    (14, 0, 60),  # 14:00-15:00
+                    (16, 0, 75),  # 16:00-17:15
+                ]
+
+                # Detailed services per appointment
+                svc_sets = [
+                    [("Front brake pad replacement", None, 1.5, 180.00, "Brakes"), ("Brake pads (front)", "OEM preferred", None, 62.50, "Brakes")],
+                    [("Oil & filter change", None, 1.0, 65.00, "Maintenance"), ("Multi-point inspection", None, 0.5, 0.00, "Inspection")],
+                    [("Charging system diagnosis", None, 1.0, 120.00, "Electrical"), ("Battery replacement", "Group 24F", 0.5, 160.00, "Electrical")],
+                    [("Rotor + pad kit install", None, 3.0, 510.00, "Brakes"), ("Brake fluid flush", None, 1.0, 95.00, "Brakes")],
+                    [("Diagnostics", "MIL on, intermittent", 1.0, 120.00, "Diagnostic")],
+                ]
+                totals = [256.65, 180.00, 280.00, 725.00, 120.00]
+
+                appt_ids = []
+                for i in range(5):
+                    cid = cust_ids[i]
+                    vid = cust_to_veh[cid]
+                    h, m, dur = slots[i]
+                    start_iso = iso_at(h, m)
+                    end_dt = datetime.fromisoformat(start_iso).astimezone(timezone.utc) + timedelta(minutes=dur)
+                    end_iso = end_dt.isoformat()
+                    total = totals[i]
+                    cur.execute(
+                        """
+                        INSERT INTO appointments (customer_id, vehicle_id, status, start_ts, end_ts, total_amount, paid_amount, location_address, notes)
+                        VALUES (%s,%s,'SCHEDULED',%s,%s,%s,0, %s, %s)
+                        """,
+                        (cid, vid, start_iso, end_iso, total, f"{i+1} Service Way", f"Seeded appt #{i+1} for Monday")
+                    )
+                    if is_sqlite:
+                        cur.execute("SELECT last_insert_rowid() as id")
+                        appt_id = cur.fetchone()["id"]
+                    else:
+                        cur.execute("SELECT id FROM appointments WHERE customer_id = %s AND start_ts = %s ORDER BY id DESC LIMIT 1", (cid, start_iso))
+                        appt_id = cur.fetchone()["id"]
+                    appt_ids.append(appt_id)
+
+                    # Insert services for this appointment
+                    for (name, notes, est_hours, est_price, category) in svc_sets[i]:
+                        cur.execute(
+                            """
+                            INSERT INTO appointment_services (appointment_id, name, notes, estimated_hours, estimated_price, category)
+                            VALUES (%s,%s,%s,%s,%s,%s)
+                            """,
+                            (appt_id, name, notes, est_hours, est_price, category)
+                        )
+
+        return jsonify({
+            "ok": True,
+            "message": "Database reset with 5 Monday appointments",
+            "count": 5,
+            "monday": _next_monday_utc().date().isoformat(),
+            "appointment_ids": appt_ids
+        })
+    except Exception as e:
+        log.error("Dev seed failed: %s\n%s", e, traceback.format_exc())
+        return _fail(HTTPStatus.INTERNAL_SERVER_ERROR, "DEV_SEED_FAILED", str(e))
 
 # ----------------------------------------------------------------------------
 # Root

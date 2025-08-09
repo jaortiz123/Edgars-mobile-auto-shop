@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useAppointments } from '@/contexts/AppointmentContext';
 import StatusColumn from './StatusColumn';
 import { DndProvider } from 'react-dnd';
@@ -8,7 +8,6 @@ import { format } from 'date-fns';
 
 export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }) {
   const { columns, cards, optimisticMove, triggerRefresh } = useAppointments();
-  const [reschedulingIds, setReschedulingIds] = useState<Set<string>>(new Set());
 
   const getTimeGreeting = () => {
     const h = new Date().getHours();
@@ -27,7 +26,7 @@ export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }
       try {
         const s = c.start ? new Date(c.start) : null;
         return s && s >= startOfDay && s <= endOfDay;
-      } catch (e) {
+      } catch {
         return false;
       }
     });
@@ -50,30 +49,10 @@ export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }
     return map;
   }, [columns, cards]);
 
-  const handleQuickReschedule = async (id: string) => {
-    if (reschedulingIds.has(id)) return;
-    setReschedulingIds(prev => new Set(prev).add(id));
-    try {
-      const appointment = cards.find(card => card.id === id);
-      const serviceType = appointment?.servicesSummary || 'default';
-      const reschedulingModule = await import('../../services/reschedulingService.js');
-      const result = await reschedulingModule.quickRescheduleToNext(id, serviceType, { daysAhead: 7, reason: 'Quick reschedule from status board' });
-      if (result?.success) triggerRefresh();
-    } catch (error) {
-      console.error('Error in quick reschedule:', error);
-    } finally {
-      setReschedulingIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(id);
-        return newSet;
-      });
-    }
-  };
-
   const TodaysFocusHero = () => {
     const now = new Date();
     const todaysCards = cards.filter(c => {
-      try { return c.start && new Date(c.start).toDateString() === now.toDateString(); } catch (e) { return false; }
+      try { return c.start && new Date(c.start).toDateString() === now.toDateString(); } catch { return false; }
     });
 
     const nextAppointment = todaysCards
@@ -82,8 +61,6 @@ export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }
 
     const overdueAppointments = todaysCards.filter(c => c.isOverdue);
     const completedToday = todaysCards.filter(c => c.status === 'COMPLETED');
-    const inProgressCount = todaysCards.filter(c => c.status === 'IN_PROGRESS').length;
-    const scheduledCount = todaysCards.filter(c => c.status === 'SCHEDULED').length;
     const totalJobs = todaysCards.length || cards.length;
 
     return (
@@ -155,12 +132,6 @@ export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }
               onMove={(id: string) => {
                 void optimisticMove(id, { status: col.key as AppointmentStatus, position: 1 });
               }}
-              onQuickReschedule={(id: string) => {
-                if (!reschedulingIds.has(id)) {
-                  void handleQuickReschedule(id);
-                }
-              }}
-              isRescheduling={(id: string) => reschedulingIds.has(id)}
             />
           ))}
         </div>
