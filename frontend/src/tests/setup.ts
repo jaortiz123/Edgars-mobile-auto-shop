@@ -1,10 +1,46 @@
 import '@testing-library/jest-dom/vitest'
 import 'whatwg-fetch'
+import './testEnv'
 
 import { expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest'
+// Minimal jest shim for legacy tests using `jest.*` (keeps API surface small)
+/* eslint-disable @typescript-eslint/no-unused-vars */
+const jest = {
+  fn: vi.fn,
+  mock: function() { return vi.mock.apply(null, arguments); },
+  clearAllMocks: function() { return vi.clearAllMocks(); },
+  spyOn: function() { return vi.spyOn.apply(null, arguments); },
+  restoreAllMocks: function() { return vi.restoreAllMocks(); },
+};
+
+// Expose globally
+(globalThis as any).jest = jest;
+
+// Ensure localStorage.clear exists as a function (some environments provide a non-callable localStorage shim)
+if (typeof globalThis.localStorage !== 'object' || !globalThis.localStorage) {
+  // Provide a simple in-memory localStorage mock
+  const _store: Record<string, string> = {};
+  globalThis.localStorage = {
+    getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
+    setItem: (k: string, v: string) => { _store[k] = String(v); },
+    removeItem: (k: string) => { delete _store[k]; },
+    clear: () => { Object.keys(_store).forEach(k => delete _store[k]); }
+  } as unknown as Storage;
+} else {
+  // Ensure required functions exist on existing localStorage
+  try {
+    if (typeof (globalThis.localStorage as any).getItem !== 'function') (globalThis.localStorage as any).getItem = (k: string) => null;
+    if (typeof (globalThis.localStorage as any).setItem !== 'function') (globalThis.localStorage as any).setItem = (k: string, v: string) => {};
+    if (typeof (globalThis.localStorage as any).removeItem !== 'function') (globalThis.localStorage as any).removeItem = (k: string) => {};
+    if (typeof (globalThis.localStorage as any).clear !== 'function') (globalThis.localStorage as any).clear = () => {};
+  } catch (e) {
+    // ignore
+  }
+}
 import { toHaveNoViolations } from 'jest-axe'
 import { cleanup } from '@testing-library/react'
 import { server } from '../test/server/mswServer'
+import { http, HttpResponse } from 'msw'
 import { createMocks } from '../test/mocks'
 // import failOnConsole from 'vitest-fail-on-console' // Disabled due to conflicts
 
@@ -21,6 +57,9 @@ vi.mock('@/components/ui/Toast', () => toast);
 vi.mock('@/lib/toast', () => toast);
 vi.mock('@/utils/storage', () => storage);
 vi.mock('react-router-dom', () => router);
+
+// (summaryService is intentionally not globally mocked here so individual tests
+//  can mock it locally with full control/hoisting semantics)
 
 // Enhanced CI Console Detection - Functions preserved for future re-enablement
 // NOTE: These functions are currently unused but kept for when vitest-fail-on-console is re-enabled
@@ -229,9 +268,22 @@ beforeAll(() => {
   console.log('🌐 MSW enabled for unit tests')
 })
 
-// Auto cleanup after each test
+// Auto cleanup and reset localStorage before each test
 beforeEach(() => {
-  cleanup()
+  // Provide a fresh in-memory localStorage for each test to avoid leakage
+  const _store: Record<string, string> = {};
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    writable: true,
+    value: {
+      getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
+      setItem: (k: string, v: string) => { _store[k] = String(v); },
+      removeItem: (k: string) => { delete _store[k]; },
+      clear: () => { Object.keys(_store).forEach(k => delete _store[k]); }
+    } as unknown as Storage
+  });
+
+  cleanup();
 })
 
 // SAFETY-NET-002: Global afterEach safety-nets for test stability
@@ -330,6 +382,14 @@ if (!document.createRange) {
     toString: vi.fn(),
   });
 }
+
+// Fallback handlers for common endpoints used across many tests.
+// These return safe defaults and reduce noisy 'unmatched request' warnings.
+server.use(
+  http.get('http://localhost:3000/api/appointments', () => HttpResponse.json({ data: [], meta: {} })),
+  http.get('http://localhost:3001/api/appointments', () => HttpResponse.json({ data: [], meta: {} })),
+  http.get('http://localhost:3000/api/appointments/', () => HttpResponse.json({ data: [], meta: {} })),
+);
 
 // MSW cleanup after all tests
 afterAll(() => {
