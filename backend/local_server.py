@@ -949,7 +949,7 @@ def get_appointment(appt_id: str):
                            a.check_in_at, a.check_out_at, 
                            CAST(a.tech_id AS TEXT) as tech_id,
                            CAST(c.id AS TEXT) as customer_id, c.name as customer_name, c.email, c.phone,
-                           CAST(v.id AS TEXT) as vehicle_id, v.year, v.make, v.model, v.license_plate as vin
+                           CAST(v.id AS TEXT) as vehicle_id, v.year, v.make, v.model, v.vin as vin
                     FROM appointments a
                     LEFT JOIN customers c ON c.id = a.customer_id
                     LEFT JOIN vehicles  v ON v.id = a.vehicle_id

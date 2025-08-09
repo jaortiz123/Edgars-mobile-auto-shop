@@ -6,7 +6,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import type { AppointmentStatus } from '@/types/models';
 import { format } from 'date-fns';
 
-export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }) {
+export default function StatusBoard({ onOpen, minimalHero = false }: { onOpen: (id: string) => void, minimalHero?: boolean }) {
   const { columns, cards, optimisticMove, triggerRefresh } = useAppointments();
 
   const getTimeGreeting = () => {
@@ -121,7 +121,7 @@ export default function StatusBoard({ onOpen }: { onOpen: (id: string) => void }
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="overflow-x-auto pb-4" role="region" aria-label="Status Board">
-        <TodaysFocusHero />
+        {minimalHero ? null : <TodaysFocusHero />}
         <div className="flex gap-4 min-w-max mt-4">
           {columns.map((col) => (
             <StatusColumn

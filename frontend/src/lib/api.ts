@@ -362,6 +362,10 @@ export async function login(username: string, password: string): Promise<{ token
   return response.data;
 }
 
+export async function deleteAppointment(id: string): Promise<void> {
+  await http.delete(`/admin/appointments/${id}`);
+}
+
 // Expose the axios instance for advanced callers
 export function useApi() {
   return http;

@@ -4,6 +4,8 @@ import * as api from '@/lib/api';
 import type { DrawerPayload, AppointmentService } from '@/types/models';
 import MessageThread from './MessageThread';
 import CustomerHistory from './CustomerHistory';
+import { useAppointments } from '@/contexts/AppointmentContext';
+import { useToast } from '@/components/ui/Toast';
 
 // Wrap the main component in React.memo to prevent unnecessary re-renders
 const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; onClose: () => void; id: string | null }) => {
@@ -14,6 +16,9 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
   const ref = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
+  const { refreshBoard } = useAppointments();
+  const toast = useToast();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Memoize the setIsAddingService function to prevent unnecessary re-renders
   const memoizedSetIsAddingService = useCallback((value: boolean) => {
@@ -22,6 +27,23 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
 
   // Track if we've loaded data for this ID to prevent multiple API calls
   const loadedDataIdRef = useRef<string | null>(null);
+
+  const handleDelete = useCallback(async () => {
+    if (!id) return;
+    const confirm = window.confirm('Delete this appointment? This cannot be undone.');
+    if (!confirm) return;
+    setIsDeleting(true);
+    try {
+      await api.deleteAppointment(id);
+      toast.success('Appointment deleted', { key: `appt-del-${id}` });
+      onClose();
+      await refreshBoard();
+    } catch (e) {
+      toast.error(api.handleApiError(e, 'Failed to delete appointment'), { key: `appt-del-fail-${id}` });
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [id, onClose, refreshBoard, toast]);
 
   useEffect(() => {
     // Only fetch data if drawer is open, we have an ID, and we haven't already loaded this ID
@@ -35,6 +57,32 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
       setData(null);
 
       let cancelled = false;
+      // Safety timeout to avoid hanging forever if the promise never settles
+      const timeoutMs = 8000;
+      const timeoutId = setTimeout(() => {
+        if (cancelled) return;
+        console.warn('⏰ Drawer load timed out');
+        setError('Failed to load appointment');
+        // Minimal fallback so UI can proceed
+        const fallbackData: DrawerPayload = {
+          appointment: {
+            id: id || 'fallback-id',
+            status: 'SCHEDULED',
+            start: null as unknown as string,
+            end: null as unknown as string,
+            total_amount: 0,
+            paid_amount: 0,
+            check_in_at: null,
+            check_out_at: null,
+            tech_id: null
+          },
+          customer: { id: 'cust-fallback', name: '—', phone: '', email: '' },
+          vehicle: { id: 'veh-fallback', year: 0, make: '', model: '', vin: '' },
+          services: []
+        };
+        setData(fallbackData);
+      }, timeoutMs);
+
       try {
         const drawerResult: unknown = api.getDrawer(id);
         console.log('🔍 DEBUG: api.getDrawer(id) returned:', drawerResult);
@@ -45,10 +93,13 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
 
         if (isPromise(drawerResult)) {
           void drawerResult.then((payload) => {
-            if (!cancelled) setData(payload);
+            if (cancelled) return;
+            clearTimeout(timeoutId);
+            setData(payload);
           }).catch((err: unknown) => {
             console.error('🔍 DEBUG: Error resolving getDrawer Promise:', err);
             if (cancelled) return;
+            clearTimeout(timeoutId);
             setError('Failed to load appointment');
             // Fallback minimal payload so Overview can render something instead of staying on Loading…
             const fallbackData: DrawerPayload = {
@@ -71,6 +122,7 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
           });
         } else {
           console.error('🔍 DEBUG: getDrawer did not return a Promise! Using fallback payload…');
+          clearTimeout(timeoutId);
           const fallbackData: DrawerPayload = {
             appointment: {
               id: id || 'fallback-id',
@@ -102,10 +154,11 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
         }
       } catch (err) {
         console.error('🔍 DEBUG: Error calling api.getDrawer:', err);
+        clearTimeout(timeoutId);
         if (!cancelled) setError('Failed to load appointment');
       }
 
-      return () => { cancelled = true; };
+      return () => { cancelled = true; clearTimeout(timeoutId); };
     }
 
     // Reset loaded data ID when drawer closes
@@ -179,14 +232,24 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
       <div ref={ref} data-testid="drawer-open" className="absolute right-0 top-0 h-full w-full max-w-xl bg-white shadow-xl flex flex-col">
         <div className="p-4 border-b flex items-center justify-between">
           <h2 id="drawer-title" className="text-lg font-semibold">Appointment</h2>
-          <button 
-            ref={closeButtonRef}
-            aria-label="Close drawer" 
-            onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting || !id}
+              className="px-2 py-1 text-red-600 hover:text-red-700 disabled:opacity-50"
+              title="Delete appointment"
+            >
+              {isDeleting ? 'Deleting…' : 'Delete'}
+            </button>
+            <button 
+              ref={closeButtonRef}
+              aria-label="Close drawer" 
+              onClick={onClose}
+              className="p-1 hover:bg-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              ✕
+            </button>
+          </div>
         </div>
         {error && (
           <div className="px-4 py-2 text-sm text-red-700 bg-red-50 border-b border-red-200" role="alert">
