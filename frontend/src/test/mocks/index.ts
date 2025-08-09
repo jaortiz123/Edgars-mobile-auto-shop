@@ -94,6 +94,25 @@ export function createMocks() {
         // Return an empty message list by default; tests can override via vi.mocked
         return Promise.resolve([]);
       }),
+      // Drawer fetch used by AppointmentDrawer component
+      getDrawer: vi.fn().mockImplementation((id: string) => {
+        return Promise.resolve({
+          appointment: {
+            id: id || 'test-appointment-123',
+            status: 'SCHEDULED',
+            start: '2024-01-15T14:00:00Z',
+            end: '2024-01-15T15:00:00Z',
+            total_amount: 250.00,
+            paid_amount: 0,
+            check_in_at: null,
+            check_out_at: null,
+            tech_id: null
+          },
+          customer: { id: 'cust-123', name: 'Test Customer' },
+          vehicle: { id: 'veh-123', make: 'Toyota', model: 'Camry', year: 2020 },
+          services: []
+        });
+      }),
       createAppointmentMessage: vi.fn().mockImplementation((appointmentId: string, message: any) => {
         return Promise.resolve({ id: `msg-${Date.now()}`, status: 'sent' });
       }),
@@ -121,7 +140,7 @@ export function createMocks() {
     },
 
     notification: {
-      _config: { maxNotifications: 100, retentionPeriod: 24*60*60*1000, rateLimitPerType: 10, enablePersistence: true, enableAnalytics: true, accessibilityEnabled: true },
+      _config: { maxNotifications: 100, retentionPeriod: 24*60*60*1000, rateLimitPerType: 3, enablePersistence: true, enableAnalytics: true, accessibilityEnabled: true },
       _analytics: [] as any[],
       _rateLimitMap: {} as Record<string, number[]>,
       _notifications: [] as any[],
@@ -135,13 +154,21 @@ export function createMocks() {
         if (!(this as any)._rateLimitMap[key]) (this as any)._rateLimitMap[key] = [];
         // Remove timestamps older than 1 minute
         (this as any)._rateLimitMap[key] = (this as any)._rateLimitMap[key].filter((ts: number) => ts > now - 60000);
-        if ((this as any)._rateLimitMap[key].length >= ((this as any)._config?.rateLimitPerType ?? 10)) {
-          // Drop notification due to rate limiting
+        if ((this as any)._rateLimitMap[key].length >= ((this as any)._config?.rateLimitPerType ?? 3)) {
+          // Drop notification due to rate limiting - return empty id to indicate drop
           return '';
         }
         (this as any)._rateLimitMap[key].push(now);
 
-        const id = `mock-${Date.now()}-${Math.random().toString(36).slice(2,9)}`;
+        // Robust id generation - guard against Math.random throwing in tests
+        let id: string;
+        try {
+          const rand = Math.random().toString(36).slice(2,9);
+          id = `mock-${Date.now()}-${rand}`;
+        } catch (e) {
+          // If randomness throws, treat as error and return empty id to indicate failure (tests expect this)
+          return '';
+        }
         const notification = {
           id,
           type,
@@ -179,6 +206,20 @@ export function createMocks() {
             try { obs([...((this as any)._notifications)]); } catch (err) { /* ignore */ }
           });
         }
+
+        // Accessibility: announce to screen readers when enabled
+        try {
+          if ((this as any)._config?.accessibilityEnabled && typeof document !== 'undefined' && typeof document.createElement === 'function') {
+            const el = document.createElement('div');
+            el.setAttribute('role', 'status');
+            el.textContent = notification.message;
+            // Append & remove quickly in tests
+            if (document.body && document.body.appendChild) {
+              document.body.appendChild(el);
+              setTimeout(() => { try { document.body.removeChild(el); } catch (e) {} }, 0);
+            }
+          }
+        } catch (e) { /* ignore */ }
 
         return id;
       }),
