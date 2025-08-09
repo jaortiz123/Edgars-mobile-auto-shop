@@ -435,8 +435,7 @@
   0%, 100% { border-left-color: #dc2626; }
   50% { border-left-color: #f87171; }
 }
-<<<<<<< Current (Your changes)
-=======
+
 
 .column-header {
   background: linear-gradient(135deg, rgb(248 250 252) 0%, rgb(241 245 249) 100%);
@@ -451,4 +450,4 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(16px);
 }
->>>>>>> Incoming (Background Agent changes)
+
