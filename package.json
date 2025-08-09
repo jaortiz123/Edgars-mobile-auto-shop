@@ -8,7 +8,7 @@
     "doc": "docs"
   },
   "scripts": {
-    "dev": "./start-dev.sh",
+    "dev": "./start-dev.sh --no-monitor",
     "dev:services": "docker-compose up -d db redis",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:frontend:free": "cd frontend && npm run dev:free",

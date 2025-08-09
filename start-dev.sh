@@ -4,6 +4,10 @@
 
 set -e
 
+# Always run from the repo root (the directory of this script)
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+cd "$SCRIPT_DIR"
+
 echo "🚀 Starting Edgar's Mobile Auto Shop Development Environment..."
 
 # Colors for output
@@ -12,6 +16,29 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Mode: interactive monitoring or not (default: monitor)
+MONITOR=true
+MONITOR_DURATION=""
+for arg in "$@"; do
+  case "$arg" in
+    --no-monitor|--non-interactive|--ci|--headless)
+      MONITOR=false
+      ;;
+    --monitor-duration=*)
+      MONITOR=true
+      MONITOR_DURATION="${arg#*=}"
+      ;;
+  esac
+done
+# Also honor environment variables
+if [ -n "${NO_MONITOR:-}" ] || [ -n "${CI:-}" ]; then
+  MONITOR=false
+fi
+# Allow MONITOR_TIMEOUT or MONITOR_DURATION env to control timeout
+if [ -z "$MONITOR_DURATION" ]; then
+  MONITOR_DURATION="${MONITOR_DURATION:-${MONITOR_TIMEOUT:-}}"
+fi
 
 # Function to check if a command exists
 command_exists() {
@@ -108,7 +135,11 @@ fi
 # Start backend with correct configuration
 echo -e "${BLUE}⚙️ Starting backend server...${NC}"
 cd backend
-FALLBACK_TO_MEMORY=true POSTGRES_HOST=localhost POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD} POSTGRES_DB=${POSTGRES_DB} python3 local_server.py &
+if [ "$MONITOR" = true ]; then
+  FALLBACK_TO_MEMORY=true POSTGRES_HOST=localhost POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD} POSTGRES_DB=${POSTGRES_DB} python3 local_server.py &
+else
+  nohup env FALLBACK_TO_MEMORY=true POSTGRES_HOST=localhost POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD} POSTGRES_DB=${POSTGRES_DB} python3 local_server.py >> server.log 2>&1 &
+fi
 BACKEND_PID=$!
 cd ..
 
@@ -131,7 +162,11 @@ fi
 # Start frontend
 echo -e "${BLUE}🎨 Starting frontend server...${NC}"
 cd frontend
-npm run dev &
+if [ "$MONITOR" = true ]; then
+  npm run dev &
+else
+  nohup npm run dev >> ../frontend.dev.log 2>&1 &
+fi
 FRONTEND_PID=$!
 cd ..
 
@@ -177,10 +212,26 @@ EOF
 
 chmod +x stop-dev.sh
 
-# Keep the script running to monitor services
-trap 'echo -e "\n${YELLOW}🛑 Shutting down services...${NC}"; kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; docker-compose stop db redis; exit 0' INT
+# If in non-interactive mode, skip monitoring and exit cleanly
+if [ "$MONITOR" != true ]; then
+  echo -e "${BLUE}ℹ️ Non-interactive mode: skipping monitoring. Use ./stop-dev.sh to stop services.${NC}"
+  echo -e "${BLUE}ℹ️ Backend logs: backend/server.log${NC}"
+  echo -e "${BLUE}ℹ️ Frontend logs: frontend.dev.log (repo root)${NC}"
+  exit 0
+fi
 
-echo -e "${BLUE}🔍 Monitoring services... Press Ctrl+C to stop all services${NC}"
+# Keep the script running to monitor services (with finite timeout)
+trap 'echo -e "\n${YELLOW}🔌 Detaching monitor. Services are still running.${NC}\n${YELLOW}Use ./stop-dev.sh to stop all services.${NC}"; exit 0' INT
+
+# Default monitor timeout to 20s if not provided
+MONITOR_TIMEOUT_SEC="${MONITOR_DURATION:-20}"
+# Validate it's a positive integer
+if ! [[ "$MONITOR_TIMEOUT_SEC" =~ ^[0-9]+$ ]]; then
+  MONITOR_TIMEOUT_SEC=20
+fi
+
+start_time=$(date +%s)
+echo -e "${BLUE}🔍 Monitoring services for up to ${MONITOR_TIMEOUT_SEC}s. Press Ctrl+C to detach sooner (services keep running).${NC}"
 while true; do
     if ! kill -0 $BACKEND_PID 2>/dev/null; then
         echo -e "${RED}❌ Backend process died${NC}"
@@ -189,6 +240,11 @@ while true; do
     if ! kill -0 $FRONTEND_PID 2>/dev/null; then
         echo -e "${RED}❌ Frontend process died${NC}"
         break
+    fi
+    now=$(date +%s)
+    if [ $((now - start_time)) -ge "$MONITOR_TIMEOUT_SEC" ]; then
+        echo -e "${YELLOW}⏱️ Monitor timeout reached (${MONITOR_TIMEOUT_SEC}s). Detaching. Services are still running.${NC}\n${YELLOW}Use ./stop-dev.sh to stop all services.${NC}"
+        exit 0
     fi
     sleep 5
 done

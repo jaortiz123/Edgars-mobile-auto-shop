@@ -45,12 +45,23 @@ export interface AdminAppointment {
  * @throws An error with a user-friendly message if the request fails.
  */
 export async function createAppointment(appointmentData: AppointmentPayload): Promise<unknown> {
-  const response = await fetch(`${API_BASE_URL}/api/appointments`, {
+  // Map to backend payload expected by Flask local_server (/api/admin/appointments)
+  // Backend currently accepts: status, start (ISO8601), total_amount, paid_amount
+  const backendPayload = {
+    status: 'SCHEDULED',
+    start: appointmentData.requested_time,
+    total_amount: 0,
+    paid_amount: 0,
+    // Pass-through extra metadata (ignored by backend today, future-proofing)
+    ...appointmentData,
+  };
+
+  const response = await fetch(`${API_BASE_URL}/api/admin/appointments`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(appointmentData),
+    body: JSON.stringify(backendPayload),
   });
 
   // --- Hardened Error Handling ---
