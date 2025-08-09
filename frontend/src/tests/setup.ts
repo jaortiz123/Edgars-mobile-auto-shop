@@ -40,6 +40,7 @@ if (typeof globalThis.localStorage !== 'object' || !globalThis.localStorage) {
 import { toHaveNoViolations } from 'jest-axe'
 import { cleanup } from '@testing-library/react'
 import { server } from '../test/server/mswServer'
+import { http, HttpResponse } from 'msw'
 import { createMocks } from '../test/mocks'
 // import failOnConsole from 'vitest-fail-on-console' // Disabled due to conflicts
 
@@ -381,6 +382,14 @@ if (!document.createRange) {
     toString: vi.fn(),
   });
 }
+
+// Fallback handlers for common endpoints used across many tests.
+// These return safe defaults and reduce noisy 'unmatched request' warnings.
+server.use(
+  http.get('http://localhost:3000/api/appointments', () => HttpResponse.json({ data: [], meta: {} })),
+  http.get('http://localhost:3001/api/appointments', () => HttpResponse.json({ data: [], meta: {} })),
+  http.get('http://localhost:3000/api/appointments/', () => HttpResponse.json({ data: [], meta: {} })),
+);
 
 // MSW cleanup after all tests
 afterAll(() => {
