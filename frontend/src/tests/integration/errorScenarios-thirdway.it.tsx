@@ -16,7 +16,7 @@
  * - No uncaught promise rejections
  */
 
-/* eslint-disable testing-library/no-unnecessary-act */
+ 
 
 import { describe, it, expect, beforeAll, afterAll, vi, beforeEach } from 'vitest';
 import { screen, waitFor, render } from '@testing-library/react';
