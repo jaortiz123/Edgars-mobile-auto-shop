@@ -58,6 +58,8 @@ export function AppointmentProvider({ children }: { children: React.ReactNode })
     setRefreshTrigger(prev => prev + 1);
   }, []);
 
+  // (moved below to avoid referencing callbacks before declaration)
+
   const refreshBoard = useCallback(async () => {
     console.log('🚀 AppointmentContext: Starting refreshBoard');
     setLoading(true);
@@ -145,7 +147,15 @@ export function AppointmentProvider({ children }: { children: React.ReactNode })
     // TEMP: Disabled polling to fix infinite request loop
     // const t = setInterval(() => void refreshStats(), 60000);
     // return () => clearInterval(t);
-  }, []); // Empty dependency array - run only on mount to prevent infinite loop
+  }, [refreshBoard, refreshStats]);
+
+  // Respond to explicit refresh triggers from UI (e.g., after quick actions)
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      void refreshBoard();
+      void refreshStats();
+    }
+  }, [refreshTrigger, refreshBoard, refreshStats]);
 
   const value = useMemo(
     () => ({ 
@@ -158,6 +168,7 @@ export function AppointmentProvider({ children }: { children: React.ReactNode })
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAppointments() {
   const v = useContext(Ctx);
   if (!v) throw new Error('useAppointments must be used within AppointmentProvider');
@@ -165,4 +176,5 @@ export function useAppointments() {
 }
 
 // Alias for compatibility with Dashboard imports
+// eslint-disable-next-line react-refresh/only-export-components
 export { useAppointments as useAppointmentContext };

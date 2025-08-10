@@ -115,11 +115,40 @@ export async function updateAppointmentStatus(
   id: string,
   status: AppointmentStatus
 ): Promise<{ id: string; status: AppointmentStatus }> {
-  const resp = await http.patch<{ id: string; status: AppointmentStatus }>(
-    `/admin/appointments/${id}/status`,
-    { status }
-  );
-  return resp.data;
+  // Fallback for legacy callers: map to specific quick action endpoints
+  if (status === 'IN_PROGRESS') {
+    const { data } = await http.post<{ data: { id: string; status: AppointmentStatus } }>(`/appointments/${id}/start`, {});
+    return data.data;
+  }
+  if (status === 'READY') {
+    const { data } = await http.post<{ data: { id: string; status: AppointmentStatus } }>(`/appointments/${id}/ready`, {});
+    return data.data;
+  }
+  if (status === 'COMPLETED') {
+    const { data } = await http.post<{ data: { id: string; status: AppointmentStatus } }>(`/appointments/${id}/complete`, {});
+    return data.data;
+  }
+  // Generic patch as last resort
+  const { data } = await http.patch<{ data: { id: string; status: AppointmentStatus } }>(`/appointments/${id}`, { status });
+  return data.data;
+}
+
+// Generic partial update for appointment fields (e.g., check_in_at without status change)
+export async function patchAppointment(
+  id: string,
+  update: Partial<{
+    status: AppointmentStatus;
+    start: string | null;
+    end: string | null;
+    total_amount: number | null;
+    paid_amount: number | null;
+    check_in_at: string | null;
+    check_out_at: string | null;
+    tech_id: string | null;
+  }>
+): Promise<{ id: string; updated_fields?: string[] }> {
+  const { data } = await http.patch<{ data: { id: string; updated_fields?: string[] } }>(`/appointments/${id}`, update);
+  return data.data;
 }
 
 export async function getStats(
@@ -138,8 +167,9 @@ export async function getCarsOnPremises(): Promise<CarOnPremises[]> {
 
 // Additional methods expected by Dashboard.tsx
 export async function getDrawer(id: string) {
-  const { data } = await http.get<DrawerPayload>(`/appointments/${id}`);
-  return data;
+  // Preserve /api prefix regardless of how axios joins baseURL and paths
+  const resp = await http.get<Envelope<DrawerPayload>>(`/appointments/${id}`);
+  return resp.data.data;
 }
 
 // Services CRUD methods
@@ -226,10 +256,11 @@ export async function deleteAppointmentService(
   );
   return resp.data;
 }
-export async function patchAppointment(id: string, body: Partial<Appointment>) {
-  const { data } = await http.patch<Appointment>(`/appointments/${id}`, body);
-  return data;
-}
+// Deprecated: use typed patchAppointment above
+// export async function patchAppointment(id: string, body: Partial<Appointment>) {
+//   const { data } = await http.patch<Appointment>(`/appointments/${id}`, body);
+//   return data;
+// }
 
 export async function updateAppointment(id: string, body: Partial<Appointment>) {
   const { data } = await http.patch<Appointment>(`/appointments/${id}`, body);
@@ -363,7 +394,16 @@ export async function login(username: string, password: string): Promise<{ token
 }
 
 export async function deleteAppointment(id: string): Promise<void> {
-  await http.delete(`/admin/appointments/${id}`);
+  // Ensure we always hit the correct API prefix regardless of how axios joins baseURL
+  const base = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
+  const url = `${base}/admin/appointments/${id}`;
+  await http.delete(url);
+}
+
+// Reschedule: update the start time of an appointment
+export async function rescheduleAppointment(id: string, startISO: string): Promise<void> {
+  // Backend accepts PATCH /api/appointments/:id with { start }
+  await http.patch(`/appointments/${id}`, { start: startISO });
 }
 
 // Expose the axios instance for advanced callers

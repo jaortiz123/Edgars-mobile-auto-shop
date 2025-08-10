@@ -61,7 +61,7 @@ wait_for_service() {
     while [ $attempt -le $max_attempts ]; do
         if [ "$service" = "PostgreSQL" ]; then
             # Special check for PostgreSQL using docker exec
-            if docker-compose exec -T db pg_isready -U user -d autoshop >/dev/null 2>&1; then
+            if docker-compose exec -T db pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; then
                 echo -e "${GREEN}✅ $service is ready!${NC}"
                 return 0
             fi
@@ -105,6 +105,11 @@ fi
 
 echo -e "${GREEN}✅ All prerequisites are available${NC}"
 
+# Provide default Postgres credentials if not supplied by user env
+export POSTGRES_USER="${POSTGRES_USER:-user}"
+export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-password}"
+export POSTGRES_DB="${POSTGRES_DB:-autoshop}"
+
 # Start Docker if not running
 echo -e "${BLUE}🐳 Checking Docker...${NC}"
 if ! docker info >/dev/null 2>&1; then
@@ -136,9 +141,9 @@ fi
 echo -e "${BLUE}⚙️ Starting backend server...${NC}"
 cd backend
 if [ "$MONITOR" = true ]; then
-  FALLBACK_TO_MEMORY=true POSTGRES_HOST=localhost POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD} POSTGRES_DB=${POSTGRES_DB} python3 local_server.py &
+  HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true POSTGRES_HOST=localhost POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD} POSTGRES_DB=${POSTGRES_DB} python3 local_server.py &
 else
-  nohup env FALLBACK_TO_MEMORY=true POSTGRES_HOST=localhost POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD} POSTGRES_DB=${POSTGRES_DB} python3 local_server.py >> server.log 2>&1 &
+  nohup env HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true POSTGRES_HOST=localhost POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD} POSTGRES_DB=${POSTGRES_DB} python3 local_server.py >> server.log 2>&1 &
 fi
 BACKEND_PID=$!
 cd ..

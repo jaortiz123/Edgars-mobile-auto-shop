@@ -3,10 +3,8 @@
 // --- Environment Variable Guard Clause ---
 // Ensures the application fails fast with a clear error during development
 // if the API endpoint URL is not configured.
-const API_BASE_URL = import.meta.env.VITE_API_ENDPOINT_URL;
-if (!API_BASE_URL) {
-  throw new Error("CRITICAL ERROR: VITE_API_ENDPOINT_URL is not defined in the environment. Please check your .env.local file.");
-}
+// Prefer explicit endpoint when provided; otherwise rely on Vite dev proxy by using relative '/api'
+const API_BASE_URL: string = import.meta.env.VITE_API_ENDPOINT_URL || '';
 
 // --- Reusable Type Definition ---
 // Defines the shape of the data payload for creating an appointment.
@@ -21,6 +19,11 @@ export interface AppointmentPayload {
   notes?: string;
   sms_consent?: boolean;
   sms_consent_ip?: string;
+  // Vehicle linkage (optional)
+  license_plate?: string;
+  vehicle_year?: string;
+  vehicle_make?: string;
+  vehicle_model?: string;
 }
 
 // Define a minimal type for admin appointment (expand as needed)
@@ -28,14 +31,17 @@ export interface AdminAppointment {
   id: string;
   customer_id: string;
   service_id: string;
-  scheduled_at?: string;
-  scheduled_time?: string;
+  // Backend returns ISO timestamps as start_ts/end_ts
+  start_ts?: string;
+  end_ts?: string;
   location_address: string;
   status: string;
   notes?: string;
   customer_name?: string;
   customer_email?: string;
   customer_phone?: string;
+  // Convenience label composed in backend
+  vehicle_label?: string;
 }
 
 /**

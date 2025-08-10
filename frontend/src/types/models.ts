@@ -62,6 +62,8 @@ export interface BoardCard {
   position: number;
   start?: string | null; // ISO timestamp for countdown calculations
   end?: string | null;   // ISO timestamp
+  checkInAt?: string | null; // ISO - when car arrived on premises
+  checkOutAt?: string | null; // ISO - when car left premises
   // NEW: Time-aware fields
   scheduledTime?: string; // "10:30 AM"
   appointmentDate?: string; // ISO date
@@ -89,6 +91,8 @@ export interface BoardCard {
   appointmentSource?: 'phone' | 'walk-in' | 'online' | 'repeat' | string;
   isRepeatCustomer?: boolean;
   priorityReason?: string | null;
+  // optional future: when customer expects pickup (promise time)
+  promiseBy?: string | null;
 }
 
 export interface ServiceHistoryItem {

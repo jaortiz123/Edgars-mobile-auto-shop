@@ -38,17 +38,17 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asLink, to, ...props }, ref) => {
+  ({ className, variant, size, asLink, to, children, ...props }, ref) => {
     const classNames = buttonVariants({ variant, size, className });
 
     if (asLink && to) {
       return (
-        <Link to={to} className={classNames} />
+        <Link to={to} className={classNames}>{children}</Link>
       );
     }
 
     return (
-      <button className={classNames} ref={ref} {...props} />
+      <button className={classNames} ref={ref} {...props}>{children}</button>
     );
   }
 );

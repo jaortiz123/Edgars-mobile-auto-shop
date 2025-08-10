@@ -25,6 +25,7 @@ const About = lazy(() => import('./pages/About'));
 const ServiceAreas = lazy(() => import('./pages/ServiceAreas'));
 const EmergencyService = lazy(() => import('./pages/EmergencyService'));
 const AdminAppointments = lazy(() => import('./pages/AdminAppointments'));
+const CustomersPage = lazy(() => import('./pages/admin/CustomersPage'));
 
 // --- React Query Client ---
 const queryClient = new QueryClient();
@@ -76,6 +77,7 @@ export default function App({ queryClient: injectedClient }: AppProps = {}) {
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="appointments" element={<AdminAppointments />} />
+              <Route path="customers" element={<CustomersPage />} />
               {/* Future admin routes can be added here, e.g., <Route path="users" element={<Users />} /> */}
             </Route>
 

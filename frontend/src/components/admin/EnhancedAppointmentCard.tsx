@@ -6,6 +6,7 @@ import VehicleDisplay from './VehicleDisplay';
 import ServiceComplexityIndicator from './ServiceComplexityIndicator';
 import PartsIndicator from './PartsIndicator';
 import { formatDate } from '@/utils/dateUtils';
+import { formatInShopTZ } from '@/lib/timezone';
 import ContextualQuickActions from './ContextualQuickActions';
 
 const formatRelativeDate = (iso?: string | null) => {
@@ -44,6 +45,28 @@ const TimeDisplay = ({ card }: { card: BoardCard }) => {
   return null;
 };
 
+const OnPremiseChip = ({ card }: { card: BoardCard }) => {
+  if (!card.checkInAt || card.checkOutAt) return null;
+  const checkIn = new Date(card.checkInAt);
+  const now = new Date();
+  const daysOnLot = Math.max(0, Math.floor((now.getTime() - checkIn.getTime()) / (24 * 60 * 60 * 1000)));
+  const label = daysOnLot >= 1 ? `${daysOnLot}d on lot` : 'On premises';
+  return (
+    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-steel-100 text-steel-800 border border-steel-200">
+      🚗 {label}
+    </span>
+  );
+};
+
+const PromiseChip = ({ when }: { when?: string | null }) => {
+  if (!when) return null;
+  return (
+    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-200">
+      ⏰ Promise: {formatInShopTZ(when, 'time')}
+    </span>
+  );
+};
+
 export const EnhancedAppointmentCard = ({ card, onOpen }: { card: BoardCard; onOpen?: (id: string) => void }) => {
   const [showDetails, setShowDetails] = useState(false);
   const priceText = useMemo(() => card.price != null ? `$${card.price.toFixed(2)}` : undefined, [card.price]);
@@ -70,7 +93,7 @@ export const EnhancedAppointmentCard = ({ card, onOpen }: { card: BoardCard; onO
             )}
           </div>
         </div>
-        <div className="flex items-center space-x-2">
+  <div className="flex items-center space-x-2">
           <ServiceComplexityIndicator complexity={card.complexity} />
           {card.partsRequired && card.partsRequired.length > 0 && (
             <PartsIndicator parts={card.partsRequired} />
@@ -94,15 +117,15 @@ export const EnhancedAppointmentCard = ({ card, onOpen }: { card: BoardCard; onO
         <VehicleDisplay year={card.vehicleYear || undefined} make={card.vehicleMake || undefined} model={card.vehicleModel || undefined} mileage={card.mileage || undefined} vehicle={card.vehicle} />
         <div className="flex items-center justify-between text-sm">
           <span className="text-neutral-600">{card.customerName}</span>
-          {card.estimatedDuration && (
-            <span className="text-steel-600 font-medium">
-              ~{Math.round(card.estimatedDuration / 60)}h {card.estimatedDuration % 60}m{priceText ? ` • ${priceText}` : ''}
-            </span>
+          {priceText && (
+            <span className="text-steel-600 font-medium">{priceText}</span>
           )}
         </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
+        <OnPremiseChip card={card} />
+        <PromiseChip when={card.promiseBy} />
         {card.isRepeatCustomer && (
           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
             🔄 Repeat Customer
