@@ -398,20 +398,27 @@ import { formatInShopTZ } from '@/lib/timezone';
 function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime?: () => void }) {
   if (!data) return <div>Loading…</div>;
   const a = data.appointment;
+  const svcNames = (data.services || []).map(s => s.name).filter(Boolean);
+  const servicesSummary = svcNames.length ? (svcNames.length > 3 ? `${svcNames.slice(0,3).join(', ')} +${svcNames.length-3} more` : svcNames.join(', ')) : '—';
+  const totalFromServices = (data.services || []).reduce((sum, s) => sum + (s.estimated_price || 0), 0);
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <Info label="Status" value={a.status} />
-        <Info label="Total" value={a.total_amount != null ? `$${a.total_amount.toFixed(2)}` : '—'} />
+        <Info label="Start" value={formatInShopTZ(a.start, 'datetime')} />
+        <Info label="Total" value={(a.total_amount != null ? a.total_amount : totalFromServices) ? `$${((a.total_amount ?? totalFromServices) || 0).toFixed(2)}` : '—'} />
         <Info label="Paid" value={a.paid_amount != null ? `$${a.paid_amount.toFixed(2)}` : '—'} />
         <Info label="Check-in" value={a.check_in_at ?? '—'} />
+        <Info label="Check-out" value={a.check_out_at ?? '—'} />
       </div>
+
       <div className="grid grid-cols-2 gap-3">
         <Info label="Customer" value={data.customer?.name ?? '—'} />
+        <Info label="Phone" value={data.customer?.phone || '—'} />
+        <Info label="Email" value={data.customer?.email || '—'} />
         <Info label="Vehicle" value={`${data.vehicle?.year ?? ''} ${data.vehicle?.make ?? ''} ${data.vehicle?.model ?? ''}`.trim() || '—'} />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
+        <Info label="Plate" value={data.vehicle?.vin || '—'} />
+        <div className="col-span-2 flex items-center gap-2">
           <div className="text-sm text-gray-500">Start</div>
           <div className="flex items-center gap-2">
             <span>{formatInShopTZ(a.start, 'datetime')}</span>
@@ -421,6 +428,17 @@ function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime
           </div>
         </div>
       </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Info label="Address" value={a.location_address || '—'} />
+        <Info label="Services" value={servicesSummary} />
+      </div>
+      {a.notes && (
+        <div className="mt-2">
+          <div className="text-sm text-gray-500">Notes</div>
+          <div className="whitespace-pre-line">{a.notes}</div>
+        </div>
+      )}
     </div>
   );
 }

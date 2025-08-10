@@ -13,6 +13,8 @@ export interface Appointment {
   end?: string | null;   // ISO
   total_amount?: number | null;
   paid_amount?: number | null;
+  notes?: string | null;
+  location_address?: string | null;
   check_in_at?: string | null;
   check_out_at?: string | null;
   tech_id?: string | null;
@@ -31,6 +33,7 @@ export interface Vehicle {
   make?: string | null;
   model?: string | null;
   vin?: string | null;
+  // Backend uses license_plate but maps to vin in drawer; keep vin for compatibility
 }
 
 export interface AppointmentService {
