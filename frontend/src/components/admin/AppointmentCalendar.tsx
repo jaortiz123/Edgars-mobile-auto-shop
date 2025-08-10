@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { format, startOfWeek, addDays, isSameDay, addWeeks, addMonths, startOfMonth, endOfMonth, eachDayOfInterval, isToday, isSameMonth } from 'date-fns';
 import { parseDurationToMinutes } from '../../lib/utils';
 import { Button } from '../ui/Button';
@@ -26,6 +26,8 @@ interface AppointmentCalendarProps {
   onStartJob?: (appointmentId: string) => void;
   onCompleteJob?: (appointmentId: string) => void;
   onCallCustomer?: (phone: string) => void;
+  // Optional: set the starting date the calendar should focus on (e.g., next appt)
+  initialDate?: Date;
 }
 
 export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({ 
@@ -34,10 +36,18 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   onAddAppointment,
   onStartJob,
   onCompleteJob,
-  onCallCustomer
+  onCallCustomer,
+  initialDate
 }) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(initialDate ?? new Date());
   const [view, setView] = useState<'day' | 'week' | 'month'>('day');
+  // Keep calendar focused on provided initialDate when it changes (e.g., next appt)
+  useEffect(() => {
+    if (initialDate) {
+      setCurrentDate(initialDate);
+    }
+    // When initialDate is undefined, do not force-change currentDate
+  }, [initialDate]);
   
   // Generate days for week view
   const startOfTheWeek = startOfWeek(currentDate);

@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Cross-Browser Smoke Tests (Frontend Only)', () => {
   test('homepage loads across browsers', async ({ page }) => {
     await page.goto('http://localhost:5173');
-    await expect(page.getByRole('heading', { name: /reliable mobile auto repair/i })).toBeVisible();
+  await expect(page.getByRole('link', { name: /book mobile service now/i })).toBeVisible();
   });
 
   test('admin interface renders basic UI elements', async ({ page }) => {
@@ -11,9 +11,9 @@ test.describe('Cross-Browser Smoke Tests (Frontend Only)', () => {
     await page.goto('http://localhost:5173/admin/login');
     
     // Check that the login form is present
-    await expect(page.locator('input[name="username"]')).toBeVisible();
-    await expect(page.locator('input[name="password"]')).toBeVisible();
-    await expect(page.locator('button[type="submit"]')).toBeVisible();
+  await expect(page.getByPlaceholder('Username')).toBeVisible();
+  await expect(page.getByPlaceholder('Password')).toBeVisible();
+  await expect(page.getByRole('button', { name: /login/i })).toBeVisible();
   });
 
   test('public pages navigation works', async ({ page }) => {

@@ -5,10 +5,8 @@ import AppointmentDrawer from '@/components/admin/AppointmentDrawer';
 import { AppointmentFormModal } from '@/components/admin/AppointmentFormModal';
 import QuickAddModal from '@/components/QuickAddModal/QuickAddModal';
 // import DailyFocusHero from '@/components/admin/DailyFocusHero';
-// Removed PersonalizedHeader (duplicate hero) per design simplification
 // import PersonalizedHeader from '@/components/admin/PersonalizedHeader';
 import ScheduleFilterToggle from '@/components/admin/ScheduleFilterToggle';
-import NotificationCenter from '@/components/admin/NotificationCenter';
 import type { AppointmentFormData } from '@/components/admin/AppointmentFormModal';
 import { useAppointments } from '@/contexts/AppointmentContext';
 import { getViewMode, setViewMode, ViewMode } from '@lib/prefs';
@@ -16,25 +14,15 @@ import StatusBoard from '@/components/admin/StatusBoard';
 import FloatingActionButton from '@/components/ui/FloatingActionButton';
 import { scheduleReminder } from '@/services/notificationService';
 import '@/styles/appointment-reminders.css';
-import { 
-  Calendar,
-  CheckCircle,
-  Phone,
-  Wrench,
-  Car,
-  // RefreshCw, // removed with refresh button
-  PlusCircle
-} from 'lucide-react';
-import { 
-  handleApiError, 
-  isOnline, 
-  updateAppointmentStatus
-} from '@lib/api';
+import { Calendar, CheckCircle, Phone, Wrench, Car, PlusCircle } from 'lucide-react';
+import { handleApiError, isOnline, updateAppointmentStatus } from '@lib/api';
 import { createAppointment, getAdminAppointments } from '@/services/apiService';
 import { parseDurationToMinutes } from '@lib/utils';
 import { format } from 'date-fns';
+import { formatInShopTZ } from '@/lib/timezone';
 import { saveLastQuickAdd } from '@lib/quickAddUtils';
 import IntelligentWorkflowPanel from '@/components/admin/IntelligentWorkflowPanel';
+import DashboardHeader from '@/components/admin/DashboardHeader';
 
 // Utility function to convert 12-hour format to 24-hour format
 const convertTo24Hour = (time12h: string): string => {
@@ -117,12 +105,17 @@ interface ApiAppointmentResponse {
   service_id?: string;
   service?: string;
   vehicle_id?: string;
+  // Prefer new fields returned by backend list endpoint
+  start_ts?: string;
+  end_ts?: string;
+  // Legacy fallbacks kept for compatibility
   scheduled_at?: string;
   scheduled_date?: string;
   scheduled_time?: string;
   location_address?: string;
   status?: string;
   notes?: string;
+  vehicle_label?: string;
 }
 
 export function Dashboard() {
@@ -141,6 +134,21 @@ export function Dashboard() {
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const openDrawer = (id: string) => setDrawerId(id);
   const closeDrawer = () => setDrawerId(null);
+  const handleDeletedFromDrawer = (deletedId: string) => {
+    // Remove from local state so it disappears from the schedule immediately
+    setAppointments(prev => prev.filter(a => a.id !== deletedId));
+    // Soft refresh to ensure any derived state (next appt, slots) updates
+    loadDashboardData({ soft: true });
+  };
+
+  const handleRescheduledFromDrawer = (apptId: string, startISO: string) => {
+    // Update local list so it moves to the new time immediately
+  const dt = new Date(startISO);
+  setAppointments(prev => prev.map(a => a.id === apptId ? { ...a, dateTime: dt, timeSlot: formatInShopTZ(dt, 'time') } : a));
+  // Soft refresh the calendar data and trigger board refresh in background
+  loadDashboardData({ soft: true });
+  triggerRefresh();
+  };
   const [showScheduleDropdown, setShowScheduleDropdown] = useState(false);
   const [showAssistant, setShowAssistant] = useState(false);
   const loadingRef = useRef(false);
@@ -151,7 +159,7 @@ export function Dashboard() {
     setRefreshingRef.current = setRefreshing;
   }, [setRefreshing]);
 
-  const loadDashboardData = useCallback(async () => {
+  const loadDashboardData = useCallback(async (options?: { soft?: boolean }) => {
     // Prevent rapid successive calls
     if (loadingRef.current) {
       console.log("🚫 Already loading, skipping duplicate call");
@@ -161,29 +169,33 @@ export function Dashboard() {
     console.log("🚀 Starting loadDashboardData");
     
     // Safety timer to prevent infinite loading
-    const safetyTimer = setTimeout(() => {
+  const safetyTimer = setTimeout(() => {
       console.log("⚠️ Safety timeout triggered after 10s - forcing loading to false");
       loadingRef.current = false;
       setLoading(false);
       setRefreshingRef.current(false);
     }, 10000);
     
-     loadingRef.current = true;
-     setLoading(true);
-     setRefreshingRef.current(true);
+   const isSoft = !!options?.soft;
+   const prevScrollY = window.scrollY;
+   loadingRef.current = true;
+   if (!isSoft) setLoading(true);
+   setRefreshingRef.current(true);
      let fetchedApts: UIAppointment[] = [];
      try {
       console.log("📡 Making API calls to backend...");
        const aptRes = await getAdminAppointments();
       console.log("✅ API calls completed", { aptRes });
       
-       if (aptRes && aptRes.appointments && Array.isArray(aptRes.appointments)) {
+  if (aptRes && aptRes.appointments && Array.isArray(aptRes.appointments)) {
         console.log("📋 Processing appointments data", aptRes);
          fetchedApts = aptRes.appointments.map((apt: ApiAppointmentResponse) => {
            // Safe date parsing with fallbacks
            let dateTime;
            try {
-             if (apt.scheduled_at) {
+             if (apt.start_ts) {
+               dateTime = new Date(apt.start_ts);
+             } else if (apt.scheduled_at) {
                dateTime = new Date(apt.scheduled_at);
              } else if (apt.scheduled_date && apt.scheduled_time) {
                dateTime = new Date(`${apt.scheduled_date}T${apt.scheduled_time}`);
@@ -206,11 +218,18 @@ export function Dashboard() {
            return {
              id: apt.id.toString(),
              customer: apt.customer_name || 'Unknown Customer',
-             vehicle: `Vehicle ${apt.vehicle_id || 'N/A'}`,
+             vehicle: apt.vehicle_label || `Vehicle ${apt.vehicle_id || 'N/A'}`,
              service: `Service ${apt.service_id || 'N/A'}`,
-             timeSlot: apt.scheduled_time || '12:00 PM',
+             timeSlot: (apt.start_ts ? formatInShopTZ(apt.start_ts, 'time') : apt.scheduled_time) || '12:00 PM',
              dateTime,
-             status: (apt.status === 'completed' || apt.status === 'in-progress' || apt.status === 'canceled') ? apt.status as 'completed' | 'in-progress' | 'canceled' : 'scheduled',
+             // Normalize to dashboard’s local statuses while aligning with backend/Board enums
+             status: ((): UIAppointment['status'] => {
+               const s = (apt.status || '').toUpperCase();
+               if (s === 'IN_PROGRESS') return 'in-progress';
+               if (s === 'COMPLETED') return 'completed';
+               if (s === 'CANCELED' || s === 'CANCELLED') return 'canceled';
+               return 'scheduled';
+             })(),
              phone: apt.customer_phone || '(555) 000-0000',
              address: apt.location_address || 'Address not provided',
              estimatedDuration: '1 hour', // Default value since backend doesn't provide this
@@ -221,7 +240,7 @@ export function Dashboard() {
      } catch (err) {
       console.error('❌ Dashboard API error', err);
       // Still proceed to show empty dashboard instead of hanging
-     } finally {
+  } finally {
       clearTimeout(safetyTimer);
       console.log("🔄 Setting appointments");
        setAppointments(fetchedApts);
@@ -254,8 +273,12 @@ export function Dashboard() {
       } finally {
         console.log("✅ Setting loading and refreshing to false");
          loadingRef.current = false;
-         setLoading(false);
+         if (!isSoft) setLoading(false);
          setRefreshingRef.current(false);
+         // Restore scroll position on soft refresh to prevent jump-to-top
+         if (isSoft) {
+           requestAnimationFrame(() => window.scrollTo(0, prevScrollY));
+         }
        }
      }
   }, []); // Stable function - no dependencies needed
@@ -270,7 +293,8 @@ export function Dashboard() {
   useEffect(() => {
     if (refreshTrigger > 0) {
       console.log("🔄 Refresh trigger activated:", refreshTrigger);
-      loadDashboardData();
+      // Soft refresh to avoid page jump/spinner
+      loadDashboardData({ soft: true });
     }
   }, [refreshTrigger, loadDashboardData]);
 
@@ -295,22 +319,9 @@ export function Dashboard() {
     });
   }, [appointments]);
 
-  // Computed filtered appointments
-  const filteredAppointments = React.useMemo(() => {
-    const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-    
-    switch (filter) {
-      case 'today':
-        return appointments.filter(apt => 
-          apt.dateTime >= startOfDay && apt.dateTime <= endOfDay
-        );
-      case 'all':
-      default:
-        return appointments;
-    }
-  }, [appointments, filter]);
+  // Note: We intentionally pass the full appointments list to AppointmentCalendar so
+  // it can render items for whichever day/week the user navigates to. The dashboard
+  // filter remains available for future list views but is not applied to the calendar.
 
   const handleFilterChange = (newFilter: 'all' | 'today') => {
     setFilter(newFilter);
@@ -359,7 +370,12 @@ export function Dashboard() {
         customer_phone: formData.customerPhone || '',
         customer_email: formData.customerEmail || '',
         location_address: formData.serviceAddress || '',
-        notes: `Vehicle: ${formData.vehicleYear} ${formData.vehicleMake} ${formData.vehicleModel}. ${formData.notes || ''}`.trim(),
+  notes: `Vehicle: ${formData.vehicleYear} ${formData.vehicleMake} ${formData.vehicleModel}. ${formData.notes || ''}`.trim(),
+  // Vehicle linkage (license plate is the source of truth)
+  license_plate: (formData.licensePlate || '').toUpperCase().trim() || undefined,
+  vehicle_year: formData.vehicleYear || undefined,
+  vehicle_make: formData.vehicleMake || undefined,
+  vehicle_model: formData.vehicleModel || undefined,
       };
 
       console.log('📤 Sending appointment data:', appointmentData);
@@ -432,8 +448,8 @@ export function Dashboard() {
       // setSelectedAppointment(null);
       
       // Try to update backend if online
-      if (isOnline()) {
-        const response = await updateAppointmentStatus(appointmentId, 'IN_PROGRESS');
+    if (isOnline()) {
+  const response = await updateAppointmentStatus(appointmentId, 'IN_PROGRESS');
         if (!handleApiError(response, 'Failed to start job')) {
           // Revert on failure
           setAppointments(prev => prev.map((apt: UIAppointment) => 
@@ -441,7 +457,9 @@ export function Dashboard() {
               ? { ...apt, status: 'scheduled' as const }
               : apt
           ));
-        }
+  }
+  // Soft refresh to sync with backend without page jump
+  loadDashboardData({ soft: true });
       }
       
       console.log(`Starting job for appointment ${appointmentId}`);
@@ -475,8 +493,8 @@ export function Dashboard() {
       // setSelectedAppointment(null);
       
       // Try to update backend if online
-      if (isOnline()) {
-        const response = await updateAppointmentStatus(appointmentId, 'COMPLETED');
+    if (isOnline()) {
+  const response = await updateAppointmentStatus(appointmentId, 'COMPLETED');
         if (!handleApiError(response, 'Failed to complete job')) {
           // Revert on failure
           setAppointments(prev => prev.map((apt: UIAppointment) => 
@@ -484,7 +502,9 @@ export function Dashboard() {
               ? { ...apt, status: 'in-progress' as const }
               : apt
           ));
-        }
+  }
+  // Soft refresh to sync with backend without page jump
+  loadDashboardData({ soft: true });
       }
       
       console.log(`Completing job for appointment ${appointmentId}`);
@@ -538,60 +558,13 @@ export function Dashboard() {
       <FloatingActionButton onClick={handleAddAppointment} />
       <div className="space-y-sp-3 p-sp-3 sm:p-sp-4">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-sp-3">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 tracking-tight">Edgar's Shop Dashboard</h1>
-            <p className="text-lg font-medium text-gray-600 mt-1">{getTimeGreeting()}, Edgar • {format(new Date(), 'EEEE, MMMM do')}</p>
-          </div>
-          <div className="flex items-center gap-sp-3">
-            {/* Keep only bell and clock */}
-            <NotificationCenter />
-            <span className="text-2xl font-semibold text-gray-700">{format(new Date(), 'h:mm a')}</span>
-            {/* Primary view toggles */}
-            <div className="flex items-center gap-sp-2">
-              <button 
-                data-testid="toggle-calendar" 
-                onClick={() => { setView('calendar'); setViewMode('calendar'); }}
-                onKeyDown={(e) => { 
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setView('calendar');
-                    setViewMode('calendar');
-                  }
-                }}
-                aria-label="Switch to calendar view"
-                className={
-                  `px-4 py-2 rounded-lg shadow font-semibold transition-colors ` +
-                  (view === 'calendar' 
-                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                    : 'bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-50')
-                }
-              >
-                Calendar
-              </button>
-              <button 
-                data-testid="toggle-board" 
-                onClick={() => { setView('board'); setViewMode('board'); }}
-                onKeyDown={(e) => { 
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setView('board');
-                    setViewMode('board');
-                  }
-                }}
-                aria-label="Switch to board view"
-                className={
-                  `px-4 py-2 rounded-lg shadow font-semibold transition-colors ` +
-                  (view === 'board' 
-                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                    : 'bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-50')
-                }
-              >
-                Board
-              </button>
-            </div>
-          </div>
-        </div>
+        <DashboardHeader
+          greeting={getTimeGreeting()}
+          dateText={format(new Date(), 'EEEE, MMMM do')}
+          timeText={format(new Date(), 'h:mm a')}
+          view={view}
+          onSelectView={(next) => { setView(next); setViewMode(next); }}
+        />
 
         {/* Toggle for assistant when in board view to reduce clutter */}
         {view === 'board' && (
@@ -619,7 +592,12 @@ export function Dashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-sp-3 mt-sp-3">
               <div className="lg:col-span-3">
                 <AppointmentCalendar
-                  appointments={filteredAppointments}
+                  // Pass full dataset so Day/Week/Month views can determine
+                  // which appointments to show for their own date range.
+                  // Using the filtered list here hid future/week items when the
+                  // dashboard filter was set to "Today".
+                  appointments={appointments}
+                  initialDate={nextAppointment?.dateTime}
                   onAppointmentClick={(apt) => openDrawer(apt.id)}
                   onAddAppointment={handleAddAppointment}
                   onStartJob={handleStartJob}
@@ -783,7 +761,7 @@ export function Dashboard() {
        />
 
       {/* Appointment Details Drawer */}
-      <AppointmentDrawer open={!!drawerId} id={drawerId} onClose={closeDrawer} />
+  <AppointmentDrawer open={!!drawerId} id={drawerId} onClose={closeDrawer} onDeleted={handleDeletedFromDrawer} onRescheduled={handleRescheduledFromDrawer} />
     </>
   ); // close return of Dashboard
 } // close Dashboard function

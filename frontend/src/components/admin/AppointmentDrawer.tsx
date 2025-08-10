@@ -8,7 +8,7 @@ import { useAppointments } from '@/contexts/AppointmentContext';
 import { useToast } from '@/components/ui/Toast';
 
 // Wrap the main component in React.memo to prevent unnecessary re-renders
-const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; onClose: () => void; id: string | null }) => {
+const AppointmentDrawer = React.memo(({ open, onClose, id, onDeleted, onRescheduled }: { open: boolean; onClose: () => void; id: string | null; onDeleted?: (id: string) => void; onRescheduled?: (id: string, startISO: string) => void }) => {
   const [tab, setTab] = useState('overview');
   const [data, setData] = useState<DrawerPayload | null>(null);
   const [isAddingService, setIsAddingService] = useState(false);
@@ -19,6 +19,10 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
   const { refreshBoard } = useAppointments();
   const toast = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
+  const deletedIdRef = useRef<string | null>(null);
+  const [showReschedule, setShowReschedule] = useState(false);
+  const [reschedAt, setReschedAt] = useState<string>('');
+  const [savingReschedule, setSavingReschedule] = useState(false);
 
   // Memoize the setIsAddingService function to prevent unnecessary re-renders
   const memoizedSetIsAddingService = useCallback((value: boolean) => {
@@ -36,6 +40,11 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
     try {
       await api.deleteAppointment(id);
       toast.success('Appointment deleted', { key: `appt-del-${id}` });
+      deletedIdRef.current = id;
+      // Inform parent so Calendar/Dashboard can update immediately
+      if (onDeleted) {
+        try { onDeleted(id); } catch { /* ignored */ }
+      }
       onClose();
       await refreshBoard();
     } catch (e) {
@@ -43,7 +52,7 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
     } finally {
       setIsDeleting(false);
     }
-  }, [id, onClose, refreshBoard, toast]);
+  }, [id, onClose, refreshBoard, toast, onDeleted]);
 
   useEffect(() => {
     // Only fetch data if drawer is open, we have an ID, and we haven't already loaded this ID
@@ -96,9 +105,23 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
             if (cancelled) return;
             clearTimeout(timeoutId);
             setData(payload);
+            // Seed reschedule input with current start when data loads
+            try {
+              const iso = payload?.appointment?.start || null;
+              if (iso) {
+                const d = new Date(iso);
+                const pad = (n: number) => String(n).padStart(2, '0');
+                const v = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                setReschedAt(v);
+              }
+            } catch { /* ignore seed errors */ }
+            // Ensure any transient timeout error banner is cleared on successful load
+            setError(null);
           }).catch((err: unknown) => {
             console.error('🔍 DEBUG: Error resolving getDrawer Promise:', err);
             if (cancelled) return;
+            // If we just deleted this appointment, suppress noisy error UI
+            if (deletedIdRef.current && deletedIdRef.current === id) return;
             clearTimeout(timeoutId);
             setError('Failed to load appointment');
             // Fallback minimal payload so Overview can render something instead of staying on Loading…
@@ -155,7 +178,11 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
       } catch (err) {
         console.error('🔍 DEBUG: Error calling api.getDrawer:', err);
         clearTimeout(timeoutId);
-        if (!cancelled) setError('Failed to load appointment');
+        if (!cancelled) {
+          if (!(deletedIdRef.current && deletedIdRef.current === id)) {
+            setError('Failed to load appointment');
+          }
+        }
       }
 
       return () => { cancelled = true; clearTimeout(timeoutId); };
@@ -165,6 +192,7 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
     if (!open) {
       loadedDataIdRef.current = null;
       setIsAddingService(false); // Reset form state when drawer closes
+      deletedIdRef.current = null;
     }
   }, [open, id]);
 
@@ -234,6 +262,14 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
           <h2 id="drawer-title" className="text-lg font-semibold">Appointment</h2>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setShowReschedule(true)}
+              disabled={!id}
+              className="px-2 py-1 text-blue-600 hover:text-blue-700 disabled:opacity-50"
+              title="Reschedule appointment"
+            >
+              Reschedule
+            </button>
+            <button
               onClick={handleDelete}
               disabled={isDeleting || !id}
               className="px-2 py-1 text-red-600 hover:text-red-700 disabled:opacity-50"
@@ -267,7 +303,7 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
           ]}
         />
         <div className="p-4 overflow-auto flex-1">
-          {tab === 'overview' && <Overview data={data} />}
+          {tab === 'overview' && <Overview data={data} onEditTime={() => setShowReschedule(true)} />}
           {tab === 'services' && <Services data={data} isAddingService={isAddingService} setIsAddingService={memoizedSetIsAddingService} />}
           {tab === 'messages' && id && <MessageThread appointmentId={id} drawerOpen={open} />}
           {tab === 'history' && data?.customer?.id && (
@@ -294,13 +330,72 @@ const AppointmentDrawer = React.memo(({ open, onClose, id }: { open: boolean; on
           )}
         </div>
       </div>
+      {/* Reschedule Modal */}
+      {showReschedule && (
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-black/40">
+          <div className="bg-white rounded-xl p-4 w-[420px] shadow-xl">
+            <h3 className="text-lg font-semibold mb-3">Reschedule appointment</h3>
+            <label className="block text-sm text-gray-600 mb-1">New date & time</label>
+            <input
+              type="datetime-local"
+              value={reschedAt}
+              onChange={(e) => setReschedAt(e.target.value)}
+              className="w-full border rounded px-3 py-2"
+              aria-label="New date and time"
+              placeholder="Select date and time"
+            />
+            <div className="mt-4 flex justify-between items-center">
+              <button
+                type="button"
+                onClick={() => {
+                  const now = new Date();
+                  const prev = reschedAt ? new Date(reschedAt) : now;
+                  prev.setFullYear(now.getFullYear(), now.getMonth(), now.getDate());
+                  const pad = (n:number)=>String(n).padStart(2,'0');
+                  setReschedAt(`${prev.getFullYear()}-${pad(prev.getMonth()+1)}-${pad(prev.getDate())}T${pad(prev.getHours())}:${pad(prev.getMinutes())}`);
+                }}
+                className="text-sm text-gray-700 underline"
+              >
+                Move to today
+              </button>
+              <div className="flex gap-2">
+                <button className="px-3 py-1 rounded border" onClick={() => setShowReschedule(false)}>Cancel</button>
+                <button
+                  className="px-3 py-1 rounded bg-blue-600 text-white disabled:opacity-60"
+                  disabled={savingReschedule || !id || !reschedAt}
+                  onClick={async () => {
+                    if (!id || !reschedAt) return;
+                    setSavingReschedule(true);
+                    try {
+                      const iso = new Date(reschedAt).toISOString();
+                      await api.rescheduleAppointment(id, iso);
+                      // Optimistic update of drawer data
+                      setData(prev => prev ? { ...prev, appointment: { ...prev.appointment, start: iso } } : prev);
+                      if (onRescheduled) onRescheduled(id, iso);
+                      setShowReschedule(false);
+                    } catch {
+                      toast.error('Failed to reschedule');
+                    } finally {
+                      setSavingReschedule(false);
+                    }
+                  }}
+                >
+                  {savingReschedule ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
 
 export default AppointmentDrawer;
 
-function Overview({ data }: { data: DrawerPayload | null }) {
+import { formatInShopTZ } from '@/lib/timezone';
+
+function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime?: () => void }) {
   if (!data) return <div>Loading…</div>;
   const a = data.appointment;
   return (
@@ -314,6 +409,17 @@ function Overview({ data }: { data: DrawerPayload | null }) {
       <div className="grid grid-cols-2 gap-3">
         <Info label="Customer" value={data.customer?.name ?? '—'} />
         <Info label="Vehicle" value={`${data.vehicle?.year ?? ''} ${data.vehicle?.make ?? ''} ${data.vehicle?.model ?? ''}`.trim() || '—'} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <div className="text-sm text-gray-500">Start</div>
+          <div className="flex items-center gap-2">
+            <span>{formatInShopTZ(a.start, 'datetime')}</span>
+            {onEditTime && (
+              <button className="text-blue-600 text-sm underline" onClick={onEditTime}>Edit</button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

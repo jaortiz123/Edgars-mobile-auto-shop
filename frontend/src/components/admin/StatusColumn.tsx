@@ -45,9 +45,6 @@ export default function StatusColumn({
               <span className="text-sm font-medium text-neutral-600">
                 {column.count} {column.count === 1 ? 'job' : 'jobs'}
               </span>
-              <span className="text-sm font-medium text-steel-600">
-                ~{Math.round((column.sum || 0) / 60)}h
-              </span>
             </div>
           </div>
         </div>

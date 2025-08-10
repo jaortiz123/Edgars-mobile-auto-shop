@@ -17,35 +17,15 @@ export default function StatusBoard({ onOpen, minimalHero = false }: { onOpen: (
   };
 
   const byStatus = useMemo(() => {
+    // Show ALL cards grouped by status; no date-based filtering or slicing.
     const map = new Map<string, typeof cards>();
-    const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
-
-    let visible = cards.filter((c) => {
-      try {
-        const s = c.start ? new Date(c.start) : null;
-        return s && s >= startOfDay && s <= endOfDay;
-      } catch {
-        return false;
-      }
-    });
-
-    if (!visible || visible.length === 0) {
-      visible = [...cards].sort((a, b) => (a.position || 0) - (b.position || 0));
-    }
-
-    const MAX_VISIBLE = 5;
-    visible = visible.slice(0, MAX_VISIBLE);
-
     for (const col of columns) map.set(col.key, []);
-    for (const c of visible) {
+    for (const c of cards) {
       const statusKey = String(c.status || 'UNKNOWN');
       if (!map.has(statusKey)) map.set(statusKey, []);
-      const arr = map.get(statusKey)!;
-      arr.push(c);
+      map.get(statusKey)!.push(c);
     }
-    for (const [, arr] of map) arr.sort((a, b) => a.position - b.position);
+    for (const [, arr] of map) arr.sort((a, b) => (a.position || 0) - (b.position || 0));
     return map;
   }, [columns, cards]);
 

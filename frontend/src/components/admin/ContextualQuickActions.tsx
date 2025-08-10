@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { BoardCard } from '@/types/models';
 import { WorkflowIntelligence } from '@/utils/workflowIntelligence';
-import { updateAppointmentStatus, moveAppointment } from '@/lib/api';
+import { updateAppointmentStatus, moveAppointment, deleteAppointment, patchAppointment } from '@/lib/api';
 import { useAppointments } from '@/contexts/AppointmentContext';
 
 interface QuickAction {
@@ -23,6 +23,9 @@ export const ContextualQuickActions = ({ card }: { card: BoardCard }) => {
 
     switch (card.status) {
       case 'SCHEDULED': {
+        if (!card.checkInAt) {
+          actions.push({ label: 'Check In', icon: '🚗', action: 'check_in', variant: 'primary', description: 'Mark vehicle arrived' });
+        }
         if (typeof card.timeUntilStart === 'number' && card.timeUntilStart <= 15) {
           actions.push({ label: 'Start Now', icon: '▶️', action: 'start_appointment', variant: 'primary', description: 'Begin this appointment' });
         }
@@ -61,6 +64,8 @@ export const ContextualQuickActions = ({ card }: { card: BoardCard }) => {
     if (card.isRepeatCustomer) {
       actions.push({ label: 'Service History', icon: '📚', action: 'show_history', variant: 'secondary', description: 'View past services' });
     }
+    // Destructive at end
+    actions.push({ label: 'Delete Appointment', icon: '🗑️', action: 'delete_appointment', variant: 'urgent', description: 'Permanently remove this appointment' });
 
     return actions;
   };
@@ -69,6 +74,9 @@ export const ContextualQuickActions = ({ card }: { card: BoardCard }) => {
     setIsProcessing(action.action);
     try {
       switch (action.action) {
+        case 'check_in':
+          await patchAppointment(card.id, { check_in_at: new Date().toISOString() });
+          break;
         case 'start_appointment':
           await updateAppointmentStatus(card.id, 'IN_PROGRESS');
           break;
@@ -78,6 +86,12 @@ export const ContextualQuickActions = ({ card }: { card: BoardCard }) => {
         case 'reschedule':
           await moveAppointment(card.id, { status: 'SCHEDULED', position: (card.position ?? 0) + 1 });
           break;
+        case 'delete_appointment': {
+          const ok = window.confirm('Delete this appointment? This cannot be undone.');
+          if (!ok) break;
+          await deleteAppointment(card.id);
+          break;
+        }
         default:
           // TODO: wire other actions
           await new Promise((r) => setTimeout(r, 300));
@@ -135,12 +149,12 @@ export const ContextualQuickActions = ({ card }: { card: BoardCard }) => {
                   <button
                     key={action.action}
                     onClick={() => { handleAction(action); setShowContextMenu(false); }}
-                    className="w-full text-left px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center"
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 flex items-center ${action.action === 'delete_appointment' ? 'text-red-600 hover:text-red-700' : 'text-neutral-700'}`}
                   >
                     <span className="mr-2">{action.icon}</span>
                     <div>
                       <div className="font-medium">{action.label}</div>
-                      <div className="text-xs text-neutral-500">{action.description}</div>
+                      <div className={`text-xs ${action.action === 'delete_appointment' ? 'text-red-500' : 'text-neutral-500'}`}>{action.description}</div>
                     </div>
                   </button>
                 ))}

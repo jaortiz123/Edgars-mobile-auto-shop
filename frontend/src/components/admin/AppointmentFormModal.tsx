@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Calendar, User, Car, Wrench, MapPin, Phone, Mail } from 'lucide-react';
 import { Button } from '../ui/Button';
 import TemplateSelector from './TemplateSelector';
-import { getTemplates } from '../../lib/templateService';
+// @ts-expect-error JS module without types
+import { getTemplates } from '../../services/templateService.js';
 import { getAvailableSlots } from '../../lib/availabilityService';
 import { checkConflict } from '../../lib/api';
 import ConflictWarning from './ConflictWarning';
@@ -14,6 +15,7 @@ export interface AppointmentFormData {
   vehicleMake: string;
   vehicleModel: string;
   vehicleYear: string;
+  licensePlate?: string;
   serviceType: string;
   appointmentDate: string;
   appointmentTime: string;
@@ -77,6 +79,7 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
     vehicleMake: '',
     vehicleModel: '',
     vehicleYear: '',
+  licensePlate: '',
     serviceType: '',
     appointmentDate: '',
     appointmentTime: '',
@@ -90,7 +93,7 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
   const [templates, setTemplates] = useState<{ id: string; name: string; fields: Partial<AppointmentFormData> }[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [availableSlots, setAvailableSlots] = useState<{ date: string; time: string }[]>([]);
-  const [conflict, setConflict] = useState<any>(null);
+  const [conflict, setConflict] = useState<null | { customerName: string; appointmentTime: string }>(null);
   const [overrideConflict, setOverrideConflict] = useState(false);
 
   useEffect(() => {
@@ -120,7 +123,9 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
           date: formData.appointmentDate,
           time: formData.appointmentTime,
         });
-        setConflict(conflict ? conflictingAppointment : null);
+        const c = conflict ? conflictingAppointment : null;
+        // Normalize to expected shape
+        setConflict(c ? { customerName: c.customerName, appointmentTime: c.appointmentTime } : null);
         setOverrideConflict(false);
       };
       check();
@@ -138,16 +143,16 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
     }
   };
 
-  const handleTemplateSelect = (templateIdOrTemplate: string | { id: string; name: string; fields: Partial<AppointmentFormData> }) => {
-    const templateId = typeof templateIdOrTemplate === 'string' ? templateIdOrTemplate : templateIdOrTemplate.id;
+  const handleTemplateSelect = (t: string | { id: string; name: string; description?: string; category?: string; estimatedDuration?: string; services?: Array<{ name: string; category: string; estimated_hours: number; estimated_price: number; notes?: string; }>; }) => {
+    const templateId = typeof t === 'string' ? t : t.id;
     setSelectedTemplateId(templateId);
-    const selectedTemplate = typeof templateIdOrTemplate === 'string' 
-      ? templates.find(t => t.id === templateIdOrTemplate)
-      : templateIdOrTemplate;
-    if (selectedTemplate) {
+    // Map known fields from Template to our formData when available
+    if (typeof t !== 'string') {
       setFormData(prev => ({
         ...prev,
-        ...selectedTemplate.fields,
+        serviceType: t.name || prev.serviceType,
+        estimatedDuration: t.estimatedDuration || prev.estimatedDuration,
+        notes: (t.services && t.services.length > 0 && t.services[0].notes) ? t.services[0].notes : prev.notes,
       }));
     }
   };
@@ -243,6 +248,7 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
       vehicleMake: '',
       vehicleModel: '',
       vehicleYear: '',
+  licensePlate: '',
       serviceType: '',
       appointmentDate: '',
       appointmentTime: '',
@@ -290,8 +296,8 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
           <div className="mb-4">
             <h3 className="text-base font-semibold text-gray-900 mb-2">Apply Template</h3>
             <TemplateSelector
-              templates={templates as any}
-              onSelect={handleTemplateSelect as any}
+              templates={templates}
+              onSelect={handleTemplateSelect}
               selectedTemplateId={selectedTemplateId}
             />
           </div>
@@ -306,11 +312,12 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
             </div>
             
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-2">
+        <label htmlFor="customer-name" className="block text-xs font-medium text-gray-700 mb-2">
                 Customer Name *
               </label>
               <>
                 <input
+          id="customer-name"
                   type="text"
                   value={formData.customerName}
                   onChange={(e) => handleInputChange('customerName', e.target.value)}
@@ -323,13 +330,14 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-2">
+      <label htmlFor="customer-phone" className="block text-xs font-medium text-gray-700 mb-2">
                 Phone Number *
               </label>
               <>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
+        id="customer-phone"
                     type="tel"
                     value={formData.customerPhone}
                     onChange={(e) => handleInputChange('customerPhone', e.target.value)}
@@ -344,13 +352,14 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-xs font-medium text-gray-700 mb-2">
+      <label htmlFor="customer-email" className="block text-xs font-medium text-gray-700 mb-2">
                 Email Address
               </label>
               <>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
+        id="customer-email"
                     type="email"
                     value={formData.customerEmail}
                     onChange={(e) => handleInputChange('customerEmail', e.target.value)}
@@ -375,11 +384,12 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-2">
+              <label htmlFor="vehicle-make" className="block text-xs font-medium text-gray-700 mb-2">
                 Make *
               </label>
               <>
                 <input
+                  id="vehicle-make"
                   type="text"
                   value={formData.vehicleMake}
                   onChange={(e) => handleInputChange('vehicleMake', e.target.value)}
@@ -393,11 +403,12 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-2">
+              <label htmlFor="vehicle-model" className="block text-xs font-medium text-gray-700 mb-2">
                 Model *
               </label>
               <>
                 <input
+                  id="vehicle-model"
                   type="text"
                   value={formData.vehicleModel}
                   onChange={(e) => handleInputChange('vehicleModel', e.target.value)}
@@ -411,11 +422,12 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-2">
+              <label htmlFor="vehicle-year" className="block text-xs font-medium text-gray-700 mb-2">
                 Year *
               </label>
               <>
                 <input
+                  id="vehicle-year"
                   type="number"
                   min="1900"
                   max={new Date().getFullYear() + 1}
@@ -427,6 +439,22 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
                   placeholder="2020"
                 />
                 {errors.vehicleYear && <p className="text-red-500 text-xs mt-1">{errors.vehicleYear}</p>}
+              </>
+            </div>
+
+            <div className="md:col-span-3">
+              <label htmlFor="license-plate" className="block text-xs font-medium text-gray-700 mb-2">
+                License Plate (source of truth)
+              </label>
+              <>
+                <input
+                  id="license-plate"
+                  type="text"
+                  value={formData.licensePlate || ''}
+                  onChange={(e) => handleInputChange('licensePlate', e.target.value.toUpperCase())}
+                  className="w-full px-2 py-1 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-gray-300 font-mono"
+                  placeholder="ABC1234"
+                />
               </>
             </div>
           </div>
@@ -441,11 +469,13 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-2">
+              <label htmlFor="service-type" className="block text-xs font-medium text-gray-700 mb-2">
                 Service Type *
               </label>
               <>
                 <select
+                  id="service-type"
+                  title="Service Type"
                   value={formData.serviceType}
                   onChange={(e) => handleInputChange('serviceType', e.target.value)}
                   className={`w-full px-2 py-1 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
@@ -462,11 +492,13 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-2">
+              <label htmlFor="estimated-duration" className="block text-xs font-medium text-gray-700 mb-2">
                 Estimated Duration *
               </label>
               <>
                 <select
+                  id="estimated-duration"
+                  title="Estimated Duration"
                   value={formData.estimatedDuration}
                   onChange={(e) => handleInputChange('estimatedDuration', e.target.value)}
                   className={`w-full px-2 py-1 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
@@ -494,11 +526,12 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-2">
+                <label htmlFor="appointment-date" className="block text-xs font-medium text-gray-700 mb-2">
                 Appointment Date *
               </label>
                 <>
                 <input
+                  id="appointment-date"
                   type="date"
                   min={getTomorrowDate()}
                   value={formData.appointmentDate}
@@ -512,11 +545,13 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-2">
+                <label htmlFor="appointment-time" className="block text-xs font-medium text-gray-700 mb-2">
                 Appointment Time *
               </label>
                 <>
                 <select
+                  id="appointment-time"
+                  title="Appointment Time"
                   value={formData.appointmentTime}
                   onChange={(e) => handleInputChange('appointmentTime', e.target.value)}
                   className={`w-full px-2 py-1 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
@@ -613,14 +648,14 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
             <Button
               type="button"
               onClick={onQuickSchedule}
-              disabled={isSubmitting || (conflict && !overrideConflict)}
+              disabled={isSubmitting || (!!conflict && !overrideConflict)}
               className="flex-1 bg-green-600 hover:bg-green-700"
             >
               ⚡ Quick Schedule
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || (conflict && !overrideConflict)}
+              disabled={isSubmitting || (!!conflict && !overrideConflict)}
               className="flex-1 bg-blue-600 hover:bg-blue-700"
             >
               {isSubmitting ? (
