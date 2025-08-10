@@ -551,14 +551,30 @@ def get_appointment(appt_id: str):
         with conn.cursor() as cur:
             cur.execute(
                 """
-          SELECT a.id::text, a.status::text, a.start_ts, a.end_ts, a.total_amount, a.paid_amount,
-              a.check_in_at, a.check_out_at, a.tech_id::text AS tech_id,
-              c.id::text AS customer_id, c.name AS customer_name, c.email, c.phone,
-              v.id::text AS vehicle_id, v.year, v.make, v.model, v.license_plate AS vin
-                FROM appointments a
-                LEFT JOIN customers c ON c.id = a.customer_id
-                LEFT JOIN vehicles  v ON v.id = a.vehicle_id
-                WHERE a.id = %s
+          SELECT a.id::text,
+                 a.status::text,
+                 a.start_ts,
+                 a.end_ts,
+                 a.total_amount,
+                 a.paid_amount,
+                 a.location_address,
+                 a.notes,
+                 a.check_in_at,
+                 a.check_out_at,
+                 a.tech_id::text AS tech_id,
+                 c.id::text AS customer_id,
+                 c.name AS customer_name,
+                 c.email,
+                 c.phone,
+                 v.id::text AS vehicle_id,
+                 v.year,
+                 v.make,
+                 v.model,
+                 v.license_plate AS vin
+            FROM appointments a
+            LEFT JOIN customers c ON c.id = a.customer_id
+            LEFT JOIN vehicles  v ON v.id = a.vehicle_id
+            WHERE a.id = %s
                 """,
                 (appt_id,),
             )
@@ -585,6 +601,8 @@ def get_appointment(appt_id: str):
             "start": iso(row.get("start_ts")), "end": iso(row.get("end_ts")),
             "total_amount": float(row.get("total_amount") or 0),
             "paid_amount": float(row.get("paid_amount") or 0),
+            "location_address": row.get("location_address"),
+            "notes": row.get("notes"),
             "check_in_at": iso(row.get("check_in_at")), "check_out_at": iso(row.get("check_out_at")),
             "tech_id": row.get("tech_id"),
         },
