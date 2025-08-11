@@ -4,7 +4,8 @@ import { Button } from '../ui/Button';
 import TemplateSelector from './TemplateSelector';
 // @ts-expect-error JS module without types
 import { getTemplates } from '../../services/templateService.js';
-import { getAvailableSlots } from '../../lib/availabilityService';
+// @ts-expect-error JS module without types
+import { getAvailableSlots } from '../../services/availabilityService.js';
 import { checkConflict } from '../../lib/api';
 import ConflictWarning from './ConflictWarning';
 import vehicleCatalogSeed, { type VehicleMake } from '@/data/vehicleCatalog';
