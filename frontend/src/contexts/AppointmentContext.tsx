@@ -204,7 +204,7 @@ export function AppointmentProvider({ children }: { children: React.ReactNode })
     // TEMP: Disabled polling to fix infinite request loop
     // const t = setInterval(() => void refreshStats(), 60000);
     // return () => clearInterval(t);
-  }, [refreshBoard, refreshStats]);
+  }, []); // Empty deps array - only run on mount
 
   // Respond to explicit refresh triggers from UI (e.g., after quick actions)
   useEffect(() => {
