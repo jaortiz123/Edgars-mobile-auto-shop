@@ -1,0 +1,844 @@
+{
+  "Acura": {
+    "ADX": { "start": 2025, "end": null },
+    "CL": { "start": 1997, "end": 2003 },
+    "CSX": { "start": 2006, "end": 2011 },
+    "EL": { "start": 1997, "end": 2005 },
+    "ILX": { "start": 2013, "end": 2022 },
+    "Integra": [
+      { "start": 1986, "end": 2001 },
+      { "start": 2023, "end": null }
+    ],
+    "Legend": { "start": 1986, "end": 1995 },
+    "MDX": { "start": 2001, "end": null },
+    "NSX": [
+      { "start": 1991, "end": 2005 },
+      { "start": 2017, "end": 2022 }
+    ],
+    "RDX": { "start": 2007, "end": null },
+    "RL": { "start": 1996, "end": 2012 },
+    "RLX": { "start": 2014, "end": 2020 },
+    "RSX": { "start": 2002, "end": 2006 },
+    "SLX": { "start": 1996, "end": 1999 },
+    "TL": { "start": 1996, "end": 2014 },
+    "TLX": { "start": 2015, "end": null },
+    "TSX": { "start": 2004, "end": 2014 },
+    "Vigor": { "start": 1992, "end": 1994 },
+    "ZDX": [
+      { "start": 2010, "end": 2013 },
+      { "start": 2024, "end": null }
+    ]
+  },
+  "Alfa Romeo": {
+    "4C": { "start": 2015, "end": 2020 },
+    "8C Competizione": { "start": 2008, "end": 2010 },
+    "GTV6": { "start": 1981, "end": 1986 },
+    "Giulia": { "start": 2017, "end": null },
+    "Milano": { "start": 1987, "end": 1989 },
+    "Spider": { "start": 1966, "end": 1994 },
+    "Stelvio": { "start": 2018, "end": null },
+    "Tonale": { "start": 2023, "end": null },
+    "164": { "start": 1991, "end": 1995 }
+  },
+  "Aston Martin": {
+    "DB7": { "start": 1994, "end": 2003 },
+    "DB9": { "start": 2005, "end": 2016 },
+    "DB11": { "start": 2017, "end": 2023 },
+    "DB12": { "start": 2023, "end": null },
+    "DBS": { "start": 1967, "end": 1972 },
+    "DBS V12": { "start": 2008, "end": 2012 },
+    "DBS Superleggera": { "start": 2018, "end": 2024 },
+    "DBX": { "start": 2020, "end": null },
+    "Lagonda": { "start": 1976, "end": 1990 },
+    "Rapide": { "start": 2010, "end": 2020 },
+    "Vanquish": [
+      { "start": 2001, "end": 2007 },
+      { "start": 2012, "end": 2018 }
+    ],
+    "Vantage (V8)": { "start": 1977, "end": 1989 },
+    "Vantage (V8/V12)": { "start": 2006, "end": 2018 },
+    "Vantage": { "start": 2018, "end": null },
+    "Virage": [
+      { "start": 1989, "end": 2000 },
+      { "start": 2011, "end": 2012 }
+    ]
+  },
+  "Audi": {
+    "A3": { "start": 2006, "end": null },
+    "A4": { "start": 1996, "end": null },
+    "A5": { "start": 2008, "end": null },
+    "A6": { "start": 1995, "end": null },
+    "A7": { "start": 2012, "end": null },
+    "A8": { "start": 1997, "end": null },
+    "Allroad": [
+      { "start": 2001, "end": 2005 },
+      { "start": 2013, "end": null }
+    ],
+    "Cabriolet": { "start": 1994, "end": 1998 },
+    "Coupe GT": { "start": 1981, "end": 1987 },
+    "Q3": { "start": 2015, "end": null },
+    "Q4 e-tron": { "start": 2022, "end": null },
+    "Q5": { "start": 2009, "end": null },
+    "Q7": { "start": 2007, "end": null },
+    "Q8": { "start": 2019, "end": null },
+    "Q8 e-tron": { "start": 2019, "end": null },
+    "Quattro": { "start": 1983, "end": 1986 },
+    "R8": { "start": 2008, "end": 2023 },
+    "TT": { "start": 2000, "end": 2023 },
+    "80/90": { "start": 1978, "end": 1995 },
+    "100/200/5000": { "start": 1978, "end": 1994 },
+    "V8": { "start": 1989, "end": 1994 }
+  },
+  "Bentley": {
+    "Arnage": { "start": 1998, "end": 2009 },
+    "Azure": [
+        { "start": 1995, "end": 2003 },
+        { "start": 2006, "end": 2009 }
+    ],
+    "Bentayga": { "start": 2016, "end": null },
+    "Brooklands": [
+        { "start": 1992, "end": 1998 },
+        { "start": 2008, "end": 2011 }
+    ],
+    "Continental GT": { "start": 2004, "end": null },
+    "Flying Spur": { "start": 2006, "end": null },
+    "Mulsanne": { "start": 2010, "end": 2020 },
+    "Turbo R": { "start": 1985, "end": 1997 }
+  },
+  "BMW": {
+    "1 Series": { "start": 2008, "end": 2013 },
+    "2 Series": { "start": 2014, "end": null },
+    "3 Series": { "start": 1977, "end": null },
+    "4 Series": { "start": 2014, "end": null },
+    "5 Series": { "start": 1975, "end": null },
+    "6 Series": [
+      { "start": 1976, "end": 1989 },
+      { "start": 2004, "end": 2019 }
+    ],
+    "7 Series": { "start": 1978, "end": null },
+    "8 Series": [
+      { "start": 1991, "end": 1997 },
+      { "start": 2019, "end": null }
+    ],
+    "i3": { "start": 2014, "end": 2021 },
+    "i4": { "start": 2022, "end": null },
+    "i8": { "start": 2014, "end": 2020 },
+    "iX": { "start": 2022, "end": null },
+    "M1": { "start": 1978, "end": 1981 },
+    "X1": { "start": 2013, "end": null },
+    "X2": { "start": 2018, "end": null },
+    "X3": { "start": 2004, "end": null },
+    "X4": { "start": 2015, "end": null },
+    "X5": { "start": 2000, "end": null },
+    "X6": { "start": 2008, "end": null },
+    "X7": { "start": 2019, "end": null },
+    "Z3": { "start": 1996, "end": 2002 },
+    "Z4": { "start": 2003, "end": null },
+    "Z8": { "start": 2000, "end": 2003 }
+  },
+  "Buick": {
+    "Cascada": { "start": 2016, "end": 2019 },
+    "Century": { "start": 1973, "end": 2005 },
+    "Enclave": { "start": 2008, "end": null },
+    "Encore": { "start": 2013, "end": null },
+    "Encore GX": { "start": 2020, "end": null },
+    "Envision": { "start": 2016, "end": null },
+    "Envista": { "start": 2024, "end": null },
+    "Grand National": { "start": 1982, "end": 1987 },
+    "LaCrosse": { "start": 2005, "end": 2019 },
+    "LeSabre": { "start": 1959, "end": 2005 },
+    "Lucerne": { "start": 2006, "end": 2011 },
+    "Park Avenue": { "start": 1991, "end": 2005 },
+    "Rainier": { "start": 2004, "end": 2007 },
+    "Reatta": { "start": 1988, "end": 1991 },
+    "Regal": [
+      { "start": 1973, "end": 2004 },
+      { "start": 2011, "end": 2020 }
+    ],
+    "Rendezvous": { "start": 2002, "end": 2007 },
+    "Riviera": { "start": 1963, "end": 1999 },
+    "Roadmaster": [
+      { "start": 1936, "end": 1958 },
+      { "start": 1991, "end": 1996 }
+    ],
+    "Skylark": [
+      { "start": 1953, "end": 1954 },
+      { "start": 1961, "end": 1998 }
+    ],
+    "Terraza": { "start": 2005, "end": 2007 },
+    "Verano": { "start": 2012, "end": 2017 }
+  },
+  "Cadillac": {
+    "Allante": { "start": 1987, "end": 1993 },
+    "ATS": { "start": 2013, "end": 2019 },
+    "Brougham": { "start": 1987, "end": 1992 },
+    "Catera": { "start": 1997, "end": 2001 },
+    "Celestiq": { "start": 2024, "end": null },
+    "Cimarron": { "start": 1982, "end": 1988 },
+    "CT4": { "start": 2020, "end": null },
+    "CT5": { "start": 2020, "end": null },
+    "CT6": { "start": 2016, "end": 2020 },
+    "CTS": { "start": 2003, "end": 2019 },
+    "DeVille": { "start": 1959, "end": 2005 },
+    "DTS": { "start": 2006, "end": 2011 },
+    "Eldorado": { "start": 1953, "end": 2002 },
+    "ELR": { "start": 2014, "end": 2016 },
+    "Escalade": { "start": 1999, "end": null },
+    "Fleetwood": { "start": 1938, "end": 1996 },
+    "Lyriq": { "start": 2023, "end": null },
+    "Optiq": { "start": 2025, "end": null },
+    "Seville": { "start": 1976, "end": 2004 },
+    "SRX": { "start": 2004, "end": 2016 },
+    "STS": { "start": 2005, "end": 2011 },
+    "Vistiq": { "start": 2026, "end": null },
+    "XLR": { "start": 2004, "end": 2009 },
+    "XT4": { "start": 2019, "end": null },
+    "XT5": { "start": 2017, "end": null },
+    "XT6": { "start": 2020, "end": null },
+    "XTS": { "start": 2013, "end": 2019 }
+  },
+  "Chevrolet": {
+    "Astro": { "start": 1985, "end": 2005 },
+    "Avalanche": { "start": 2002, "end": 2013 },
+    "Aveo": { "start": 2004, "end": 2011 },
+    "Beretta": { "start": 1987, "end": 1996 },
+    "Blazer": [
+      { "start": 1969, "end": 2005 },
+      { "start": 2019, "end": null }
+    ],
+    "Bolt EV": { "start": 2017, "end": 2023 },
+    "Bolt EUV": { "start": 2022, "end": 2023 },
+    "Camaro": [
+      { "start": 1967, "end": 2002 },
+      { "start": 2010, "end": 2024 }
+    ],
+    "Caprice": [
+      { "start": 1965, "end": 1996 },
+      { "start": 2011, "end": 2017 }
+    ],
+    "Cavalier": { "start": 1982, "end": 2005 },
+    "Celebrity": { "start": 1982, "end": 1990 },
+    "Chevette": { "start": 1976, "end": 1987 },
+    "Citation": { "start": 1980, "end": 1985 },
+    "Cobalt": { "start": 2005, "end": 2010 },
+    "Colorado": { "start": 2004, "end": null },
+    "Corsica": { "start": 1987, "end": 1996 },
+    "Corvette": { "start": 1953, "end": null },
+    "Cruze": { "start": 2011, "end": 2019 },
+    "Equinox": { "start": 2005, "end": null },
+    "Express": { "start": 1996, "end": null },
+    "HHR": { "start": 2006, "end": 2011 },
+    "Impala": [
+      { "start": 1958, "end": 1985 },
+      { "start": 1994, "end": 1996 },
+      { "start": 2000, "end": 2020 }
+    ],
+    "Lumina": { "start": 1990, "end": 2001 },
+    "Malibu": [
+      { "start": 1964, "end": 1983 },
+      { "start": 1997, "end": 2025 }
+    ],
+    "Metro": { "start": 1998, "end": 2001 },
+    "Monte Carlo": [
+      { "start": 1970, "end": 1988 },
+      { "start": 1995, "end": 2007 }
+    ],
+    "Prizm": { "start": 1998, "end": 2002 },
+    "S-10": { "start": 1982, "end": 2004 },
+    "Silverado 1500": { "start": 1999, "end": null },
+    "Silverado 2500HD": { "start": 2001, "end": null },
+    "Silverado 3500HD": { "start": 2001, "end": null },
+    "Sonic": { "start": 2012, "end": 2020 },
+    "Spark": { "start": 2013, "end": 2022 },
+    "SS": { "start": 2014, "end": 2017 },
+    "SSR": { "start": 2003, "end": 2006 },
+    "Suburban": { "start": 1935, "end": null },
+    "Tahoe": { "start": 1995, "end": null },
+    "Tracker": { "start": 1998, "end": 2004 },
+    "TrailBlazer": [
+      { "start": 2002, "end": 2009 },
+      { "start": 2021, "end": null }
+    ],
+    "Traverse": { "start": 2009, "end": null },
+    "Trax": { "start": 2015, "end": null },
+    "Uplander": { "start": 2005, "end": 2009 },
+    "Venture": { "start": 1997, "end": 2005 },
+    "Volt": { "start": 2011, "end": 2019 }
+  },
+  "Chrysler": {
+    "200": { "start": 2011, "end": 2017 },
+    "300": { "start": 2005, "end": 2023 },
+    "300M": { "start": 1999, "end": 2004 },
+    "Aspen": { "start": 2007, "end": 2009 },
+    "Cirrus": { "start": 1995, "end": 2000 },
+    "Concorde": { "start": 1993, "end": 2004 },
+    "Conquest": { "start": 1987, "end": 1989 },
+    "Cordoba": { "start": 1975, "end": 1983 },
+    "Crossfire": { "start": 2004, "end": 2008 },
+    "Imperial": [
+      { "start": 1926, "end": 1954 },
+      { "start": 1990, "end": 1993 }
+    ],
+    "Laser": { "start": 1984, "end": 1986 },
+    "LeBaron": { "start": 1977, "end": 1995 },
+    "LHS": { "start": 1994, "end": 2001 },
+    "New Yorker": { "start": 1940, "end": 1996 },
+    "Pacifica": [
+      { "start": 2004, "end": 2008 },
+      { "start": 2017, "end": null }
+    ],
+    "Prowler": { "start": 2001, "end": 2002 },
+    "PT Cruiser": { "start": 2001, "end": 2010 },
+    "Sebring": { "start": 1995, "end": 2010 },
+    "Town & Country": { "start": 1990, "end": 2016 },
+    "Voyager": [
+      { "start": 2001, "end": 2003 },
+      { "start": 2020, "end": 2022 }
+    ]
+  },
+  "Daewoo": {
+    "Lanos": { "start": 1999, "end": 2002 },
+    "Leganza": { "start": 1999, "end": 2002 },
+    "Nubira": { "start": 1999, "end": 2002 }
+  },
+  "Dodge": {
+    "Avenger": [
+      { "start": 1995, "end": 2000 },
+      { "start": 2008, "end": 2014 }
+    ],
+    "Caliber": { "start": 2007, "end": 2012 },
+    "Caravan": { "start": 1984, "end": 2007 },
+    "Challenger": [
+      { "start": 1970, "end": 1974 },
+      { "start": 1978, "end": 1983 },
+      { "start": 2008, "end": 2023 }
+    ],
+    "Charger": [
+      { "start": 1966, "end": 1978 },
+      { "start": 1983, "end": 1987 },
+      { "start": 2006, "end": 2023 }
+    ],
+    "Dakota": { "start": 1987, "end": 2011 },
+    "Dart": [
+      { "start": 1960, "end": 1976 },
+      { "start": 2013, "end": 2016 }
+    ],
+    "Durango": { "start": 1998, "end": null },
+    "Grand Caravan": { "start": 1987, "end": 2020 },
+    "Hornet": { "start": 2023, "end": null },
+    "Intrepid": { "start": 1993, "end": 2004 },
+    "Journey": { "start": 2009, "end": 2020 },
+    "Magnum": { "start": 2005, "end": 2008 },
+    "Neon": { "start": 1995, "end": 2005 },
+    "Nitro": { "start": 2007, "end": 2011 },
+    "Ram 1500": { "start": 1981, "end": 2010 },
+    "Ram 2500": { "start": 1981, "end": 2010 },
+    "Ram 3500": { "start": 1981, "end": 2010 },
+    "Spirit": { "start": 1989, "end": 1995 },
+    "Stratus": { "start": 1995, "end": 2006 },
+    "Viper": [
+      { "start": 1992, "end": 2010 },
+      { "start": 2013, "end": 2017 }
+    ]
+  },
+  "Eagle": {
+    "Medallion": { "start": 1988, "end": 1989 },
+    "Premier": { "start": 1988, "end": 1992 },
+    "Summit": { "start": 1989, "end": 1996 },
+    "Talon": { "start": 1990, "end": 1998 },
+    "Vision": { "start": 1993, "end": 1997 }
+  },
+  "Ferrari": {
+    "296 GTB": { "start": 2022, "end": null },
+    "360": { "start": 1999, "end": 2005 },
+    "458 Italia": { "start": 2010, "end": 2015 },
+    "488 GTB": { "start": 2016, "end": 2019 },
+    "550 Maranello": { "start": 1996, "end": 2001 },
+    "575M Maranello": { "start": 2002, "end": 2006 },
+    "599 GTB Fiorano": { "start": 2007, "end": 2012 },
+    "612 Scaglietti": { "start": 2004, "end": 2011 },
+    "812 Superfast": { "start": 2018, "end": 2023 },
+    "California": { "start": 2009, "end": 2017 },
+    "F8 Tributo": { "start": 2020, "end": 2023 },
+    "F12berlinetta": { "start": 2013, "end": 2017 },
+    "F355": { "start": 1995, "end": 1999 },
+    "F430": { "start": 2005, "end": 2009 },
+    "FF": { "start": 2011, "end": 2016 },
+    "GTC4Lusso": { "start": 2017, "end": 2020 },
+    "LaFerrari": { "start": 2014, "end": 2016 },
+    "Portofino": { "start": 2018, "end": null },
+    "Roma": { "start": 2020, "end": null },
+    "SF90 Stradale": { "start": 2020, "end": null },
+    "Testarossa": { "start": 1984, "end": 1991 }
+  },
+  "Fiat": {
+    "124 Spider": { "start": 2017, "end": 2020 },
+    "500": { "start": 2012, "end": 2019 },
+    "500L": { "start": 2014, "end": 2020 },
+    "500X": { "start": 2016, "end": 2023 }
+  },
+  "Ford": {
+    "Aerostar": { "start": 1986, "end": 1997 },
+    "Aspire": { "start": 1994, "end": 1997 },
+    "Bronco": [
+      { "start": 1966, "end": 1996 },
+      { "start": 2021, "end": null }
+    ],
+    "Bronco II": { "start": 1984, "end": 1990 },
+    "Bronco Sport": { "start": 2021, "end": null },
+    "C-Max": { "start": 2013, "end": 2018 },
+    "Contour": { "start": 1995, "end": 2000 },
+    "Courier": { "start": 1972, "end": 1982 },
+    "Crown Victoria": { "start": 1992, "end": 2011 },
+    "E-Series": { "start": 1961, "end": null },
+    "EcoSport": { "start": 2018, "end": 2022 },
+    "Edge": { "start": 2007, "end": null },
+    "Escape": { "start": 2001, "end": null },
+    "Escort": { "start": 1981, "end": 2003 },
+    "Excursion": { "start": 2000, "end": 2005 },
+    "Expedition": { "start": 1997, "end": null },
+    "Explorer": { "start": 1991, "end": null },
+    "Explorer Sport Trac": { "start": 2001, "end": 2010 },
+    "F-150": { "start": 1975, "end": null },
+    "F-250 Super Duty": { "start": 1999, "end": null },
+    "F-350 Super Duty": { "start": 1999, "end": null },
+    "Festiva": { "start": 1988, "end": 1993 },
+    "Fiesta": { "start": 2011, "end": 2019 },
+    "Five Hundred": { "start": 2005, "end": 2007 },
+    "Flex": { "start": 2009, "end": 2019 },
+    "Focus": { "start": 2000, "end": 2018 },
+    "Freestar": { "start": 2004, "end": 2007 },
+    "Freestyle": { "start": 2005, "end": 2007 },
+    "Fusion": { "start": 2006, "end": 2020 },
+    "GT": [
+      { "start": 2005, "end": 2006 },
+      { "start": 2017, "end": 2022 }
+    ],
+    "Maverick": { "start": 2022, "end": null },
+    "Mustang": { "start": 1965, "end": null },
+    "Mustang Mach-E": { "start": 2021, "end": null },
+    "Probe": { "start": 1989, "end": 1997 },
+    "Ranger": [
+      { "start": 1983, "end": 2012 },
+      { "start": 2019, "end": null }
+    ],
+    "Taurus": { "start": 1986, "end": 2019 },
+    "Taurus X": { "start": 2008, "end": 2009 },
+    "Tempo": { "start": 1984, "end": 1994 },
+    "Thunderbird": [
+      { "start": 1955, "end": 1997 },
+      { "start": 2002, "end": 2005 }
+    ],
+    "Transit": { "start": 2015, "end": null },
+    "Transit Connect": { "start": 2010, "end": 2023 },
+    "Windstar": { "start": 1995, "end": 2003 }
+  },
+  "Genesis": {
+    "G70": { "start": 2019, "end": null },
+    "G80": { "start": 2017, "end": null },
+    "G90": { "start": 2017, "end": null },
+    "GV60": { "start": 2023, "end": null },
+    "GV70": { "start": 2022, "end": null },
+    "GV80": { "start": 2021, "end": null }
+  },
+  "Geo": {
+    "Metro": { "start": 1989, "end": 1997 },
+    "Prizm": { "start": 1989, "end": 1997 },
+    "Spectrum": { "start": 1989, "end": 1989 },
+    "Storm": { "start": 1990, "end": 1993 },
+    "Tracker": { "start": 1989, "end": 1997 }
+  },
+  "GMC": {
+    "Acadia": { "start": 2007, "end": null },
+    "Canyon": { "start": 2004, "end": null },
+    "Envoy": { "start": 1998, "end": 2009 },
+    "Hummer EV": { "start": 2022, "end": null },
+    "Jimmy": { "start": 1970, "end": 2005 },
+    "Safari": { "start": 1985, "end": 2005 },
+    "Savana": { "start": 1996, "end": null },
+    "Sierra 1500": { "start": 1999, "end": null },
+    "Sierra 2500HD": { "start": 2001, "end": null },
+    "Sierra 3500HD": { "start": 2001, "end": null },
+    "Sonoma": { "start": 1991, "end": 2004 },
+    "Syclone": { "start": 1991, "end": 1991 },
+    "Terrain": { "start": 2010, "end": null },
+    "Typhoon": { "start": 1992, "end": 1993 },
+    "Yukon": { "start": 1992, "end": null },
+    "Yukon XL": { "start": 2000, "end": null }
+  },
+  "Honda": {
+    "Accord": { "start": 1976, "end": null },
+    "Civic": { "start": 1973, "end": null },
+    "Clarity": { "start": 2017, "end": 2021 },
+    "CR-V": { "start": 1997, "end": null },
+    "CR-Z": { "start": 2011, "end": 2016 },
+    "Crosstour": { "start": 2010, "end": 2015 },
+    "del Sol": { "start": 1993, "end": 1997 },
+    "Element": { "start": 2003, "end": 2011 },
+    "Fit": { "start": 2007, "end": 2020 },
+    "HR-V": { "start": 2016, "end": null },
+    "Insight": [
+      { "start": 2000, "end": 2006 },
+      { "start": 2010, "end": 2014 },
+      { "start": 2019, "end": 2022 }
+    ],
+    "Odyssey": { "start": 1995, "end": null },
+    "Passport": [
+      { "start": 1994, "end": 2002 },
+      { "start": 2019, "end": null }
+    ],
+    "Pilot": { "start": 2003, "end": null },
+    "Prelude": { "start": 1979, "end": 2001 },
+    "Ridgeline": [
+      { "start": 2006, "end": 2014 },
+      { "start": 2017, "end": null }
+    ],
+    "S2000": { "start": 2000, "end": 2009 }
+  },
+  "Hummer": {
+    "H1": { "start": 1992, "end": 2006 },
+    "H2": { "start": 2003, "end": 2009 },
+    "H3": { "start": 2006, "end": 2010 }
+  },
+  "Hyundai": {
+    "Accent": { "start": 1995, "end": 2022 },
+    "Azera": { "start": 2006, "end": 2017 },
+    "Elantra": { "start": 1992, "end": null },
+    "Entourage": { "start": 2007, "end": 2009 },
+    "Equus": { "start": 2011, "end": 2016 },
+    "Excel": { "start": 1986, "end": 1994 },
+    "Genesis": { "start": 2009, "end": 2016 },
+    "Genesis Coupe": { "start": 2010, "end": 2016 },
+    "Ioniq": { "start": 2017, "end": 2022 },
+    "Ioniq 5": { "start": 2022, "end": null },
+    "Ioniq 6": { "start": 2023, "end": null },
+    "Kona": { "start": 2018, "end": null },
+    "Nexo": { "start": 2019, "end": null },
+    "Palisade": { "start": 2020, "end": null },
+    "Santa Cruz": { "start": 2022, "end": null },
+    "Santa Fe": { "start": 2001, "end": null },
+    "Sonata": { "start": 1989, "end": null },
+    "Tiburon": { "start": 1997, "end": 2008 },
+    "Tucson": { "start": 2005, "end": null },
+    "Veloster": { "start": 2012, "end": 2022 },
+    "Venue": { "start": 2020, "end": null },
+    "Veracruz": { "start": 2007, "end": 2012 },
+    "XG300": { "start": 2001, "end": 2001 },
+    "XG350": { "start": 2002, "end": 2005 }
+  },
+  "Infiniti": {
+    "EX": { "start": 2008, "end": 2013 },
+    "FX": { "start": 2003, "end": 2013 },
+    "G": { "start": 1991, "end": 2013 },
+    "I": { "start": 1996, "end": 2004 },
+    "J30": { "start": 1993, "end": 1997 },
+    "JX": { "start": 2013, "end": 2013 },
+    "M": { "start": 1990, "end": 2013 },
+    "Q40": { "start": 2015, "end": 2015 },
+    "Q45": { "start": 1990, "end": 2006 },
+    "Q50": { "start": 2014, "end": null },
+    "Q60": { "start": 2014, "end": 2022 },
+    "Q70": { "start": 2014, "end": 2019 },
+    "QX4": { "start": 1997, "end": 2003 },
+    "QX30": { "start": 2017, "end": 2019 },
+    "QX50": { "start": 2014, "end": null },
+    "QX55": { "start": 2022, "end": null },
+    "QX60": { "start": 2014, "end": null },
+    "QX70": { "start": 2014, "end": 2017 },
+    "QX80": { "start": 2014, "end": null }
+  },
+  "Isuzu": {
+    "Amigo": [
+      { "start": 1989, "end": 1994 },
+      { "start": 1998, "end": 2000 }
+    ],
+    "Ascender": { "start": 2003, "end": 2008 },
+    "Axiom": { "start": 2002, "end": 2004 },
+    "Hombre": { "start": 1996, "end": 2000 },
+    "i-Series": { "start": 2006, "end": 2008 },
+    "Impulse": { "start": 1983, "end": 1992 },
+    "Oasis": { "start": 1996, "end": 1999 },
+    "Pickup": { "start": 1981, "end": 1995 },
+    "Rodeo": { "start": 1991, "end": 2004 },
+    "Stylus": { "start": 1991, "end": 1993 },
+    "Trooper": { "start": 1984, "end": 2002 },
+    "VehiCROSS": { "start": 1999, "end": 2001 }
+  },
+  "Jaguar": {
+    "E-Pace": { "start": 2018, "end": null },
+    "F-Pace": { "start": 2017, "end": null },
+    "F-Type": { "start": 2014, "end": 2024 },
+    "I-Pace": { "start": 2019, "end": null },
+    "S-Type": { "start": 2000, "end": 2008 },
+    "XE": { "start": 2017, "end": 2020 },
+    "XF": { "start": 2009, "end": null },
+    "XJ": { "start": 1969, "end": 2019 },
+    "XK": [
+        { "start": 1997, "end": 2006 },
+        { "start": 2007, "end": 2015 }
+    ],
+    "X-Type": { "start": 2002, "end": 2008 }
+  },
+  "Jeep": {
+    "Cherokee": [
+      { "start": 1974, "end": 2001 },
+      { "start": 2014, "end": 2023 }
+    ],
+    "Commander": { "start": 2006, "end": 2010 },
+    "Compass": { "start": 2007, "end": null },
+    "Gladiator": [
+        { "start": 1963, "end": 1987 },
+        { "start": 2020, "end": null }
+    ],
+    "Grand Cherokee": { "start": 1993, "end": null },
+    "Grand Wagoneer": [
+      { "start": 1984, "end": 1991 },
+      { "start": 2022, "end": null }
+    ],
+    "Liberty": { "start": 2002, "end": 2012 },
+    "Patriot": { "start": 2007, "end": 2017 },
+    "Renegade": { "start": 2015, "end": null },
+    "Wagoneer": [
+      { "start": 1963, "end": 1983 },
+      { "start": 2022, "end": null }
+    ],
+    "Wrangler": { "start": 1987, "end": null }
+  },
+  "Kia": {
+    "Amanti": { "start": 2004, "end": 2009 },
+    "Borrego": { "start": 2009, "end": 2009 },
+    "Cadenza": { "start": 2014, "end": 2020 },
+    "Carnival": { "start": 2022, "end": null },
+    "EV6": { "start": 2022, "end": null },
+    "EV9": { "start": 2024, "end": null },
+    "Forte": { "start": 2010, "end": null },
+    "K5": { "start": 2021, "end": null },
+    "K900": { "start": 2015, "end": 2020 },
+    "Niro": { "start": 2017, "end": null },
+    "Optima": { "start": 2001, "end": 2020 },
+    "Rio": { "start": 2001, "end": 2023 },
+    "Rondo": { "start": 2007, "end": 2010 },
+    "Sedona": { "start": 2002, "end": 2021 },
+    "Seltos": { "start": 2021, "end": null },
+    "Sephia": { "start": 1994, "end": 2001 },
+    "Sorento": { "start": 2003, "end": null },
+    "Soul": { "start": 2010, "end": null },
+    "Spectra": { "start": 2000, "end": 2009 },
+    "Sportage": { "start": 1995, "end": null },
+    "Stinger": { "start": 2018, "end": 2023 },
+    "Telluride": { "start": 2020, "end": null }
+  },
+  "Lamborghini": {
+    "Aventador": { "start": 2012, "end": 2022 },
+    "Countach": { "start": 1974, "end": 1990 },
+    "Diablo": { "start": 1990, "end": 2001 },
+    "Gallardo": { "start": 2004, "end": 2014 },
+    "Huracan": { "start": 2015, "end": 2024 },
+    "LM002": { "start": 1986, "end": 1993 },
+    "Murcielago": { "start": 2002, "end": 2010 },
+    "Revuelto": { "start": 2024, "end": null },
+    "Urus": { "start": 2019, "end": null }
+  },
+  "Land Rover": {
+    "Defender": [
+      { "start": 1993, "end": 1997 },
+      { "start": 2020, "end": null }
+    ],
+    "Discovery": { "start": 1994, "end": null },
+    "Discovery Sport": { "start": 2015, "end": null },
+    "Freelander": { "start": 2002, "end": 2005 },
+    "LR2": { "start": 2008, "end": 2015 },
+    "LR3": { "start": 2005, "end": 2009 },
+    "LR4": { "start": 2010, "end": 2016 },
+    "Range Rover": { "start": 1987, "end": null },
+    "Range Rover Evoque": { "start": 2012, "end": null },
+    "Range Rover Sport": { "start": 2006, "end": null },
+    "Range Rover Velar": { "start": 2018, "end": null }
+  },
+  "Lexus": {
+    "CT": { "start": 2011, "end": 2017 },
+    "ES": { "start": 1990, "end": null },
+    "GS": { "start": 1993, "end": 2020 },
+    "GX": { "start": 2003, "end": null },
+    "HS": { "start": 2010, "end": 2012 },
+    "IS": { "start": 2001, "end": null },
+    "LC": { "start": 2018, "end": null },
+    "LFA": { "start": 2012, "end": 2012 },
+    "LS": { "start": 1990, "end": null },
+    "LX": { "start": 1996, "end": null },
+    "NX": { "start": 2015, "end": null },
+    "RC": { "start": 2015, "end": null },
+    "RX": { "start": 1999, "end": null },
+    "SC": { "start": 1992, "end": 2010 },
+    "TX": { "start": 2024, "end": null },
+    "UX": { "start": 2019, "end": null }
+  },
+  "Lincoln": {
+    "Aviator": [
+      { "start": 2003, "end": 2005 },
+      { "start": 2020, "end": null }
+    ],
+    "Blackwood": { "start": 2002, "end": 2002 },
+    "Continental": [
+      { "start": 1940, "end": 2002 },
+      { "start": 2017, "end": 2020 }
+    ],
+    "Corsair": { "start": 2020, "end": null },
+    "LS": { "start": 2000, "end": 2006 },
+    "Mark LT": { "start": 2006, "end": 2008 },
+    "Mark VII": { "start": 1984, "end": 1992 },
+    "Mark VIII": { "start": 1993, "end": 1998 },
+    "MKS": { "start": 2009, "end": 2016 },
+    "MKT": { "start": 2010, "end": 2019 },
+    "MKX": { "start": 2007, "end": 2018 },
+    "MKZ": { "start": 2007, "end": 2020 },
+    "Nautilus": { "start": 2019, "end": null },
+    "Navigator": { "start": 1998, "end": null },
+    "Town Car": { "start": 1981, "end": 2011 },
+    "Zephyr": { "start": 2006, "end": 2006 }
+  },
+  "Lotus": {
+    "Elise": { "start": 2005, "end": 2011 },
+    "Emira": { "start": 2024, "end": null },
+    "Evija": { "start": 2021, "end": null },
+    "Evora": { "start": 2010, "end": 2021 },
+    "Exige": { "start": 2006, "end": 2011 }
+  },
+  "Maserati": {
+    "Ghibli": { "start": 2014, "end": null },
+    "GranTurismo": [
+        { "start": 2008, "end": 2019 },
+        { "start": 2024, "end": null }
+    ],
+    "Grecale": { "start": 2023, "end": null },
+    "Levante": { "start": 2017, "end": null },
+    "MC20": { "start": 2022, "end": null },
+    "Quattroporte": { "start": 2005, "end": null }
+  },
+  "Mazda": {
+    "323": { "start": 1986, "end": 1995 },
+    "626": { "start": 1979, "end": 2002 },
+    "929": { "start": 1988, "end": 1995 },
+    "B-Series": { "start": 1972, "end": 2009 },
+    "CX-3": { "start": 2016, "end": 2021 },
+    "CX-30": { "start": 2020, "end": null },
+    "CX-5": { "start": 2013, "end": null },
+    "CX-50": { "start": 2023, "end": null },
+    "CX-7": { "start": 2007, "end": 2012 },
+    "CX-9": { "start": 2007, "end": 2023 },
+    "CX-70": { "start": 2025, "end": null },
+    "CX-90": { "start": 2024, "end": null },
+    "Mazda2": { "start": 2011, "end": 2014 },
+    "Mazda3": { "start": 2004, "end": null },
+    "Mazda5": { "start": 2006, "end": 2015 },
+    "Mazda6": { "start": 2003, "end": 2021 },
+    "Millenia": { "start": 1995, "end": 2002 },
+    "MPV": { "start": 1989, "end": 2006 },
+    "MX-3": { "start": 1992, "end": 1996 },
+    "MX-5 Miata": { "start": 1990, "end": null },
+    "MX-6": { "start": 1988, "end": 1997 },
+    "Protege": { "start": 1990, "end": 2003 },
+    "RX-7": { "start": 1979, "end": 1995 },
+    "RX-8": { "start": 2004, "end": 2011 },
+    "Tribute": { "start": 2001, "end": 2011 }
+  },
+  "McLaren": {
+    "570S": { "start": 2016, "end": 2021 },
+    "650S": { "start": 2015, "end": 2016 },
+    "720S": { "start": 2018, "end": 2023 },
+    "Artura": { "start": 2023, "end": null },
+    "GT": { "start": 2020, "end": null },
+    "MP4-12C": { "start": 2012, "end": 2014 },
+    "P1": { "start": 2014, "end": 2015 }
+  },
+  "Mercedes-Benz": {
+    "A-Class": { "start": 2019, "end": 2022 },
+    "C-Class": { "start": 1994, "end": null },
+    "CL-Class": { "start": 1998, "end": 2014 },
+    "CLA-Class": { "start": 2014, "end": null },
+    "CLK-Class": { "start": 1998, "end": 2009 },
+    "CLS-Class": { "start": 2006, "end": 2023 },
+    "E-Class": { "start": 1986, "end": null },
+    "G-Class": { "start": 2002, "end": null },
+    "GL-Class": { "start": 2007, "end": 2016 },
+    "GLA-Class": { "start": 2015, "end": null },
+    "GLB-Class": { "start": 2020, "end": null },
+    "GLC-Class": { "start": 2016, "end": null },
+    "GLE-Class": { "start": 2016, "end": null },
+    "GLK-Class": { "start": 2010, "end": 2015 },
+    "GLS-Class": { "start": 2017, "end": null },
+    "M-Class": { "start": 1998, "end": 2015 },
+    "Metris": { "start": 2016, "end": 2023 },
+    "R-Class": { "start": 2006, "end": 2012 },
+    "S-Class": { "start": 1973, "end": null },
+    "SL-Class": { "start": 1957, "end": null },
+    "SLC-Class": { "start": 2017, "end": 2020 },
+    "SLK-Class": { "start": 1998, "end": 2016 },
+    "SLR McLaren": { "start": 2005, "end": 2009 },
+    "SLS AMG": { "start": 2011, "end": 2015 },
+    "Sprinter": { "start": 2002, "end": null }
+  },
+  "Mercury": {
+    "Capri": [
+        { "start": 1971, "end": 1978 },
+        { "start": 1979, "end": 1986 },
+        { "start": 1991, "end": 1994 }
+    ],
+    "Cougar": { "start": 1967, "end": 2002 },
+    "Grand Marquis": { "start": 1975, "end": 2011 },
+    "Marauder": [
+        { "start": 1963, "end": 1965 },
+        { "start": 1969, "end": 1970 },
+        { "start": 2003, "end": 2004 }
+    ],
+    "Mariner": { "start": 2005, "end": 2011 },
+    "Milan": { "start": 2006, "end": 2011 },
+    "Montego": [
+        { "start": 1968, "end": 1976 },
+        { "start": 2005, "end": 2007 }
+    ],
+    "Monterey": [
+        { "start": 1952, "end": 1974 },
+        { "start": 2004, "end": 2007 }
+    ],
+    "Mountaineer": { "start": 1997, "end": 2010 },
+    "Mystique": { "start": 1995, "end": 2000 },
+    "Sable": [
+        { "start": 1986, "end": 2005 },
+        { "start": 2008, "end": 2009 }
+    ],
+    "Topaz": { "start": 1984, "end": 1994 },
+    "Tracer": { "start": 1988, "end": 1999 },
+    "Villager": { "start": 1993, "end": 2002 }
+  },
+  "Mini": {
+    "Clubman": { "start": 2008, "end": 2024 },
+    "Convertible": { "start": 2005, "end": null },
+    "Cooper": { "start": 2002, "end": null },
+    "Countryman": { "start": 2011, "end": null },
+    "Coupe": { "start": 2012, "end": 2015 },
+    "Hardtop": { "start": 2002, "end": null },
+    "Paceman": { "start": 2013, "end": 2016 },
+    "Roadster": { "start": 2012, "end": 2015 }
+  },
+  "Mitsubishi": {
+    "3000GT": { "start": 1991, "end": 1999 },
+    "Diamante": { "start": 1992, "end": 2004 },
+    "Eclipse": { "start": 1990, "end": 2012 },
+    "Eclipse Cross": { "start": 2018, "end": null },
+    "Endeavor": { "start": 2004, "end": 2011 },
+    "Expo": { "start": 1992, "end": 1995 },
+    "Galant": { "start": 1985, "end": 2012 },
+    "i-MiEV": { "start": 2012, "end": 2017 },
+    "Lancer": { "start": 2002, "end": 2017 },
+    "Mirage": [
+      { "start": 1989, "end": 2002 },
+      { "start": 2014, "end": null }
+    ],
+    "Montero": { "start": 1983, "end": 2006 },
+    "Montero Sport": { "start": 1997, "end": 2004 },
+    "Outlander": { "start": 2003, "end": null },
+    "Outlander Sport": { "start": 2011, "end": null },
+    "Raider": { "start": 2006, "end": 2009 }
+  }
+}

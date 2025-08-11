@@ -613,6 +613,7 @@ def get_appointment(appt_id: str):
         "vehicle": {
             "id": row.get("vehicle_id"), "year": row.get("year"),
             "make": row.get("make"), "model": row.get("model"), "vin": row.get("vin"),
+            "license_plate": row.get("license_plate"),
         },
         "services": [
             {
@@ -631,11 +632,12 @@ def patch_appointment(appt_id: str):
     if "status" in body:
         body["status"] = norm_status(str(body["status"]))
 
+    # Allow lightweight updates to appointment scalar fields
     fields = [
         ("status", "status"), ("start", "start_ts"), ("end", "end_ts"),
         ("total_amount", "total_amount"), ("paid_amount", "paid_amount"),
         ("check_in_at", "check_in_at"), ("check_out_at", "check_out_at"),
-        ("tech_id", "tech_id"),
+        ("tech_id", "tech_id"), ("notes", "notes"), ("location_address", "location_address"),
     ]
     sets = []
     params: list[Any] = []
@@ -643,22 +645,109 @@ def patch_appointment(appt_id: str):
         if key in body and body[key] is not None:
             sets.append(f"{col} = %s")
             params.append(body[key])
-    if not sets:
-        raise BadRequest("No valid fields to update")
+
+    # Vehicle update: permit passing license_plate/year/make/model to upsert and relink
+    vehicle_keys = {"license_plate", "vehicle_year", "vehicle_make", "vehicle_model"}
+    wants_vehicle_update = any(k in body for k in vehicle_keys)
 
     conn = db_conn()
     with conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT id::text, status::text FROM appointments WHERE id = %s FOR UPDATE", (appt_id,))
+            cur.execute("SELECT id::text, status::text, customer_id::text, vehicle_id::text FROM appointments WHERE id = %s FOR UPDATE", (appt_id,))
             old = cur.fetchone()
             if not old:
                 raise NotFound("Appointment not found")
 
-            params.append(appt_id)
-            cur.execute(f"UPDATE appointments SET {', '.join(sets)} WHERE id = %s", params)
-            audit(conn, user.get("sub", "system"), "APPT_PATCH", "appointment", appt_id, {"status": old["status"]}, {k: body[k] for k in body.keys()})
+            updated_keys: list[str] = []
 
-    return _ok({"id": appt_id, "updated_fields": list(body.keys())})
+            # Apply scalar field updates first (if any)
+            if sets:
+                params.append(appt_id)
+                cur.execute(f"UPDATE appointments SET {', '.join(sets)} WHERE id = %s", params)
+                updated_keys.extend([k for (k, _) in fields if k in body and body[k] is not None])
+
+            # Handle vehicle upsert + relink, mirroring creation semantics
+            if wants_vehicle_update:
+                license_plate = body.get("license_plate") or body.get("vin")
+                vehicle_year = body.get("vehicle_year")
+                vehicle_make = body.get("vehicle_make")
+                vehicle_model = body.get("vehicle_model")
+
+                resolved_vehicle_id = None
+                if license_plate:
+                    # Find existing by plate (case-insensitive)
+                    cur.execute("SELECT id::text, customer_id::text, year, make, model FROM vehicles WHERE license_plate ILIKE %s LIMIT 1", (license_plate,))
+                    vrow = cur.fetchone()
+                    if vrow:
+                        resolved_vehicle_id = vrow["id"]
+                        # Update attributes if provided
+                        v_sets = []
+                        v_params: list[Any] = []
+                        if vehicle_year is not None:
+                            v_sets.append("year = %s"); v_params.append(vehicle_year)
+                        if vehicle_make is not None:
+                            v_sets.append("make = %s"); v_params.append(vehicle_make)
+                        if vehicle_model is not None:
+                            v_sets.append("model = %s"); v_params.append(vehicle_model)
+                        # Ensure linkage to appointment customer if missing or different
+                        if old.get("customer_id") and (vrow.get("customer_id") != old.get("customer_id")):
+                            v_sets.append("customer_id = %s"); v_params.append(old.get("customer_id"))
+                        if v_sets:
+                            v_params.append(resolved_vehicle_id)
+                            cur.execute(f"UPDATE vehicles SET {', '.join(v_sets)} WHERE id = %s", v_params)
+                    else:
+                        # Create new vehicle associated to the appointment's customer
+                        cur.execute(
+                            """
+                            INSERT INTO vehicles (customer_id, year, make, model, license_plate)
+                            VALUES (%s, %s, %s, %s, %s)
+                            RETURNING id::text
+                            """,
+                            (old.get("customer_id"), vehicle_year, vehicle_make, vehicle_model, license_plate),
+                        )
+                        resolved_vehicle_id = (cur.fetchone() or {}).get("id")
+                else:
+                    # No plate provided: update existing linked vehicle if present; otherwise create a new vehicle
+                    if old.get("vehicle_id"):
+                        v_sets = []
+                        v_params: list[Any] = []
+                        if vehicle_year is not None:
+                            v_sets.append("year = %s"); v_params.append(vehicle_year)
+                        if vehicle_make is not None:
+                            v_sets.append("make = %s"); v_params.append(vehicle_make)
+                        if vehicle_model is not None:
+                            v_sets.append("model = %s"); v_params.append(vehicle_model)
+                        if v_sets:
+                            v_params.append(old.get("vehicle_id"))
+                            cur.execute(f"UPDATE vehicles SET {', '.join(v_sets)} WHERE id = %s", v_params)
+                            resolved_vehicle_id = old.get("vehicle_id")
+                    else:
+                        # If user selected year/make/model but there is no linked vehicle, create one (plate can be NULL)
+                        if vehicle_year is not None or vehicle_make is not None or vehicle_model is not None:
+                            cur.execute(
+                                """
+                                INSERT INTO vehicles (customer_id, year, make, model, license_plate)
+                                VALUES (%s, %s, %s, %s, NULL)
+                                RETURNING id::text
+                                """,
+                                (old.get("customer_id"), vehicle_year, vehicle_make, vehicle_model),
+                            )
+                            resolved_vehicle_id = (cur.fetchone() or {}).get("id")
+
+                if resolved_vehicle_id:
+                    cur.execute("UPDATE appointments SET vehicle_id = %s WHERE id = %s", (resolved_vehicle_id, appt_id))
+                    updated_keys.append("vehicle_id")
+
+            # Audit the change. For privacy, include only updated keys
+            if updated_keys or wants_vehicle_update:
+                try:
+                    audit(conn, user.get("sub", "system"), "APPT_PATCH", "appointment", appt_id, {"status": old["status"]}, {k: body.get(k) for k in set(updated_keys + list(vehicle_keys & set(body.keys())))} )
+                except Exception:
+                    pass
+            if not (sets or wants_vehicle_update):
+                raise BadRequest("No valid fields to update")
+
+    return _ok({"id": appt_id, "updated_fields": list(set([k for (k, _) in fields if k in body] + list(vehicle_keys & set(body.keys()))))})
 
 # ----------------------------------------------------------------------------
 # Quick actions: start/ready/complete (sync Calendar with Board)

@@ -9,6 +9,10 @@ import { checkConflict } from '../../lib/api';
 import { getAvailableSlots, clearAvailabilityCache } from '../../services/availabilityService';
 import { formatDate, getRelativeDate } from '../../utils/dateUtils';
 import './QuickAddModal.css';
+// Inventory catalog (shared with full scheduler)
+// Using TS modules from JS is fine in Vite
+import vehicleCatalogSeed from '@/data/vehicleCatalog';
+import buildCatalogFromRaw from '@/data/vehicleCatalogFromRaw';
 
 /**
  * QuickAddModal Component - Streamlined appointment creation
@@ -36,7 +40,12 @@ const QuickAddModal = ({
     appointmentDate: '',
     appointmentTime: '',
     serviceAddress: '',
-    notes: '',
+  notes: '',
+  // Vehicle fields (plate is the source of truth)
+  licensePlate: '',
+  vehicleYear: '',
+  vehicleMake: '',
+  vehicleModel: '',
     quickAppointment: true
   });
 
@@ -77,6 +86,30 @@ const QuickAddModal = ({
     'Battery Replacement',
     'Emergency Repair'
   ], []);
+
+  // Vehicle make/model catalog with year-aware filtering (shared dataset)
+  const fullCatalog = useMemo(() => {
+    try { return buildCatalogFromRaw(); } catch { return vehicleCatalogSeed; }
+  }, []);
+  const vehicleYears = useMemo(() => {
+    const current = new Date().getFullYear() + 1;
+    return Array.from({ length: current - 1980 + 1 }, (_, i) => current - i);
+  }, []);
+  const makeOptions = useMemo(() => fullCatalog.map(m => m.name).sort((a,b)=>a.localeCompare(b)), [fullCatalog]);
+  const selectedMake = useMemo(() => fullCatalog.find(m => m.name.toLowerCase() === (formData.vehicleMake||'').toLowerCase()), [fullCatalog, formData.vehicleMake]);
+  const parsedYear = useMemo(() => { const y = parseInt(formData.vehicleYear || ''); return isNaN(y) ? undefined : y; }, [formData.vehicleYear]);
+  const filteredModels = useMemo(() => {
+    const result = [];
+    if (selectedMake) {
+      for (const mod of selectedMake.models) {
+        if (!parsedYear) { result.push(mod.name); continue; }
+        const start = mod.startYear ?? 1900;
+        const end = mod.endYear ?? (new Date().getFullYear()+1);
+        if (parsedYear >= start && parsedYear <= end) result.push(mod.name);
+      }
+    }
+    return Array.from(new Set(result)).sort((a,b)=>a.localeCompare(b));
+  }, [selectedMake, parsedYear]);
 
   // ============ INITIALIZATION AND CLEANUP ============
   useEffect(() => {
@@ -296,6 +329,20 @@ const QuickAddModal = ({
       newErrors.appointmentTime = 'Appointment time is required';
     }
 
+    // Basic vehicle validation (optional but recommended)
+    if (!dataToValidate.licensePlate?.trim()) {
+      newErrors.licensePlate = 'License plate is required';
+    }
+    if (!dataToValidate.vehicleMake?.trim()) {
+      newErrors.vehicleMake = 'Vehicle make is required';
+    }
+    if (!dataToValidate.vehicleModel?.trim()) {
+      newErrors.vehicleModel = 'Vehicle model is required';
+    }
+    if (!dataToValidate.vehicleYear?.trim()) {
+      newErrors.vehicleYear = 'Vehicle year is required';
+    }
+
     // Phone validation
     if (dataToValidate.customerPhone && !/^\+?[\d\s\-()]+$/.test(dataToValidate.customerPhone)) {
       newErrors.customerPhone = 'Please enter a valid phone number';
@@ -460,6 +507,74 @@ const QuickAddModal = ({
 
           {/* Essential Fields */}
           <div className="quick-add-fields">
+            {/* Vehicle - plate first + inventory dropdowns */}
+            <div className="quick-add-field">
+              <label htmlFor="license-plate" className="quick-add-label">
+                <Car className="h-4 w-4" aria-hidden="true" />
+                License Plate *
+              </label>
+              <input
+                id="license-plate"
+                type="text"
+                value={formData.licensePlate}
+                onChange={(e) => handleInputChange('licensePlate', e.target.value.toUpperCase())}
+                className={`quick-add-input ${errors.licensePlate ? 'error' : ''}`}
+                placeholder="ABC1234"
+                required
+                aria-describedby={errors.licensePlate ? 'license-plate-error' : undefined}
+              />
+              {errors.licensePlate && (
+                <div id="license-plate-error" className="quick-add-error" role="alert">
+                  {errors.licensePlate}
+                </div>
+              )}
+            </div>
+
+            <div className="quick-add-field-group">
+              <div className="quick-add-field">
+                <label htmlFor="vehicle-year" className="quick-add-label">Year *</label>
+                <select
+                  id="vehicle-year"
+                  value={formData.vehicleYear}
+                  onChange={(e) => handleInputChange('vehicleYear', e.target.value)}
+                  className={`quick-add-input ${errors.vehicleYear ? 'error' : ''}`}
+                  required
+                >
+                  <option value="">Select year</option>
+                  {vehicleYears.map((y) => (<option key={y} value={y}>{y}</option>))}
+                </select>
+                {errors.vehicleYear && (<div className="quick-add-error" role="alert">{errors.vehicleYear}</div>)}
+              </div>
+              <div className="quick-add-field">
+                <label htmlFor="vehicle-make" className="quick-add-label">Make *</label>
+                <select
+                  id="vehicle-make"
+                  value={formData.vehicleMake}
+                  onChange={(e) => { handleInputChange('vehicleMake', e.target.value); handleInputChange('vehicleModel', ''); }}
+                  className={`quick-add-input ${errors.vehicleMake ? 'error' : ''}`}
+                  required
+                >
+                  <option value="">Select make</option>
+                  {makeOptions.map((m) => (<option key={m} value={m}>{m}</option>))}
+                </select>
+                {errors.vehicleMake && (<div className="quick-add-error" role="alert">{errors.vehicleMake}</div>)}
+              </div>
+              <div className="quick-add-field">
+                <label htmlFor="vehicle-model" className="quick-add-label">Model *</label>
+                <select
+                  id="vehicle-model"
+                  value={formData.vehicleModel}
+                  onChange={(e) => handleInputChange('vehicleModel', e.target.value)}
+                  className={`quick-add-input ${errors.vehicleModel ? 'error' : ''}`}
+                  required
+                  disabled={!formData.vehicleMake}
+                >
+                  <option value="">{formData.vehicleMake ? 'Select model' : 'Select make first'}</option>
+                  {filteredModels.map((m) => (<option key={m} value={m}>{m}</option>))}
+                </select>
+                {errors.vehicleModel && (<div className="quick-add-error" role="alert">{errors.vehicleModel}</div>)}
+              </div>
+            </div>
             {/* Customer Name */}
             <div className="quick-add-field">
               <label htmlFor="customer-name" className="quick-add-label">

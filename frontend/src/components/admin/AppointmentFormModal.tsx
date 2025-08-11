@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Calendar, User, Car, Wrench, MapPin, Phone, Mail } from 'lucide-react';
 import { Button } from '../ui/Button';
 import TemplateSelector from './TemplateSelector';
@@ -7,6 +7,8 @@ import { getTemplates } from '../../services/templateService.js';
 import { getAvailableSlots } from '../../lib/availabilityService';
 import { checkConflict } from '../../lib/api';
 import ConflictWarning from './ConflictWarning';
+import vehicleCatalogSeed, { type VehicleMake } from '@/data/vehicleCatalog';
+import buildCatalogFromRaw from '@/data/vehicleCatalogFromRaw';
 
 export interface AppointmentFormData {
   customerName: string;
@@ -95,6 +97,51 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
   const [availableSlots, setAvailableSlots] = useState<{ date: string; time: string }[]>([]);
   const [conflict, setConflict] = useState<null | { customerName: string; appointmentTime: string }>(null);
   const [overrideConflict, setOverrideConflict] = useState(false);
+  // Vehicle selection helpers
+  const [useOtherModel, setUseOtherModel] = useState(false);
+  const [useOtherMake, setUseOtherMake] = useState(false);
+
+  const parsedYear = useMemo(() => {
+    const y = parseInt(formData.vehicleYear);
+    return isNaN(y) ? undefined : y;
+  }, [formData.vehicleYear]);
+
+  // Build full catalog from raw (supports multiple ranges per model). Fallback to seed if build fails for any reason.
+  const fullCatalog = useMemo(() => {
+    try {
+      return buildCatalogFromRaw();
+    } catch {
+      return vehicleCatalogSeed;
+    }
+  }, []);
+
+  const makeOptions = useMemo(() => {
+    return fullCatalog.map((m) => m.name).sort((a, b) => a.localeCompare(b));
+  }, [fullCatalog]);
+
+  const selectedMake = useMemo<VehicleMake | undefined>(() => {
+    return fullCatalog.find((m) => m.name.toLowerCase() === formData.vehicleMake.trim().toLowerCase());
+  }, [formData.vehicleMake, fullCatalog]);
+
+  const modelOptions = useMemo(() => {
+    const models: string[] = [];
+    if (selectedMake) {
+      selectedMake.models.forEach((mod) => {
+        // If year specified, filter by range; otherwise include all
+        if (parsedYear) {
+          const start = mod.startYear ?? 1900;
+          const end = mod.endYear ?? new Date().getFullYear() + 1;
+          if (parsedYear >= start && parsedYear <= end) {
+            models.push(mod.name);
+          }
+        } else {
+          models.push(mod.name);
+        }
+      });
+    }
+    // Add 'Other…' at the end
+    return [...new Set(models)].sort((a, b) => a.localeCompare(b));
+  }, [selectedMake, parsedYear]);
 
   useEffect(() => {
     const fetchTemplates = async () => {
@@ -170,8 +217,8 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
 
     if (!formData.customerName.trim()) newErrors.customerName = 'Customer name is required';
     if (!formData.customerPhone.trim()) newErrors.customerPhone = 'Phone number is required';
-    if (!formData.vehicleMake.trim()) newErrors.vehicleMake = 'Vehicle make is required';
-    if (!formData.vehicleModel.trim()) newErrors.vehicleModel = 'Vehicle model is required';
+  if (!formData.vehicleMake.trim()) newErrors.vehicleMake = 'Vehicle make is required';
+  if (!formData.vehicleModel.trim()) newErrors.vehicleModel = 'Vehicle model is required';
     if (!formData.vehicleYear.trim()) newErrors.vehicleYear = 'Vehicle year is required';
     if (!formData.serviceType) newErrors.serviceType = 'Service type is required';
     if (formData.appointmentType !== 'emergency') {
@@ -257,6 +304,8 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
       notes: ''
     });
     setErrors({});
+  setUseOtherModel(false);
+  setUseOtherMake(false);
   };
 
   const handleClose = () => {
@@ -388,16 +437,50 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
                 Make *
               </label>
               <>
-                <input
-                  id="vehicle-make"
-                  type="text"
-                  value={formData.vehicleMake}
-                  onChange={(e) => handleInputChange('vehicleMake', e.target.value)}
-                  className={`w-full px-2 py-1 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.vehicleMake ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Toyota"
-                />
+                {!useOtherMake ? (
+                  <select
+                    id="vehicle-make"
+                    value={formData.vehicleMake}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === '__OTHER__') {
+                        setUseOtherMake(true);
+                        // Force model to free-text as well
+                        setUseOtherModel(true);
+                        handleInputChange('vehicleMake', '');
+                        handleInputChange('vehicleModel', '');
+                      } else {
+                        handleInputChange('vehicleMake', v);
+                        // Reset model when make changes
+                        setUseOtherModel(false);
+                        handleInputChange('vehicleModel', '');
+                      }
+                    }}
+                    className={`w-full px-2 py-1 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.vehicleMake ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Select make</option>
+                    {makeOptions.map((make) => (
+                      <option key={make} value={make}>{make}</option>
+                    ))}
+                    <option value="__OTHER__">Other…</option>
+                  </select>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      id="vehicle-make-other"
+                      type="text"
+                      value={formData.vehicleMake}
+                      onChange={(e) => handleInputChange('vehicleMake', e.target.value)}
+                      placeholder="Enter make"
+                      className={`flex-1 px-2 py-1 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        errors.vehicleMake ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    <Button type="button" variant="outline" onClick={() => setUseOtherMake(false)}>Back</Button>
+                  </div>
+                )}
                 {errors.vehicleMake && <p className="text-red-500 text-xs mt-1">{errors.vehicleMake}</p>}
               </>
             </div>
@@ -407,16 +490,47 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
                 Model *
               </label>
               <>
-                <input
-                  id="vehicle-model"
-                  type="text"
-                  value={formData.vehicleModel}
-                  onChange={(e) => handleInputChange('vehicleModel', e.target.value)}
-                  className={`w-full px-2 py-1 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.vehicleModel ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Camry"
-                />
+                {!useOtherModel ? (
+                  <div className="flex gap-2">
+                    <select
+                      id="vehicle-model"
+                      value={formData.vehicleModel}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === '__OTHER__') {
+                          setUseOtherModel(true);
+                          handleInputChange('vehicleModel', '');
+                        } else {
+                          handleInputChange('vehicleModel', v);
+                        }
+                      }}
+                      disabled={!formData.vehicleMake}
+                      className={`flex-1 px-2 py-1 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        errors.vehicleModel ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    >
+                      <option value="">{formData.vehicleMake ? 'Select model' : 'Select make first'}</option>
+                      {modelOptions.map((m) => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                      <option value="__OTHER__">Other…</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      id="vehicle-model-other"
+                      type="text"
+                      value={formData.vehicleModel}
+                      onChange={(e) => handleInputChange('vehicleModel', e.target.value)}
+                      placeholder="Enter model"
+                      className={`flex-1 px-2 py-1 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        errors.vehicleModel ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    <Button type="button" variant="outline" onClick={() => setUseOtherModel(false)}>Back</Button>
+                  </div>
+                )}
                 {errors.vehicleModel && <p className="text-red-500 text-xs mt-1">{errors.vehicleModel}</p>}
               </>
             </div>
@@ -426,18 +540,23 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
                 Year *
               </label>
               <>
-                <input
+                <select
                   id="vehicle-year"
-                  type="number"
-                  min="1900"
-                  max={new Date().getFullYear() + 1}
                   value={formData.vehicleYear}
-                  onChange={(e) => handleInputChange('vehicleYear', e.target.value)}
+                  onChange={(e) => {
+                    handleInputChange('vehicleYear', e.target.value);
+                    // When year changes, keep model but the model list will refilter
+                  }}
                   className={`w-full px-2 py-1 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                     errors.vehicleYear ? 'border-red-500' : 'border-gray-300'
                   }`}
-                  placeholder="2020"
-                />
+                >
+                  <option value="">Select year</option>
+                  {Array.from({ length: (new Date().getFullYear() + 1) - 1980 + 1 }, (_, i) => (new Date().getFullYear() + 1) - i)
+                    .map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                </select>
                 {errors.vehicleYear && <p className="text-red-500 text-xs mt-1">{errors.vehicleYear}</p>}
               </>
             </div>
