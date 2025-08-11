@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { Tabs } from '@/components/ui/Tabs';
 import * as api from '@/lib/api';
 import type { DrawerPayload, AppointmentService } from '@/types/models';
@@ -6,6 +6,8 @@ import MessageThread from './MessageThread';
 import CustomerHistory from './CustomerHistory';
 import { useAppointments } from '@/contexts/AppointmentContext';
 import { useToast } from '@/components/ui/Toast';
+import vehicleCatalogSeed from '@/data/vehicleCatalog';
+import buildCatalogFromRaw from '@/data/vehicleCatalogFromRaw';
 
 // Wrap the main component in React.memo to prevent unnecessary re-renders
 const AppointmentDrawer = React.memo(({ open, onClose, id, onDeleted, onRescheduled }: { open: boolean; onClose: () => void; id: string | null; onDeleted?: (id: string) => void; onRescheduled?: (id: string, startISO: string) => void }) => {
@@ -395,12 +397,82 @@ export default AppointmentDrawer;
 
 import { formatInShopTZ } from '@/lib/timezone';
 
-function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime?: () => void }) {
+function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime?: () => void; }) {
+  const [veh, setVeh] = React.useState({ license_plate: '', year: 0, make: '', model: '' });
+  const [meta, setMeta] = React.useState({ location_address: '', notes: '' });
+  // Catalog for dropdowns
+  const fullCatalog = useMemo(() => {
+    try { return buildCatalogFromRaw(); } catch { return vehicleCatalogSeed; }
+  }, []);
+  const vehicleYears = useMemo(() => {
+    const current = new Date().getFullYear() + 1;
+    return Array.from({ length: current - 1980 + 1 }, (_, i) => current - i);
+  }, []);
+  const makeOptions = useMemo(() => fullCatalog.map(m => m.name).sort((a,b)=>a.localeCompare(b)), [fullCatalog]);
+  const selectedMake = useMemo(() => fullCatalog.find(m => m.name.toLowerCase() === (veh.make||'').toLowerCase()), [fullCatalog, veh.make]);
+  const parsedYear = useMemo(() => { const y = parseInt((veh.year||'').toString()); return isNaN(y) ? undefined : y; }, [veh.year]);
+  const filteredModels = useMemo(() => {
+    const result: string[] = [];
+    if (selectedMake) {
+      for (const mod of selectedMake.models) {
+        const start = (mod.startYear ?? 1900);
+        const end = (mod.endYear ?? (new Date().getFullYear()+1));
+        if (!parsedYear || (parsedYear >= start && parsedYear <= end)) {
+          result.push(mod.name);
+        }
+      }
+    }
+    if (veh.model && !result.includes(veh.model)) result.push(veh.model);
+    return Array.from(new Set(result)).sort((a,b)=>a.localeCompare(b));
+  }, [selectedMake, parsedYear, veh.model]);
+  const [savingVeh, setSavingVeh] = React.useState(false);
+  const [savingMeta, setSavingMeta] = React.useState(false);
+  React.useEffect(() => {
+    if (!data) return;
+    setVeh({
+  license_plate: data.vehicle?.license_plate || data.vehicle?.vin || '',
+      year: data.vehicle?.year || 0,
+      make: data.vehicle?.make || '',
+      model: data.vehicle?.model || '',
+    });
+    setMeta({
+      location_address: data.appointment?.location_address || '',
+      notes: data.appointment?.notes || '',
+    });
+  }, [data]);
   if (!data) return <div>Loading…</div>;
   const a = data.appointment;
   const svcNames = (data.services || []).map(s => s.name).filter(Boolean);
   const servicesSummary = svcNames.length ? (svcNames.length > 3 ? `${svcNames.slice(0,3).join(', ')} +${svcNames.length-3} more` : svcNames.join(', ')) : '—';
   const totalFromServices = (data.services || []).reduce((sum, s) => sum + (s.estimated_price || 0), 0);
+  const apptId = a.id;
+  const canEdit = Boolean(apptId);
+  const saveVehicle = async () => {
+    if (!apptId) return;
+    try {
+      setSavingVeh(true);
+      await api.patchAppointment(apptId, {
+        license_plate: veh.license_plate || undefined,
+        vehicle_year: veh.year || undefined,
+        vehicle_make: veh.make || undefined,
+        vehicle_model: veh.model || undefined,
+      } as unknown as Record<string, unknown>);
+    } finally {
+      setSavingVeh(false);
+    }
+  };
+  const saveMeta = async () => {
+    if (!apptId) return;
+    try {
+      setSavingMeta(true);
+      await api.patchAppointment(apptId, {
+        location_address: meta.location_address,
+        notes: meta.notes,
+      } as unknown as Record<string, unknown>);
+    } finally {
+      setSavingMeta(false);
+    }
+  };
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
@@ -416,8 +488,27 @@ function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime
         <Info label="Customer" value={data.customer?.name ?? '—'} />
         <Info label="Phone" value={data.customer?.phone || '—'} />
         <Info label="Email" value={data.customer?.email || '—'} />
-        <Info label="Vehicle" value={`${data.vehicle?.year ?? ''} ${data.vehicle?.make ?? ''} ${data.vehicle?.model ?? ''}`.trim() || '—'} />
-        <Info label="Plate" value={data.vehicle?.vin || '—'} />
+        <div className="col-span-2">
+          <div className="text-sm text-gray-500">Vehicle</div>
+          <div className="mt-1 grid grid-cols-4 gap-2 items-center">
+            <input aria-label="Plate" title="License plate" className="border rounded px-2 py-1 col-span-1" placeholder="Plate" value={veh.license_plate} onChange={(e)=>setVeh(v=>({ ...v, license_plate: e.target.value.toUpperCase() }))} />
+            <select aria-label="Year" title="Vehicle year" className="border rounded px-2 py-1 col-span-1" value={veh.year||''} onChange={(e)=>setVeh(v=>({ ...v, year: Number(e.target.value)||0 }))}>
+              <option value="">Year</option>
+              {vehicleYears.map(y => (<option key={y} value={y}>{y}</option>))}
+            </select>
+            <select aria-label="Make" title="Vehicle make" className="border rounded px-2 py-1 col-span-1" value={veh.make} onChange={(e)=>setVeh(v=>({ ...v, make: e.target.value, model: '' }))}>
+              <option value="">Make</option>
+              {makeOptions.map(m => (<option key={m} value={m}>{m}</option>))}
+            </select>
+            <div className="col-span-1 flex gap-2">
+              <select aria-label="Model" title="Vehicle model" className="border rounded px-2 py-1 flex-1" value={veh.model} onChange={(e)=>setVeh(v=>({ ...v, model: e.target.value }))} disabled={!veh.make}>
+                <option value="">{veh.make ? 'Model' : 'Select make first'}</option>
+                {filteredModels.map(m => (<option key={m} value={m}>{m}</option>))}
+              </select>
+              <button disabled={!canEdit || savingVeh} className="px-2 py-1 text-blue-600 disabled:opacity-50" onClick={saveVehicle} type="button">{savingVeh?'Saving…':'Save'}</button>
+            </div>
+          </div>
+        </div>
         <div className="col-span-2 flex items-center gap-2">
           <div className="text-sm text-gray-500">Start</div>
           <div className="flex items-center gap-2">
@@ -429,16 +520,23 @@ function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Info label="Address" value={a.location_address || '—'} />
+      <div className="grid grid-cols-2 gap-3 items-start">
+        <div>
+          <div className="text-sm text-gray-500">Address</div>
+          <div className="flex gap-2 mt-1">
+            <input aria-label="Service address" className="border rounded px-2 py-1 flex-1" placeholder="Address" value={meta.location_address} onChange={(e)=>setMeta(m=>({ ...m, location_address: e.target.value }))} />
+            <button disabled={!canEdit || savingMeta} className="px-2 py-1 text-blue-600 disabled:opacity-50" type="button" onClick={saveMeta}>{savingMeta?'Saving…':'Save'}</button>
+          </div>
+        </div>
         <Info label="Services" value={servicesSummary} />
       </div>
-      {a.notes && (
-        <div className="mt-2">
-          <div className="text-sm text-gray-500">Notes</div>
-          <div className="whitespace-pre-line">{a.notes}</div>
+      <div className="mt-2">
+        <div className="text-sm text-gray-500">Notes</div>
+  <textarea className="w-full border rounded px-2 py-1" rows={3} value={meta.notes} onChange={(e)=>setMeta(m=>({ ...m, notes: e.target.value }))} aria-label="Notes" placeholder="Add notes" />
+        <div className="mt-1 flex justify-end">
+          <button disabled={!canEdit || savingMeta} className="px-2 py-1 text-blue-600 disabled:opacity-50" type="button" onClick={saveMeta}>{savingMeta?'Saving…':'Save notes'}</button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

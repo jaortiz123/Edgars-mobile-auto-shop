@@ -63,7 +63,7 @@ export default defineConfig({
   timeout: 30000,
   
   webServer: {
-    command: 'npm run dev --prefix frontend',
+    command: 'bash -lc "export SKIP_KILL_5173=1; npm run dev --prefix frontend"',
     port: 5173,
     reuseExistingServer: true,
     timeout: 120000,

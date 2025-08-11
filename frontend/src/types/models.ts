@@ -33,6 +33,7 @@ export interface Vehicle {
   make?: string | null;
   model?: string | null;
   vin?: string | null;
+  license_plate?: string | null;
   // Backend uses license_plate but maps to vin in drawer; keep vin for compatibility
 }
 
