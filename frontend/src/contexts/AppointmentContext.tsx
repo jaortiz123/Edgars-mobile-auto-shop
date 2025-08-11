@@ -70,11 +70,12 @@ export function AppointmentProvider({ children }: { children: React.ReactNode })
       
       // Direct function call with comprehensive error handling
       let data: { columns: BoardColumn[]; cards: BoardCard[] } | undefined;
-      try {      console.log('🎯 AppointmentContext: About to call api.getBoard...');
-      console.log('🔍 AppointmentContext: Actual api.getBoard function:', api.getBoard);
-      console.log('🔍 AppointmentContext: api.getBoard toString:', api.getBoard.toString().substring(0, 200));
-      data = await api.getBoard({});
-      console.log('🎯 AppointmentContext: api.getBoard call completed, result:', data);
+      try {
+        console.log('🎯 AppointmentContext: About to call api.getBoard...');
+        console.log('🔍 AppointmentContext: Actual api.getBoard function:', api.getBoard);
+        console.log('🔍 AppointmentContext: api.getBoard toString:', api.getBoard.toString().substring(0, 200));
+        data = await api.getBoard({});
+        console.log('🎯 AppointmentContext: api.getBoard call completed, result:', data);
       } catch (apiError) {
         console.error('🚨 AppointmentContext: api.getBoard threw error:', {
           error: apiError,
@@ -95,7 +96,35 @@ export function AppointmentProvider({ children }: { children: React.ReactNode })
       console.log('🔄 AppointmentContext: Set columns and cards');
     } catch (e) {
       console.error('❌ AppointmentContext: Error in refreshBoard:', e);
-      toast.push({ kind: 'error', text: handleApiError(e, 'Failed to load board') });
+      // Check if this is a backend connectivity issue (500 error, network error, etc.)
+      const e_typed = e as { response?: { status?: number }; code?: string; message?: string };
+      const isServerError = (e_typed.response?.status && e_typed.response.status >= 500) || 
+                           e_typed.code === 'ECONNREFUSED' ||
+                           e_typed.message?.includes('Network Error') ||
+                           e_typed.message?.includes('An unexpected internal server error occurred');
+      
+      if (isServerError) {
+        // For server errors, provide a single friendly message and fallback to empty state
+        console.warn('🔄 AppointmentContext: Backend appears to be unavailable, using fallback state');
+        setColumns([
+          { id: 'SCHEDULED', title: 'Scheduled', order: 0 },
+          { id: 'IN_PROGRESS', title: 'In Progress', order: 1 },
+          { id: 'COMPLETED', title: 'Completed', order: 2 }
+        ]);
+        setCards([]);
+        // Only show toast once per session for server errors
+        if (!sessionStorage.getItem('backend-error-shown')) {
+          toast.push({ 
+            kind: 'error', 
+            text: 'Backend service unavailable. Dashboard running in offline mode.',
+            duration: 5000
+          });
+          sessionStorage.setItem('backend-error-shown', 'true');
+        }
+      } else {
+        // For other errors, show the specific error message
+        toast.push({ kind: 'error', text: handleApiError(e, 'Failed to load board') });
+      }
     } finally {
       setLoading(false);
       console.log('✅ AppointmentContext: refreshBoard completed');
@@ -106,7 +135,35 @@ export function AppointmentProvider({ children }: { children: React.ReactNode })
     try {
       setStats(await api.getStats({}));
     } catch (e) {
-      toast.push({ kind: 'error', text: handleApiError(e, 'Failed to load stats') });
+      console.error('❌ AppointmentContext: Error in refreshStats:', e);
+      // Check if this is a backend connectivity issue
+      const e_typed = e as { response?: { status?: number }; code?: string; message?: string };
+      const isServerError = (e_typed.response?.status && e_typed.response.status >= 500) || 
+                           e_typed.code === 'ECONNREFUSED' ||
+                           e_typed.message?.includes('Network Error') ||
+                           e_typed.message?.includes('An unexpected internal server error occurred');
+      
+      if (isServerError) {
+        // For server errors, provide fallback stats and suppress toast if already shown
+        console.warn('🔄 AppointmentContext: Using fallback stats due to server error');
+        setStats({
+          todayAppointments: 0,
+          weekAppointments: 0,
+          monthRevenue: 0,
+          averageRating: 0
+        });
+        // Don't show additional toasts if we already showed the backend error
+        if (!sessionStorage.getItem('backend-error-shown')) {
+          toast.push({ 
+            kind: 'error', 
+            text: 'Unable to load dashboard statistics. Backend service unavailable.',
+            duration: 3000
+          });
+        }
+      } else {
+        // For other errors, show the specific error message
+        toast.push({ kind: 'error', text: handleApiError(e, 'Failed to load stats') });
+      }
     }
   }, [toast]);
 

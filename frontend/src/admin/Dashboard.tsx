@@ -239,6 +239,25 @@ export function Dashboard() {
        }       
      } catch (err) {
       console.error('❌ Dashboard API error', err);
+      
+      // Check if this is a backend connectivity issue
+      const err_typed = err as { response?: { status?: number }; code?: string; message?: string };
+      const isServerError = (err_typed.response?.status && err_typed.response.status >= 500) || 
+                           err_typed.code === 'ECONNREFUSED' ||
+                           err_typed.message?.includes('Network Error') ||
+                           err_typed.message?.includes('Failed to fetch') ||
+                           err_typed.message?.includes('An unexpected internal server error occurred');
+      
+      if (isServerError) {
+        console.warn('⚠️ Dashboard: Backend appears to be unavailable, running in offline mode');
+        // Don't show alerts for server connectivity issues, just log and continue
+        // The AppointmentContext will handle showing a single notification
+      } else {
+        // For other errors, show alert (but limit to soft refreshes to avoid spam)
+        if (!isSoft) {
+          console.error('❌ Dashboard: Non-server error occurred:', err);
+        }
+      }
       // Still proceed to show empty dashboard instead of hanging
   } finally {
       clearTimeout(safetyTimer);
