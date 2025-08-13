@@ -97,6 +97,12 @@ export interface BoardCard {
   priorityReason?: string | null;
   // optional future: when customer expects pickup (promise time)
   promiseBy?: string | null;
+
+  // Phase 1 Service Catalog (optional, non-breaking)
+  primaryOperation?: import('./serviceCatalog').JobOperation;
+  additionalOperations?: import('./serviceCatalog').JobOperation[];
+  blockerCode?: import('./serviceCatalog').BlockerCode;
+  headline?: string; // derived display title if provided
 }
 
 export interface ServiceHistoryItem {

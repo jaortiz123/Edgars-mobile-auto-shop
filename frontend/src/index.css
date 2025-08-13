@@ -5,6 +5,7 @@
 @import './styles/spacing.css';
 @import './styles/accessibilityEnhancements.css';
 @import './styles/microInteractions.css';
+/* admin-neobrutal.css is now lazy-loaded by the AdminLayout to avoid affecting the public site */
 
 /* Smooth scrolling for premium UX with reduced motion support */
 html {
@@ -23,33 +24,33 @@ html {
 
 @layer base {
   :root {
-    --background: 220 20% 96%; /* A very light, cool gray background */
-    --foreground: 224 39% 15%; /* Your Logo's Navy for text */
+    --background: 0 0% 100%; /* A very light, cool gray background */
+    --foreground: 222.2 84% 4.9%; /* Your Logo's Navy for text */
 
     --card: 0 0% 100%; /* Pure white for cards to pop */
-    --card-foreground: 224 39% 15%;
+    --card-foreground: 222.2 84% 4.9%;
  
     --popover: 0 0% 100%;
-    --popover-foreground: 224 39% 15%;
+    --popover-foreground: 222.2 84% 4.9%;
  
-    --primary: 224 39% 15%; /* Primary is your Navy */
-    --primary-foreground: 48 83% 94%; /* Foreground is your Cream */
+    --primary: 222.2 47.4% 11.2%; /* Primary is your Navy */
+    --primary-foreground: 210 40% 98%; /* Foreground is your Cream */
  
-    --secondary: 220 14% 90%; /* A slightly darker gray for secondary elements */
-    --secondary-foreground: 224 39% 15%;
+    --secondary: 210 40% 96.1%; /* A slightly darker gray for secondary elements */
+    --secondary-foreground: 222.2 47.4% 11.2%;
  
-    --muted: 220 9% 46%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
  
-    --accent: 25 95% 53%; /* Action Orange for CTAs */
-    --accent-foreground: 0 0% 100%;
+    --accent: 210 40% 96.1%; /* Action Orange for CTAs */
+    --accent-foreground: 222.2 47.4% 11.2%;
  
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 25 95% 53%; /* Ring is the action orange */
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%; /* Ring is the action orange */
  
     --radius: 0.5rem;
 
@@ -72,5 +73,47 @@ html {
     /* Card Shadows */
     --card-shadow-default: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
     --card-shadow-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
   }
 }

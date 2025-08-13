@@ -1,0 +1,49 @@
+[
+  {
+    "id": "srv_engine_oil-change-synthetic",
+    "slug": "oil-change-synthetic",
+    "name": "Oil & Filter Change (Synthetic)",
+    "system": "Engine",
+    "operation": "Oil & Filter Change",
+    "defaultHours": 0.6,
+    "synonyms": ["oil change", "synthetic oil", "lube job"]
+  },
+  {
+    "id": "srv_brakes_front-pads-rotors",
+    "slug": "front-pads-rotors",
+    "name": "Front Brake Pads & Rotors",
+    "system": "Brakes",
+    "operation": "Pad & Rotor Replacement",
+    "position": "Front",
+    "defaultHours": 2.4,
+    "synonyms": ["front brakes", "front pads", "front rotors"]
+  },
+  {
+    "id": "srv_brakes_rear-pads-rotors",
+    "slug": "rear-pads-rotors",
+    "name": "Rear Brake Pads & Rotors",
+    "system": "Brakes",
+    "operation": "Pad & Rotor Replacement",
+    "position": "Rear",
+    "defaultHours": 2.2,
+    "synonyms": ["rear brakes", "rear pads", "rear rotors"]
+  },
+  {
+    "id": "srv_tires_rotation",
+    "slug": "tire-rotation",
+    "name": "Tire Rotation",
+    "system": "Tires",
+    "operation": "Rotation",
+    "defaultHours": 0.5,
+    "synonyms": ["rotate tires", "rotation"]
+  },
+  {
+    "id": "srv_battery_replacement",
+    "slug": "battery-replacement",
+    "name": "Battery Replacement",
+    "system": "Electrical",
+    "operation": "Battery Replacement",
+    "defaultHours": 0.5,
+    "synonyms": ["battery swap", "new battery"]
+  }
+]

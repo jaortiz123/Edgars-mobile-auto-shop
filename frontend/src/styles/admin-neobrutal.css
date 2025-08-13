@@ -1,0 +1,433 @@
+/* Scoped Neobrutalism theme for Admin (no Tailwind v4 features; safe with Tailwind v3) */
+
+/* Theme variables scoped to the admin wrapper */
+.admin-neobrutal {
+  /* Industrial Mechanic Palette */
+  --color-construction: #FFC400; /* High‑vis yellow */
+  --color-shop-blue: #1B4B91; /* Shop manual blue */
+  --color-grease: #111111; /* Grease black */
+  --color-steel: #5F6B75; /* Steel gray */
+  --color-steel-light: #D3DADE; /* Light steel */
+  --color-invoice: #0AAE63; /* Invoice green */
+  --color-alert: #E54848; /* Alert red for danger */
+  --background: #F4F6F8; /* Slightly warm neutral shop paper */
+  --secondary-background: #FFFFFF;
+  --foreground: var(--color-grease);
+  --main-foreground: #FFFFFF;
+  --main: var(--color-shop-blue);
+  --border: var(--color-grease);
+  --ring: var(--color-grease);
+  --overlay: rgba(0,0,0,0.8);
+  --shadow: 4px 4px 0 0 var(--border);
+  --chart-1: var(--color-shop-blue);
+  --chart-2: var(--color-alert);
+  --chart-3: var(--color-construction);
+  --chart-4: var(--color-invoice);
+  --chart-5: #7A83FF;
+  --chart-active-dot: var(--color-grease);
+
+  --spacing-boxShadowX: 4px;
+  --spacing-boxShadowY: 4px;
+  --spacing-reverseBoxShadowX: -4px;
+  --spacing-reverseBoxShadowY: -4px;
+  --radius-base: 5px;
+  --font-display: 'Anton', 'Impact', 'Roboto Condensed', 'Oswald', sans-serif;
+  --font-body: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  /* Small SVG tile for diamond plate (teardrop tread) */
+  --texture-diamond-plate: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><defs><g id='t'><path d='M8 2c6 5 8 9 9 14 1 7-1 14-6 21-6-5-8-9-9-14-1-7 1-14 6-21Z' fill='%23d0d5d9'/><path d='M8 2c6 5 8 9 9 14 1 7-1 14-6 21-6-5-8-9-9-14-1-7 1-14 6-21Z' fill='none' stroke='%23b3b9bd' stroke-width='2'/></g></defs><rect width='120' height='120' fill='%23f4f6f8'/><use href='%23t' x='5' y='5'/><use href='%23t' x='35' y='5'/><use href='%23t' x='65' y='5'/><use href='%23t' x='95' y='5'/><use href='%23t' x='20' y='35'/><use href='%23t' x='50' y='35'/><use href='%23t' x='80' y='35'/><use href='%23t' x='5' y='65'/><use href='%23t' x='35' y='65'/><use href='%23t' x='65' y='65'/><use href='%23t' x='95' y='65'/><use href='%23t' x='20' y='95'/><use href='%23t' x='50' y='95'/><use href='%23t' x='80' y='95'/></svg>");
+  --texture-pegboard: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'><rect width='48' height='48' fill='%23f4f4f3'/><g fill='%23b8bab7' stroke='%23a3a5a2' stroke-width='1.5'><circle cx='8' cy='8' r='4'/><circle cx='32' cy='8' r='4'/><circle cx='20' cy='20' r='4'/><circle cx='44' cy='20' r='4'/><circle cx='8' cy='32' r='4'/><circle cx='32' cy='32' r='4'/><circle cx='20' cy='44' r='4'/><circle cx='44' cy='44' r='4'/></g></svg>");
+
+  /* Photographic diamond plate background (user-provided image) */
+  /* Place the provided image at: frontend/public/diamond-plate.jpg */
+  --admin-bg-photo: url('/diamond-plate.jpg');
+
+  /* Apply site-wide admin background */
+  --admin-bg-overlay: rgba(255,255,255,0.35); /* lighter so photo shows */
+  background-image:
+    linear-gradient(var(--admin-bg-overlay), var(--admin-bg-overlay)),
+    var(--admin-bg-photo);
+  background-size: cover; /* full-bleed */
+  background-position: center center;
+  background-attachment: fixed; /* subtle parallax feel */
+  background-repeat: no-repeat;
+}
+
+/* Optional overlay strength modifiers (apply alongside .admin-neobrutal on root div if desired) */
+.admin-neobrutal.overlay-strong { --admin-bg-overlay: rgba(255,255,255,0.65); }
+.admin-neobrutal.overlay-faint { --admin-bg-overlay: rgba(255,255,255,0.18); }
+.admin-neobrutal.overlay-none { --admin-bg-overlay: rgba(255,255,255,0); }
+
+.admin-neobrutal.dark {
+  --background: #182632;
+  --secondary-background: #121B23;
+  --foreground: #E8ECEF;
+  --main-foreground: #FFFFFF;
+  --main: var(--color-shop-blue);
+  --border: #E8ECEF;
+  --ring: #FFFFFF;
+  --shadow: 4px 4px 0 0 var(--border);
+  --chart-1: var(--color-shop-blue);
+  --chart-2: var(--color-alert);
+  --chart-3: var(--color-construction);
+  --chart-4: var(--color-invoice);
+  --chart-5: #7A83FF;
+  --chart-active-dot: #fff;
+}
+
+/* Lightweight helpers to apply theme without Tailwind v4 */
+.nb-bg {
+  /* Use background-color so we don't wipe out background-image set on containers like .admin-neobrutal */
+  background-color: var(--background);
+  color: var(--foreground);
+}
+.nb-surface {
+  background: var(--secondary-background);
+  color: var(--foreground);
+  border: 2px solid var(--border);
+  box-shadow: var(--shadow);
+  border-radius: var(--radius-base);
+}
+.nb-border { border-color: var(--border); }
+.nb-shadow { box-shadow: var(--shadow); }
+.nb-btn-primary {
+  background: var(--main);
+  color: var(--main-foreground);
+  border: 2px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.nb-link-active {
+  background: color-mix(in oklch, var(--main) 20%, transparent);
+  color: var(--foreground);
+  border-right: 2px solid var(--border);
+}
+
+/* Base text reset within admin scope */
+.admin-neobrutal * {
+  --tw-ring-color: var(--ring);
+  font-family: var(--font-body);
+}
+
+/* ----------------------------- */
+/* Admin-scoped overrides for existing card/UI classes
+   These map component and utility classes to neobrutal theme
+   so cards and common controls pick up the admin look without
+   changing component code. */
+
+.admin-neobrutal .card-base {
+  background: var(--secondary-background, white) !important;
+  color: var(--foreground, #111827) !important;
+  border: 1px solid rgba(0,0,0,0.18) !important;
+  box-shadow: 2px 2px 0px 0px rgba(0,0,0,0.10) !important;
+  border-radius: var(--radius-base, 8px) !important;
+}
+
+.admin-neobrutal .card-base .text-gray-900,
+.admin-neobrutal .card-base .text-gray-800,
+.admin-neobrutal .card-base .text-gray-700,
+.admin-neobrutal .card-base .text-gray-600,
+.admin-neobrutal .card-base .text-gray-500,
+.admin-neobrutal .card-base .text-gray-400,
+.admin-neobrutal .card-base .text-neutral-900,
+.admin-neobrutal .card-base .text-neutral-800,
+.admin-neobrutal .card-base .text-neutral-700,
+.admin-neobrutal .card-base .text-neutral-600,
+.admin-neobrutal .card-base .text-neutral-500,
+.admin-neobrutal .card-base .text-neutral-400 {
+  color: var(--foreground, #111827) !important;
+}
+
+/* Map a few common utility classes used inside cards to theme tokens */
+.admin-neobrutal .bg-white { background: var(--secondary-background, white) !important; }
+.admin-neobrutal .bg-primary-600 { background: var(--main, #7A83FF) !important; }
+.admin-neobrutal .bg-primary-50 { background: color-mix(in oklch, var(--main) 6%, transparent) !important; }
+.admin-neobrutal .bg-primary-100 { background: color-mix(in oklch, var(--main) 10%, transparent) !important; }
+.admin-neobrutal .text-primary-700 { color: var(--main-foreground, #000) !important; }
+.admin-neobrutal .bg-neutral-100 { background: color-mix(in oklch, var(--main) 4%, transparent) !important; }
+.admin-neobrutal .bg-neutral-50 { background: color-mix(in oklch, var(--main) 2%, transparent) !important; }
+.admin-neobrutal .text-neutral-900 { color: var(--foreground, #111827) !important; }
+.admin-neobrutal .text-neutral-800 { color: rgba(0,0,0,0.9) !important; }
+.admin-neobrutal .text-neutral-700 { color: rgba(0,0,0,0.8) !important; }
+.admin-neobrutal .text-neutral-600 { color: rgba(0,0,0,0.65) !important; }
+.admin-neobrutal .text-neutral-500 { color: rgba(0,0,0,0.55) !important; }
+.admin-neobrutal .text-neutral-400 { color: rgba(0,0,0,0.45) !important; }
+.admin-neobrutal .border-neutral-200 { border-color: rgba(0,0,0,0.3) !important; }
+
+/* Avatar circle */
+.admin-neobrutal .bg-primary-100 { background: color-mix(in oklch, var(--main) 12%, transparent) !important; }
+.admin-neobrutal .text-primary-700 { color: var(--main-foreground, #000) !important; }
+
+/* Buttons inside admin should prefer neobrutal primary when used with primary classes */
+.admin-neobrutal .bg-primary-600.text-white { color: var(--main-foreground, #000) !important; }
+
+/* Ensure small chips/badges respect theme */
+.admin-neobrutal .bg-steel-100 { background: color-mix(in oklch, var(--main) 6%, transparent) !important; }
+.admin-neobrutal .text-steel-800 { color: rgba(0,0,0,0.7) !important; }
+
+/* Links / subtle text */
+.admin-neobrutal a { color: var(--main, #7A83FF); }
+
+/* ----------------------------- */
+/* Targeted header / avatar / open-button tweaks for card top area */
+.admin-neobrutal .card-base > .flex.items-start.justify-between,
+.admin-neobrutal .card-base .flex.items-start.justify-between {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.admin-neobrutal .card-base .w-10.h-10.rounded-full,
+.admin-neobrutal .card-base .w-10.h-10 {
+  border: 1px solid rgba(0,0,0,0.14) !important;
+  box-shadow: none !important;
+  background: var(--primary-foreground, rgba(0,0,0,0.06)) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.admin-neobrutal .card-base .ml-1.inline-flex.items-center.px-2.py-1.rounded.text-xs.font-medium,
+.admin-neobrutal .card-base .ml-1.inline-flex.items-center.px-2.py-1.rounded {
+  background: var(--secondary-background, transparent) !important;
+  color: var(--foreground, #111827) !important;
+  border: 1px solid rgba(0,0,0,0.18) !important;
+  padding: 0.3rem 0.5rem !important;
+}
+
+/* remove any heavy outlines on card (safety) */
+.admin-neobrutal .card-base {
+  outline: none !important;
+}
+
+/* Quick admin-scoped mappings for common Tailwind utilities used by cards */
+.admin-neobrutal .bg-ui-surface { background: var(--card, #fff) !important; color: var(--card-foreground, #111827) !important; }
+.admin-neobrutal .shadow-lg { box-shadow: var(--card-shadow-default, 0 1px 3px rgba(0,0,0,0.1)) !important; }
+.admin-neobrutal .shadow-2xl { box-shadow: var(--card-shadow-hover, 0 4px 6px rgba(0,0,0,0.1)) !important; }
+.admin-neobrutal .rounded-2xl { border-radius: calc(var(--radius-base, 8px) + 4px) !important; }
+.admin-neobrutal .border { border-color: rgba(0,0,0,0.3) !important; }
+.admin-neobrutal .border-ui-border { border-color: rgba(0,0,0,0.3) !important; }
+
+/* Ensure card hover/focus uses neobrutal shadows */
+.admin-neobrutal .card-base:hover { box-shadow: var(--card-shadow-hover, 0 4px 6px rgba(0,0,0,0.1)) !important; transform: translateY(-1px) !important; }
+.admin-neobrutal .card-base:focus { box-shadow: var(--card-shadow-hover, 0 6px 18px rgba(0,0,0,0.12)) !important; }
+
+/* Tidy up small controls inside cards */
+.admin-neobrutal .card-base .p-2 { padding: 0.4rem !important; }
+.admin-neobrutal .card-base .p-3 { padding: 0.6rem !important; }
+
+/* Board layout adjustments */
+.admin-neobrutal [aria-label="Status Board"] {
+  /* ensure board background inherits root background without gradient remnants */
+  background: transparent;
+}
+
+.admin-neobrutal [aria-label="Status Board"] > .flex.gap-4 {
+  /* give a subtle alignment baseline */
+  padding-bottom: 0.5rem;
+}
+
+/* ================= Premium Board Enhancements ================ */
+/* Board background subtle grid */
+.admin-neobrutal .nb-board-bg { background: transparent; }
+
+/* Card base (enhanced) */
+.admin-neobrutal .nb-card {
+  position: relative;
+  background: var(--secondary-background);
+  border: 5px solid var(--border); /* thicker border */
+  border-radius: var(--radius-base);
+  padding: 12px 14px 14px;
+  box-shadow: 4px 4px 0 0 #000; /* harsh shadow */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow .12s ease, transform .12s ease, background .12s ease;
+  cursor: pointer;
+}
+.admin-neobrutal .nb-card:hover { transform: translate(-3px,-3px); box-shadow: 7px 7px 0 0 #000; }
+.admin-neobrutal .nb-card:active { transform: translate(0,0); box-shadow: 3px 3px 0 0 #000; }
+/* Selected state (e.g. focus or data-selected) */
+.admin-neobrutal .nb-card[data-selected="true"],
+.admin-neobrutal .nb-card:focus-visible {
+  outline: none;
+  border-color: #0054d8; /* bolder blue */
+  box-shadow: 4px 4px 0 0 #0054d8;
+}
+
+/* Left accent via status */
+.admin-neobrutal .nb-card[data-status]::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 10px; /* thicker accent */
+  background: var(--nb-status-color, var(--main));
+  border-right: 3px solid var(--border);
+  border-top-left-radius: var(--radius-base);
+  border-bottom-left-radius: var(--radius-base);
+}
+
+.admin-neobrutal .nb-card-header { display:flex; align-items:center; justify-content:space-between; gap:8px; line-height:1.1; }
+.admin-neobrutal .nb-card-title { font-weight:600; font-size:14px; display:flex; align-items:center; gap:6px; }
+.admin-neobrutal .nb-card-meta { font-size:12px; /* fallback neutral tone */ color: rgba(0,0,0,0.55); display:flex; flex-wrap:wrap; gap:10px; }
+.admin-neobrutal .nb-status-dot { width:10px; height:10px; border:2px solid var(--border); border-radius:50%; background: var(--nb-status-color,var(--main)); box-shadow:0 0 0 2px var(--secondary-background); }
+
+/* Chips */
+.admin-neobrutal .nb-chip { font-size:10px; text-transform:uppercase; letter-spacing:.5px; padding:2px 6px 3px; border:2px solid var(--border); background: var(--background); border-radius: var(--radius-base); font-weight:600; box-shadow: var(--shadow); display:inline-flex; align-items:center; gap:4px; }
+.admin-neobrutal .nb-chip[data-variant="primary"] { background: var(--main); color: var(--main-foreground); }
+.admin-neobrutal .nb-chip[data-variant="danger"] { background: #FF4D50; color:#000; }
+.admin-neobrutal .nb-chip[data-variant="warn"] { background: #FACC00; color:#000; }
+.admin-neobrutal .nb-chip[data-variant="success"] { background: #05E17A; color:#000; }
+
+/* Status mapping */
+.admin-neobrutal .nb-card[data-status="scheduled"] { --nb-status-color:#5294FF; }
+.admin-neobrutal .nb-card[data-status="in_progress"] { --nb-status-color:#FF4D50; }
+.admin-neobrutal .nb-card[data-status="ready"] { --nb-status-color:#FACC00; }
+.admin-neobrutal .nb-card[data-status="completed"] { --nb-status-color:#05E17A; }
+.admin-neobrutal .nb-card[data-status="no_show"] { --nb-status-color:#7A83FF; }
+
+/* ===== Card Hierarchy Enhancements ===== */
+.admin-neobrutal .nb-card .nb-service-title { font-size:16px; font-weight:800; line-height:1.05; letter-spacing:.3px; }
+/* Elevate service title with display font */
+.admin-neobrutal .nb-card .nb-service-title { font-family: var(--font-display); letter-spacing:1px; font-size:17px; }
+.admin-neobrutal .nb-card .nb-status-badges { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+.admin-neobrutal .nb-card .nb-status-badge { font-size:10px; font-weight:700; padding:4px 8px 5px; border:3px solid #000; background:#fff; box-shadow:4px 4px 0 0 #000; text-transform:uppercase; letter-spacing:1px; line-height:1; }
+.admin-neobrutal .nb-card .nb-status-badge[data-s="scheduled"] { background:#FACC00; }
+.admin-neobrutal .nb-card .nb-status-badge[data-s="in_progress"] { background:#FF7A00; }
+.admin-neobrutal .nb-card .nb-status-badge[data-s="ready"] { background:#05E17A; }
+.admin-neobrutal .nb-card .nb-status-badge[data-s="completed"] { background:#d1d5db; }
+.admin-neobrutal .nb-card .nb-vehicle-line { font-size:12px; font-weight:600; display:flex; gap:4px; align-items:center; }
+.admin-neobrutal .nb-card .nb-customer-line { font-size:12px; font-weight:500; opacity:.85; }
+.admin-neobrutal .nb-card .nb-card-footer { display:flex; justify-content:flex-end; margin-top:6px; padding-top:6px; border-top:3px solid #000; }
+.admin-neobrutal .nb-card .nb-card-price { font-weight:800; font-size:14px; }
+/* Footer with centered OPEN badge when present */
+.admin-neobrutal .nb-card .nb-card-footer { position:relative; align-items:center; }
+.admin-neobrutal .nb-card .nb-card-footer .nb-card-price { margin-left:auto; }
+/* Dedicated open zone below footer */
+.admin-neobrutal .nb-card .nb-card-open-zone { margin-top:4px; padding-top:2px; }
+.admin-neobrutal .nb-card .nb-card-open-zone .nb-open-badge {
+  width:calc(100% - 6px); /* leave a little space right side */
+  display:block;
+  text-align:center;
+  padding:10px 18px 12px; /* thinner height */
+  border-radius:8px;
+  box-shadow:4px 4px 0 0 var(--border); /* closer shadow */
+  margin:0 0 0 6px; /* nudge whole plate to right */
+}
+.admin-neobrutal .nb-card .nb-card-open-zone .nb-open-badge:active { box-shadow:1px 1px 0 0 var(--border); transform:translate(2px,2px); }
+
+/* Column */
+.admin-neobrutal .nb-column { background: var(--secondary-background); border:4px solid var(--border); border-radius: var(--radius-base); box-shadow: 4px 4px 0 0 #000; display:flex; flex-direction:column; max-height: calc(100vh - 180px); position:relative; }
+.admin-neobrutal .nb-column-header { position:sticky; top:0; z-index:2; background:var(--secondary-background); padding:14px 14px 10px; border-bottom:4px solid var(--border); display:flex; align-items:flex-start; justify-content:space-between; flex-direction:column; gap:8px; }
+/* Colored bars under headers */
+.admin-neobrutal .nb-column[data-column="SCHEDULED"] .nb-column-header::after,
+.admin-neobrutal .nb-column[data-column="scheduled"] .nb-column-header::after { background:#FACC00; }
+.admin-neobrutal .nb-column[data-column="IN_PROGRESS"] .nb-column-header::after,
+.admin-neobrutal .nb-column[data-column="in_progress"] .nb-column-header::after { background:#FF7A00; }
+.admin-neobrutal .nb-column[data-column="READY"] .nb-column-header::after,
+.admin-neobrutal .nb-column[data-column="ready"] .nb-column-header::after { background:#05E17A; }
+.admin-neobrutal .nb-column[data-column="COMPLETED"] .nb-column-header::after,
+.admin-neobrutal .nb-column[data-column="completed"] .nb-column-header::after { background:#111; }
+.admin-neobrutal .nb-column .nb-column-header::after { content:""; display:block; height:14px; width:100%; border:4px solid #000; box-shadow:4px 4px 0 0 #000; }
+.admin-neobrutal .nb-column .nb-column-header h3 { font-size:1.25rem; font-weight:900; letter-spacing:0.8px; display:flex; align-items:center; gap:10px; text-transform:uppercase; }
+.admin-neobrutal .nb-column .nb-column-header h3 { justify-content:center; text-align:center; }
+.admin-neobrutal .nb-column-scroll { overflow-y:auto; padding:12px 10px 14px; display:flex; flex-direction:column; gap:14px; }
+.admin-neobrutal .nb-column-scroll::-webkit-scrollbar { width:10px; }
+.admin-neobrutal .nb-column-scroll::-webkit-scrollbar-track { background: var(--background); border-left:2px solid var(--border); }
+.admin-neobrutal .nb-column-scroll::-webkit-scrollbar-thumb { background: var(--main); border:2px solid var(--border); border-radius:0; }
+
+/* Board grid */
+.admin-neobrutal .nb-board-grid { display:grid; gap:38px; grid-auto-columns:260px; grid-auto-flow:column; align-items:start; padding-bottom:60px; }
+
+/* Compact density toggle */
+.admin-neobrutal.nb-density-compact .nb-card { padding:8px 10px 10px; gap:6px; }
+
+/* ================= Dashboard Title ================= */
+.admin-neobrutal .nb-dashboard-title { 
+  font-size: clamp(2.65rem, 4.6vw, 3.35rem);
+  font-weight: 900;
+  letter-spacing: 1px;
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  text-shadow: 4px 4px 0 rgba(0,0,0,0.22);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  position: relative;
+}
+.admin-neobrutal .nb-dashboard-title-icon { font-size: 0.9em; filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.25)); }
+
+/* ================= OPEN badge enlargement ================= */
+/* Work-order style OPEN tag (with punch hole metaphor) */
+/* OPEN badge restyle: rectangular metal plate with rivets */
+.admin-neobrutal .nb-open-badge {
+  --plate-bg: var(--color-shop-blue);
+  position: relative;
+  font-family: var(--font-display);
+  font-size: 18px;
+  padding: 10px 34px 12px;
+  border: 4px solid var(--border);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.35), rgba(255,255,255,0) 55%),
+    var(--texture-diamond-plate),
+    var(--plate-bg);
+  background-size: 100% 100%, 160px 160px, cover;
+  background-blend-mode: overlay, multiply, normal;
+  line-height: 1;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-weight: 900;
+  box-shadow: 6px 6px 0 0 var(--border); /* diagonal off-cast like nav buttons */
+  transition: box-shadow .14s ease, filter .14s ease, transform .14s ease;
+  transform: translate(0,0);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.admin-neobrutal .nb-open-badge::before,
+.admin-neobrutal .nb-open-badge::after {
+  content: "";
+  position: absolute;
+  top:50%;
+  width:12px; height:12px;
+  margin-top:-6px;
+  background: #f9fafb;
+  border:2px solid var(--border);
+  border-radius:50%;
+  box-shadow: inset 0 0 0 2px var(--plate-bg), 0 0 0 2px var(--plate-bg);
+}
+.admin-neobrutal .nb-open-badge::before { left:8px; }
+.admin-neobrutal .nb-open-badge::after { right:8px; }
+.admin-neobrutal .nb-open-badge:hover { filter: brightness(1.08); }
+/* Press: face moves toward shadow, shadow shortens but stays diagonally offset */
+.admin-neobrutal .nb-open-badge:active { box-shadow: 2px 2px 0 0 var(--border); filter: brightness(.95); transform: translate(4px,4px); }
+/* Footer-centered variant preserves horizontal centering when translating */
+.admin-neobrutal .nb-card .nb-card-footer .nb-open-badge-footer { transform: translateX(-50%) translateY(0); }
+.admin-neobrutal .nb-card .nb-card-footer .nb-open-badge-footer:active { transform: translateX(-50%) translateY(4px); box-shadow: 2px 2px 0 0 var(--border); }
+
+/* Status badge refactor for more industrial tag look */
+.admin-neobrutal .nb-card .nb-status-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 5px 10px 6px;
+  border: 3px solid var(--border);
+  background: #fff;
+  box-shadow: 4px 4px 0 0 var(--border);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  line-height: 1;
+  position: relative;
+  font-family: var(--font-display);
+}
+.admin-neobrutal .nb-card .nb-status-badge[data-s="scheduled"] { background: var(--color-construction); }
+.admin-neobrutal .nb-card .nb-status-badge[data-s="in_progress"] { background: var(--color-alert); color:#fff; }
+.admin-neobrutal .nb-card .nb-status-badge[data-s="ready"] { background: var(--color-invoice); }
+.admin-neobrutal .nb-card .nb-status-badge[data-s="completed"] { background: var(--color-steel-light); }
+
+/* Column header colored bars using palette */
+.admin-neobrutal .nb-column[data-column="SCHEDULED"] .nb-column-header::after,
+.admin-neobrutal .nb-column[data-column="scheduled"] .nb-column-header::after { background: var(--color-construction); }
+.admin-neobrutal .nb-column[data-column="IN_PROGRESS"] .nb-column-header::after,
+.admin-neobrutal .nb-column[data-column="in_progress"] .nb-column-header::after { background: var(--color-alert); }
+.admin-neobrutal .nb-column[data-column="READY"] .nb-column-header::after,
+.admin-neobrutal .nb-column[data-column="ready"] .nb-column-header::after { background: var(--color-invoice); }
+.admin-neobrutal .nb-column[data-column="COMPLETED"] .nb-column-header::after,
+.admin-neobrutal .nb-column[data-column="completed"] .nb-column-header::after { background: var(--color-steel); }
+
+

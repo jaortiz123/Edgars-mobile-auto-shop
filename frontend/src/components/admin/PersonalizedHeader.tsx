@@ -54,7 +54,7 @@ export default function PersonalizedHeader() {
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <div className="flex items-center space-x-3 mb-2">
-            <h1 className="text-4xl font-bold text-neutral-900 tracking-tight">Edgar's Shop Dashboard</h1>
+            <h1 className="nb-dashboard-title"><span className="nb-dashboard-title-icon" aria-hidden>🔧</span>Edgar's Shop Dashboard</h1>
             {performance.isAheadOfSchedule && (
               <div className="animate-bounce" aria-hidden>
                 <span className="text-2xl">🚀</span>

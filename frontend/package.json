@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-  "predev": "bash -lc 'if [ -z \"$SKIP_KILL_5173\" ]; then lsof -ti tcp:5173 | xargs kill -9 || true; else echo \"SKIP_KILL_5173 set; not killing port 5173\"; fi'",
+    "predev": "bash -lc 'if [ -z \"$SKIP_KILL_5173\" ]; then lsof -ti tcp:5173 | xargs kill -9 || true; else echo \"SKIP_KILL_5173 set; not killing port 5173\"; fi'",
     "dev": "vite",
     "dev:clean": "npx kill-port 5173 && vite",
     "kill-port": "npx kill-port 5173",
@@ -19,6 +19,7 @@
     "test:coverage": "vitest run --coverage --reporter=basic --maxConcurrency=4",
     "test:coverage-json": "vitest run --coverage --reporter=basic --coverage.reporter=json --maxConcurrency=4",
     "test:coverage-check": "npm run test:coverage && node scripts/coverage/check.js",
+    "catalog:validate": "ts-node scripts/validateServiceCatalog.ts",
     "test:integration": "vitest run --config vitest.config.ts src/tests/integration --maxConcurrency=4",
     "test:strict": "VITEST_STRICT_CONSOLE=true vitest --run --maxConcurrency=4",
     "test:ci": "VITEST_STRICT_CONSOLE=true vitest --run --reporter=verbose --silent=false --maxConcurrency=4",
@@ -30,6 +31,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
+    "@radix-ui/react-slot": "^1.2.3",
     "@sentry/react": "^9.31.0",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/typography": "^0.5.16",
@@ -55,6 +57,7 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/jest-axe": "^3.5.9",
+    "@types/node": "^22.17.1",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@types/react-router-dom": "^5.3.3",

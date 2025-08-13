@@ -8,11 +8,15 @@ export default function StatusColumn({
   cards,
   onOpen,
   onMove,
+  totalCount,
+  filteredCount,
 }: {
   column: BoardColumn;
   cards: BoardCard[];
   onOpen: (id: string) => void;
   onMove: (id: string) => void;
+  totalCount?: number;
+  filteredCount?: number;
 }) {
   const columnRef = useRef<HTMLDivElement>(null);
   
@@ -33,30 +37,24 @@ export default function StatusColumn({
   drop(columnRef);
 
   return (
-    <div ref={columnRef} className="w-80 flex-shrink-0">
-      <div className="bg-neutral-50/50 backdrop-blur-sm rounded-lg border border-neutral-200/60 shadow-sm">
-        <div className="column-header px-4 py-4 rounded-t-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <h3 className="text-lg font-bold text-neutral-900">{column.title}</h3>
-              {/* status icon could be added here */}
-            </div>
-            <div className="flex items-center space-x-3">
-              <span className="text-sm font-medium text-neutral-600">
-                {column.count} {column.count === 1 ? 'job' : 'jobs'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4 p-4 border-x border-b rounded-b-xl bg-gray-50/50">
-          {cards.map((c) => (
-            <EnhancedAppointmentCard key={c.id} card={c} onOpen={onOpen} />
-          ))}
-          {cards.length === 0 && (
-            <div className="text-xs text-neutral-500">No items</div>
-          )}
-        </div>
+    <div ref={columnRef} className="w-64 flex-shrink-0 nb-column" data-column={column.key}>
+    <div className="nb-column-header">
+  <h3 className="font-bold flex items-center justify-center gap-2 w-full text-center">
+          {column.title}
+          <span className="nb-chip" data-variant="primary">
+            {typeof filteredCount === 'number' && typeof totalCount === 'number' && filteredCount !== totalCount
+              ? `${filteredCount}/${totalCount}`
+              : (typeof filteredCount === 'number' ? filteredCount : column.count)}
+          </span>
+        </h3>
+      </div>
+      <div className="nb-column-scroll">
+        {cards.map((c) => (
+          <EnhancedAppointmentCard key={c.id} card={c} onOpen={onOpen} />
+        ))}
+        {cards.length === 0 && (
+          <div className="text-xs opacity-60 nb-card nb-card-empty" data-status="empty">No items</div>
+        )}
       </div>
     </div>
   );

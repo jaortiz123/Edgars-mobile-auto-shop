@@ -1,14 +1,16 @@
-import React, { createContext, useContext, useEffect, useMemo, useCallback, useState } from 'react';
-import { useToast } from '@/components/ui/Toast';
+import React, { createContext, useContext, useEffect, useCallback, useState } from 'react';
 import type { BoardCard, BoardColumn, DashboardStats } from '../types/models';
-import * as api from '../lib/api';
-import { handleApiError } from '../lib/api';
+import { useBoard } from '@/hooks/useBoardData';
 
 interface AppointmentState {
   columns: BoardColumn[];
   cards: BoardCard[];
   stats: DashboardStats | null;
   loading: boolean;
+  boardError?: Error | null;
+  statsError?: Error | null;
+  isFetchingBoard?: boolean;
+  isFetchingStats?: boolean;
   view: 'calendar' | 'board';
   setView: (v: 'calendar' | 'board') => void;
   refreshBoard: () => Promise<void>;
@@ -27,11 +29,8 @@ interface AppointmentState {
 const Ctx = createContext<AppointmentState | undefined>(undefined);
 
 export function AppointmentProvider({ children }: { children: React.ReactNode }) {
-  const toast = useToast();
-  const [columns, setColumns] = useState<BoardColumn[]>([]);
-  const [cards, setCards] = useState<BoardCard[]>([]);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { boardQuery, statsQuery, moveMutation, refresh, boardError, statsError, isFetchingBoard, isFetchingStats } = useBoard();
+  const loading = boardQuery.isLoading;
   const [view, setViewState] = useState<'calendar' | 'board'>(() => {
     try {
       const v = localStorage.getItem('adm.view');
@@ -60,94 +59,14 @@ export function AppointmentProvider({ children }: { children: React.ReactNode })
 
   // (moved below to avoid referencing callbacks before declaration)
 
-  const refreshBoard = useCallback(async () => {
-    console.log('🚀 AppointmentContext: Starting refreshBoard');
-    setLoading(true);
-    try {
-      console.log('📡 AppointmentContext: Calling api.getBoard({})');
-      console.log('🔍 AppointmentContext: api.getBoard type:', typeof api.getBoard);
-      console.log('🔍 AppointmentContext: api object:', Object.keys(api));
-      
-      // Direct function call with comprehensive error handling
-      let data: { columns: BoardColumn[]; cards: BoardCard[] } | undefined;
-      try {      console.log('🎯 AppointmentContext: About to call api.getBoard...');
-      console.log('🔍 AppointmentContext: Actual api.getBoard function:', api.getBoard);
-      console.log('🔍 AppointmentContext: api.getBoard toString:', api.getBoard.toString().substring(0, 200));
-      data = await api.getBoard({});
-      console.log('🎯 AppointmentContext: api.getBoard call completed, result:', data);
-      } catch (apiError) {
-        console.error('🚨 AppointmentContext: api.getBoard threw error:', {
-          error: apiError,
-          message: (apiError as Error)?.message,
-          stack: (apiError as Error)?.stack,
-          name: (apiError as Error)?.name,
-          typeof: typeof apiError
-        });
-        throw apiError; // Re-throw to be caught by outer catch
-      }
-      console.log('✅ AppointmentContext: Received board data:', { 
-        columnsCount: data?.columns?.length, 
-        cardsCount: data?.cards?.length,
-        data: JSON.stringify(data, null, 2)
-      });
-      setColumns(data.columns);
-      setCards(data.cards);
-      console.log('🔄 AppointmentContext: Set columns and cards');
-    } catch (e) {
-      console.error('❌ AppointmentContext: Error in refreshBoard:', e);
-      toast.push({ kind: 'error', text: handleApiError(e, 'Failed to load board') });
-    } finally {
-      setLoading(false);
-      console.log('✅ AppointmentContext: refreshBoard completed');
-    }
-  }, [toast]);
-
-  const refreshStats = useCallback(async () => {
-    try {
-      setStats(await api.getStats({}));
-    } catch (e) {
-      toast.push({ kind: 'error', text: handleApiError(e, 'Failed to load stats') });
-    }
-  }, [toast]);
+  const refreshBoard = useCallback(async () => { refresh(); }, [refresh]);
+  const refreshStats = useCallback(async () => { refresh(); }, [refresh]);
 
   const optimisticMove: AppointmentState['optimisticMove'] = useCallback(async (id, next) => {
-     const previousCards = cards;
-     const idx = previousCards.findIndex((c) => c.id === id);
-     if (idx === -1) return;
+    moveMutation.mutate({ id, status: next.status, position: next.position });
+  }, [moveMutation]);
 
-     const newCards = [...previousCards];
-     newCards[idx] = { ...newCards[idx], status: next.status, position: next.position };
-
-     setCards(newCards);
-
-     try {
-      await api.moveAppointment(id, { status: next.status, position: next.position });
-      void refreshStats();
-      toast.success('Appointment moved successfully', { key: `move-${id}` });
-     } catch (e: unknown) {
-      console.error(e);
-      // rollback
-      setCards(previousCards);
-      const statusCode = (e as { response?: { status?: number } }).response?.status;
-      const detail = (e as { response?: { data?: { errors?: Array<{ detail?: string }> } } }).response?.data?.errors?.[0]?.detail || '';
-      if (statusCode === 429) {
-        toast.error('Too many moves. Please wait a moment.', { key: `move-rate-${id}` });
-      } else if (statusCode === 400 && detail.toLowerCase().includes('not allowed')) {
-        toast.error('That status change is not allowed.', { key: `move-invalid-${id}` });
-      } else {
-        toast.error('Could not move appointment. Try again.', { key: `move-fail-${id}` });
-      }
-     }
-   }, [cards, refreshStats, toast]);
-
-  useEffect(() => {
-    console.log('🎯 AppointmentContext: useEffect running - mount only');
-    void refreshBoard();
-    void refreshStats();
-    // TEMP: Disabled polling to fix infinite request loop
-    // const t = setInterval(() => void refreshStats(), 60000);
-    // return () => clearInterval(t);
-  }, [refreshBoard, refreshStats]);
+  useEffect(() => { /* initial fetch handled by React Query automatically */ }, []);
 
   // Respond to explicit refresh triggers from UI (e.g., after quick actions)
   useEffect(() => {
@@ -157,15 +76,26 @@ export function AppointmentProvider({ children }: { children: React.ReactNode })
     }
   }, [refreshTrigger, refreshBoard, refreshStats]);
 
-  const value = useMemo(
-    () => ({ 
-      columns, cards, stats, loading, view, setView, 
-      refreshBoard, refreshStats, optimisticMove, refreshTrigger, triggerRefresh, isRefreshing, setRefreshing
-    }),
-    [columns, cards, stats, loading, view, setView, refreshBoard, refreshStats, optimisticMove, refreshTrigger, triggerRefresh, isRefreshing, setRefreshing]
-  );
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{
+    columns: boardQuery.data?.columns || [],
+    cards: boardQuery.data?.cards || [],
+    stats: statsQuery.data || null,
+    loading,
+  boardError,
+  statsError,
+  isFetchingBoard,
+  isFetchingStats,
+    view,
+    setView,
+    refreshBoard,
+    refreshStats,
+    optimisticMove,
+    refreshTrigger,
+    triggerRefresh,
+    isRefreshing,
+    setRefreshing
+  }}>{children}</Ctx.Provider>;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
