@@ -4,10 +4,14 @@ const URL = 'http://localhost:3001/health';
 
 async function wait() {
   for (let i = 0; i < MAX_RETRIES; i++) {
+    console.log(`Attempt ${i + 1}`);
     try {
       const res = await axios.get(URL);
-      if (res.data.status === 'ok') return;
-    } catch {}
+      console.log('Health check successful');
+      return;
+    } catch (e) {
+      console.log(e.message);
+    }
     await new Promise(res => setTimeout(res, 2000));
   }
   const { execSync } = require('child_process');

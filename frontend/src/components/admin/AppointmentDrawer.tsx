@@ -398,6 +398,7 @@ export default AppointmentDrawer;
 import { formatInShopTZ } from '@/lib/timezone';
 
 function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime?: () => void; }) {
+  const toast = useToast();
   const [veh, setVeh] = React.useState({ license_plate: '', year: 0, make: '', model: '' });
   const [meta, setMeta] = React.useState({ location_address: '', notes: '' });
   // Catalog for dropdowns
@@ -449,14 +450,42 @@ function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime
   const canEdit = Boolean(apptId);
   const saveVehicle = async () => {
     if (!apptId) return;
+    setSavingVeh(true);
     try {
-      setSavingVeh(true);
-      await api.patchAppointment(apptId, {
-        license_plate: veh.license_plate || undefined,
-        vehicle_year: veh.year || undefined,
-        vehicle_make: veh.make || undefined,
-        vehicle_model: veh.model || undefined,
-      } as unknown as Record<string, unknown>);
+      // Build payload only with meaningful fields to avoid 400 "No valid fields to update"
+      const payload: Record<string, unknown> = {};
+      const plate = (veh.license_plate || '').trim().toUpperCase();
+      if (plate) payload.license_plate = plate;
+      if (veh.year && Number.isFinite(veh.year)) payload.vehicle_year = veh.year;
+      const make = (veh.make || '').trim();
+      if (make) payload.vehicle_make = make;
+      const model = (veh.model || '').trim();
+      if (model) payload.vehicle_model = model;
+
+      // Debug: see what we're about to send
+      try { console.debug('[AppointmentDrawer] saveVehicle veh=', veh, 'payload=', payload); } catch { /* ignore */ }
+
+      if (Object.keys(payload).length === 0) {
+        toast.push({ kind: 'info', text: 'Nothing to save' });
+        return;
+      }
+
+      await api.patchAppointment(apptId, payload);
+      // Refresh drawer data so UI reflects latest vehicle linkage
+      try {
+        const fresh = await api.getDrawer(apptId);
+        setVeh({
+          license_plate: fresh.vehicle?.license_plate || fresh.vehicle?.vin || '',
+          year: fresh.vehicle?.year || 0,
+          make: fresh.vehicle?.make || '',
+          model: fresh.vehicle?.model || '',
+        });
+      } catch { /* ignore refresh failure */ }
+
+      const vehicleLabel = (payload.license_plate as string) || [veh.year || '', veh.make || '', veh.model || ''].filter(Boolean).join(' ');
+      toast.success(`Car saved${vehicleLabel ? ` (${vehicleLabel})` : ''}`);
+    } catch (e) {
+      toast.error(api.handleApiError(e, 'Failed to save car'));
     } finally {
       setSavingVeh(false);
     }
@@ -465,10 +494,13 @@ function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime
     if (!apptId) return;
     try {
       setSavingMeta(true);
-      await api.patchAppointment(apptId, {
+  await api.patchAppointment(apptId, {
         location_address: meta.location_address,
         notes: meta.notes,
       } as unknown as Record<string, unknown>);
+  // Optional: refresh drawer on meta save to stay consistent
+  try { await api.getDrawer(apptId); } catch { /* ignore */ }
+  toast.success('Details saved');
     } finally {
       setSavingMeta(false);
     }
@@ -491,17 +523,17 @@ function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime
         <div className="col-span-2">
           <div className="text-sm text-gray-500">Vehicle</div>
           <div className="mt-1 grid grid-cols-4 gap-2 items-center">
-            <input aria-label="Plate" title="License plate" className="border rounded px-2 py-1 col-span-1" placeholder="Plate" value={veh.license_plate} onChange={(e)=>setVeh(v=>({ ...v, license_plate: e.target.value.toUpperCase() }))} />
-            <select aria-label="Year" title="Vehicle year" className="border rounded px-2 py-1 col-span-1" value={veh.year||''} onChange={(e)=>setVeh(v=>({ ...v, year: Number(e.target.value)||0 }))}>
+            <input id="license_plate" name="license_plate" aria-label="Plate" title="License plate" className="border rounded px-2 py-1 col-span-1" placeholder="Plate" value={veh.license_plate} onChange={(e)=>setVeh(v=>({ ...v, license_plate: e.target.value.toUpperCase() }))} />
+            <select id="vehicle_year" name="vehicle_year" aria-label="Year" title="Vehicle year" className="border rounded px-2 py-1 col-span-1" value={veh.year||''} onChange={(e)=>setVeh(v=>({ ...v, year: Number(e.target.value)||0 }))}>
               <option value="">Year</option>
               {vehicleYears.map(y => (<option key={y} value={y}>{y}</option>))}
             </select>
-            <select aria-label="Make" title="Vehicle make" className="border rounded px-2 py-1 col-span-1" value={veh.make} onChange={(e)=>setVeh(v=>({ ...v, make: e.target.value, model: '' }))}>
+            <select id="vehicle_make" name="vehicle_make" aria-label="Make" title="Vehicle make" className="border rounded px-2 py-1 col-span-1" value={veh.make} onChange={(e)=>setVeh(v=>({ ...v, make: e.target.value, model: '' }))}>
               <option value="">Make</option>
               {makeOptions.map(m => (<option key={m} value={m}>{m}</option>))}
             </select>
             <div className="col-span-1 flex gap-2">
-              <select aria-label="Model" title="Vehicle model" className="border rounded px-2 py-1 flex-1" value={veh.model} onChange={(e)=>setVeh(v=>({ ...v, model: e.target.value }))} disabled={!veh.make}>
+              <select id="vehicle_model" name="vehicle_model" aria-label="Model" title="Vehicle model" className="border rounded px-2 py-1 flex-1" value={veh.model} onChange={(e)=>setVeh(v=>({ ...v, model: e.target.value }))} disabled={!veh.make}>
                 <option value="">{veh.make ? 'Model' : 'Select make first'}</option>
                 {filteredModels.map(m => (<option key={m} value={m}>{m}</option>))}
               </select>
@@ -524,7 +556,7 @@ function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime
         <div>
           <div className="text-sm text-gray-500">Address</div>
           <div className="flex gap-2 mt-1">
-            <input aria-label="Service address" className="border rounded px-2 py-1 flex-1" placeholder="Address" value={meta.location_address} onChange={(e)=>setMeta(m=>({ ...m, location_address: e.target.value }))} />
+            <input id="service_address" name="service_address" aria-label="Service address" className="border rounded px-2 py-1 flex-1" placeholder="Address" value={meta.location_address} onChange={(e)=>setMeta(m=>({ ...m, location_address: e.target.value }))} />
             <button disabled={!canEdit || savingMeta} className="px-2 py-1 text-blue-600 disabled:opacity-50" type="button" onClick={saveMeta}>{savingMeta?'Saving…':'Save'}</button>
           </div>
         </div>
@@ -532,7 +564,7 @@ function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime
       </div>
       <div className="mt-2">
         <div className="text-sm text-gray-500">Notes</div>
-  <textarea className="w-full border rounded px-2 py-1" rows={3} value={meta.notes} onChange={(e)=>setMeta(m=>({ ...m, notes: e.target.value }))} aria-label="Notes" placeholder="Add notes" />
+  <textarea id="notes" name="notes" className="w-full border rounded px-2 py-1" rows={3} value={meta.notes} onChange={(e)=>setMeta(m=>({ ...m, notes: e.target.value }))} aria-label="Notes" placeholder="Add notes" />
         <div className="mt-1 flex justify-end">
           <button disabled={!canEdit || savingMeta} className="px-2 py-1 text-blue-600 disabled:opacity-50" type="button" onClick={saveMeta}>{savingMeta?'Saving…':'Save notes'}</button>
         </div>

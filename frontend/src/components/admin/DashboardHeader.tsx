@@ -15,7 +15,7 @@ export default function DashboardHeader({ greeting, dateText, /* timeText */ vie
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-sp-3">
       <div>
-        <h1 className="text-4xl font-bold text-gray-900 tracking-tight">Edgar's Shop Dashboard</h1>
+  <h1 className="nb-dashboard-title"><span className="nb-dashboard-title-icon" aria-hidden>🔧</span>Edgar's Shop Dashboard</h1>
         <p className="text-lg font-medium text-gray-600 mt-1">{greeting}, Edgar • {dateText}</p>
       </div>
       <div className="flex items-center gap-sp-3">

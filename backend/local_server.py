@@ -570,6 +570,7 @@ def get_appointment(appt_id: str):
                  v.year,
                  v.make,
                  v.model,
+                 v.license_plate AS license_plate,
                  v.license_plate AS vin
             FROM appointments a
             LEFT JOIN customers c ON c.id = a.customer_id
@@ -629,6 +630,10 @@ def get_appointment(appt_id: str):
 def patch_appointment(appt_id: str):
     user = require_or_maybe()
     body = request.get_json(force=True, silent=False) or {}
+    try:
+        app.logger.debug("patch_appointment: appt_id=%s body=%s", appt_id, body)
+    except Exception:
+        pass
     if "status" in body:
         body["status"] = norm_status(str(body["status"]))
 
@@ -649,6 +654,10 @@ def patch_appointment(appt_id: str):
     # Vehicle update: permit passing license_plate/year/make/model to upsert and relink
     vehicle_keys = {"license_plate", "vehicle_year", "vehicle_make", "vehicle_model"}
     wants_vehicle_update = any(k in body for k in vehicle_keys)
+    try:
+        app.logger.debug("patch_appointment: wants_vehicle_update=%s keys_present=%s", wants_vehicle_update, list(vehicle_keys & set(body.keys())))
+    except Exception:
+        pass
 
     conn = db_conn()
     with conn:
@@ -745,7 +754,8 @@ def patch_appointment(appt_id: str):
                 except Exception:
                     pass
             if not (sets or wants_vehicle_update):
-                raise BadRequest("No valid fields to update")
+                # No-op update: treat as success to keep UX smooth
+                return _ok({"id": appt_id, "updated_fields": []})
 
     return _ok({"id": appt_id, "updated_fields": list(set([k for (k, _) in fields if k in body] + list(vehicle_keys & set(body.keys()))))})
 
@@ -1222,31 +1232,50 @@ def admin_search_customers():
             cur.execute(
                 """
                 WITH hits AS (
+                  -- Plate-first branch: exact vehicle matches by plate
                   SELECT v.id::text AS vehicle_id,
-                         v.license_plate,
-                         v.year, v.make, v.model,
-                         c.id::text AS customer_id,
-                         COALESCE(NULLIF(TRIM(c.name), ''), 'Unknown Customer') AS customer_name,
-                         c.phone, c.email
+                      v.license_plate,
+                      v.year, v.make, v.model,
+                      c.id::text AS customer_id,
+                      COALESCE(NULLIF(TRIM(c.name), ''), 'Unknown Customer') AS customer_name,
+                      c.phone, c.email
                   FROM vehicles v
                   JOIN customers c ON c.id = v.customer_id
                   WHERE v.license_plate ILIKE %(pat)s
                   UNION ALL
+                  -- Name/phone/email matches where a vehicle exists
                   SELECT v2.id::text, v2.license_plate, v2.year, v2.make, v2.model,
-                         c2.id::text, COALESCE(NULLIF(TRIM(c2.name), ''), 'Unknown Customer'), c2.phone, c2.email
+                      c2.id::text, COALESCE(NULLIF(TRIM(c2.name), ''), 'Unknown Customer'), c2.phone, c2.email
                   FROM customers c2
                   JOIN vehicles v2 ON v2.customer_id = c2.id
                   WHERE (c2.name ILIKE %(pat)s OR c2.phone ILIKE %(pat)s OR c2.email ILIKE %(pat)s)
+                  UNION ALL
+                  -- Also include customers with no vehicles so they appear by name/phone/email
+                  SELECT NULL::text AS vehicle_id,
+                      NULL::text AS license_plate,
+                      NULL::int AS year,
+                      NULL::text AS make,
+                      NULL::text AS model,
+                      c3.id::text AS customer_id,
+                      COALESCE(NULLIF(TRIM(c3.name), ''), 'Unknown Customer') AS customer_name,
+                      c3.phone, c3.email
+                  FROM customers c3
+                  WHERE (c3.name ILIKE %(pat)s OR c3.phone ILIKE %(pat)s OR c3.email ILIKE %(pat)s)
+                    AND NOT EXISTS (SELECT 1 FROM vehicles vx WHERE vx.customer_id = c3.id)
                 )
                 SELECT h.vehicle_id, h.customer_id, h.customer_name, h.phone, h.email,
-                       h.license_plate, h.year, h.make, h.model,
-                       COUNT(a.id) AS visits_count,
-                       MAX(a.start_ts) AS last_visit
+                    h.license_plate, h.year, h.make, h.model,
+                    COUNT(a.id) AS visits_count,
+                    MAX(a.start_ts) AS last_visit
                 FROM hits h
-                LEFT JOIN appointments a ON a.vehicle_id::text = h.vehicle_id
+                LEFT JOIN appointments a
+                  ON a.customer_id::text = h.customer_id
+                 AND (h.vehicle_id IS NULL OR a.vehicle_id::text = h.vehicle_id)
                 GROUP BY h.vehicle_id, h.customer_id, h.customer_name, h.phone, h.email,
-                         h.license_plate, h.year, h.make, h.model
-                ORDER BY (h.license_plate ILIKE %(prefix)s) DESC, last_visit DESC NULLS LAST, h.customer_name ASC
+                      h.license_plate, h.year, h.make, h.model
+                ORDER BY (h.license_plate ILIKE %(prefix)s) DESC,
+                      last_visit DESC NULLS LAST,
+                      h.customer_name ASC
                 LIMIT %(limit)s
                 """,
                 {"pat": f"%{q}%", "prefix": f"{q}%", "limit": limit},

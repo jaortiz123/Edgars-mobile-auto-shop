@@ -1,13 +1,19 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAppointments } from '@/contexts/AppointmentContext';
 import StatusColumn from './StatusColumn';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import type { AppointmentStatus } from '@/types/models';
 import { format } from 'date-fns';
+import CardCustomizationModal from './CardCustomizationModal';
+import { BoardFilterProvider, useBoardFilters } from '@/contexts/BoardFilterContext';
+import { BoardFilterBar } from './BoardFilterBar';
 
-export default function StatusBoard({ onOpen, minimalHero = false }: { onOpen: (id: string) => void, minimalHero?: boolean }) {
-  const { columns, cards, optimisticMove, triggerRefresh } = useAppointments();
+function InnerStatusBoard({ onOpen, minimalHero }: { onOpen: (id: string) => void; minimalHero?: boolean }) {
+  const { columns, cards, optimisticMove, triggerRefresh, loading, boardError, isFetchingBoard } = useAppointments();
+  const showInitialSkeleton = loading && cards.length === 0;
+  const [showCustomize, setShowCustomize] = useState(false);
+  const { applyFilters, filtersActive } = useBoardFilters();
 
   const getTimeGreeting = () => {
     const h = new Date().getHours();
@@ -44,78 +50,142 @@ export default function StatusBoard({ onOpen, minimalHero = false }: { onOpen: (
     const totalJobs = todaysCards.length || cards.length;
 
     return (
-      <div className="bg-gradient-to-r from-neutral-50 to-steel-50 border-b border-neutral-200 px-6 py-6 rounded-lg mb-6">
-        <div className="flex items-center justify-between">
+      <div className="nb-surface nb-border mb-6 p-6 flex flex-col gap-6">
+        <div className="flex items-center justify-between gap-6 flex-wrap">
           <div>
-            <h1 className="text-4xl font-bold text-neutral-900 tracking-tight">Edgar's Shop Dashboard</h1>
-            <p className="text-lg font-medium text-neutral-600 mt-2">{getTimeGreeting()}, Edgar • {format(new Date(), 'EEEE, MMMM do')}</p>
+            <h1 className="nb-dashboard-title"><span className="nb-dashboard-title-icon" aria-hidden>🔧</span>Edgar's Shop Dashboard</h1>
+            <p className="text-lg font-medium mt-2 opacity-80">{getTimeGreeting()}, Edgar • {format(new Date(), 'EEEE, MMMM do')}</p>
           </div>
-
-          <div className="flex items-center space-x-6">
-            <div className="bg-white/50 backdrop-blur-sm rounded-lg px-4 py-3 border border-neutral-200">
-              <p className="text-sm font-medium text-neutral-500">Jobs Today</p>
-              <p className="text-3xl font-bold text-primary-600">{completedToday.length}/{totalJobs}</p>
-              <p className="text-xs text-neutral-500">completed</p>
+          <div className="flex items-stretch gap-6">
+            <div className="nb-surface nb-border px-4 py-3 flex flex-col justify-center min-w-[120px]">
+              <p className="text-sm font-medium opacity-70">Jobs Today</p>
+              <p className="text-3xl font-bold">{completedToday.length}/{totalJobs}</p>
+              <p className="text-xs opacity-60">completed</p>
             </div>
-
-            <div className="flex space-x-3">
-              <button className="px-4 py-2 bg-white border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 hover:border-neutral-400 transition-all duration-200 shadow-sm" onClick={() => triggerRefresh()}>
+            <div className="flex items-center">
+              <button
+                className="nb-btn-primary px-5 py-2 font-semibold rounded-md hover:translate-y-[-2px] active:translate-y-[0] transition-transform"
+                onClick={() => triggerRefresh()}
+              >
                 Refresh
+              </button>
+            </div>
+            <div className="flex items-center">
+              <button
+                className="nb-btn-primary px-5 py-2 font-semibold rounded-md hover:translate-y-[-2px] active:translate-y-[0] transition-transform"
+                onClick={() => setShowCustomize(true)}
+              >
+                Customize
               </button>
             </div>
           </div>
         </div>
-
-        {/* Focus content below */}
-        <div className="mt-6">
+        <div>
           {overdueAppointments.length > 0 ? (
-            <div className="bg-danger-50 border border-danger-200 rounded-lg p-4 mb-3 urgent-pulse">
-              <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full bg-danger-100 flex items-center justify-center mr-3"><span className="text-danger-600 font-bold">⚠️</span></div>
+            <div className="nb-surface nb-border p-4 urgent-pulse">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center border nb-border">⚠️</div>
                 <div className="flex-1">
-                  <p className="font-bold text-danger-800 text-lg">{overdueAppointments.length} appointment{overdueAppointments.length > 1 ? 's' : ''} need attention</p>
-                  <p className="text-sm text-danger-600">{overdueAppointments[0].servicesSummary} is {overdueAppointments[0].minutesLate}m overdue</p>
+                  <p className="font-bold text-lg">{overdueAppointments.length} appointment{overdueAppointments.length > 1 ? 's' : ''} need attention</p>
+                  <p className="text-sm opacity-70">{overdueAppointments[0].servicesSummary} is {overdueAppointments[0].minutesLate}m overdue</p>
                 </div>
-                <button className="btn-primary bg-danger-600 hover:bg-danger-700 ml-4">Take Action</button>
+                <button className="nb-btn-primary px-4 py-2 font-medium rounded-md">Take Action</button>
               </div>
             </div>
           ) : nextAppointment ? (
-            <div className="bg-white/60 backdrop-blur-md rounded-lg p-4 border border-white/20 shadow-sm">
-              <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center mr-3"><span className="text-primary-600 font-bold">🔧</span></div>
+            <div className="nb-surface nb-border p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center border nb-border">🔧</div>
                 <div className="flex-1">
-                  <p className="font-bold text-neutral-900 text-lg">Next up: {nextAppointment.servicesSummary}</p>
-                  <p className="text-sm text-neutral-600">{nextAppointment.customerName} • Starting in {nextAppointment.timeUntilStart}m</p>
+                  <p className="font-bold text-lg">Next up: {nextAppointment.servicesSummary}</p>
+                  <p className="text-sm opacity-70">{nextAppointment.customerName} • Starting in {nextAppointment.timeUntilStart}m</p>
                 </div>
-                <button className="btn-primary ml-4">Prep</button>
+                <button className="nb-btn-primary px-4 py-2 font-medium rounded-md">Prep</button>
               </div>
             </div>
           ) : (
-            <div className="bg-white/60 backdrop-blur-md rounded-lg p-4 border border-white/20 shadow-sm">You're caught up!</div>
+            <div className="nb-surface nb-border p-4">You're caught up!</div>
           )}
         </div>
+  <CardCustomizationModal open={showCustomize} onClose={() => setShowCustomize(false)} />
       </div>
     );
   };
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="overflow-x-auto pb-4" role="region" aria-label="Status Board">
-        {minimalHero ? null : <TodaysFocusHero />}
-        <div className="flex gap-4 min-w-max mt-4">
-          {columns.map((col) => (
-            <StatusColumn
-              key={col.key}
-              column={col}
-              cards={byStatus.get(col.key) ?? []}
-              onOpen={onOpen}
-              onMove={(id: string) => {
-                void optimisticMove(id, { status: col.key as AppointmentStatus, position: 1 });
-              }}
-            />
-          ))}
+      <div className="overflow-x-auto pb-4 nb-board-bg" role="region" aria-label="Status Board">
+        <div className="px-4 pt-3">
+          <BoardFilterBar />
         </div>
+        {boardError && (
+          <div className="mx-4 mt-4 mb-2 border border-danger-300 bg-danger-50 text-danger-800 px-4 py-3 rounded-md flex items-start gap-3">
+            <span>⚠️</span>
+            <div className="flex-1">
+              <p className="font-semibold">Failed to load board</p>
+              <p className="text-sm opacity-80">{boardError.message}</p>
+              <button
+                onClick={() => triggerRefresh()}
+                className="mt-2 nb-chip" data-variant="primary"
+              >Retry</button>
+            </div>
+          </div>
+        )}
+        {minimalHero ? (
+          <div className="flex justify-end pr-4 pt-2">
+            <button
+              title="Customize cards"
+              aria-label="Customize cards"
+              onClick={() => setShowCustomize(true)}
+              className="nb-chip"
+              data-variant="primary"
+            >⚙️</button>
+            <CardCustomizationModal open={showCustomize} onClose={() => setShowCustomize(false)} />
+          </div>
+        ) : <TodaysFocusHero />}
+        <div className="nb-board-grid mt-4">
+          {showInitialSkeleton ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex flex-col gap-3 p-4 nb-surface nb-border rounded-md animate-pulse">
+                <div className="h-6 w-32 bg-neutral-200 rounded" />
+                <div className="space-y-2">
+                  <div className="h-24 w-full bg-neutral-200 rounded" />
+                  <div className="h-24 w-full bg-neutral-200 rounded" />
+                </div>
+              </div>
+            ))
+          ) : (
+            columns.map((col) => {
+              const all = byStatus.get(col.key) ?? [];
+              const filtered = filtersActive ? applyFilters(all) : all;
+              return (
+                <StatusColumn
+                  key={col.key}
+                  column={col}
+                  cards={filtered}
+                  totalCount={all.length}
+                  filteredCount={filtered.length}
+                  onOpen={onOpen}
+                  onMove={(id: string) => {
+                    void optimisticMove(id, { status: col.key as AppointmentStatus, position: 1 });
+                  }}
+                />
+              );
+            })
+          )}
+        </div>
+        {isFetchingBoard && !showInitialSkeleton && !boardError && (
+          <div className="mt-4 mx-4 text-xs opacity-70">Refreshing…</div>
+        )}
       </div>
     </DndProvider>
+  );
+}
+
+export default function StatusBoard(props: { onOpen: (id: string) => void; minimalHero?: boolean }) {
+  return (
+    <BoardFilterProvider>
+      <InnerStatusBoard {...props} />
+    </BoardFilterProvider>
   );
 }

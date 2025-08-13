@@ -1,4 +1,6 @@
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
+// Lazy-load admin-specific neobrutal styles so public pages are unaffected
+import '../styles/admin-neobrutal.css';
 import { useAuth } from '@/hooks/useAuth';
 import { 
   LayoutDashboard, 
@@ -7,6 +9,7 @@ import {
   LogOut,
   BarChart3
 } from 'lucide-react';
+import { CardPreferencesProvider } from '@/contexts/CardPreferencesContext';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -46,14 +49,14 @@ export default function AdminLayout() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-gray-50 text-gray-800">
+  <div className="admin-neobrutal overlay-faint flex min-h-screen">
       {/* Sidebar */}
-      <aside className="w-64 bg-white shadow-sm border-r border-gray-200">
+  <aside className="w-64 nb-surface bg-white/85 backdrop-blur-sm">
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="px-sp-6 py-sp-4 border-b border-gray-200">
-            <h1 className="text-fs-2 font-bold text-gray-900">Edgar's Admin</h1>
-            <p className="text-fs-0 text-gray-500">Mobile Auto Shop</p>
+          <div className="px-sp-6 py-sp-4 nb-border border-b">
+            <h1 className="text-fs-2 font-bold">Edgar's Admin</h1>
+            <p className="text-fs-0 opacity-70">Mobile Auto Shop</p>
           </div>
 
           {/* Navigation */}
@@ -63,17 +66,17 @@ export default function AdminLayout() {
                 key={item.name}
                 to={item.href}
                 className={`
-                  group flex items-center px-sp-3 py-sp-2 text-fs-1 font-medium rounded-md transition-colors
+                  group flex items-center px-sp-3 py-sp-2 text-fs-1 font-medium rounded-md transition-all nb-border border-2
                   ${item.current
-                    ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'nb-link-active'
+                    : 'nb-surface hover:nb-shadow'
                   }
                 `}
               >
                 <item.icon
                   className={`
                     mr-sp-3 h-5 w-5 flex-shrink-0
-                    ${item.current ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-500'}
+                    ${item.current ? '' : 'opacity-70 group-hover:opacity-100'}
                   `}
                 />
                 {item.name}
@@ -82,12 +85,12 @@ export default function AdminLayout() {
           </nav>
 
           {/* Footer */}
-          <div className="px-sp-4 py-sp-4 border-t border-gray-200">
+          <div className="px-sp-4 py-sp-4 nb-border border-t">
             <button
               onClick={logout}
-              className="group flex items-center w-full px-sp-3 py-sp-2 text-fs-1 font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900 transition-colors"
+              className="group flex items-center w-full px-sp-3 py-sp-2 text-fs-1 font-medium rounded-md nb-surface hover:nb-shadow transition-all"
             >
-              <LogOut className="mr-sp-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
+              <LogOut className="mr-sp-3 h-5 w-5 opacity-70 group-hover:opacity-100" />
               Sign out
             </button>
           </div>
@@ -95,10 +98,12 @@ export default function AdminLayout() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
-        <div className="px-sp-8 py-sp-6">
-          <Outlet />
-        </div>
+  <main className="flex-1 overflow-auto bg-transparent">
+        <CardPreferencesProvider>
+          <div className="px-sp-8 py-sp-6">
+            <Outlet />
+          </div>
+        </CardPreferencesProvider>
       </main>
     </div>
   );

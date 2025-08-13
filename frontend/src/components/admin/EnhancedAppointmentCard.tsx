@@ -1,13 +1,13 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import type { BoardCard } from '@/types/models';
 import { useDrag } from 'react-dnd';
-import CustomerAvatar from './CustomerAvatar';
 import VehicleDisplay from './VehicleDisplay';
-import ServiceComplexityIndicator from './ServiceComplexityIndicator';
-import PartsIndicator from './PartsIndicator';
 import { formatDate } from '@/utils/dateUtils';
 import { formatInShopTZ } from '@/lib/timezone';
-import ContextualQuickActions from './ContextualQuickActions';
+// Removed ContextualQuickActions for cleaner minimal card
+import { useCardPreferences } from '@/contexts/CardPreferencesContext';
+import { useServiceCatalog } from '@/hooks/useServiceCatalog';
+import { resolveHeadline } from '@/types/serviceCatalog';
 
 const formatRelativeDate = (iso?: string | null) => {
   if (!iso) return '';
@@ -68,8 +68,18 @@ const PromiseChip = ({ when }: { when?: string | null }) => {
 };
 
 export const EnhancedAppointmentCard = ({ card, onOpen }: { card: BoardCard; onOpen?: (id: string) => void }) => {
-  const [showDetails, setShowDetails] = useState(false);
   const priceText = useMemo(() => card.price != null ? `$${card.price.toFixed(2)}` : undefined, [card.price]);
+  const { enabled } = useCardPreferences();
+  const { byId } = useServiceCatalog();
+
+  const headline = useMemo(() => {
+    if (card.headline) return card.headline; // precomputed
+    if (card.primaryOperation) {
+      const def = byId[card.primaryOperation.serviceId];
+      return resolveHeadline(card.primaryOperation, def, card.servicesSummary, (card.additionalOperations || []).length);
+    }
+    return card.servicesSummary || `Service #${card.id.slice(-4)}`;
+  }, [card.headline, card.primaryOperation, card.servicesSummary, card.id, byId, card.additionalOperations]);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const [{ isDragging }, drag] = useDrag(() => ({
@@ -82,102 +92,63 @@ export const EnhancedAppointmentCard = ({ card, onOpen }: { card: BoardCard; onO
   drag(cardRef);
 
   return (
-    <div ref={cardRef} className={`card-base p-4 space-y-3 transition-opacity ${isDragging ? 'opacity-80' : 'opacity-100'}`}>
-      <div className="flex items-start justify-between">
-        <div className="flex items-center space-x-3">
-          <CustomerAvatar photo={card.customerPhoto} name={card.customerName} isRepeat={card.isRepeatCustomer} />
-          <div>
-            <TimeDisplay card={card} />
-            {card.techAssigned && (
-              <p className="text-xs text-steel-600 mt-1">👤 {card.techAssigned}</p>
-            )}
+    <div
+      ref={cardRef}
+      className={`nb-card card-base transition-opacity ${isDragging ? 'opacity-80' : 'opacity-100'}`}
+      data-status={(card.status || '').toLowerCase()}
+    >
+      {/* Top: Service Title + Status badges (OPEN moved to footer) */}
+      <div className="flex justify-between items-start">
+        <div className="flex-1 pr-2">
+          <div className="nb-service-title" title={headline}>{headline}</div>
+          {enabled.statusBadges && (
+            <div className="nb-status-badges">
+              <span className="nb-status-badge" data-s={(card.status || '').toLowerCase()}>{(card.status || 'OPEN').replace('_',' ')}</span>
+              {card.isOverdue && <span className="nb-status-badge" data-s="overdue">Overdue</span>}
+              {enabled.workspacePref && card.workspacePreference && <span className="nb-status-badge" data-s="pref">{String(card.workspacePreference).toUpperCase()}</span>}
+            </div>
+          )}
+        </div>
+      </div>
+      {/* Vehicle & Customer Lines */}
+      <div className="space-y-1">
+        {enabled.vehicle && (
+          <div className="nb-vehicle-line">
+            <VehicleDisplay year={card.vehicleYear || undefined} make={card.vehicleMake || undefined} model={card.vehicleModel || undefined} mileage={card.mileage || undefined} vehicle={card.vehicle} />
           </div>
-        </div>
-  <div className="flex items-center space-x-2">
-          <ServiceComplexityIndicator complexity={card.complexity} />
-          {card.partsRequired && card.partsRequired.length > 0 && (
-            <PartsIndicator parts={card.partsRequired} />
-          )}
-          {onOpen && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onOpen(card.id); }}
-              className="ml-1 inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border"
-              aria-label={`Open details for ${card.customerName}`}
-            >
-              Open
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <h3 className="text-lg font-bold text-neutral-900 leading-tight">
-          {card.servicesSummary || `Service #${card.id.slice(-4)}`}
-        </h3>
-        <VehicleDisplay year={card.vehicleYear || undefined} make={card.vehicleMake || undefined} model={card.vehicleModel || undefined} mileage={card.mileage || undefined} vehicle={card.vehicle} />
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-neutral-600">{card.customerName}</span>
-          {priceText && (
-            <span className="text-steel-600 font-medium">{priceText}</span>
-          )}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <OnPremiseChip card={card} />
-        <PromiseChip when={card.promiseBy} />
-        {card.isRepeatCustomer && (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
-            🔄 Repeat Customer
-          </span>
         )}
-        {card.lastServiceDate && (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-steel-100 text-steel-800">
-            📅 Last: {formatRelativeDate(card.lastServiceDate)}
-          </span>
+        {enabled.customer && <div className="nb-customer-line">{card.customerName}</div>}
+        {enabled.tech && card.techAssigned && <div className="text-[11px] font-medium opacity-70">👤 {card.techAssigned}</div>}
+        {enabled.timeChip && <div className="text-[11px] font-medium opacity-70"><TimeDisplay card={card} /></div>}
+      </div>
+      {/* Secondary chips */}
+      <div className="flex flex-wrap gap-2 mt-1">
+        {enabled.onPremise && <OnPremiseChip card={card} />}
+        {enabled.promise && <PromiseChip when={card.promiseBy} />}
+        {enabled.repeat && card.isRepeatCustomer && (
+          <span className="nb-chip" data-variant="primary">Repeat</span>
         )}
-        {card.workspacePreference && (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-warning-100 text-warning-800">
-            🏗️ Prefers {String(card.workspacePreference).toUpperCase()}
-          </span>
+        {enabled.lastService && card.lastServiceDate && (
+          <span className="nb-chip" data-variant="primary">Last {formatRelativeDate(card.lastServiceDate)}</span>
         )}
       </div>
-
-      <button onClick={() => setShowDetails(v => !v)} className="w-full text-left text-xs text-neutral-500 hover:text-neutral-700 transition-colors">
-        {showDetails ? '△ Hide details' : '▽ Show details'}
-      </button>
-
-      {showDetails && (
-        <div className="border-t border-neutral-200 pt-3 space-y-2 text-sm">
-          {card.customerNotes && (
-            <div>
-              <p className="font-medium text-neutral-700">Customer Notes:</p>
-              <p className="text-neutral-600">{card.customerNotes}</p>
-            </div>
-          )}
-          {card.serviceHistory && card.serviceHistory.length > 0 && (
-            <div>
-              <p className="font-medium text-neutral-700">Recent Services:</p>
-              <div className="space-y-1">
-                {card.serviceHistory.slice(0, 2).map((service, index) => (
-                  <div key={index} className="flex justify-between text-xs text-neutral-600">
-                    <span>{service.service}</span>
-                    <span>{formatDate(service.date, 'shortDate')}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {card.recommendedNextService && (
-            <div>
-              <p className="font-medium text-neutral-700">Recommended Next:</p>
-              <p className="text-neutral-600">{card.recommendedNextService}</p>
-            </div>
-          )}
+      {/* Price row with separator line (always above OPEN action) */}
+      {enabled.price && priceText && (
+        <div className="nb-card-footer mt-2">
+          <span className="nb-card-price">{priceText}</span>
         </div>
       )}
-
-      <ContextualQuickActions card={card} />
+      {/* Open action zone at true bottom */}
+      {onOpen && (
+        <div className="nb-card-open-zone">
+          <button
+            onClick={(e) => { e.stopPropagation(); onOpen(card.id); }}
+            className="nb-chip nb-open-badge"
+            data-variant="primary"
+            aria-label={`Open details for ${card.customerName}`}
+          >OPEN</button>
+        </div>
+      )}
     </div>
   );
 };

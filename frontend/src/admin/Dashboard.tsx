@@ -21,7 +21,6 @@ import { parseDurationToMinutes } from '@lib/utils';
 import { format } from 'date-fns';
 import { formatInShopTZ } from '@/lib/timezone';
 import { saveLastQuickAdd } from '@lib/quickAddUtils';
-import IntelligentWorkflowPanel from '@/components/admin/IntelligentWorkflowPanel';
 import DashboardHeader from '@/components/admin/DashboardHeader';
 
 // Utility function to convert 12-hour format to 24-hour format
@@ -150,7 +149,6 @@ export function Dashboard() {
   triggerRefresh();
   };
   const [showScheduleDropdown, setShowScheduleDropdown] = useState(false);
-  const [showAssistant, setShowAssistant] = useState(false);
   const loadingRef = useRef(false);
   const setRefreshingRef = useRef(setRefreshing);
   
@@ -363,6 +361,12 @@ export function Dashboard() {
         new Date(`${formData.appointmentDate}T${convertTo24Hour(formData.appointmentTime)}:00`).toISOString() : 
         new Date().toISOString(); // fallback to current time for emergency appointments
         
+      const vehicleBits = [formData.vehicleYear, formData.vehicleMake, formData.vehicleModel]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+      const vehicleNote = vehicleBits ? `Vehicle: ${vehicleBits}.` : '';
+
       const appointmentData = {
         customer_id: formData.customerName,
         service: formData.serviceType,
@@ -370,7 +374,8 @@ export function Dashboard() {
         customer_phone: formData.customerPhone || '',
         customer_email: formData.customerEmail || '',
         location_address: formData.serviceAddress || '',
-  notes: `Vehicle: ${formData.vehicleYear} ${formData.vehicleMake} ${formData.vehicleModel}. ${formData.notes || ''}`.trim(),
+        // Notes: only include vehicle line if we have any info to avoid 'undefined undefined undefined.'
+        notes: [vehicleNote, formData.notes || ''].join(' ').trim(),
   // Vehicle linkage (license plate is the source of truth)
   license_plate: (formData.licensePlate || '').toUpperCase().trim() || undefined,
   vehicle_year: formData.vehicleYear || undefined,
@@ -389,7 +394,7 @@ export function Dashboard() {
           const newApt: UIAppointment = {
             id: Date.now().toString(),
             customer: formData.customerName,
-            vehicle: `${formData.vehicleYear} ${formData.vehicleMake} ${formData.vehicleModel}`,
+            vehicle: vehicleBits || '—',
             service: formData.serviceType,
             timeSlot: formData.appointmentTime || '12:00 PM',
             dateTime: formData.appointmentDate && formData.appointmentTime ? new Date(`${formData.appointmentDate}T${formData.appointmentTime}`) : new Date(),
@@ -566,18 +571,7 @@ export function Dashboard() {
           onSelectView={(next) => { setView(next); setViewMode(next); }}
         />
 
-        {/* Toggle for assistant when in board view to reduce clutter */}
-        {view === 'board' && (
-          <div className="flex items-center justify-end">
-            <button
-              onClick={() => setShowAssistant(v => !v)}
-              className="text-sm text-blue-700 hover:underline"
-              aria-controls="assistant-panel"
-            >
-              {showAssistant ? 'Hide Assistant' : 'Show Assistant'}
-            </button>
-          </div>
-        )}
+  {/* Assistant toggle removed per request */}
 
         {/* Main View Section */}
         {view === 'calendar' ? (
@@ -722,9 +716,7 @@ export function Dashboard() {
           </div>
         ) : (
           <div data-testid="board-view">
-            <div className="mb-4" id="assistant-panel">
-              {showAssistant ? <IntelligentWorkflowPanel /> : null}
-            </div>
+            {/* Workflow Assistant removed */}
             {/* Pass minimalHero to suppress duplicate header/KPIs in board layout */}
             <StatusBoard onOpen={openDrawer} minimalHero />
           </div>

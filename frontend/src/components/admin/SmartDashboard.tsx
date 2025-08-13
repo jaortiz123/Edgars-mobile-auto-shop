@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useAppointmentContext } from '@/contexts/useAppointmentContext';
 import { LearningEngine } from '@/utils/learningEngine';
-import IntelligentWorkflowPanel from './IntelligentWorkflowPanel';
 
 const SmartDashboard = () => {
   useAppointmentContext();
@@ -38,9 +37,7 @@ const SmartDashboard = () => {
             </select>
           </div>
         </div>
-        {intelligenceMode === 'auto' && (
-          <IntelligentWorkflowPanel />
-        )}
+  {/* Workflow assistant removed */}
       </div>
 
       {learningEnabled && (

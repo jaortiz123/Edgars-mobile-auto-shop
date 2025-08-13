@@ -145,8 +145,19 @@ export async function patchAppointment(
     check_in_at: string | null;
     check_out_at: string | null;
     tech_id: string | null;
+  // Vehicle-related updates (upsert/link semantics on backend)
+  license_plate: string;
+  vehicle_year: number;
+  vehicle_make: string;
+  vehicle_model: string;
   }>
 ): Promise<{ id: string; updated_fields?: string[] }> {
+  // Debug: log outgoing PATCH payload and URL
+  try {
+    console.debug('[api.patchAppointment] PATCH /appointments/%s payload:', id, update);
+  } catch {
+    /* ignore console errors in non-browser env */
+  }
   const { data } = await http.patch<{ data: { id: string; updated_fields?: string[] } }>(`/appointments/${id}`, update);
   return data.data;
 }
