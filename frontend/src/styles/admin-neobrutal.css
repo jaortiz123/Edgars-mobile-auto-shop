@@ -234,11 +234,11 @@
   background: var(--secondary-background);
   border: 5px solid var(--border); /* thicker border */
   border-radius: var(--radius-base);
-  padding: 12px 14px 14px;
+  padding: 18px 18px 20px; /* consistent breathing room */
   box-shadow: 4px 4px 0 0 #000; /* harsh shadow */
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px; /* more vertical rhythm */
   transition: box-shadow .12s ease, transform .12s ease, background .12s ease;
   cursor: pointer;
 }
@@ -284,19 +284,17 @@
 .admin-neobrutal .nb-card[data-status="no_show"] { --nb-status-color:#7A83FF; }
 
 /* ===== Card Hierarchy Enhancements ===== */
-.admin-neobrutal .nb-card .nb-service-title { font-size:16px; font-weight:800; line-height:1.05; letter-spacing:.3px; }
-/* Elevate service title with display font */
-.admin-neobrutal .nb-card .nb-service-title { font-family: var(--font-display); letter-spacing:1px; font-size:17px; }
-.admin-neobrutal .nb-card .nb-status-badges { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+.admin-neobrutal .nb-card .nb-service-title { font-size:19px; font-weight:900; line-height:1.05; letter-spacing:.5px; font-family: var(--font-display); }
+.admin-neobrutal .nb-card .nb-status-badges { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; justify-content:center; }
 .admin-neobrutal .nb-card .nb-status-badge { font-size:10px; font-weight:700; padding:4px 8px 5px; border:3px solid #000; background:#fff; box-shadow:4px 4px 0 0 #000; text-transform:uppercase; letter-spacing:1px; line-height:1; }
 .admin-neobrutal .nb-card .nb-status-badge[data-s="scheduled"] { background:#FACC00; }
 .admin-neobrutal .nb-card .nb-status-badge[data-s="in_progress"] { background:#FF7A00; }
 .admin-neobrutal .nb-card .nb-status-badge[data-s="ready"] { background:#05E17A; }
 .admin-neobrutal .nb-card .nb-status-badge[data-s="completed"] { background:#d1d5db; }
-.admin-neobrutal .nb-card .nb-vehicle-line { font-size:12px; font-weight:600; display:flex; gap:4px; align-items:center; }
-.admin-neobrutal .nb-card .nb-customer-line { font-size:12px; font-weight:500; opacity:.85; }
-.admin-neobrutal .nb-card .nb-card-footer { display:flex; justify-content:flex-end; margin-top:6px; padding-top:6px; border-top:3px solid #000; }
-.admin-neobrutal .nb-card .nb-card-price { font-weight:800; font-size:14px; }
+.admin-neobrutal .nb-card .nb-vehicle-line { font-size:11px; font-weight:500; display:flex; gap:4px; align-items:center; color:rgba(0,0,0,0.58); }
+.admin-neobrutal .nb-card .nb-customer-line { font-size:13px; font-weight:600; color:rgba(0,0,0,0.85); margin-top:2px; }
+.admin-neobrutal .nb-card .nb-card-footer { display:flex; justify-content:flex-end; margin-top:6px; padding-top:4px; border-top:2px solid #000; }
+.admin-neobrutal .nb-card .nb-card-price { font-weight:700; font-size:13px; }
 /* Footer with centered OPEN badge when present */
 .admin-neobrutal .nb-card .nb-card-footer { position:relative; align-items:center; }
 .admin-neobrutal .nb-card .nb-card-footer .nb-card-price { margin-left:auto; }
@@ -314,7 +312,7 @@
 .admin-neobrutal .nb-card .nb-card-open-zone .nb-open-badge:active { box-shadow:1px 1px 0 0 var(--border); transform:translate(2px,2px); }
 
 /* Column */
-.admin-neobrutal .nb-column { background: var(--secondary-background); border:4px solid var(--border); border-radius: var(--radius-base); box-shadow: 4px 4px 0 0 #000; display:flex; flex-direction:column; max-height: calc(100vh - 180px); position:relative; }
+.admin-neobrutal .nb-column { background: var(--secondary-background); border:4px solid var(--border); border-radius: var(--radius-base); box-shadow: 4px 4px 0 0 #000; display:flex; flex-direction:column; max-height: calc(100vh - 180px); position:relative; width:312px; }
 .admin-neobrutal .nb-column-header { position:sticky; top:0; z-index:2; background:var(--secondary-background); padding:14px 14px 10px; border-bottom:4px solid var(--border); display:flex; align-items:flex-start; justify-content:space-between; flex-direction:column; gap:8px; }
 /* Colored bars under headers */
 .admin-neobrutal .nb-column[data-column="SCHEDULED"] .nb-column-header::after,
@@ -334,10 +332,10 @@
 .admin-neobrutal .nb-column-scroll::-webkit-scrollbar-thumb { background: var(--main); border:2px solid var(--border); border-radius:0; }
 
 /* Board grid */
-.admin-neobrutal .nb-board-grid { display:grid; gap:38px; grid-auto-columns:260px; grid-auto-flow:column; align-items:start; padding-bottom:60px; }
+.admin-neobrutal .nb-board-grid { display:grid; gap:40px; grid-auto-columns:312px; grid-auto-flow:column; align-items:start; padding-bottom:60px; }
 
 /* Compact density toggle */
-.admin-neobrutal.nb-density-compact .nb-card { padding:8px 10px 10px; gap:6px; }
+.admin-neobrutal.nb-density-compact .nb-card { padding:12px 14px 14px; gap:10px; }
 
 /* ================= Dashboard Title ================= */
 .admin-neobrutal .nb-dashboard-title { 

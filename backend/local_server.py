@@ -364,15 +364,22 @@ def get_board():
                   a.status::text,
                   a.start_ts,
                   a.end_ts,
-                                    a.tech_id,
-                                    a.check_in_at,
-                                    a.check_out_at,
+                  a.started_at,
+                  a.completed_at,
+                  a.primary_operation_id,
+                  a.service_category,
+                  a.tech_id,
+                  t.initials AS tech_initials,
+                  t.name      AS tech_name,
+                  a.check_in_at,
+                  a.check_out_at,
                   COALESCE(c.name, 'Unknown Customer') AS customer_name,
                   v.make, v.model, v.year, v.license_plate AS vin,
                   COALESCE(a.total_amount, 0) AS price
                     FROM appointments a
                     LEFT JOIN customers c ON c.id = a.customer_id
                     LEFT JOIN vehicles  v ON v.id = a.vehicle_id
+                    LEFT JOIN technicians t ON t.id = a.tech_id
                     WHERE {where_sql}
                     ORDER BY a.start_ts ASC NULLS LAST, a.id ASC
                     LIMIT 500
@@ -381,6 +388,7 @@ def get_board():
                 )
                 rows = cur.fetchall()
             else:
+                # Day-window mode
                 start_utc, end_utc = shop_day_window(target_date)
                 base_params: list[Any] = [start_utc, end_utc]
                 tech_clause = ""
@@ -388,22 +396,29 @@ def get_board():
                     tech_clause = " AND a.tech_id = %s"
                     base_params.append(tech_id)
 
-                # Today's appointments in shop TZ
+                # Base (today) rows
                 cur.execute(
                     f"""
               SELECT a.id::text,
                   a.status::text,
                   a.start_ts,
                   a.end_ts,
-                                    a.tech_id,
-                                    a.check_in_at,
-                                    a.check_out_at,
+                  a.started_at,
+                  a.completed_at,
+                  a.primary_operation_id,
+                  a.service_category,
+                  a.tech_id,
+                  t.initials AS tech_initials,
+                  t.name      AS tech_name,
+                  a.check_in_at,
+                  a.check_out_at,
                   COALESCE(c.name, 'Unknown Customer') AS customer_name,
                   v.make, v.model, v.year, v.license_plate AS vin,
                   COALESCE(a.total_amount, 0) AS price
                 FROM appointments a
                 LEFT JOIN customers c ON c.id = a.customer_id
                 LEFT JOIN vehicles  v ON v.id = a.vehicle_id
+                LEFT JOIN technicians t ON t.id = a.tech_id
                 WHERE a.start_ts >= %s AND a.start_ts < %s{tech_clause}
                 ORDER BY a.start_ts ASC NULLS LAST, a.id ASC
                 LIMIT 500
@@ -412,46 +427,51 @@ def get_board():
                 )
                 primary_rows = cur.fetchall()
 
+                carry_rows: list[dict[str, Any]] = []
                 if include_carry:
-                    # Carryover: started before start_utc and still on premises/in progress
                     carry_params: list[Any] = [start_utc]
                     if tech_id:
                         carry_params.append(tech_id)
                     cur.execute(
                         f"""
-                  SELECT a.id::text,
-                      a.status::text,
-                      a.start_ts,
-                      a.end_ts,
-                                            a.tech_id,
-                                            a.check_in_at,
-                                            a.check_out_at,
-                      COALESCE(c.name, 'Unknown Customer') AS customer_name,
-                      v.make, v.model, v.year, v.license_plate AS vin,
-                      COALESCE(a.total_amount, 0) AS price
-                    FROM appointments a
-                    LEFT JOIN customers c ON c.id = a.customer_id
-                    LEFT JOIN vehicles  v ON v.id = a.vehicle_id
-                    WHERE a.start_ts < %s
-                      AND (
-                        a.status IN ('IN_PROGRESS','READY')
-                        OR (a.check_in_at IS NOT NULL AND a.check_out_at IS NULL)
-                      ){tech_clause}
-                    ORDER BY a.start_ts ASC NULLS LAST, a.id ASC
-                    LIMIT 500
-                        """,
-                        carry_params,
+              SELECT a.id::text,
+                  a.status::text,
+                  a.start_ts,
+                  a.end_ts,
+                  a.started_at,
+                  a.completed_at,
+                  a.primary_operation_id,
+                  a.service_category,
+                  a.tech_id,
+                  t.initials AS tech_initials,
+                  t.name      AS tech_name,
+                  a.check_in_at,
+                  a.check_out_at,
+                  COALESCE(c.name, 'Unknown Customer') AS customer_name,
+                  v.make, v.model, v.year, v.license_plate AS vin,
+                  COALESCE(a.total_amount, 0) AS price
+                FROM appointments a
+                LEFT JOIN customers c ON c.id = a.customer_id
+                LEFT JOIN vehicles  v ON v.id = a.vehicle_id
+                LEFT JOIN technicians t ON t.id = a.tech_id
+                WHERE a.start_ts < %s
+                  AND (
+                    a.status IN ('IN_PROGRESS','READY')
+                    OR (a.check_in_at IS NOT NULL AND a.check_out_at IS NULL)
+                  ){tech_clause}
+                ORDER BY a.start_ts ASC NULLS LAST, a.id ASC
+                LIMIT 500
+                    """,
+                    carry_params,
                     )
                     carry_rows = cur.fetchall()
-                else:
-                    carry_rows = []
 
-                # Merge de-duplicating by id
-                seen = set()
+                seen: set[str] = set()
                 for r in primary_rows + carry_rows:
-                    if r["id"] in seen:
+                    rid = r["id"]
+                    if rid in seen:
                         continue
-                    seen.add(r["id"])
+                    seen.add(rid)
                     rows.append(r)
 
     def vehicle_label(r: Dict[str, Any]) -> str:
@@ -471,14 +491,21 @@ def get_board():
             "customerName": r.get("customer_name") or "",
             "vehicle": vehicle_label(r),
             "price": float(r.get("price") or 0),
+            # Phase 1 service catalog linkage (optional)
+            "primaryOperationId": r.get("primary_operation_id"),
+            "serviceCategory": r.get("service_category"),
             "status": status,
             "position": position_by_status[status],
             "start": r.get("start_ts").isoformat() if r.get("start_ts") else None,
             "end": r.get("end_ts").isoformat() if r.get("end_ts") else None,
+            "startedAt": r.get("started_at").isoformat() if r.get("started_at") else None,
+            "completedAt": r.get("completed_at").isoformat() if r.get("completed_at") else None,
             # expose check-in/out to drive on-prem indicators and days-on-lot
             "checkInAt": r.get("check_in_at").isoformat() if r.get("check_in_at") else None,
             "checkOutAt": r.get("check_out_at").isoformat() if r.get("check_out_at") else None,
             "techAssigned": r.get("tech_id"),
+            "techInitials": r.get("tech_initials"),
+            "techName": r.get("tech_name"),
             "vehicleYear": r.get("year"),
             "vehicleMake": r.get("make"),
             "vehicleModel": r.get("model"),
@@ -504,6 +531,100 @@ def get_board():
 
     # IMPORTANT: Board endpoint returns raw shape, not the standard envelope
     return jsonify({"columns": columns, "cards": cards})
+
+# ----------------------------------------------------------------------------
+# Service Operations (Phase 1 lightweight read-only API)
+# ----------------------------------------------------------------------------
+@app.route("/api/admin/service-operations", methods=["GET"])
+def list_service_operations():
+    maybe_auth()
+    conn = db_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, name, category, default_hours, default_price, keywords, skill_level, flags
+                FROM service_operations
+                WHERE is_active IS TRUE
+                ORDER BY category NULLS LAST, name ASC
+                LIMIT 500
+                """
+            )
+            rows = cur.fetchall()
+    # Raw shape (to avoid wrapping overhead for now)
+    return jsonify({
+        "service_operations": [
+            {
+                "id": r["id"],
+                "name": r["name"],
+                "category": r["category"],
+                "default_hours": float(r["default_hours"]) if r["default_hours"] is not None else None,
+                "default_price": float(r["default_price"]) if r["default_price"] is not None else None,
+                "keywords": r["keywords"],
+                "skill_level": r.get("skill_level"),
+                "flags": r.get("flags")
+            } for r in rows
+        ]
+    })
+@app.route("/api/admin/technicians", methods=["GET"])
+def technicians_list():
+    """List active technicians for assignment dropdown.
+
+    Query params:
+      includeInactive=true -> include inactive techs (for admin screens)
+    """
+    maybe_auth()
+    include_inactive = request.args.get("includeInactive", "false").lower() == "true"
+    where = "1=1" if include_inactive else "is_active IS TRUE"
+    conn = db_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT id::text, name, initials, is_active, created_at, updated_at
+                  FROM technicians
+                 WHERE {where}
+                 ORDER BY initials ASC
+                """
+            )
+            rows = cur.fetchall()
+    techs = [
+        {
+            "id": r["id"],
+            "name": r["name"],
+            "initials": r["initials"],
+            "isActive": r["is_active"],
+            "createdAt": r["created_at"].isoformat() if r.get("created_at") else None,
+            "updatedAt": r["updated_at"].isoformat() if r.get("updated_at") else None,
+        }
+        for r in rows
+    ]
+    return jsonify({"technicians": techs})
+
+# ----------------------------------------------------------------------------
+# Technicians (Phase 2 read-only list)
+# ----------------------------------------------------------------------------
+@app.route("/api/admin/technicians", methods=["GET"])
+def list_technicians():
+    maybe_auth()
+    conn = db_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id::text, name, initials, is_active
+                FROM technicians
+                WHERE is_active IS TRUE
+                ORDER BY name ASC
+                LIMIT 200
+                """
+            )
+            rows = cur.fetchall()
+    return jsonify({
+        "technicians": [
+            {"id": r["id"], "name": r["name"], "initials": r["initials"], "is_active": r["is_active"]} for r in rows
+        ]
+    })
 
 # ----------------------------------------------------------------------------
 # Move endpoint
@@ -543,6 +664,236 @@ def appointment_handler(appt_id: str):
         return get_appointment(appt_id)
     elif request.method == "PATCH":
         return patch_appointment(appt_id)
+
+# Provide admin namespace alias for same handler (consistency with board endpoint under /api/admin)
+@app.route("/api/admin/appointments/<appt_id>", methods=["GET", "PATCH"])
+def admin_appointment_handler(appt_id: str):
+    if request.method == "GET":
+        return get_appointment(appt_id)
+    elif request.method == "PATCH":
+        return patch_appointment(appt_id)
+
+# ----------------------------------------------------------------------------
+# Appointment Services (CRUD subset: list, create)
+# ----------------------------------------------------------------------------
+@app.route("/api/appointments/<appt_id>/services", methods=["GET", "POST"])
+def appointment_services(appt_id: str):
+    """List or create services for an appointment.
+
+    POST body may include service_operation_id to link to catalog; if present and name/price/hours/category
+    are omitted they will be backfilled from service_operations defaults.
+    """
+    # Basic existence check for appointment
+    conn_check = db_conn()
+    with conn_check:
+        with conn_check.cursor() as cur:
+            cur.execute("SELECT 1 FROM appointments WHERE id = %s", (appt_id,))
+            if not cur.fetchone():
+                return _fail(HTTPStatus.NOT_FOUND, "not_found", "Appointment not found")
+
+    if request.method == "GET":
+        conn = db_conn()
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id::text, appointment_id::text, name, notes, estimated_hours, estimated_price, category, service_operation_id
+                      FROM appointment_services
+                     WHERE appointment_id = %s
+                     ORDER BY created_at
+                    """,
+                    (appt_id,),
+                )
+                rows = cur.fetchall()
+        services = [
+            {
+                "id": r["id"],
+                "appointment_id": r.get("appointment_id"),
+                "name": r["name"],
+                "notes": r.get("notes"),
+                "estimated_hours": float(r["estimated_hours"]) if r.get("estimated_hours") is not None else None,
+                "estimated_price": float(r["estimated_price"]) if r.get("estimated_price") is not None else None,
+                "category": r.get("category"),
+                "service_operation_id": r.get("service_operation_id"),
+            }
+            for r in rows
+        ]
+        return jsonify({"services": services})
+
+    # POST create
+    body = request.get_json(force=True, silent=True) or {}
+    name = (body.get("name") or "").strip()
+    if not name and not body.get("service_operation_id"):
+        return _fail(HTTPStatus.BAD_REQUEST, "invalid", "name or service_operation_id required")
+
+    service_operation_id = body.get("service_operation_id")
+    derived = {}
+    if service_operation_id:
+        # Pull defaults from catalog
+        conn2 = db_conn()
+        with conn2:
+            with conn2.cursor() as cur:
+                cur.execute(
+                    "SELECT id, name, default_hours, default_price, category FROM service_operations WHERE id = %s",
+                    (service_operation_id,),
+                )
+                op = cur.fetchone()
+                if not op:
+                    return _fail(HTTPStatus.BAD_REQUEST, "invalid_operation", "service_operation_id not found")
+                # Fill blanks only
+                if not name:
+                    name = op["name"]
+                if body.get("estimated_hours") is None and op.get("default_hours") is not None:
+                    derived["estimated_hours"] = op.get("default_hours")
+                if body.get("estimated_price") is None and op.get("default_price") is not None:
+                    derived["estimated_price"] = op.get("default_price")
+                if (not body.get("category")) and op.get("category"):
+                    derived["category"] = op.get("category")
+
+    if not name:
+        return _fail(HTTPStatus.BAD_REQUEST, "invalid", "Service name required")
+
+    fields = {
+        "notes": body.get("notes"),
+        "estimated_hours": body.get("estimated_hours", derived.get("estimated_hours")),
+        "estimated_price": body.get("estimated_price", derived.get("estimated_price")),
+        "category": body.get("category", derived.get("category")),
+    }
+
+    conn = db_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO appointment_services (appointment_id, name, notes, estimated_hours, estimated_price, category, service_operation_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                RETURNING id::text
+                """,
+                (
+                    appt_id,
+                    name,
+                    fields["notes"],
+                    fields["estimated_hours"],
+                    fields["estimated_price"],
+                    fields["category"],
+                    service_operation_id,
+                ),
+            )
+            new_id = cur.fetchone()["id"]
+    return jsonify({"id": new_id})
+
+@app.route("/api/appointments/<appt_id>/services/<service_id>", methods=["PATCH", "DELETE"])
+def appointment_service_detail(appt_id: str, service_id: str):
+    """Update or delete a single appointment service."""
+    # Ensure service exists and belongs to appointment
+    conn = db_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM appointment_services WHERE id = %s AND appointment_id = %s",
+                (service_id, appt_id),
+            )
+            if not cur.fetchone():
+                return _fail(HTTPStatus.NOT_FOUND, "not_found", "Service not found")
+
+    if request.method == "DELETE":
+        conn = db_conn()
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM appointment_services WHERE id = %s AND appointment_id = %s",
+                    (service_id, appt_id),
+                )
+        # Recompute total
+        total = 0.0
+        conn2 = db_conn()
+        with conn2:
+            with conn2.cursor() as cur:
+                cur.execute(
+                    "SELECT COALESCE(SUM(estimated_price),0) AS total FROM appointment_services WHERE appointment_id = %s",
+                    (appt_id,),
+                )
+                total = float(cur.fetchone()["total"] or 0)
+        return jsonify({"message": "deleted", "appointment_total": total})
+
+    # PATCH
+    body = request.get_json(force=True, silent=True) or {}
+    allowed = {"name", "notes", "estimated_hours", "estimated_price", "category", "service_operation_id"}
+    updates = {k: v for k, v in body.items() if k in allowed}
+    if not updates:
+        return _fail(HTTPStatus.BAD_REQUEST, "invalid", "No valid fields to update")
+
+    # If switching operation id, optionally backfill missing fields if those specific keys not provided
+    if "service_operation_id" in updates and updates.get("service_operation_id"):
+        op_id = updates["service_operation_id"]
+        conn3 = db_conn()
+        with conn3:
+            with conn3.cursor() as cur:
+                cur.execute(
+                    "SELECT id, name, default_hours, default_price, category FROM service_operations WHERE id = %s",
+                    (op_id,),
+                )
+                op = cur.fetchone()
+                if not op:
+                    return _fail(HTTPStatus.BAD_REQUEST, "invalid_operation", "service_operation_id not found")
+                # Only fill fields not explicitly in update payload
+                if "name" not in updates:
+                    updates["name"] = op["name"]
+                if "estimated_hours" not in updates and op.get("default_hours") is not None:
+                    updates["estimated_hours"] = op.get("default_hours")
+                if "estimated_price" not in updates and op.get("default_price") is not None:
+                    updates["estimated_price"] = op.get("default_price")
+                if "category" not in updates and op.get("category"):
+                    updates["category"] = op.get("category")
+
+    set_clauses = []
+    params = []
+    for i, (k, v) in enumerate(updates.items(), start=1):
+        set_clauses.append(f"{k} = %s")
+        params.append(v)
+    params.extend([service_id, appt_id])
+
+    sql = f"UPDATE appointment_services SET {', '.join(set_clauses)} WHERE id = %s AND appointment_id = %s RETURNING id::text"
+    conn = db_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            cur.fetchone()
+
+    # Return updated record + total
+    conn4 = db_conn()
+    with conn4:
+        with conn4.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id::text, appointment_id::text, name, notes, estimated_hours, estimated_price, category, service_operation_id
+                  FROM appointment_services WHERE id = %s
+                """,
+                (service_id,),
+            )
+            row = cur.fetchone()
+    service = {
+        "id": row["id"],
+        "appointment_id": row.get("appointment_id"),
+        "name": row["name"],
+        "notes": row.get("notes"),
+        "estimated_hours": float(row["estimated_hours"]) if row.get("estimated_hours") is not None else None,
+        "estimated_price": float(row["estimated_price"]) if row.get("estimated_price") is not None else None,
+        "category": row.get("category"),
+        "service_operation_id": row.get("service_operation_id"),
+    }
+
+    # Recompute total
+    total = 0.0
+    conn5 = db_conn()
+    with conn5:
+        with conn5.cursor() as cur:
+            cur.execute(
+                "SELECT COALESCE(SUM(estimated_price),0) AS total FROM appointment_services WHERE appointment_id = %s",
+                (appt_id,),
+            )
+            total = float(cur.fetchone()["total"] or 0)
+    return jsonify({"service": service, "appointment_total": total})
 
 def get_appointment(appt_id: str):
     """Gets full appointment details."""
@@ -585,7 +936,7 @@ def get_appointment(appt_id: str):
 
             cur.execute(
                 """
-                SELECT id::text, name, notes, estimated_hours, estimated_price
+                SELECT id::text, name, notes, estimated_hours, estimated_price, service_operation_id
                 FROM appointment_services
                 WHERE appointment_id = %s ORDER BY created_at
                 """,
@@ -618,9 +969,12 @@ def get_appointment(appt_id: str):
         },
         "services": [
             {
-                "id": s["id"], "name": s["name"], "notes": s.get("notes"),
+                "id": s["id"],
+                "name": s["name"],
+                "notes": s.get("notes"),
                 "estimated_hours": float(s["estimated_hours"]) if s.get("estimated_hours") is not None else None,
                 "estimated_price": float(s["estimated_price"]) if s.get("estimated_price") is not None else None,
+                "service_operation_id": s.get("service_operation_id"),
             }
             for s in services
         ],
@@ -648,6 +1002,14 @@ def patch_appointment(appt_id: str):
     params: list[Any] = []
     for key, col in fields:
         if key in body and body[key] is not None:
+            if key == "tech_id":
+                # Validate active technician
+                conn = db_conn()
+                with conn:
+                    with conn.cursor() as vcur:
+                        vcur.execute("SELECT id FROM technicians WHERE id = %s AND is_active IS TRUE", (body[key],))
+                        if not vcur.fetchone():
+                            raise BadRequest("tech_id not found or inactive")
             sets.append(f"{col} = %s")
             params.append(body[key])
 
@@ -782,6 +1144,11 @@ def _set_status(conn, appt_id: str, new_status: str, user: Dict[str, Any], *, ch
             sets.append("check_in_at = COALESCE(check_in_at, now())")
         if check_out:
             sets.append("check_out_at = COALESCE(check_out_at, now())")
+        # Progress timestamps (server authoritative & idempotent)
+        if new_status == "IN_PROGRESS":
+            sets.append("started_at = COALESCE(started_at, now())")
+        if new_status == "COMPLETED":
+            sets.append("completed_at = COALESCE(completed_at, now())")
         params.append(appt_id)
         cur.execute(f"UPDATE appointments SET {', '.join(sets)} WHERE id = %s", params)
         audit(conn, user.get("sub", "dev"), "STATUS_CHANGE", "appointment", appt_id, {"status": old_status}, {"status": new_status})
@@ -885,6 +1252,9 @@ def create_appointment():
 
     total_amount = body.get("total_amount")
     paid_amount = body.get("paid_amount")
+    # paid_amount column is NOT NULL with DEFAULT 0; if client omits it we must not send NULL overriding the default.
+    if paid_amount is None:
+        paid_amount = 0
 
     # Customer fields
     customer_id = body.get("customer_id")
@@ -900,6 +1270,11 @@ def create_appointment():
 
     notes = body.get("notes")
     location_address = body.get("location_address")
+
+    # Phase 1 service catalog linkage
+    primary_operation_id = body.get("primary_operation_id") or body.get("primaryOperationId")
+    service_category = body.get("service_category") or body.get("serviceCategory")
+    tech_id = body.get("tech_id") or body.get("techId")
 
     conn = db_conn()
     with conn:
@@ -973,14 +1348,29 @@ def create_appointment():
                     )
                     resolved_vehicle_id = (cur.fetchone() or {}).get("id")
 
-            # Insert appointment
+            # Validate primary_operation_id if provided
+            if primary_operation_id:
+                cur.execute("SELECT category FROM service_operations WHERE id = %s", (primary_operation_id,))
+                op_row = cur.fetchone()
+                if not op_row:
+                    raise BadRequest("primary_operation_id not found")
+                if not service_category:
+                    service_category = op_row.get("category")
+
+            # Validate technician if provided (must exist and be active)
+            if tech_id:
+                cur.execute("SELECT id FROM technicians WHERE id = %s AND is_active IS TRUE", (tech_id,))
+                if not cur.fetchone():
+                    raise BadRequest("tech_id not found or inactive")
+
+            # Insert appointment (extended columns always present; None if absent)
             cur.execute(
                 """
-                INSERT INTO appointments (status, start_ts, total_amount, paid_amount, customer_id, vehicle_id, notes, location_address)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO appointments (status, start_ts, total_amount, paid_amount, customer_id, vehicle_id, notes, location_address, primary_operation_id, service_category, tech_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id::text
                 """,
-                (status, start_dt, total_amount, paid_amount, resolved_customer_id, resolved_vehicle_id, notes, location_address),
+                (status, start_dt, total_amount, paid_amount, resolved_customer_id, resolved_vehicle_id, notes, location_address, primary_operation_id, service_category, tech_id),
             )
             row = cur.fetchone()
             if not row:
@@ -992,7 +1382,8 @@ def create_appointment():
                 "customer_id": resolved_customer_id,
                 "vehicle_id": resolved_vehicle_id,
             })
-    return _ok({"id": new_id}, HTTPStatus.CREATED)
+    # Return full envelope with appointment id nested for consistency with other endpoints
+    return _ok({"appointment": {"id": new_id}}, HTTPStatus.CREATED)
 
 @app.route("/api/admin/appointments/<appt_id>", methods=["DELETE"])
 def delete_appointment(appt_id: str):
@@ -1339,7 +1730,7 @@ def admin_customer_visits(cust_id: str):
                        a.check_in_at, a.check_out_at,
                        v.year, v.make, v.model, v.license_plate,
                        COALESCE((
-                         SELECT JSON_AGG(JSON_BUILD_OBJECT('id', s.id::text, 'name', s.name, 'notes', s.notes, 'estimated_price', s.estimated_price)
+                         SELECT JSON_AGG(JSON_BUILD_OBJECT('id', s.id::text, 'name', s.name, 'notes', s.notes, 'estimated_price', s.estimated_price, 'service_operation_id', s.service_operation_id)
                                          ORDER BY s.created_at)
                          FROM appointment_services s WHERE s.appointment_id = a.id
                        ), '[]'::json) AS services,
@@ -1380,7 +1771,7 @@ def admin_vehicle_visits(license_plate: str):
                        a.check_in_at, a.check_out_at,
                        v.year, v.make, v.model, v.license_plate,
                        COALESCE((
-                         SELECT JSON_AGG(JSON_BUILD_OBJECT('id', s.id::text, 'name', s.name, 'notes', s.notes, 'estimated_price', s.estimated_price)
+                         SELECT JSON_AGG(JSON_BUILD_OBJECT('id', s.id::text, 'name', s.name, 'notes', s.notes, 'estimated_price', s.estimated_price, 'service_operation_id', s.service_operation_id)
                                          ORDER BY s.created_at)
                          FROM appointment_services s WHERE s.appointment_id = a.id
                        ), '[]'::json) AS services,

@@ -1,4 +1,5 @@
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Suspense } from 'react';
 // Lazy-load admin-specific neobrutal styles so public pages are unaffected
 import '../styles/admin-neobrutal.css';
 import { useAuth } from '@/hooks/useAuth';
@@ -101,7 +102,9 @@ export default function AdminLayout() {
   <main className="flex-1 overflow-auto bg-transparent">
         <CardPreferencesProvider>
           <div className="px-sp-8 py-sp-6">
-            <Outlet />
+            <Suspense fallback={<div className="p-4 text-sm opacity-70">Loading admin module…</div>}>
+              <Outlet />
+            </Suspense>
           </div>
         </CardPreferencesProvider>
       </main>

@@ -85,6 +85,7 @@ export default function FloatingActionButton({
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
       disabled={disabled || loading}
+  data-testid="fab-quick-add"
       className={`
         fixed bottom-4 right-4 
         bg-primary text-white rounded-full 

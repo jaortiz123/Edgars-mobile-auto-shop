@@ -45,6 +45,8 @@ export interface AppointmentService {
   estimated_hours?: number | null;
   estimated_price?: number | null;
   category?: string | null;
+  // Link to catalog operation (Phase 1)
+  service_operation_id?: string | null;
 }
 
 export interface BoardColumn {
@@ -103,6 +105,23 @@ export interface BoardCard {
   additionalOperations?: import('./serviceCatalog').JobOperation[];
   blockerCode?: import('./serviceCatalog').BlockerCode;
   headline?: string; // derived display title if provided
+  // Raw identifiers from backend for Phase 1 linkage
+  primaryOperationId?: string | null;
+  serviceCategory?: string | null;
+  // Technician + progress tracking (new backend fields)
+  techInitials?: string | null; // e.g. "ED"
+  startedAt?: string | null; // when work actually began (set once when moved to IN_PROGRESS)
+  completedAt?: string | null; // when work completed (set once when moved to COMPLETED)
+}
+
+// Technician directory entry
+export interface Technician {
+  id: string;
+  name: string;
+  initials: string;
+  isActive: boolean; // camelCase for frontend consumption (backend returns isActive)
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ServiceHistoryItem {
@@ -220,4 +239,16 @@ export interface Service {
   duration?: number;
   duration_minutes?: number;
   category?: string;
+}
+
+// Backend service_operations row (read-only Phase 1)
+export interface ServiceOperation {
+  id: string;
+  name: string;
+  category: string | null;
+  default_hours: number | null;
+  default_price: number | null;
+  keywords?: string[] | null;
+  skill_level?: number | null;
+  flags?: string[] | null;
 }

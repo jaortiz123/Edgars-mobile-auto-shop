@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import ServiceOperationSelect, { ServiceOperationSelectValue } from '@/components/admin/ServiceOperationSelect';
 import { Tabs } from '@/components/ui/Tabs';
 import * as api from '@/lib/api';
 import type { DrawerPayload, AppointmentService } from '@/types/models';
@@ -10,7 +11,7 @@ import vehicleCatalogSeed from '@/data/vehicleCatalog';
 import buildCatalogFromRaw from '@/data/vehicleCatalogFromRaw';
 
 // Wrap the main component in React.memo to prevent unnecessary re-renders
-const AppointmentDrawer = React.memo(({ open, onClose, id, onDeleted, onRescheduled }: { open: boolean; onClose: () => void; id: string | null; onDeleted?: (id: string) => void; onRescheduled?: (id: string, startISO: string) => void }) => {
+const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { open: boolean; onClose: () => void; id: string | null; onRescheduled?: (id: string, startISO: string) => void }) => {
   const [tab, setTab] = useState('overview');
   const [data, setData] = useState<DrawerPayload | null>(null);
   const [isAddingService, setIsAddingService] = useState(false);
@@ -22,59 +23,41 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onDeleted, onReschedu
   const toast = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const deletedIdRef = useRef<string | null>(null);
+  const loadedDataIdRef = useRef<string | null>(null);
   const [showReschedule, setShowReschedule] = useState(false);
   const [reschedAt, setReschedAt] = useState<string>('');
   const [savingReschedule, setSavingReschedule] = useState(false);
-
-  // Memoize the setIsAddingService function to prevent unnecessary re-renders
-  const memoizedSetIsAddingService = useCallback((value: boolean) => {
-    setIsAddingService(value);
-  }, []);
-
-  // Track if we've loaded data for this ID to prevent multiple API calls
-  const loadedDataIdRef = useRef<string | null>(null);
+  const memoizedSetIsAddingService = useCallback((v: boolean)=>setIsAddingService(v), []);
 
   const handleDelete = useCallback(async () => {
     if (!id) return;
-    const confirm = window.confirm('Delete this appointment? This cannot be undone.');
-    if (!confirm) return;
+    if (!window.confirm('Delete this appointment? This cannot be undone.')) return;
     setIsDeleting(true);
     try {
       await api.deleteAppointment(id);
-      toast.success('Appointment deleted', { key: `appt-del-${id}` });
+      toast.success('Appointment deleted');
       deletedIdRef.current = id;
-      // Inform parent so Calendar/Dashboard can update immediately
-      if (onDeleted) {
-        try { onDeleted(id); } catch { /* ignored */ }
-      }
       onClose();
       await refreshBoard();
     } catch (e) {
-      toast.error(api.handleApiError(e, 'Failed to delete appointment'), { key: `appt-del-fail-${id}` });
+      toast.error(api.handleApiError ? api.handleApiError(e, 'Failed to delete appointment') : 'Failed to delete');
     } finally {
       setIsDeleting(false);
     }
-  }, [id, onClose, refreshBoard, toast, onDeleted]);
-
+  }, [id, onClose, refreshBoard, toast]);
   useEffect(() => {
-    // Only fetch data if drawer is open, we have an ID, and we haven't already loaded this ID
-    if (open && id && api.getDrawer && id !== loadedDataIdRef.current) {
-      console.log('🔍 DEBUG: Fetching data for ID:', id);
-      console.log('🔍 DEBUG: Previous loaded ID:', loadedDataIdRef.current);
-      loadedDataIdRef.current = id;
+    let cancelled = false;
 
-      // reset state for new load
+    if (open && id && id !== loadedDataIdRef.current) {
+      loadedDataIdRef.current = id;
       setError(null);
       setData(null);
 
-      let cancelled = false;
-      // Safety timeout to avoid hanging forever if the promise never settles
       const timeoutMs = 8000;
       const timeoutId = setTimeout(() => {
         if (cancelled) return;
         console.warn('⏰ Drawer load timed out');
         setError('Failed to load appointment');
-        // Minimal fallback so UI can proceed
         const fallbackData: DrawerPayload = {
           appointment: {
             id: id || 'fallback-id',
@@ -94,108 +77,34 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onDeleted, onReschedu
         setData(fallbackData);
       }, timeoutMs);
 
-      try {
-        const drawerResult: unknown = api.getDrawer(id);
-        console.log('🔍 DEBUG: api.getDrawer(id) returned:', drawerResult);
-
-        const isPromise = (v: unknown): v is Promise<DrawerPayload> => {
-          return !!v && typeof (v as { then?: unknown }).then === 'function';
-        };
-
-        if (isPromise(drawerResult)) {
-          void drawerResult.then((payload) => {
-            if (cancelled) return;
+      api.getDrawer(id)
+        .then(result => {
+          if (cancelled) return;
             clearTimeout(timeoutId);
-            setData(payload);
-            // Seed reschedule input with current start when data loads
-            try {
-              const iso = payload?.appointment?.start || null;
-              if (iso) {
-                const d = new Date(iso);
-                const pad = (n: number) => String(n).padStart(2, '0');
-                const v = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-                setReschedAt(v);
-              }
-            } catch { /* ignore seed errors */ }
-            // Ensure any transient timeout error banner is cleared on successful load
-            setError(null);
-          }).catch((err: unknown) => {
-            console.error('🔍 DEBUG: Error resolving getDrawer Promise:', err);
-            if (cancelled) return;
-            // If we just deleted this appointment, suppress noisy error UI
-            if (deletedIdRef.current && deletedIdRef.current === id) return;
-            clearTimeout(timeoutId);
-            setError('Failed to load appointment');
-            // Fallback minimal payload so Overview can render something instead of staying on Loading…
-            const fallbackData: DrawerPayload = {
-              appointment: {
-                id: id || 'fallback-id',
-                status: 'SCHEDULED',
-                start: null as unknown as string,
-                end: null as unknown as string,
-                total_amount: 0,
-                paid_amount: 0,
-                check_in_at: null,
-                check_out_at: null,
-                tech_id: null
-              },
-              customer: { id: 'cust-fallback', name: '—', phone: '', email: '' },
-              vehicle: { id: 'veh-fallback', year: 0, make: '', model: '', vin: '' },
-              services: []
-            };
-            setData(fallbackData);
-          });
-        } else {
-          console.error('🔍 DEBUG: getDrawer did not return a Promise! Using fallback payload…');
+            setData(result);
+        })
+        .catch(err => {
+          console.error('🔍 DEBUG: Error calling api.getDrawer:', err);
+          if (cancelled) return;
           clearTimeout(timeoutId);
-          const fallbackData: DrawerPayload = {
-            appointment: {
-              id: id || 'fallback-id',
-              status: 'SCHEDULED',
-              start: '2024-01-15T14:00:00Z',
-              end: '2024-01-15T15:00:00Z',
-              total_amount: 250.00,
-              paid_amount: 0,
-              check_in_at: null,
-              check_out_at: null,
-              tech_id: null
-            },
-            customer: {
-              id: 'cust-fallback',
-              name: 'Fallback Customer',
-              phone: '+1-555-0123',
-              email: 'fallback@example.com'
-            },
-            vehicle: {
-              id: 'veh-fallback',
-              year: 2020,
-              make: 'Toyota',
-              model: 'Camry',
-              vin: 'FALLBACK123456'
-            },
-            services: []
-          };
-          if (!cancelled) setData(fallbackData);
-        }
-      } catch (err) {
-        console.error('🔍 DEBUG: Error calling api.getDrawer:', err);
-        clearTimeout(timeoutId);
-        if (!cancelled) {
           if (!(deletedIdRef.current && deletedIdRef.current === id)) {
             setError('Failed to load appointment');
           }
-        }
-      }
+        });
 
-      return () => { cancelled = true; clearTimeout(timeoutId); };
+      return () => {
+        cancelled = true;
+        clearTimeout(timeoutId);
+      };
     }
 
-    // Reset loaded data ID when drawer closes
     if (!open) {
       loadedDataIdRef.current = null;
-      setIsAddingService(false); // Reset form state when drawer closes
+      setIsAddingService(false);
       deletedIdRef.current = null;
     }
+
+    return () => { cancelled = true; };
   }, [open, id]);
 
   // Focus management
@@ -396,9 +305,13 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onDeleted, onReschedu
 export default AppointmentDrawer;
 
 import { formatInShopTZ } from '@/lib/timezone';
+import { useTechnicians } from '@/hooks/useTechnicians';
 
 function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime?: () => void; }) {
   const toast = useToast();
+  // Technician list + assignment state (hooks must remain at top level)
+  const { data: techs, isLoading: techLoading } = useTechnicians();
+  const [savingTech, setSavingTech] = React.useState(false);
   const [veh, setVeh] = React.useState({ license_plate: '', year: 0, make: '', model: '' });
   const [meta, setMeta] = React.useState({ location_address: '', notes: '' });
   // Catalog for dropdowns
@@ -521,6 +434,41 @@ function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime
         <Info label="Phone" value={data.customer?.phone || '—'} />
         <Info label="Email" value={data.customer?.email || '—'} />
         <div className="col-span-2">
+          <div className="text-sm text-gray-500 mb-1">Technician</div>
+          <div className="flex gap-2 items-center">
+            <select
+              aria-label="Technician"
+              className="border rounded px-2 py-1 flex-1"
+              value={a.tech_id || ''}
+              disabled={techLoading || savingTech}
+              onChange={async (e) => {
+                if (!a.id) return;
+                const val = e.target.value || null;
+                setSavingTech(true);
+                try {
+                  await api.patchAppointment(a.id, { tech_id: val });
+                  toast.success(val ? 'Technician assigned' : 'Technician cleared');
+                  try {
+                    const fresh = await api.getDrawer(a.id);
+                    // Light state update: only tech_id
+                    data.appointment.tech_id = fresh.appointment.tech_id;
+                  } catch {/* ignore */}
+                } catch (err) {
+                  toast.error((err as Error)?.message || 'Failed to assign technician');
+                } finally {
+                  setSavingTech(false);
+                }
+              }}
+            >
+              <option value="">Unassigned</option>
+              {(techs || []).map(t => (
+                <option key={t.id} value={t.id}>{t.initials} – {t.name}</option>
+              ))}
+            </select>
+            {savingTech && <span className="text-xs text-gray-500">Saving…</span>}
+          </div>
+        </div>
+        <div className="col-span-2">
           <div className="text-sm text-gray-500">Vehicle</div>
           <div className="mt-1 grid grid-cols-4 gap-2 items-center">
             <input id="license_plate" name="license_plate" aria-label="Plate" title="License plate" className="border rounded px-2 py-1 col-span-1" placeholder="Plate" value={veh.license_plate} onChange={(e)=>setVeh(v=>({ ...v, license_plate: e.target.value.toUpperCase() }))} />
@@ -591,7 +539,8 @@ const Services = React.memo(function Services({
     notes: '',
     estimated_hours: '',
     estimated_price: '',
-    category: ''
+  category: '',
+  service_operation_id: '' as string | undefined
   });
 
   // Track if we've initialized services to prevent resetting form state on subsequent data updates
@@ -661,7 +610,7 @@ const Services = React.memo(function Services({
           setNewService(savedState.formState);
           setIsAddingService(savedState.isAdding);
         } else {
-          setNewService({ name: '', notes: '', estimated_hours: '', estimated_price: '', category: '' });
+          setNewService({ name: '', notes: '', estimated_hours: '', estimated_price: '', category: '', service_operation_id: '' });
           setIsAddingService(false);
         }
       } else {
@@ -734,7 +683,8 @@ const Services = React.memo(function Services({
         notes: newService.notes,
         estimated_hours: hours ? parseFloat(hours) : undefined,
         estimated_price: price ? parseFloat(price) : undefined,
-        category: newService.category
+  category: newService.category,
+  service_operation_id: newService.service_operation_id || undefined
       }
     });
     
@@ -745,7 +695,8 @@ const Services = React.memo(function Services({
         notes: newService.notes,
         estimated_hours: hours ? parseFloat(hours) : undefined,
         estimated_price: price ? parseFloat(price) : undefined,
-        category: newService.category
+  category: newService.category,
+  service_operation_id: newService.service_operation_id || undefined
       });
       
       console.log('🔧 HANDLE_ADD_SERVICE: API call successful, response:', response);
@@ -753,7 +704,7 @@ const Services = React.memo(function Services({
       const updatedServices = [...services, response.service];
       setServices(updatedServices);
       calculateTotal(updatedServices);
-      setNewService({ name: '', notes: '', estimated_hours: '', estimated_price: '', category: '' });
+  setNewService({ name: '', notes: '', estimated_hours: '', estimated_price: '', category: '', service_operation_id: '' });
       setIsAddingService(false);
       
       // Clear form state from localStorage after successful submission
@@ -863,19 +814,7 @@ const Services = React.memo(function Services({
             }}
             className="space-y-3"
           >
-            <div>
-              <label htmlFor="service-name" className="block text-sm font-medium text-gray-700 mb-1">
-                Service Name *
-              </label>
-              <input
-                id="service-name"
-                type="text"
-                placeholder="Service name"
-                value={newService.name}
-                onChange={(e) => setNewService({ ...newService, name: e.target.value })}
-                className="w-full p-2 border rounded"
-              />
-            </div>
+            <CatalogServicePicker setNewService={setNewService} />
             <div>
               <label htmlFor="service-notes" className="block text-sm font-medium text-gray-700 mb-1">
                 Notes
@@ -946,7 +885,7 @@ const Services = React.memo(function Services({
                 type="button"
                 onClick={() => {
                   setIsAddingService(false);
-                  setNewService({ name: '', notes: '', estimated_hours: '', estimated_price: '', category: '' });
+              setNewService({ name: '', notes: '', estimated_hours: '', estimated_price: '', category: '', service_operation_id: '' });
                   // Clear form state from localStorage when cancelling
                   if (data?.appointment?.id) {
                     clearFormStateFromStorage(data.appointment.id);
@@ -978,6 +917,36 @@ const Services = React.memo(function Services({
     </div>
   );
 });
+
+  // Small helper component for catalog-based service selection inside add form
+  function CatalogServicePicker({ setNewService }: { setNewService: React.Dispatch<React.SetStateAction<{ name: string; notes: string; estimated_hours: string; estimated_price: string; category: string; service_operation_id: string | undefined }>> }) {
+    const [selectedOp, setSelectedOp] = useState<ServiceOperationSelectValue | null>(null);
+
+    // When an operation is picked, prefill fields if blank
+    useEffect(() => {
+      if (selectedOp) {
+    setNewService((prev) => ({
+          ...prev,
+          name: selectedOp.name,
+          category: selectedOp.category || prev.category,
+          estimated_hours: prev.estimated_hours || (selectedOp.defaultHours != null ? String(selectedOp.defaultHours) : ''),
+          estimated_price: prev.estimated_price || (selectedOp.defaultPrice != null ? String(selectedOp.defaultPrice) : ''),
+          service_operation_id: selectedOp.id,
+        }));
+      }
+    }, [selectedOp, setNewService]);
+
+    return (
+    <div>
+        <ServiceOperationSelect
+          value={selectedOp}
+          onChange={setSelectedOp}
+          required
+          allowCustom={false}
+        />
+      </div>
+    );
+  }
 
 function ServiceItem({ service, isEditing, onEdit, onDelete, onStartEdit, onCancelEdit }: {
   service: AppointmentService;

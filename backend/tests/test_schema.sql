@@ -42,7 +42,34 @@ CREATE TABLE vehicles (
     created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
+-- service_operations table (must exist before appointments for FK)
+CREATE TABLE service_operations (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    keywords TEXT[] NOT NULL DEFAULT '{}',
+    default_hours NUMERIC(5,2),
+    default_price NUMERIC(10,2),
+    flags TEXT[] NOT NULL DEFAULT '{}',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    replaced_by_id TEXT REFERENCES service_operations(id),
+    labor_matrix_code TEXT,
+    skill_level INT,
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_service_operations_category ON service_operations(category);
+
 -- appointments table
+-- technicians table (new progress tracking)
+CREATE TABLE technicians (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    initials TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT now()
+);
+
 CREATE TABLE appointments (
     id SERIAL PRIMARY KEY,
     customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE RESTRICT,
@@ -50,21 +77,39 @@ CREATE TABLE appointments (
     status appointment_status NOT NULL DEFAULT 'SCHEDULED',
     start_ts TIMESTAMPTZ,
     end_ts TIMESTAMPTZ,
+    started_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
     total_amount NUMERIC(10,2),
     paid_amount NUMERIC(10,2) NOT NULL DEFAULT 0,
     check_in_at TIMESTAMP,
     check_out_at TIMESTAMP,
-    tech_id UUID,
+    tech_id UUID REFERENCES technicians(id),
     title TEXT,
     notes TEXT,
+    location_address TEXT,
+    primary_operation_id TEXT REFERENCES service_operations(id),
+    service_category TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT now(),
     updated_at TIMESTAMP NOT NULL DEFAULT now()
+);
+
+-- audit_logs table (needed for audit() function to avoid failing inserts in tests)
+CREATE TABLE audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    action TEXT NOT NULL,
+    entity TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    before JSONB NOT NULL DEFAULT '{}'::jsonb,
+    after JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 -- appointment_services table
 CREATE TABLE appointment_services (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     appointment_id INTEGER NOT NULL REFERENCES appointments(id) ON DELETE CASCADE,
+    service_operation_id TEXT REFERENCES service_operations(id),
     name TEXT NOT NULL,
     notes TEXT,
     estimated_hours NUMERIC(5,2),

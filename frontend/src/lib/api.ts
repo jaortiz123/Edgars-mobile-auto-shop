@@ -2,7 +2,8 @@ import axios from 'axios';
 import type {
   Appointment, AppointmentService, AppointmentStatus,
   BoardCard, BoardColumn, DashboardStats, DrawerPayload,
-  CarOnPremises, Message, MessageChannel, MessageStatus
+  CarOnPremises, Message, MessageChannel, MessageStatus,
+  ServiceOperation, Technician
 } from '../types/models';
 
 // Re-export types for components
@@ -11,6 +12,21 @@ export type {
   BoardCard, BoardColumn, DashboardStats, DrawerPayload,
   Message, MessageChannel, MessageStatus
 } from '../types/models';
+export type { Technician } from '../types/models';
+
+export async function getServiceOperations(): Promise<ServiceOperation[]> {
+  const { data } = await http.get<{ service_operations: ServiceOperation[] }>(
+    '/admin/service-operations'
+  );
+  return data.service_operations;
+}
+
+export async function getTechnicians(): Promise<Technician[]> {
+  const { data } = await http.get<{ technicians: Technician[] }>(
+    '/admin/technicians'
+  );
+  return data.technicians;
+}
 
 export const toStatus = (s: string): AppointmentStatus =>
   (s || '').toUpperCase().replace('-', '_').replace('NO_SHOW', 'NO_SHOW') as AppointmentStatus;

@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+// Import component only (TS interfaces are type-only and not emitted; avoid named import in .jsx)
+import ServiceOperationSelect from '@/components/admin/ServiceOperationSelect';
 import { X, Calendar, User, Car, Wrench, MapPin, Phone, Mail, Clock, Zap, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import TemplateSelector from '../admin/TemplateSelector';
@@ -78,14 +80,19 @@ const QuickAddModal = ({
     '4:00 PM', '5:00 PM'
   ], []);
 
-  const serviceTypes = useMemo(() => [
-    'Oil Change',
-    'Brake Service',
-    'Tire Rotation',
-    'Engine Diagnostics',
-    'Battery Replacement',
-    'Emergency Repair'
-  ], []);
+  // Selected catalog operation (replaces legacy static serviceTypes list)
+  const [selectedOp, setSelectedOp] = useState(null); // holds selected service operation object { id, name, category, ... }
+
+  // Keep selectedOp and formData.serviceType in sync (templates may mutate serviceType)
+  useEffect(() => {
+    // Only clear if formData.serviceType was manually wiped; avoid oscillation
+    if (selectedOp && !formData.serviceType) {
+      setSelectedOp(null);
+    }
+  }, [formData.serviceType, selectedOp]);
+
+  // Operation change handler (defined after handleInputChange to avoid temporal dead zone)
+  let handleOperationChange = () => {};
 
   // Vehicle make/model catalog with year-aware filtering (shared dataset)
   const fullCatalog = useMemo(() => {
@@ -275,6 +282,12 @@ const QuickAddModal = ({
     }
   }, [errors]);
 
+  // Now that handleInputChange exists, finalize handleOperationChange
+  handleOperationChange = useCallback((op) => {
+    setSelectedOp(op);
+    handleInputChange('serviceType', op ? op.name : '');
+  }, [handleInputChange]);
+
   const handleTemplateSelect = useCallback(async (templateId) => {
     try {
       setSelectedTemplateId(templateId);
@@ -389,7 +402,7 @@ const QuickAddModal = ({
     try {
       setIsLoading(true);
       await saveLastAppointmentSettings(formData);
-      onSubmit(formData);
+  onSubmit(formData);
     } catch (error) {
       console.error('Error submitting form:', error);
       setErrors({ general: 'Failed to submit appointment. Please try again.' });
@@ -400,7 +413,7 @@ const QuickAddModal = ({
 
   const handleClose = useCallback(() => {
     // Reset form data
-    setFormData({
+  setFormData({
       customerName: '',
       customerPhone: '',
       serviceType: '',
@@ -453,6 +466,7 @@ const QuickAddModal = ({
   return (
     <div 
       className="quick-add-modal-overlay"
+      data-testid="quick-add-modal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="quick-add-title"
@@ -622,25 +636,20 @@ const QuickAddModal = ({
               )}
             </div>
 
-            {/* Service Type */}
+            {/* Service Operation Catalog Selection */}
             <div className="quick-add-field">
-              <label htmlFor="service-type" className="quick-add-label">
+              <div className="flex items-center gap-1 mb-1">
                 <Wrench className="h-4 w-4" aria-hidden="true" />
-                Service Type *
-              </label>
-              <select
-                id="service-type"
-                value={formData.serviceType}
-                onChange={(e) => handleInputChange('serviceType', e.target.value)}
-                className={`quick-add-input ${errors.serviceType ? 'error' : ''}`}
+                <span className="quick-add-label">Service * </span>
+              </div>
+              <ServiceOperationSelect
+                value={selectedOp}
+                onChange={handleOperationChange}
                 required
-                aria-describedby={errors.serviceType ? 'service-type-error' : undefined}
-              >
-                <option value="">Select service</option>
-                {serviceTypes.map(service => (
-                  <option key={service} value={service}>{service}</option>
-                ))}
-              </select>
+                allowCustom={false}
+                placeholder="Search services…"
+                disabled={isLoading || isSubmitting}
+              />
               {errors.serviceType && (
                 <div id="service-type-error" className="quick-add-error" role="alert">
                   {errors.serviceType}

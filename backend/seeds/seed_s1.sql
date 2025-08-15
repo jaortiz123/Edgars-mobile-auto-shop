@@ -1,9 +1,49 @@
+-- Phase-1 service_operations seed inserted (see migration 0f1e2d3c4b5a)
+-- If appointments already seeded, run an UPDATE later to backfill primary_operation_id
 -- backend/seeds/seed_s1.sql
 -- Dashboard SoT seed: exactly 5 complete appointments spread across today (UTC)
 
 BEGIN;
 SET TIME ZONE 'UTC';
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Seed service_operations (Phase-1 catalog)
+INSERT INTO service_operations (id,name,category,keywords,default_hours,default_price,flags,is_active,replaced_by_id,labor_matrix_code,skill_level)
+VALUES
+  ('oil-change-synthetic','Full Synthetic Oil Change','Maintenance','{oil,filter,synthetic,premium}',0.50,60.00,'{quick-service,no-appointment}',TRUE,NULL,'EXPRESS',1),
+  ('tire-rotation-awd','AWD Tire Rotation','Maintenance','{tire,rotation,all-wheel-drive}',0.75,90.00,'{appointment-recommended}',TRUE,NULL,'STD',2),
+  ('brake-inspection-old','Basic Brake Inspection','Brakes','{brake,inspection}',0.50,60.00,'{}',FALSE,'brake-inspection-comprehensive','STD',2),
+  ('brake-inspection-comprehensive','Comprehensive Brake Inspection','Brakes','{brake,inspection,safety,comprehensive}',0.75,90.00,'{free-with-service}',TRUE,NULL,'STD',2),
+  ('brake-pad-rotor-front','Front Brake Pads & Rotors','Brakes','{pads,rotors,brake-noise}',2.00,280.00,'{safety-critical}',TRUE,NULL,'BRAKE-STD',3),
+  ('engine-diagnostic-advanced','Advanced Engine Diagnostics','Diagnostics','{engine,diagnostic,troubleshoot,check-engine}',2.00,300.00,'{requires-test-drive}',TRUE,NULL,'DIAG-A',4),
+  ('electrical-diagnostic','Electrical System Diagnostic','Diagnostics','{battery-drain,short,no-start}',1.50,225.00,'{intermittent-possible}',TRUE,NULL,'DIAG-B',4),
+  ('transmission-service-cvt','CVT Transmission Service','Transmission','{transmission,cvt,fluid,filter}',2.00,280.00,'{dealer-recommended}',TRUE,NULL,'TRANS-ADV',4),
+  ('ac-recharge-r134a','A/C Recharge R-134a','HVAC','{air-conditioning,ac,recharge,r134a}',1.00,130.00,'{seasonal-service}',TRUE,NULL,'HVAC-STD',3),
+  ('four-wheel-alignment','4-Wheel Alignment','Suspension','{alignment,pull,tire-wear}',1.00,130.00,'{post-suspension}',TRUE,NULL,'SUSP-ALIGN',3),
+  ('strut-assembly-pair','Front Strut Assembly (Pair)','Suspension','{ride-height,clunk,strut}',3.50,507.50,'{alignment-recommended}',TRUE,NULL,'SUSP-ADV',4),
+  ('cv-axle-front','Front CV Axle Replacement (Each)','Drivetrain','{cv,clicking,boot}',2.00,280.00,'{alignment-recommended}',TRUE,NULL,'DRIVE-STD',3),
+  ('cabin-filter-replacement','Cabin Air Filter Replacement','Maintenance','{filter,cabin,hvac}',0.30,33.00,'{upsell-hvac}',TRUE,NULL,'EXPRESS',1),
+  ('spark-plug-replacement','Spark Plug Replacement (4-cyl)','Engine','{tune-up,spark,misfire}',1.50,202.50,'{engine-hot}',TRUE,NULL,'ENG-TUNE',3),
+  ('water-pump-replacement','Water Pump Replacement','Cooling','{overheat,coolant-leak,bearing-noise}',2.50,362.50,'{timing-belt-related}',TRUE,NULL,'COOL-ADV',3),
+  ('fuel-injector-clean','Fuel Injector Cleaning (Machine-Assisted)','Fuel','{injector,rough-idle,mpg}',1.00,130.00,'{emissions-related}',TRUE,NULL,'FUEL-SVC',2),
+  ('cat-converter-replacement','Catalytic Converter Replacement','Emissions','{catalytic,P0420,emissions}',2.50,400.00,'{theft-prone,regulatory}',TRUE,NULL,'EMISS-ADV',4),
+  ('hybrid-battery-service','Hybrid Battery Service','Electrical','{hybrid,battery,high-voltage}',3.00,540.00,'{certification-required}',TRUE,NULL,'EV-HIGH',5),
+  ('ev-inverter-coolant-flush','EV Inverter/Charger Coolant Service','Electrical','{inverter,coolant,ev}',1.25,212.50,'{oem-spec-only}',TRUE,NULL,'EV-COOL',4),
+  ('adas-front-camera-cal','ADAS Front Camera Calibration','Safety','{ADAS,camera,calibration}',2.00,350.00,'{level-floor-required,post-windshield}',TRUE,NULL,'ADAS-CAL',5),
+  ('diesel-dpf-regeneration','Diesel DPF Forced Regeneration','Diesel','{DPF,regen,soot}',1.00,165.00,'{hot-exhaust}',TRUE,NULL,'DIESEL-DIAG',4),
+  ('safety-inspection','General Safety Inspection','Safety','{inspection,safety,pre-trip}',0.75,90.00,'{paperwork}',TRUE,NULL,'SAFETY',2),
+  ('smog-check-obd2','Smog Check (OBD-II)','Emissions','{smog,emissions,obd2}',0.75,97.50,'{regulatory,state-specific}',TRUE,NULL,'EMISS-TEST',3)
+ON CONFLICT (id) DO UPDATE SET
+  name=EXCLUDED.name,
+  category=EXCLUDED.category,
+  keywords=EXCLUDED.keywords,
+  default_hours=EXCLUDED.default_hours,
+  default_price=EXCLUDED.default_price,
+  flags=EXCLUDED.flags,
+  is_active=EXCLUDED.is_active,
+  replaced_by_id=EXCLUDED.replaced_by_id,
+  labor_matrix_code=EXCLUDED.labor_matrix_code,
+  skill_level=EXCLUDED.skill_level;
 
 -- 0) Clean existing appointment data (keep customers/vehicles)
 TRUNCATE appointment_services, messages, payments, inspection_items, inspection_checklists RESTART IDENTITY CASCADE;
@@ -46,8 +86,8 @@ WITH veh_data(k, customer_key, make, model, year, vin, license_plate) AS (
     ('V4','C4','Nissan','Altima',2018,'ALT-2018-0001','1JKL012'),
     ('V5','C5','BMW','328i',2020,'B32-2020-0001','2MNO345')
 ), ins AS (
-  INSERT INTO vehicles (customer_id, make, model, year, vin, license_plate, created_at)
-  SELECT c.id, vd.make, vd.model, vd.year, vd.vin, vd.license_plate, now()
+  INSERT INTO vehicles (customer_id, make, model, year, vin, license_plate)
+  SELECT c.id, vd.make, vd.model, vd.year, vd.vin, vd.license_plate
   FROM veh_data vd
   JOIN tmp_customers c ON c.k = vd.customer_key
   RETURNING id, make, model, year
@@ -63,38 +103,54 @@ CREATE TEMP TABLE appt_anchors (
   id     INTEGER NOT NULL
 ) ON COMMIT DROP;
 
-WITH slots AS (
-  SELECT 
-    date_trunc('day', now()) + interval '9 hour'  AS s1_start,
-    date_trunc('day', now()) + interval '10 hour' AS s1_end,
-    date_trunc('day', now()) + interval '11 hour' AS s2_start,
-    date_trunc('day', now()) + interval '12 hour' AS s2_end,
-    date_trunc('day', now()) + interval '13 hour' AS s3_start,
-    date_trunc('day', now()) + interval '14 hour' AS s3_end,
-    date_trunc('day', now()) + interval '15 hour' AS s4_start,
-    date_trunc('day', now()) + interval '16 hour' AS s4_end,
-    date_trunc('day', now()) + interval '17 hour' AS s5_start,
-    date_trunc('day', now()) + interval '18 hour' AS s5_end
-), ins AS (
-  INSERT INTO appointments (customer_id, vehicle_id, status, start_ts, end_ts, total_amount, paid_amount, check_in_at, check_out_at, title, notes)
-  SELECT (SELECT id FROM tmp_customers WHERE k='C1'), (SELECT id FROM tmp_vehicles WHERE k='V1'), 'SCHEDULED', s1_start, s1_end, 256.65, 0, NULL, NULL, 'Brake pads (front)', NULL
-  FROM slots
-  UNION ALL
-  SELECT (SELECT id FROM tmp_customers WHERE k='C2'), (SELECT id FROM tmp_vehicles WHERE k='V2'), 'IN_PROGRESS', s2_start, s2_end, 180.00, 0, s2_start, NULL, '60k service', NULL
-  FROM slots
-  UNION ALL
-  SELECT (SELECT id FROM tmp_customers WHERE k='C3'), (SELECT id FROM tmp_vehicles WHERE k='V3'), 'READY', s3_start, s3_end, 712.10, 0, s3_start, NULL, 'Battery & alternator', NULL
-  FROM slots
-  UNION ALL
-  SELECT (SELECT id FROM tmp_customers WHERE k='C4'), (SELECT id FROM tmp_vehicles WHERE k='V4'), 'COMPLETED', s4_start, s4_end, 5240.00, 5240.00, s4_start, s4_end, 'Front brakes + rotors', NULL
-  FROM slots
-  UNION ALL
-  SELECT (SELECT id FROM tmp_customers WHERE k='C5'), (SELECT id FROM tmp_vehicles WHERE k='V5'), 'NO_SHOW', s5_start, s5_end, NULL, 0, NULL, NULL, 'Diagnostics', NULL
-  FROM slots
-  RETURNING id, status
+CREATE TEMP TABLE slots AS
+SELECT 
+  date_trunc('day', now()) + interval '9 hour'  AS s1_start,
+  date_trunc('day', now()) + interval '10 hour' AS s1_end,
+  date_trunc('day', now()) + interval '11 hour' AS s2_start,
+  date_trunc('day', now()) + interval '12 hour' AS s2_end,
+  date_trunc('day', now()) + interval '13 hour' AS s3_start,
+  date_trunc('day', now()) + interval '14 hour' AS s3_end,
+  date_trunc('day', now()) + interval '15 hour' AS s4_start,
+  date_trunc('day', now()) + interval '16 hour' AS s4_end,
+  date_trunc('day', now()) + interval '17 hour' AS s5_start,
+  date_trunc('day', now()) + interval '18 hour' AS s5_end;
+
+-- Insert each appointment separately capturing id
+WITH s AS (SELECT * FROM slots), ins AS (
+  INSERT INTO appointments (customer_id, vehicle_id, status, start_ts, end_ts, total_amount, paid_amount, check_in_at, check_out_at, title, notes, primary_operation_id, service_category)
+  SELECT (SELECT id FROM tmp_customers WHERE k='C1'), (SELECT id FROM tmp_vehicles WHERE k='V1'), 'SCHEDULED', s1_start, s1_end, 256.65, 0, NULL, NULL, 'Brake pads (front)', NULL,'brake-pad-rotor-front','Brakes' FROM s
+  RETURNING id
 )
-INSERT INTO appt_anchors(status, id)
-SELECT status, id FROM ins;
+INSERT INTO appt_anchors(status,id) SELECT 'SCHEDULED', id FROM ins;
+
+WITH s AS (SELECT * FROM slots), ins AS (
+  INSERT INTO appointments (customer_id, vehicle_id, status, start_ts, end_ts, total_amount, paid_amount, check_in_at, check_out_at, title, notes, primary_operation_id, service_category)
+  SELECT (SELECT id FROM tmp_customers WHERE k='C2'), (SELECT id FROM tmp_vehicles WHERE k='V2'), 'IN_PROGRESS', s2_start, s2_end, 180.00, 0, s2_start, NULL, '60k service', NULL,'oil-change-synthetic','Maintenance' FROM s
+  RETURNING id
+)
+INSERT INTO appt_anchors(status,id) SELECT 'IN_PROGRESS', id FROM ins;
+
+WITH s AS (SELECT * FROM slots), ins AS (
+  INSERT INTO appointments (customer_id, vehicle_id, status, start_ts, end_ts, total_amount, paid_amount, check_in_at, check_out_at, title, notes, primary_operation_id, service_category)
+  SELECT (SELECT id FROM tmp_customers WHERE k='C3'), (SELECT id FROM tmp_vehicles WHERE k='V3'), 'READY', s3_start, s3_end, 712.10, 0, s3_start, NULL, 'Battery & alternator', NULL,'electrical-diagnostic','Diagnostics' FROM s
+  RETURNING id
+)
+INSERT INTO appt_anchors(status,id) SELECT 'READY', id FROM ins;
+
+WITH s AS (SELECT * FROM slots), ins AS (
+  INSERT INTO appointments (customer_id, vehicle_id, status, start_ts, end_ts, total_amount, paid_amount, check_in_at, check_out_at, title, notes, primary_operation_id, service_category)
+  SELECT (SELECT id FROM tmp_customers WHERE k='C4'), (SELECT id FROM tmp_vehicles WHERE k='V4'), 'COMPLETED', s4_start, s4_end, 5240.00, 5240.00, s4_start, s4_end, 'Front brakes + rotors', NULL,'brake-pad-rotor-front','Brakes' FROM s
+  RETURNING id
+)
+INSERT INTO appt_anchors(status,id) SELECT 'COMPLETED', id FROM ins;
+
+WITH s AS (SELECT * FROM slots), ins AS (
+  INSERT INTO appointments (customer_id, vehicle_id, status, start_ts, end_ts, total_amount, paid_amount, check_in_at, check_out_at, title, notes, primary_operation_id, service_category)
+  SELECT (SELECT id FROM tmp_customers WHERE k='C5'), (SELECT id FROM tmp_vehicles WHERE k='V5'), 'NO_SHOW', s5_start, s5_end, NULL, 0, NULL, NULL, 'Diagnostics', NULL,'engine-diagnostic-advanced','Diagnostics' FROM s
+  RETURNING id
+)
+INSERT INTO appt_anchors(status,id) SELECT 'NO_SHOW', id FROM ins;
 
 -- 4) Services
 INSERT INTO appointment_services (id, appointment_id, name, notes, estimated_hours, estimated_price, category, created_at)

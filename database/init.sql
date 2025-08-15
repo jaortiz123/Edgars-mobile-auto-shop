@@ -12,6 +12,7 @@ CREATE TABLE vehicles (
   make VARCHAR(100),
   model VARCHAR(100),
   year INTEGER,
+  vin VARCHAR(32),
   license_plate VARCHAR(20),
   notes TEXT
 );

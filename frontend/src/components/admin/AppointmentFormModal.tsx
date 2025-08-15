@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Calendar, User, Car, Wrench, MapPin, Phone, Mail } from 'lucide-react';
+import { X, Calendar, User, Car, Wrench, MapPin, Phone, Mail, Search, Users } from 'lucide-react';
+import { useTechnicians } from '@/hooks/useTechnicians';
+import { useServiceOperations } from '@/hooks/useServiceOperations';
 import { Button } from '../ui/Button';
 import TemplateSelector from './TemplateSelector';
 // @ts-expect-error JS module without types
@@ -19,12 +21,15 @@ export interface AppointmentFormData {
   vehicleYear: string;
   licensePlate?: string;
   serviceType: string;
+  // New linkage to catalog
+  primaryOperationId?: string; // id of selected service operation (required now)
   appointmentDate: string;
   appointmentTime: string;
   estimatedDuration: string;
   serviceAddress: string;
   notes: string;
   appointmentType?: 'regular' | 'emergency';
+  tech_id?: string | null; // newly assign optional technician on create
 }
 
 interface AppointmentFormModalProps {
@@ -36,20 +41,7 @@ interface AppointmentFormModalProps {
   initialAppointmentType?: 'regular' | 'emergency';
 }
 
-const serviceTypes = [
-  'Oil Change',
-  'Brake Service',
-  'Tire Rotation',
-  'Engine Diagnostics',
-  'Transmission Service',
-  'Battery Replacement',
-  'Air Filter Replacement',
-  'Spark Plug Replacement',
-  'Radiator Service',
-  'General Inspection',
-  'Emergency Repair',
-  'Other'
-];
+// Legacy list removed – catalog is the single source of truth.
 
 const timeSlots = [
   '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM',
@@ -83,6 +75,7 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
     vehicleYear: '',
   licensePlate: '',
     serviceType: '',
+  primaryOperationId: undefined,
     appointmentDate: '',
     appointmentTime: '',
     estimatedDuration: '',
@@ -97,6 +90,18 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
   const [availableSlots, setAvailableSlots] = useState<{ date: string; time: string }[]>([]);
   const [conflict, setConflict] = useState<null | { customerName: string; appointmentTime: string }>(null);
   const [overrideConflict, setOverrideConflict] = useState(false);
+  const { data: serviceOps = [], isLoading: opsLoading } = useServiceOperations();
+  const [serviceSearch, setServiceSearch] = useState('');
+  // Technicians
+  const { data: technicians = [], isLoading: techLoading } = useTechnicians();
+  const filteredOps = useMemo(() => {
+    const q = serviceSearch.trim().toLowerCase();
+    if (!q) return serviceOps.slice(0, 50); // cap list
+    return serviceOps.filter(op =>
+      op.name.toLowerCase().includes(q) ||
+      (op.keywords || []).some(k => k.toLowerCase().includes(q))
+    ).slice(0, 50);
+  }, [serviceSearch, serviceOps]);
   // Vehicle selection helpers
   const [useOtherModel, setUseOtherModel] = useState(false);
   const [useOtherMake, setUseOtherMake] = useState(false);
@@ -152,16 +157,19 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
   }, []);
 
   useEffect(() => {
-    if (formData.serviceType && formData.appointmentType !== 'emergency') {
+    const effectiveService = formData.primaryOperationId
+      ? serviceOps.find(o => o.id === formData.primaryOperationId)?.name
+      : formData.serviceType;
+    if (effectiveService && formData.appointmentType !== 'emergency') {
       const fetchSlots = async () => {
-        const slots = await getAvailableSlots(formData.serviceType);
+        const slots = await getAvailableSlots(effectiveService);
         setAvailableSlots(slots);
       };
       fetchSlots();
     } else {
       setAvailableSlots([]);
     }
-  }, [formData.serviceType, formData.appointmentType]);
+  }, [formData.serviceType, formData.primaryOperationId, formData.appointmentType, serviceOps]);
 
   useEffect(() => {
     if (formData.appointmentDate && formData.appointmentTime && formData.appointmentType !== 'emergency') {
@@ -220,7 +228,7 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
   if (!formData.vehicleMake.trim()) newErrors.vehicleMake = 'Vehicle make is required';
   if (!formData.vehicleModel.trim()) newErrors.vehicleModel = 'Vehicle model is required';
     if (!formData.vehicleYear.trim()) newErrors.vehicleYear = 'Vehicle year is required';
-    if (!formData.serviceType) newErrors.serviceType = 'Service type is required';
+  if (!formData.primaryOperationId) newErrors.serviceType = 'Select a service from catalog';
     if (formData.appointmentType !== 'emergency') {
       if (!formData.appointmentDate) newErrors.appointmentDate = 'Appointment date is required';
       if (!formData.appointmentTime) newErrors.appointmentTime = 'Appointment time is required';
@@ -249,7 +257,7 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
     if (formData.appointmentDate) {
       const selectedDate = new Date(formData.appointmentDate);
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      today.setHours(0,0,0,0);
       if (selectedDate < today) {
         newErrors.appointmentDate = 'Appointment date must be today or in the future';
       }
@@ -269,8 +277,8 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
     
     if (isValid && (!conflict || overrideConflict)) {
       console.log('📤 Calling onSubmit with:', formData);
-      const dataToSubmit = { ...formData };
-      if (dataToSubmit.appointmentType === 'emergency') {
+  const dataToSubmit = { ...formData };
+  if (dataToSubmit.appointmentType === 'emergency') {
         const now = new Date();
         dataToSubmit.appointmentDate = now.toISOString().split('T')[0];
         // Format time properly in 12-hour format
@@ -295,25 +303,23 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
       vehicleMake: '',
       vehicleModel: '',
       vehicleYear: '',
-  licensePlate: '',
+      licensePlate: '',
       serviceType: '',
+      primaryOperationId: undefined,
       appointmentDate: '',
       appointmentTime: '',
       estimatedDuration: '',
       serviceAddress: '',
-      notes: ''
+      notes: '',
+      appointmentType: initialAppointmentType,
     });
     setErrors({});
-  setUseOtherModel(false);
-  setUseOtherMake(false);
   };
 
   const handleClose = () => {
     resetForm();
     onClose();
   };
-
-  if (!isOpen) return null;
 
   const getTomorrowDate = () => {
     if (formData.appointmentType === 'emergency') {
@@ -323,6 +329,8 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
     tomorrow.setDate(tomorrow.getDate() + 1);
     return tomorrow.toISOString().split('T')[0];
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -587,27 +595,75 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
               </h3>
             </div>
 
+            {/* Technician Assignment */}
             <div>
-              <label htmlFor="service-type" className="block text-xs font-medium text-gray-700 mb-2">
-                Service Type *
+              <label htmlFor="technician" className="flex text-xs font-medium text-gray-700 mb-2 items-center gap-1">
+                <Users className="h-4 w-4 text-indigo-600" /> Technician
               </label>
-              <>
-                <select
-                  id="service-type"
-                  title="Service Type"
-                  value={formData.serviceType}
-                  onChange={(e) => handleInputChange('serviceType', e.target.value)}
-                  className={`w-full px-2 py-1 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.serviceType ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                >
-                  <option value="">Select a service</option>
-                  {serviceTypes.map(service => (
-                    <option key={service} value={service}>{service}</option>
-                  ))}
-                </select>
+              <select
+                id="technician"
+                value={formData.tech_id || ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setFormData(prev => ({ ...prev, tech_id: v || null }));
+                }}
+                className="w-full px-2 py-1 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-sm"
+              >
+                <option value="">Unassigned</option>
+                {technicians.map((t) => (
+                  <option key={t.id} value={t.id}>{t.initials} — {t.name}</option>
+                ))}
+              </select>
+              {techLoading && <p className="text-[10px] text-gray-400 mt-1">Loading techs…</p>}
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-gray-700">Service (Catalog or Custom) *</label>
+              <div className="flex flex-col gap-2">
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={serviceSearch}
+                    onChange={(e) => setServiceSearch(e.target.value)}
+                    placeholder={opsLoading ? 'Loading services...' : 'Search catalog services…'}
+                    className="w-full pl-8 pr-2 py-1 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-gray-300"
+                  />
+                  {serviceSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setServiceSearch('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-gray-700"
+                    >Clear</button>
+                  )}
+                </div>
+                {serviceSearch && (
+                  <div className="max-h-40 overflow-y-auto border rounded-md divide-y">
+                    {filteredOps.map(op => (
+                      <button
+                        type="button"
+                        key={op.id}
+                        onClick={() => {
+                          handleInputChange('primaryOperationId', op.id);
+                          handleInputChange('serviceType', op.name); // keep legacy field for now
+                          setServiceSearch(op.name);
+                        }}
+                        className={`w-full text-left px-2 py-1 text-sm hover:bg-blue-50 ${formData.primaryOperationId === op.id ? 'bg-blue-100 font-medium' : ''}`}
+                      >
+                        <span>{op.name}</span>
+                        {op.category && <span className="text-xs text-gray-500 ml-1">({op.category})</span>}
+                      </button>
+                    ))}
+                    {filteredOps.length === 0 && (
+                      <div className="px-2 py-2 text-xs text-gray-500">No matches</div>
+                    )}
+                  </div>
+                )}
                 {errors.serviceType && <p className="text-red-500 text-xs mt-1">{errors.serviceType}</p>}
-              </>
+                {formData.primaryOperationId && (
+                  <p className="text-xs text-green-600">Linked to catalog: {formData.serviceType}</p>
+                )}
+              </div>
             </div>
 
             <div>
