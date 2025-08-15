@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useCardPreferences, type CardFieldKey } from '@/contexts/CardPreferencesContext';
 import EnhancedAppointmentCard from './EnhancedAppointmentCard';
 import type { BoardCard } from '@/types/models';
+import { DndProvider, useDrag, useDrop } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 
 interface Props { open: boolean; onClose: () => void; }
 
@@ -43,8 +45,51 @@ const demoCard: BoardCard = {
   promiseBy: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
 };
 
+interface ReorderRowProps { index: number; id: CardFieldKey; label: string; checked: boolean; onToggle: () => void; move: (from:number,to:number)=>void; total?: number; }
+const Row: React.FC<ReorderRowProps> = ({ index, id, label, checked, onToggle, move, total }) => {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [, drag] = useDrag(() => ({ type: 'CARD_FIELD', item: { index } }), [index]);
+  const [, drop] = useDrop(() => ({
+    accept: 'CARD_FIELD',
+    hover: (item: { index: number }) => {
+      if (!ref.current) return;
+      if (item.index === index) return;
+      move(item.index, index);
+      item.index = index;
+    }
+  }), [index, move]);
+  drag(drop(ref));
+  const onKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowUp') { e.preventDefault(); move(index, Math.max(0, index - 1)); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); if (typeof total === 'number') move(index, Math.min(total - 1, index + 1)); else move(index, index + 1); }
+    else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onToggle(); }
+    else if (e.key === 'Home') { e.preventDefault(); move(index, 0); }
+    else if (e.key === 'End' && typeof total === 'number') { e.preventDefault(); move(index, total - 1); }
+  };
+  return (
+    <li
+      ref={ref as unknown as React.RefObject<HTMLLIElement>}
+      className="list-none flex items-center justify-between gap-4 text-xs font-medium px-2 py-1 rounded border border-transparent hover:border-neutral-400 bg-neutral-100 cursor-grab active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-blue-500"
+      data-field={id}
+      aria-label={`${label} ${checked ? 'visible' : 'hidden'} position ${index + 1}`}
+      tabIndex={0}
+      onKeyDown={onKey}
+    >
+      <span className="flex-1 select-none" aria-hidden>⋮ {label}</span>
+      <input
+        type="checkbox"
+        className="w-4 h-4"
+        aria-label={`Toggle ${label}`}
+        checked={checked}
+        onChange={onToggle}
+        tabIndex={-1}
+      />
+    </li>
+  );
+};
+
 export default function CardCustomizationModal({ open, onClose }: Props) {
-  const { enabled, setEnabled, reset, density, setDensity } = useCardPreferences();
+  const { enabled, setEnabled, reset, density, setDensity, order, moveField } = useCardPreferences();
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -73,22 +118,14 @@ export default function CardCustomizationModal({ open, onClose }: Props) {
             <div className="p-4 space-y-6">
               <section>
                 <h3 className="text-sm font-extrabold mb-2">Visible Elements</h3>
-                <div className="space-y-2">
-                  {Object.entries(FIELD_LABELS).map(([key,label]) => {
-                    const k = key as CardFieldKey;
-                    return (
-                      <label key={k} className="flex items-center justify-between gap-4 text-xs font-medium">
-                        <span className="flex-1">{label}</span>
-                        <input
-                          type="checkbox"
-                          className="w-4 h-4"
-                          checked={enabled[k]}
-                          onChange={(e) => setEnabled(k, e.target.checked)}
-                        />
-                      </label>
-                    );
-                  })}
-                </div>
+                <DndProvider backend={HTML5Backend}>
+                  <ul className="space-y-1" aria-label="Card element order" aria-describedby="card-order-help">
+                    {order.map((k, idx) => (
+                      <Row key={k} index={idx} id={k} label={FIELD_LABELS[k]} checked={enabled[k]} onToggle={() => setEnabled(k, !enabled[k])} move={moveField} total={order.length} />
+                    ))}
+                  </ul>
+                </DndProvider>
+                <p id="card-order-help" className="mt-2 text-[10px] text-neutral-500">Drag or use Arrow keys / Home / End to reorder. Press Space or Enter to toggle visibility.</p>
               </section>
               <div className="flex justify-between">
                 <button onClick={() => reset()} className="nb-chip" data-variant="warn">Reset to Default</button>

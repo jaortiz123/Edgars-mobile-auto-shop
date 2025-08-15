@@ -121,6 +121,17 @@ jobs:
         run: |
           echo "Environment configured for testing"
 
+      - name: Apply raw SQL migrations (idempotent)
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: test_autoshop
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        run: |
+          echo "🧱 Running raw SQL migration runner..."
+          python run_sql_migrations.py
+
       - name: Run backend tests with coverage
         env:
           POSTGRES_HOST: localhost

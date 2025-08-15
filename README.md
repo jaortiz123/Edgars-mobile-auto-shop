@@ -110,6 +110,67 @@ Any pull request that drops coverage below these thresholds will fail the "Cover
 
 ---
 
+## 🧱 Database Migrations (Raw SQL + Alembic)
+
+Two complementary layers manage schema changes:
+
+1. **Alembic (Python)** — Versioned migrations under `backend/migrations/versions/`.
+2. **Raw Idempotent SQL** — Timestamped `*.sql` files directly inside `backend/migrations/` (excluding `versions/`).
+
+### Raw SQL Migration Runner
+
+`backend/run_sql_migrations.py` runs automatically inside `./start-dev.sh` after PostgreSQL is healthy. It:
+
+- Applies pending `.sql` files in lexical order.
+- Records applied files in `migration_sql_history`.
+- Is idempotent; duplicate-object errors in legacy unguarded files are tolerated and marked applied.
+
+### Add a New Raw Migration
+
+1. Create: `backend/migrations/20250815_005_add_customer_indexes.sql`.
+2. Make idempotent (`IF NOT EXISTS`, or guarded `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN NULL; END $$;`).
+3. Run `python backend/run_sql_migrations.py` or restart with `./start-dev.sh`.
+
+### Check Applied Migrations
+
+```bash
+psql -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_DB \
+  -c "SELECT filename, applied_at FROM migration_sql_history ORDER BY applied_at;"
+```
+
+### Alembic Commands
+
+```bash
+cd backend
+make alembic-rev m="add new table"
+make alembic-up
+```
+
+### CI (Recommended)
+
+Add before backend tests:
+
+```bash
+python backend/run_sql_migrations.py
+```
+
+### Choose the Right Tool
+
+| Scenario | Raw SQL | Alembic |
+|----------|---------|---------|
+| Simple additive column / index | ✅ | ✅ |
+| Complex data transform / Python logic | ❌ | ✅ |
+| Rapid prototype | ✅ | ❌ |
+| Need downgrade path | ❌ | ✅ |
+
+### Future Improvements
+
+- Harden any remaining legacy files (explicit guards).
+- Remove duplicate-object heuristic once all are guarded.
+- Enforce runner success as CI gate.
+
+---
+
 ## Architecture
 
 The system is designed as a serverless, event-driven architecture. The initial implementation provides a core RESTful API for quote generation.

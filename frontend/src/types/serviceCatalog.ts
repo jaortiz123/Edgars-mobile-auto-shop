@@ -24,6 +24,56 @@ export type ServiceDefinition = {
   mutuallyExclusiveServiceIds?: string[]; // services that should not co-exist
 };
 
+// ServiceCatalogItem is the forward-looking canonical item shape the UI will consume.
+// It is intentionally a superset-friendly alias around ServiceDefinition for Phase 2
+// so we can extend (pricing, flags, metadata) without breaking existing code.
+// Keep it structurally compatible so existing arrays can be cast cheaply.
+export interface ServiceCatalogItem extends ServiceDefinition {
+  // Derived convenience fields (added lazily when building index; optional so raw
+  // JSON need not include them).
+  keywords?: string[]; // pre-computed lowercase tokens for faster filtering
+  label?: string;      // caching of display label (system + name, etc.)
+  deprecated?: boolean; // future: mark for hiding from default search
+}
+
+export interface ServiceCatalogSearchIndex {
+  all: ServiceCatalogItem[];
+  byId: Record<string, ServiceCatalogItem>;
+  search: (q: string) => ServiceCatalogItem[];
+}
+
+// Build a lightweight in-memory index with derived keyword arrays.
+export function buildServiceCatalogIndex(items: ServiceCatalogItem[]): ServiceCatalogSearchIndex {
+  const enriched = items.map(it => {
+    if (it.keywords && it.label) return it; // already enriched
+    const kw = new Set<string>();
+    const push = (v?: string | string[]) => {
+      if (!v) return;
+      if (Array.isArray(v)) v.forEach(s => s && kw.add(s.toLowerCase()));
+      else kw.add(v.toLowerCase());
+    };
+    push(it.name);
+    push(it.slug);
+    push(it.system);
+    push(it.operation);
+    push(it.position);
+    push(it.synonyms);
+    push(it.tags);
+    const label = it.system ? `${it.system}: ${it.name}` : it.name;
+    return { ...it, keywords: Array.from(kw), label } as ServiceCatalogItem;
+  });
+  const byId: Record<string, ServiceCatalogItem> = Object.fromEntries(enriched.map(e => [e.id, e]));
+  const search = (q: string) => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return enriched;
+    return enriched.filter(it =>
+      it.keywords?.some(k => k.includes(needle)) ||
+      it.label?.toLowerCase().includes(needle)
+    );
+  };
+  return { all: enriched, byId, search };
+}
+
 export type JobOperation = {
   serviceId: string;           // FK to ServiceDefinition.id
   customTitle?: string;        // manual override

@@ -57,6 +57,7 @@ export default defineConfig({
     // Set reasonable timeouts for CI
     actionTimeout: 15000,
     navigationTimeout: 30000,
+  storageState: 'e2e/storageState.json'
   },
   
   // Global test timeout

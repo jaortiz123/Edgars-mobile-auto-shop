@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useMemo, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useMemo, useCallback, ReactNode, useEffect } from 'react';
+import { setBoardTechFilter, peekBoardServerFilters } from '@/state/boardServerFilters';
 import type { AppointmentStatus, BoardCard } from '@/types/models';
 import type { BlockerCode } from '@/types/serviceCatalog';
 
@@ -21,12 +22,45 @@ interface BoardFilterContextValue {
 const BoardFilterContext = createContext<BoardFilterContextValue | undefined>(undefined);
 
 const DEFAULT: BoardFilters = { search: '', statuses: null, techs: [], blockers: [] };
+const STORAGE_KEY = 'adm.board.filters.v1';
 
 export function BoardFilterProvider({ children }: { children: ReactNode }) {
   const [filters, setFiltersState] = useState<BoardFilters>(DEFAULT);
 
+  // Load persisted filters once on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          setFiltersState(prev => ({ ...prev, ...parsed }));
+          if (parsed.techs && Array.isArray(parsed.techs) && parsed.techs[0]) {
+            setBoardTechFilter(parsed.techs[0]);
+          }
+        }
+      } else {
+        // If no stored tech but a server tech exists (from early load), sync it
+        const peek = peekBoardServerFilters();
+        if (peek.techId) setFiltersState(prev => ({ ...prev, techs: [peek.techId!] }));
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   const setFilters = (f: Partial<BoardFilters>) => setFiltersState(prev => ({ ...prev, ...f }));
-  const clearFilters = () => setFiltersState(DEFAULT);
+  const clearFilters = () => {
+    setFiltersState(DEFAULT);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT)); } catch { /* ignore */ }
+    setBoardTechFilter(undefined);
+  };
+
+  // Persist filters whenever they change
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(filters)); } catch { /* ignore */ }
+  }, [filters]);
+
+  // Sync server tech filter when techs selection changes
+  useEffect(() => { setBoardTechFilter(filters.techs[0]); }, [filters.techs]);
 
   const applyFilters = useCallback((cards: BoardCard[]) => {
     const { search, statuses, techs, blockers } = filters;

@@ -156,6 +156,29 @@ def _fail(status: int, code: str, detail: str, meta: Optional[Dict] = None):
         status,
     )
 
+# ----------------------------------------------------------------------------
+# Admin Auth (simple dev implementation)
+# ----------------------------------------------------------------------------
+@app.route("/api/admin/login", methods=["POST"])
+def admin_login():
+    """Issue a JWT for admin/advisor roles (DEV ONLY basic login).
+    Expected JSON: {"username": "advisor", "password": "..."}
+    For now we accept any non-empty credentials and assign role Advisor.
+    In production integrate with real user store.
+    """
+    body = request.get_json(silent=True) or {}
+    username = (body.get("username") or "").strip()
+    password = (body.get("password") or "").strip()
+    if not username or not password:
+        return _fail(HTTPStatus.BAD_REQUEST, "INVALID_CREDENTIALS", "Username and password required")
+    # Very naive check: treat 'owner' as Owner role else Advisor
+    role = "Owner" if username.lower() == "owner" else "Advisor"
+    now = datetime.utcnow()
+    exp = now + timedelta(hours=8)
+    payload = {"sub": username, "role": role, "iat": int(now.timestamp()), "exp": int(exp.timestamp())}
+    token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
+    return _ok({"token": token, "user": {"username": username, "role": role}})
+
 def utcnow() -> datetime:
     """Returns the current time in UTC."""
     return datetime.now(timezone.utc)
@@ -1382,8 +1405,8 @@ def create_appointment():
                 "customer_id": resolved_customer_id,
                 "vehicle_id": resolved_vehicle_id,
             })
-    # Return full envelope with appointment id nested for consistency with other endpoints
-    return _ok({"appointment": {"id": new_id}}, HTTPStatus.CREATED)
+    # Return both nested and flat id for backward test compatibility
+    return _ok({"appointment": {"id": new_id}, "id": new_id}, HTTPStatus.CREATED)
 
 @app.route("/api/admin/appointments/<appt_id>", methods=["DELETE"])
 def delete_appointment(appt_id: str):
@@ -1426,8 +1449,22 @@ def delete_appointment(appt_id: str):
 # ----------------------------------------------------------------------------
 @app.route("/api/customers/<customer_id>/history", methods=["GET"])
 def get_customer_history(customer_id: str):
-    """Get customer's appointment and payment history."""
-    require_auth_role("Advisor")
+    """Get customer's appointment and payment history.
+
+    TEMP DEV BYPASS: If the environment variable DEV_ALLOW_UNAUTH_HISTORY is set to '1',
+    we will NOT enforce auth (or we will soft-attempt and continue) to unblock local UI
+    development when the frontend hasn't wired tokens yet. This must NEVER be enabled
+    in production. Real fix: ensure frontend attaches the Advisor/Owner JWT.
+    """
+    dev_bypass = os.getenv("DEV_ALLOW_UNAUTH_HISTORY") == "1"
+    if dev_bypass:
+        try:
+            # Attempt normal auth first (so roles still logged / rate-limited) but swallow failures.
+            require_auth_role("Advisor")
+        except Exception:  # noqa: BLE001 - intentional broad catch for dev convenience
+            log.warning("DEV_ALLOW_UNAUTH_HISTORY=1 -> bypassing auth for customer history endpoint")
+    else:
+        require_auth_role("Advisor")
     conn = db_conn()
     try:
         with conn:

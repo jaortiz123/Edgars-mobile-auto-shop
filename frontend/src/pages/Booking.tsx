@@ -207,43 +207,43 @@ export default function Booking() {
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <label className="flex items-center text-sm font-semibold text-foreground mb-2">
+                                    <label htmlFor="fullName" className="flex items-center text-sm font-semibold text-foreground mb-2">
                                         Full Name *
                                     </label>
-                                    <input {...register('name')} className="w-full px-3 py-2 border rounded-md" />
+                                    <input id="fullName" {...register('name')} className="w-full px-3 py-2 border rounded-md" />
                                     {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
                                 </div>
                                 <div>
-                                    <label className="flex items-center text-sm font-semibold text-foreground mb-2">
+                                    <label htmlFor="phoneNumber" className="flex items-center text-sm font-semibold text-foreground mb-2">
                                         Phone Number
                                     </label>
-                                    <input {...register('phone')} className="w-full px-3 py-2 border rounded-md" />
+                                    <input id="phoneNumber" {...register('phone')} className="w-full px-3 py-2 border rounded-md" />
                                 </div>
                                 <div>
-                                    <label className="flex items-center text-sm font-semibold text-foreground mb-2">
+                                    <label htmlFor="emailAddress" className="flex items-center text-sm font-semibold text-foreground mb-2">
                                         Email Address
                                     </label>
-                                    <input {...register('email')} type="email" className="w-full px-3 py-2 border rounded-md" />
+                                    <input id="emailAddress" {...register('email')} type="email" className="w-full px-3 py-2 border rounded-md" />
                                 </div>
                                 <div>
-                                    <label className="flex items-center text-sm font-semibold text-foreground mb-2">
+                                    <label htmlFor="serviceAddress" className="flex items-center text-sm font-semibold text-foreground mb-2">
                                         Service Address *
                                     </label>
-                                    <input {...register('address')} className="w-full px-3 py-2 border rounded-md" />
+                                    <input id="serviceAddress" {...register('address')} className="w-full px-3 py-2 border rounded-md" />
                                     {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>}
                                 </div>
                                 <div>
-                                    <label className="flex items-center text-sm font-semibold text-foreground mb-2">
+                                    <label htmlFor="preferredDate" className="flex items-center text-sm font-semibold text-foreground mb-2">
                                         Preferred Date *
                                     </label>
-                                    <input {...register('date')} type="date" className="w-full px-3 py-2 border rounded-md" />
+                                    <input id="preferredDate" {...register('date')} type="date" className="w-full px-3 py-2 border rounded-md" />
                                     {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date.message}</p>}
                                 </div>
                                 <div>
-                                    <label className="flex items-center text-sm font-semibold text-foreground mb-2">
+                                    <label htmlFor="preferredTime" className="flex items-center text-sm font-semibold text-foreground mb-2">
                                         Preferred Time *
                                     </label>
-                                    <input {...register('time')} type="time" className="w-full px-3 py-2 border rounded-md" />
+                                    <input id="preferredTime" {...register('time')} type="time" className="w-full px-3 py-2 border rounded-md" />
                                     {errors.time && <p className="text-red-500 text-xs mt-1">{errors.time.message}</p>}
                                 </div>
                             </div>
