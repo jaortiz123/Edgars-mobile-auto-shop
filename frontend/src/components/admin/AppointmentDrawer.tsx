@@ -11,6 +11,7 @@ import { useAppointments } from '@/contexts/AppointmentContext';
 import { useToast } from '@/components/ui/Toast';
 import vehicleCatalogSeed from '@/data/vehicleCatalog';
 import buildCatalogFromRaw from '@/data/vehicleCatalogFromRaw';
+import { useAppointmentBundle } from '@/hooks/useAppointmentBundle';
 
 // Wrap the main component in React.memo to prevent unnecessary re-renders
 const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { open: boolean; onClose: () => void; id: string | null; onRescheduled?: (id: string, startISO: string) => void }) => {
@@ -29,6 +30,42 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
   const [showReschedule, setShowReschedule] = useState(false);
   const [reschedAt, setReschedAt] = useState<string>('');
   const [savingReschedule, setSavingReschedule] = useState(false);
+  // Feature flag for bundle refactor step A
+  // Bundle refactor now always active (legacy path removed in Step D)
+  const bundleQuery = useAppointmentBundle(id);
+
+  // Centralized working state scaffold (Phase 3 Increment 1)
+  interface WorkingState {
+    servicesById: Record<string, AppointmentService>;
+  serviceOrder: string[]; // maintain stable ordering for display
+  addedTempIds: string[]; // staged (unsaved) temp IDs (will hold 'staged-*')
+  deletedIds: string[]; // services marked for deletion (persisted IDs)
+  modifiedIds: Set<string>; // services with field edits
+  }
+  const [working, setWorking] = useState<WorkingState | null>(null);
+  const [workingDirty, setWorkingDirty] = useState(false);
+  const [savingWorking, setSavingWorking] = useState(false);
+  const recomputeDirty = useCallback((w: WorkingState) => {
+    return w.addedTempIds.length > 0 || w.deletedIds.length > 0 || w.modifiedIds.size > 0;
+  }, []);
+  const updateWorking = useCallback((updater: (prev: WorkingState) => WorkingState) => {
+    setWorking(prev => {
+      if (!prev) return prev as unknown as WorkingState; // should not happen when flag on
+      const next = updater(prev);
+      setWorkingDirty(recomputeDirty(next));
+      return next;
+    });
+  }, [recomputeDirty]);
+  useEffect(() => {
+    if (bundleQuery.data && id) {
+      const svcMap: Record<string, AppointmentService> = {};
+      for (const s of bundleQuery.data.services) svcMap[s.id] = s;
+  setWorking({ servicesById: svcMap, serviceOrder: bundleQuery.data.services.map(s=>s.id), addedTempIds: [], deletedIds: [], modifiedIds: new Set() });
+    }
+    // Touch working to avoid unused variable lint until integrated
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    working;
+  }, [bundleQuery.data, id, working]);
   const memoizedSetIsAddingService = useCallback((v: boolean)=>setIsAddingService(v), []);
 
   const handleDelete = useCallback(async () => {
@@ -82,8 +119,8 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
       api.getDrawer(id)
         .then(result => {
           if (cancelled) return;
-            clearTimeout(timeoutId);
-            setData(result);
+          clearTimeout(timeoutId);
+          setData(result);
         })
         .catch(err => {
           console.error('🔍 DEBUG: Error calling api.getDrawer:', err);
@@ -166,6 +203,14 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
   }, [open, onClose]);
 
   if (!open) return null;
+  // Bundle loading overlay (non-invasive) during Step A
+  if (bundleQuery.isLoading) {
+    return (
+      <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 text-white text-sm" role="status">
+        Loading appointment…
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
@@ -181,6 +226,66 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
               title="Reschedule appointment"
             >
               Reschedule
+            </button>
+            <button
+              data-testid="drawer-save"
+              disabled={!workingDirty || savingWorking || !id || !working}
+              onClick={async () => {
+                if (!id || !working || savingWorking) return;
+                setSavingWorking(true);
+                try {
+                  // Compute diff
+                  const addedIds = [...working.addedTempIds];
+                  const modifiedIds = [...working.modifiedIds].filter(i => !working.addedTempIds.includes(i) && !working.deletedIds.includes(i));
+                  const deletedIds = [...working.deletedIds];
+                  // Perform create operations
+                  for (const aid of addedIds) {
+                    const svc = working.servicesById[aid];
+                    if (!svc) continue;
+                    await api.createAppointmentService(id, {
+                      name: svc.name,
+                      notes: svc.notes || undefined,
+                      estimated_hours: svc.estimated_hours ?? undefined,
+                      estimated_price: svc.estimated_price ?? undefined,
+                      category: (svc as unknown as { category?: string }).category || undefined,
+                      service_operation_id: (svc as unknown as { service_operation_id?: string }).service_operation_id || undefined
+                    });
+                  }
+                  // Perform update operations
+                  for (const mid of modifiedIds) {
+                    const svc = working.servicesById[mid];
+                    if (!svc) continue;
+                    await api.updateAppointmentService(id, mid, {
+                      estimated_hours: svc.estimated_hours ?? null,
+                      estimated_price: svc.estimated_price ?? null
+                    });
+                  }
+                  // Perform delete operations
+                  for (const did of deletedIds) {
+                    await api.deleteAppointmentService(id, did);
+                  }
+                  // Refetch canonical bundle
+                  const fresh = await bundleQuery.refetch();
+                  if (fresh.data) {
+                    const svcMap: Record<string, AppointmentService> = {};
+                    for (const s of fresh.data.services) svcMap[s.id] = s;
+                    setWorking({ servicesById: svcMap, serviceOrder: fresh.data.services.map(s=>s.id), addedTempIds: [], deletedIds: [], modifiedIds: new Set() });
+                    setWorkingDirty(false);
+                  }
+                  const summary: string[] = [];
+                  if (addedIds.length) summary.push(`${addedIds.length} added`);
+                  if (modifiedIds.length) summary.push(`${modifiedIds.length} updated`);
+                  if (deletedIds.length) summary.push(`${deletedIds.length} deleted`);
+                  toast.success(summary.length ? `Saved (${summary.join(', ')})` : 'No changes');
+                } catch (e) {
+                  toast.error(api.handleApiError ? api.handleApiError(e, 'Failed to save changes') : 'Failed to save');
+                } finally {
+                  setSavingWorking(false);
+                }
+              }}
+              className="px-2 py-1 rounded bg-green-600 text-white disabled:opacity-50"
+            >
+              {savingWorking ? 'Saving…' : 'Save'}
             </button>
             <button
               onClick={handleDelete}
@@ -217,7 +322,7 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
         />
         <div className="p-4 overflow-auto flex-1">
           {tab === 'overview' && <Overview data={data} onEditTime={() => setShowReschedule(true)} />}
-          {tab === 'services' && <Services data={data} isAddingService={isAddingService} setIsAddingService={memoizedSetIsAddingService} />}
+          {tab === 'services' && <Services data={data} isAddingService={isAddingService} setIsAddingService={memoizedSetIsAddingService} working={working ? { servicesById: working.servicesById, serviceOrder: working.serviceOrder, addedTempIds: working.addedTempIds, deletedIds: working.deletedIds, modifiedIds: working.modifiedIds } : null} onWorkingChange={updateWorking} dirty={workingDirty} />}
           {tab === 'messages' && id && <MessageThread appointmentId={id} drawerOpen={open} />}
           {tab === 'history' && data?.customer?.id && (
             (import.meta.env.DEV && console.log('[drawer] mounting CustomerHistory', { customerId: data.customer.id, tokenPresent: !!(localStorage.getItem('auth_token')||localStorage.getItem('token')) })) ||
@@ -453,7 +558,6 @@ function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime
                   toast.success(val ? 'Technician assigned' : 'Technician cleared');
                   try {
                     const fresh = await api.getDrawer(a.id);
-                    // Light state update: only tech_id
                     data.appointment.tech_id = fresh.appointment.tech_id;
                   } catch {/* ignore */}
                 } catch (err) {
@@ -528,18 +632,28 @@ function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime
 const Services = React.memo(function Services({ 
   data, 
   isAddingService, 
-  setIsAddingService 
+  setIsAddingService,
+  working,
+  onWorkingChange,
+  dirty
 }: { 
   data: DrawerPayload | null; 
   isAddingService: boolean; 
   setIsAddingService: (value: boolean) => void; 
+  working: { servicesById: Record<string, AppointmentService>; serviceOrder: string[]; addedTempIds: string[]; deletedIds: string[]; modifiedIds: Set<string>; } | null;
+  onWorkingChange: (updater: (prev: { servicesById: Record<string, AppointmentService>; serviceOrder: string[]; addedTempIds: string[]; deletedIds: string[]; modifiedIds: Set<string>; }) => { servicesById: Record<string, AppointmentService>; serviceOrder: string[]; addedTempIds: string[]; deletedIds: string[]; modifiedIds: Set<string>; }) => void;
+  dirty: boolean;
 }) {
+  // (dirty flag will be surfaced in unified save step)
   // Phase 2 Increment 1: Read-only catalog search foundation
   // Feature flag can be toggled off if needed.
   const ENABLE_CATALOG_SEARCH = true;
+  useEffect(() => { /* noop reference until unified save */ }, [onWorkingChange]);
+  // Temporary usage to satisfy linter; unified save will surface these
+  const _debugWorkingDirty = dirty; // eslint-disable-line @typescript-eslint/no-unused-vars
   // Increment 1: keep services list read-only (no add/edit/delete) while we introduce catalog search foundation.
-  const ALLOW_SERVICE_MUTATIONS = true; // enable mutations (deletion increment)
-  const ALLOW_STAGING_FROM_CATALOG = true; // enable adding local staged items
+  const ALLOW_SERVICE_MUTATIONS = true;
+  const ALLOW_STAGING_FROM_CATALOG = true;
   const [searchTerm, setSearchTerm] = useState('');
   const { search: catalogSearch, all: catalogAll } = useServiceCatalogSearch();
   const filteredCatalog: ServiceCatalogItem[] = useMemo(() => (ENABLE_CATALOG_SEARCH ? catalogSearch(searchTerm) : []), [ENABLE_CATALOG_SEARCH, catalogSearch, searchTerm]);
@@ -547,38 +661,41 @@ const Services = React.memo(function Services({
   // Helper to stage a new unsaved service entry derived from catalog item
   const apptId = data?.appointment?.id;
   // Track persistence state for staged services (declare before callbacks referencing it)
-  const [savingStaged, setSavingStaged] = useState(false);
+  // savingStaged removed (unified save handles persistence)
   const stageFromCatalog = useCallback((item: ServiceCatalogItem) => {
-    if (!apptId || savingStaged) return; // Prevent staging while persisting
+    if (!apptId) return;
     const stagedId = `staged-${item.id}-${Date.now()}`;
-  // Derive a provisional price using a simple hourly rate heuristic (can be replaced by pricing engine later)
-  const hours = item.defaultHours ?? item.defaultLaborHours ?? null;
-  const HOURLY_RATE = 120; // temporary stub for UI prefill
-  const provisionalPrice = hours != null ? Number((hours * HOURLY_RATE).toFixed(2)) : null;
-  setServices(prev => [
-      ...prev,
-      {
-        id: stagedId,
-        appointment_id: apptId,
-        name: item.name,
-        notes: '',
-    estimated_hours: hours,
-    estimated_price: provisionalPrice,
-        category: item.system || null,
-        service_operation_id: null,
-        __staged: true as unknown as undefined
-      } as unknown as AppointmentService
-    ]);
-    setSearchTerm('');
-  }, [apptId, savingStaged]);
+    const hours = item.defaultHours ?? item.defaultLaborHours ?? null;
+    const HOURLY_RATE = 120;
+    const provisionalPrice = hours != null ? Number((hours * HOURLY_RATE).toFixed(2)) : null;
+    if (working) {
+      onWorkingChange(prev => {
+        const next = { ...prev };
+        if (!next.servicesById[stagedId]) {
+          next.servicesById = { ...next.servicesById, [stagedId]: {
+            id: stagedId,
+            appointment_id: apptId,
+            name: item.name,
+            notes: '',
+            estimated_hours: hours,
+            estimated_price: provisionalPrice,
+            category: item.system || null,
+            service_operation_id: null
+          } as unknown as AppointmentService };
+          next.serviceOrder = [...next.serviceOrder, stagedId];
+          next.addedTempIds = [...next.addedTempIds, stagedId];
+        }
+        return next;
+      });
+      setSearchTerm('');
+    }
+  }, [apptId, working, onWorkingChange]);
   const hasSearch = ENABLE_CATALOG_SEARCH && (searchTerm.trim().length > 0);
 
-  const [services, setServices] = useState<AppointmentService[]>([]);
   const [total, setTotal] = useState(0);
-  const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set());
+  // pendingDeleteIds removed (tracked via working.deletedIds)
   const [editingIds, setEditingIds] = useState<Set<string>>(new Set());
-  const [modifiedMap, setModifiedMap] = useState<Record<string, { estimated_hours?: number | null; estimated_price?: number | null }>>({});
-  const [savingModified, setSavingModified] = useState(false);
+  // legacy modified tracking removed; unified save relies on working.modifiedIds
   const [newService, setNewService] = useState({
     name: '',
     notes: '',
@@ -587,101 +704,25 @@ const Services = React.memo(function Services({
   category: '',
   service_operation_id: '' as string | undefined
   });
-  const toast = useToast();
+  // toast removed (parent handles notifications)
 
   // Track if we've initialized services to prevent resetting form state on subsequent data updates
-  const [servicesInitialized, setServicesInitialized] = useState(false);
+  // servicesInitialized removed
   // Use ref to store the appointment ID to detect when we're working with a different appointment
-  const currentAppointmentIdRef = useRef<string | null>(null);
+  // removed unused currentAppointmentIdRef
 
   // Form persistence functions
-  const getFormStorageKey = useCallback((appointmentId: string) => `appointment-form-${appointmentId}`, []);
-  
-  const saveFormStateToStorage = useCallback((appointmentId: string, formState: typeof newService, isAdding: boolean) => {
-    try {
-      const storageKey = getFormStorageKey(appointmentId);
-      const state = { formState, isAdding, timestamp: Date.now() };
-      localStorage.setItem(storageKey, JSON.stringify(state));
-    } catch (error) {
-      console.warn('Failed to save form state to localStorage:', error);
-    }
-  }, [getFormStorageKey]);
-  
-  const loadFormStateFromStorage = useCallback((appointmentId: string) => {
-    try {
-      const storageKey = getFormStorageKey(appointmentId);
-      const stored = localStorage.getItem(storageKey);
-      if (stored) {
-        const state = JSON.parse(stored);
-        // Check if the state is not too old (5 minutes)
-        if (Date.now() - state.timestamp < 5 * 60 * 1000) {
-          return state;
-        } else {
-          // Clean up old state
-          localStorage.removeItem(storageKey);
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to load form state from localStorage:', error);
-    }
-    return null;
-  }, [getFormStorageKey]);
-  
-  const clearFormStateFromStorage = useCallback((appointmentId: string) => {
-    try {
-      const storageKey = getFormStorageKey(appointmentId);
-      localStorage.removeItem(storageKey);
-    } catch (error) {
-      console.warn('Failed to clear form state from localStorage:', error);
-    }
-  }, [getFormStorageKey]);
+  // form state clear no longer required
 
   useEffect(() => {
-    if (data?.services && data?.appointment?.id) {
-      const appointmentId = data.appointment.id;
-      
-      // If this is a different appointment, reset everything
-      if (currentAppointmentIdRef.current !== appointmentId) {
-        console.log('🔍 Services: New appointment detected, resetting state');
-        currentAppointmentIdRef.current = appointmentId;
-        setServices(data.services);
-        calculateTotal(data.services);
-        setServicesInitialized(true);
-        
-        // Try to restore form state from localStorage
-        const savedState = loadFormStateFromStorage(appointmentId);
-        if (savedState) {
-          console.log('🔍 Services: Restoring form state from localStorage');
-          setNewService(savedState.formState);
-          setIsAddingService(savedState.isAdding);
-        } else {
-          setNewService({ name: '', notes: '', estimated_hours: '', estimated_price: '', category: '', service_operation_id: '' });
-          setIsAddingService(false);
-        }
-      } else {
-        // Same appointment, only update services data but preserve form state
-        console.log('🔍 Services: Same appointment, preserving form state');
-        setServices(data.services);
-        calculateTotal(data.services);
-        
-        if (!servicesInitialized) {
-          setServicesInitialized(true);
-        }
-        // DON'T reset isAddingService or form state here - this preserves the form during typing
-      }
+    if (working) {
+      const baseServices = working.serviceOrder.map(id => working.servicesById[id]).filter(Boolean).filter(s => !working.deletedIds.includes(s!.id)) as AppointmentService[];
+      calculateTotal(baseServices);
     }
-    // Note: setIsAddingService and servicesInitialized are intentionally omitted from dependencies to prevent infinite loops
-    // React state setters are stable and don't need to be in the dependency array
-    // servicesInitialized should not be a dependency as it's set within the effect and would cause infinite re-renders
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.services, data?.appointment?.id, loadFormStateFromStorage]);
+  }, [working]);
 
   // Save form state to localStorage whenever it changes
-  useEffect(() => {
-    if (data?.appointment?.id && (isAddingService || newService.name || newService.notes)) {
-      saveFormStateToStorage(data.appointment.id, newService, isAddingService);
-    }
-  }, [data?.appointment?.id, newService, isAddingService, saveFormStateToStorage]);
+  // form state persistence removed
 
   const calculateTotal = (serviceList: AppointmentService[]) => {
     const totalAmount = serviceList.reduce((sum, service) => {
@@ -690,50 +731,9 @@ const Services = React.memo(function Services({
     setTotal(totalAmount);
   };
 
-  const markServiceModified = (id: string, changes: { estimated_hours?: number | null; estimated_price?: number | null }) => {
-    setModifiedMap(prev => ({
-      ...prev,
-      [id]: { ...prev[id], ...changes }
-    }));
-  };
+  // markServiceModified deprecated (working.modifiedIds tracks changes)
 
-  const isStagedService = (s: AppointmentService) => (s as unknown as { __staged?: boolean }).__staged === true;
-  const isModifiedSaved = (s: AppointmentService) => !isStagedService(s) && Boolean(modifiedMap[s.id]);
-
-  const persistModifiedServices = async () => {
-    if (!data?.appointment?.id) return;
-    const apptIdLocal = data.appointment.id;
-    const modifiedIds = Object.keys(modifiedMap).filter(id => services.find(s => s.id === id && !isStagedService(s)));
-    if (!modifiedIds.length) return;
-    setSavingModified(true);
-    try {
-      for (const sid of modifiedIds) {
-        const svc = services.find(s => s.id === sid);
-        if (!svc) continue;
-        const diff = modifiedMap[sid];
-        await api.updateAppointmentService(apptIdLocal, sid, {
-          estimated_hours: diff.estimated_hours != null ? diff.estimated_hours : svc.estimated_hours,
-          estimated_price: diff.estimated_price != null ? diff.estimated_price : svc.estimated_price
-        });
-      }
-      // Refresh services
-      const fresh = await api.getAppointmentServices(apptIdLocal);
-      setServices(fresh);
-      calculateTotal(fresh);
-      // Clear modified map for saved services
-      setModifiedMap(prev => {
-        const clone = { ...prev };
-        for (const id of modifiedIds) delete clone[id];
-        return clone;
-      });
-      setEditingIds(new Set());
-      toast.success('Changes saved');
-    } catch {
-      toast.error('Failed to save changes');
-    } finally {
-      setSavingModified(false);
-    }
-  };
+  const isModifiedSaved = (s: AppointmentService) => Boolean(working && working.modifiedIds.has(s.id) && !working.addedTempIds.includes(s.id));
 
   const handleAddService = async () => {
     console.log('🔧 HANDLE_ADD_SERVICE: Function called');
@@ -778,114 +778,46 @@ const Services = React.memo(function Services({
       }
     });
     
-    try {
-      console.log('🔧 HANDLE_ADD_SERVICE: About to call api.createAppointmentService');
-      const response = await api.createAppointmentService(data.appointment.id, {
-        name: newService.name,
-        notes: newService.notes,
-        estimated_hours: hours ? parseFloat(hours) : undefined,
-        estimated_price: price ? parseFloat(price) : undefined,
-  category: newService.category,
-  service_operation_id: newService.service_operation_id || undefined
+  if (working) {
+      const tempId = `manual-${Date.now()}`;
+      onWorkingChange(prev => {
+        const next = { ...prev };
+        next.servicesById = { ...next.servicesById, [tempId]: {
+          id: tempId,
+          appointment_id: data.appointment.id,
+          name: newService.name,
+          notes: newService.notes,
+          estimated_hours: hours ? parseFloat(hours) : undefined,
+          estimated_price: price ? parseFloat(price) : undefined,
+          category: newService.category || null,
+          service_operation_id: newService.service_operation_id || null
+        } as unknown as AppointmentService };
+        next.serviceOrder = [...next.serviceOrder, tempId];
+        next.addedTempIds = [...next.addedTempIds, tempId];
+        return next;
       });
-      
-      console.log('🔧 HANDLE_ADD_SERVICE: API call successful, response:', response);
-      
-      const updatedServices = [...services, response.service];
-      setServices(updatedServices);
-      calculateTotal(updatedServices);
-  setNewService({ name: '', notes: '', estimated_hours: '', estimated_price: '', category: '', service_operation_id: '' });
+      setNewService({ name: '', notes: '', estimated_hours: '', estimated_price: '', category: '', service_operation_id: '' });
       setIsAddingService(false);
-      
-      // Clear form state from localStorage after successful submission
-      clearFormStateFromStorage(data.appointment.id);
-      
-      console.log('🔧 HANDLE_ADD_SERVICE: Service added successfully, UI updated');
-    } catch (error) {
-      console.error('🔧 HANDLE_ADD_SERVICE: Error caught:', error);
-      console.error('🔧 HANDLE_ADD_SERVICE: Error type:', typeof error);
-      if (error instanceof Error) {
-        console.error('🔧 HANDLE_ADD_SERVICE: Error constructor:', error.constructor.name);
-        console.error('🔧 HANDLE_ADD_SERVICE: Error stack:', error.stack);
-        console.error('🔧 HANDLE_ADD_SERVICE: Error message:', error.message);
-      }
-      console.error('Error adding service:', error);
-      if (api.handleApiError) {
-        api.handleApiError(error);
-      }
+  // cleared form state (no-op after removal)
+      return;
     }
+  // legacy path removed
   };
 
   // Persist locally staged services with partial failure handling
-  const persistStagedServices = useCallback(async () => {
-    if (!data?.appointment?.id) return;
-    const apptIdLocal = data.appointment.id;
-    const staged = services.filter(s => (s as unknown as { __staged?: boolean }).__staged);
-    if (!staged.length) return;
-    setSavingStaged(true);
-    const successes: string[] = [];
-    try {
-      for (const s of staged) {
-        try {
-          await api.createAppointmentService(apptIdLocal, {
-            name: s.name,
-            notes: s.notes || undefined,
-            estimated_hours: s.estimated_hours != null ? s.estimated_hours : undefined,
-            estimated_price: s.estimated_price != null ? s.estimated_price : undefined,
-            category: (s as unknown as { category?: string }).category || undefined,
-            service_operation_id: (s as unknown as { service_operation_id?: string }).service_operation_id || undefined
-          });
-          successes.push(s.id);
-  } catch {
-          // On first failure: sync successes, retain remaining staged for retry
-          try {
-            const fresh = await api.getAppointmentServices(apptIdLocal);
-            const remaining = services.filter(orig => (orig as any).__staged && !successes.includes(orig.id)); // eslint-disable-line @typescript-eslint/no-explicit-any
-            setServices([...fresh, ...remaining]);
-            calculateTotal([...fresh, ...remaining]);
-          } catch {/* ignore sync failure */}
-          toast.error('Failed to save all services. Retry to continue.');
-          return; // exit early, leave unsaved staged intact
-        }
-      }
-      // All succeeded
-      try {
-        const fresh = await api.getAppointmentServices(apptIdLocal);
-        setServices(fresh);
-        calculateTotal(fresh);
-      } catch {/* ignore */}
-      toast.success(successes.length === 1 ? 'Service added' : `${successes.length} services added`);
-    } finally {
-      setSavingStaged(false);
-    }
-  }, [data?.appointment?.id, services, toast]);
+  // persistStagedServices removed (unified save)
 
 
-  const handleDeleteService = async (serviceId: string) => {
-    if (!data?.appointment?.id) return;
-    
-    if (!window.confirm('Are you sure you want to delete this service?')) {
-      return;
-    }
-    
-    try {
-      await api.deleteAppointmentService(data.appointment.id, serviceId);
-      const updatedServices = services.filter(service => service.id !== serviceId);
-      setServices(updatedServices);
-      calculateTotal(updatedServices);
-    } catch (error) {
-      console.error('Error deleting service:', error);
-      if (api.handleApiError) {
-        api.handleApiError(error);
-      }
-    }
-  };
+  // handleDeleteService deprecated (superseded by multi-select deletion workflow)
 
   if (!data) return <div>Loading…</div>;
   
-  if (!services?.length && !isAddingService) {
+  const baseServices = working ? working.serviceOrder.map(id => working.servicesById[id]).filter(Boolean).filter(s => !!s && !working.deletedIds.includes(s.id)) as AppointmentService[] : [];
+  const effectiveServices = baseServices.map(s => working!.addedTempIds.includes(s.id) ? ({ ...s, __staged: true } as unknown as AppointmentService) : s);
+
+  if (!effectiveServices.length && !isAddingService) {
     return (
-      <div data-testid="services-empty-state" className="text-center py-8">
+  <div data-testid="services-empty-state" className="text-center py-8" data-testid-root="services-tab-root">
         <div className="text-gray-500 mb-4">
           <div>No services added yet.</div>
           {ALLOW_SERVICE_MUTATIONS && <div className="text-sm">Add your first service</div>}
@@ -935,58 +867,11 @@ const Services = React.memo(function Services({
   }
 
   return (
-    <div className="space-y-4" data-testid="services-tab-root">
+  <div className="space-y-4" data-testid="services-tab-root">
       {/* Services Total */}
       <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
         <span data-testid="services-total" className="font-bold">Total: ${total.toFixed(2)}</span>
-        {/* Save staged services button (appears only when there are unsaved staged entries) */}
-        {services.some(s => (s as unknown as { __staged?: boolean }).__staged) && (
-          <button
-            type="button"
-            disabled={savingStaged}
-            onClick={persistStagedServices}
-            data-testid="services-save-staged"
-            className="px-3 py-1 text-sm rounded bg-blue-600 text-white disabled:opacity-50"
-            title="Persist staged services"
-          >
-            {savingStaged ? 'Saving…' : 'Save'}
-          </button>
-        )}
-        {pendingDeleteIds.size > 0 && (
-          <button
-            type="button"
-            data-testid="services-save-deletions"
-            className="px-3 py-1 text-sm rounded bg-red-600 text-white"
-            onClick={async () => {
-              if (!data?.appointment?.id) return;
-              const apptIdLocal = data.appointment.id;
-              const ids = Array.from(pendingDeleteIds);
-              try {
-                for (const idDel of ids) {
-                  await api.deleteAppointmentService(apptIdLocal, idDel);
-                }
-                const fresh = await api.getAppointmentServices(apptIdLocal);
-                setServices(fresh);
-                calculateTotal(fresh);
-                setPendingDeleteIds(new Set());
-                toast.success(ids.length === 1 ? 'Service removed' : `${ids.length} services removed`);
-              } catch (e) {
-                toast.error('Failed to delete services');
-              }
-            }}
-            title="Confirm deletions"
-          >Delete ({pendingDeleteIds.size})</button>
-        )}
-        {Object.keys(modifiedMap).some(id => !isStagedService(services.find(s=>s.id===id) as AppointmentService)) && (
-          <button
-            type="button"
-            data-testid="services-save-modified"
-            disabled={savingModified}
-            onClick={persistModifiedServices}
-            className="px-3 py-1 text-sm rounded bg-amber-600 text-white disabled:opacity-50"
-            title="Save modified services"
-          >{savingModified ? 'Saving…' : 'Save changes'}</button>
-        )}
+  {/* unified save lives in drawer header now */}
       </div>
 
       {ENABLE_CATALOG_SEARCH && (
@@ -1000,7 +885,7 @@ const Services = React.memo(function Services({
               className="flex-1 border rounded px-3 py-2 text-sm"
               aria-label="Search services catalog"
               data-testid="svc-catalog-search"
-              disabled={savingStaged}
+              
             />
             {searchTerm && (
               <button
@@ -1008,18 +893,18 @@ const Services = React.memo(function Services({
                 onClick={() => setSearchTerm('')}
                 className="text-xs text-gray-600 underline"
                 data-testid="svc-catalog-clear"
-                disabled={savingStaged}
+                
               >Clear</button>
             )}
           </div>
           {hasSearch && (
-            <div className={`border rounded max-h-64 overflow-auto ${savingStaged ? 'pointer-events-none opacity-60' : ''}`} data-testid="svc-catalog-results" aria-disabled={savingStaged ? 'true' : undefined}>
+            <div className="border rounded max-h-64 overflow-auto" data-testid="svc-catalog-results">
               <ul className="divide-y text-sm">
                 {filteredCatalog.slice(0, 50).map((item: ServiceCatalogItem) => (
                   <li
                     key={item.id}
                     className="p-2 flex flex-col gap-0.5 cursor-pointer hover:bg-blue-50"
-                    onClick={() => !savingStaged && ALLOW_STAGING_FROM_CATALOG && stageFromCatalog(item)}
+                    onClick={() => ALLOW_STAGING_FROM_CATALOG && stageFromCatalog(item)}
                     data-testid={`catalog-result-${item.id}`}
                   >
                     <span className="font-medium">{item.name}</span>
@@ -1131,7 +1016,7 @@ const Services = React.memo(function Services({
               setNewService({ name: '', notes: '', estimated_hours: '', estimated_price: '', category: '', service_operation_id: '' });
                   // Clear form state from localStorage when cancelling
                   if (data?.appointment?.id) {
-                    clearFormStateFromStorage(data.appointment.id);
+                    // form state cleared (deprecated)
                   }
                 }}
                 className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
@@ -1145,43 +1030,51 @@ const Services = React.memo(function Services({
 
       {/* Services List */}
       <div data-testid="services-list" className="space-y-2">
-        {services.map(service => (
+  {effectiveServices.map(service => (
           <ServiceItem
             key={service.id}
             service={service}
             allowMutations={ALLOW_SERVICE_MUTATIONS}
-            isMarkedForDeletion={pendingDeleteIds.has(service.id)}
+            isMarkedForDeletion={Boolean(working?.deletedIds.includes(service.id))}
             isModified={isModifiedSaved(service)}
             editing={editingIds.has(service.id)}
             onStartEdit={() => { /* future inline edit */ }}
             onDelete={() => {
               if (!ALLOW_SERVICE_MUTATIONS) return;
-              const isStaged = (service as unknown as { __staged?: boolean }).__staged;
-              if (isStaged) {
-                setServices(prev => prev.filter(s => s.id !== service.id));
-                calculateTotal(services.filter(s => s.id !== service.id));
-                return;
-              }
-              setPendingDeleteIds(prev => {
-                const next = new Set(prev);
-                if (next.has(service.id)) next.delete(service.id); else next.add(service.id);
+              onWorkingChange(prev => {
+                const next = { ...prev };
+                const isTemp = next.addedTempIds.includes(service.id);
+                if (isTemp) {
+                  next.addedTempIds = next.addedTempIds.filter(id => id !== service.id);
+                  next.serviceOrder = next.serviceOrder.filter(id => id !== service.id);
+                  const { [service.id]: _omit, ...rest } = next.servicesById; // eslint-disable-line @typescript-eslint/no-unused-vars
+                  next.servicesById = rest;
+                } else {
+                  if (next.deletedIds.includes(service.id)) {
+                    next.deletedIds = next.deletedIds.filter(id => id !== service.id);
+                  } else {
+                    next.deletedIds = [...next.deletedIds, service.id];
+                  }
+                }
                 return next;
               });
             }}
             onToggleEdit={() => {
-              setEditingIds(prev => {
-                const next = new Set(prev);
-                if (next.has(service.id)) next.delete(service.id); else next.add(service.id);
-                return next;
-              });
+              setEditingIds(prev => { const next = new Set(prev); if (next.has(service.id)) next.delete(service.id); else next.add(service.id); return next; });
             }}
             onFieldChange={(fields) => {
-              // Update local displayed values (optimistic) for hours/price
-              setServices(prev => prev.map(s => s.id === service.id ? { ...s, ...fields } : s));
-              // Track modifications only for saved services
-              if (!isStagedService(service)) {
-                markServiceModified(service.id, fields as { estimated_hours?: number | null; estimated_price?: number | null });
-              }
+              onWorkingChange(prev => {
+                const next = { ...prev };
+                const existing = next.servicesById[service.id];
+                if (existing) {
+                  next.servicesById = { ...next.servicesById, [service.id]: { ...existing, ...fields } };
+                  if (!next.addedTempIds.includes(service.id)) {
+                    next.modifiedIds = new Set(next.modifiedIds);
+                    next.modifiedIds.add(service.id);
+                  }
+                }
+                return next;
+              });
             }}
           />
         ))}
