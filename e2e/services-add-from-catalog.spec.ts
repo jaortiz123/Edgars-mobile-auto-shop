@@ -80,18 +80,16 @@ test.describe('Services Tab - Add From Catalog (staged)', () => {
     // Visual distinction: confirm staged marker present
     await expect(stagedItem).toHaveAttribute('data-staged', '1');
 
-  // Click Save staged services button
-    const saveBtn = page.locator('[data-testid="services-save-staged"]');
+  // Click unified save button
+    const saveBtn = page.locator('[data-testid="drawer-save"]');
     await expect(saveBtn).toBeVisible();
     await Promise.all([
       page.waitForResponse(r => /\/api\/appointments\/.+\/services$/.test(r.url()) && r.request().method()==='POST'),
       saveBtn.click()
     ]);
-
-    // After save, staged marker should disappear (allow refetch delay)
-    await page.waitForTimeout(300);
+    // After save, staged marker should disappear
+    await page.waitForTimeout(400);
     await expect(page.locator('[data-testid="services-list"] [data-staged="1"]')).toHaveCount(0);
-    await expect(page.locator('[data-testid="services-save-staged"]')).toHaveCount(0);
 
     // INLINE EDIT hours of first saved service
     const firstSaved = page.locator('[data-testid^="service-item-"]').first();
@@ -105,7 +103,7 @@ test.describe('Services Tab - Add From Catalog (staged)', () => {
       await hoursInput.fill('9');
       await editBtn.click(); // exit edit mode
       // Save changes
-      const saveChangesBtn = page.locator('[data-testid="services-save-modified"]');
+      const saveChangesBtn = page.locator('[data-testid="drawer-save"]');
       await expect(saveChangesBtn).toBeVisible();
       await Promise.all([
         page.waitForResponse(r => /\/api\/appointments\/.+\/services\/.+/.test(r.url()) && r.request().method()==='PATCH'),
@@ -115,7 +113,8 @@ test.describe('Services Tab - Add From Catalog (staged)', () => {
       await page.waitForTimeout(200);
       await expect(firstSaved.locator('[data-testid^="service-hours-"]')).toContainText('9h');
       // Ensure save button disappears
-      await expect(page.locator('[data-testid="services-save-modified"]')).toHaveCount(0);
+      // unified save button remains but should be disabled now
+      await expect(page.locator('[data-testid="drawer-save"]')).toBeDisabled();
     }
 
     // MARK FOR DELETION (saved service)
@@ -123,18 +122,15 @@ test.describe('Services Tab - Add From Catalog (staged)', () => {
     const deleteBtn = savedServiceItem.locator('[data-testid^="delete-service-"]');
     await deleteBtn.click(); // mark for deletion (should change label to Undo)
     await expect(deleteBtn).toHaveText(/Undo/);
-    // Save deletions button appears
-    const delSaveBtn = page.locator('[data-testid="services-save-deletions"]');
-    await expect(delSaveBtn).toBeVisible();
-
-    // Click save deletions (wait for DELETE request(s))
+    // Unified save handles deletions
+    const unifiedSaveAfterDelete = page.locator('[data-testid="drawer-save"]');
+    await expect(unifiedSaveAfterDelete).toBeVisible();
     await Promise.all([
       page.waitForResponse(r => /\/api\/appointments\/.+\/services\/.+/.test(r.url()) && r.request().method()==='DELETE'),
-      delSaveBtn.click()
+      unifiedSaveAfterDelete.click()
     ]);
-    await page.waitForTimeout(200);
-    // Button should disappear (no pending deletions)
-    await expect(page.locator('[data-testid="services-save-deletions"]')).toHaveCount(0);
+    await page.waitForTimeout(250);
+    await expect(page.locator('[data-testid="drawer-save"]')).toBeDisabled();
 
     // STAGE THEN REMOVE IMMEDIATELY (staged service delete)
     await searchInput.fill('oil');
