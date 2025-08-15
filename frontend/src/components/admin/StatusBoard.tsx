@@ -1,16 +1,34 @@
 import React, { useMemo, useState } from 'react';
-import { useAppointments } from '@/contexts/AppointmentContext';
 import StatusColumn from './StatusColumn';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import type { AppointmentStatus } from '@/types/models';
 import { format } from 'date-fns';
 import CardCustomizationModal from './CardCustomizationModal';
 import { BoardFilterProvider, useBoardFilters } from '@/contexts/BoardFilterContext';
 import { BoardFilterPopover } from './BoardFilterPopover';
+import { useBoardFilteredCards, useBoardStore } from '@/state/useBoardStore';
+import { useToast } from '@/components/ui/Toast';
+import type { BoardCard, BoardColumn } from '@/types/models';
+import type { BoardState } from '@/state/useBoardStore';
 
 function InnerStatusBoard({ onOpen, minimalHero }: { onOpen: (id: string) => void; minimalHero?: boolean }) {
-  const { columns, cards, optimisticMove, triggerRefresh, loading, boardError, isFetchingBoard } = useAppointments();
+  // Store is initialized at the AdminLayout level now (singleton for admin session)
+  const columns = useBoardStore((s: BoardState) => s.columns);
+  const loading = useBoardStore((s: BoardState) => s.loading);
+  const boardError = useBoardStore((s: BoardState) => (s.error ? new Error(s.error) : null));
+  const cards = useBoardFilteredCards();
+  const allCards = useBoardStore((s: BoardState) => s.cardIds.map((id: string) => s.cardsById[id]).filter(Boolean));
+  const triggerRefresh = () => {/* future: call refresh action or invalidate query via legacy path */};
+  const moveAppointment = useBoardStore((s: BoardState) => s.moveAppointment);
+  const storeError = useBoardStore((s: BoardState) => s.error);
+  const setError = useBoardStore((s: BoardState) => s.setError);
+  const toast = useToast();
+  if (storeError) {
+    // Show toast (non-blocking) then clear error so it doesn't loop
+    toast.error(storeError);
+    setError(null);
+  }
+  const isFetchingBoard = false; // placeholder until wired to query status
   const showInitialSkeleton = loading && cards.length === 0;
   const [showCustomize, setShowCustomize] = useState(false);
   const { applyFilters, filtersActive } = useBoardFilters();
@@ -24,29 +42,29 @@ function InnerStatusBoard({ onOpen, minimalHero }: { onOpen: (id: string) => voi
 
   const byStatus = useMemo(() => {
     // Show ALL cards grouped by status; no date-based filtering or slicing.
-    const map = new Map<string, typeof cards>();
-    for (const col of columns) map.set(col.key, []);
-    for (const c of cards) {
+  const map = new Map<string, BoardCard[]>();
+  for (const col of columns) map.set(col.key, []);
+  for (const c of allCards) {
       const statusKey = String(c.status || 'UNKNOWN');
       if (!map.has(statusKey)) map.set(statusKey, []);
       map.get(statusKey)!.push(c);
     }
-    for (const [, arr] of map) arr.sort((a, b) => (a.position || 0) - (b.position || 0));
+  for (const [, arr] of map) arr.sort((a: BoardCard, b: BoardCard) => (a.position || 0) - (b.position || 0));
     return map;
-  }, [columns, cards]);
+  }, [columns, allCards]);
 
   const TodaysFocusHero = () => {
     const now = new Date();
-    const todaysCards = cards.filter(c => {
+  const todaysCards = (cards as BoardCard[]).filter((c: BoardCard) => {
       try { return c.start && new Date(c.start).toDateString() === now.toDateString(); } catch { return false; }
     });
 
     const nextAppointment = todaysCards
-      .filter(c => c.status === 'SCHEDULED' && typeof c.timeUntilStart === 'number' && c.timeUntilStart > 0)
-      .sort((a, b) => (a.timeUntilStart || 0) - (b.timeUntilStart || 0))[0];
+  .filter((c: BoardCard) => c.status === 'SCHEDULED' && typeof c.timeUntilStart === 'number' && c.timeUntilStart > 0)
+  .sort((a: BoardCard, b: BoardCard) => (a.timeUntilStart || 0) - (b.timeUntilStart || 0))[0];
 
-    const overdueAppointments = todaysCards.filter(c => c.isOverdue);
-    const completedToday = todaysCards.filter(c => c.status === 'COMPLETED');
+  const overdueAppointments = todaysCards.filter((c: BoardCard & { isOverdue?: boolean }) => c.isOverdue);
+  const completedToday = todaysCards.filter((c: BoardCard) => c.status === 'COMPLETED');
     const totalJobs = todaysCards.length || cards.length;
 
     return (
@@ -117,8 +135,8 @@ function InnerStatusBoard({ onOpen, minimalHero }: { onOpen: (id: string) => voi
         className="overflow-x-auto pb-4 nb-board-bg relative"
         role="region"
         aria-label="Status Board"
-        data-board-ready={!showInitialSkeleton && cards.length > 0 ? '1' : undefined}
-        data-first-apt-id={!showInitialSkeleton && cards.length > 0 ? cards[0]?.id : undefined}
+  data-board-ready={!showInitialSkeleton && allCards.length > 0 ? '1' : undefined}
+  data-first-apt-id={!showInitialSkeleton && allCards.length > 0 ? allCards[0]?.id : undefined}
       >
   {minimalHero && (
           <div className="absolute top-2 right-4 z-20 flex items-center gap-2">
@@ -163,26 +181,25 @@ function InnerStatusBoard({ onOpen, minimalHero }: { onOpen: (id: string) => voi
           ) : (
             (() => {
               let firstAssigned = false;
-              return columns.map((col) => {
-                const all = byStatus.get(col.key) ?? [];
-                const filtered = filtersActive ? applyFilters(all) : all;
+              return columns.map((col: BoardColumn) => {
+                const allList = byStatus.get(col.key) ?? [];
+                const filteredAll = filtersActive ? applyFilters(allList) : allList;
+                // Already store-level filtered list used for counts; use filteredAll for per-column filtering
                 return (
                   <StatusColumn
                     key={col.key}
                     column={col}
-                    cards={filtered.map((c, idx) => {
+                    cards={filteredAll.map((c: BoardCard, idx: number) => {
                       if (!firstAssigned && idx === 0) {
                         firstAssigned = true;
                         return { ...c, __isFirstGlobal: true } as typeof c & { __isFirstGlobal: true };
                       }
                       return c;
                     })}
-                    totalCount={all.length}
-                    filteredCount={filtered.length}
+                    totalCount={allList.length}
+                    filteredCount={filteredAll.length}
                     onOpen={onOpen}
-                    onMove={(id: string) => {
-                      void optimisticMove(id, { status: col.key as AppointmentStatus, position: 1 });
-                    }}
+                    onMove={(id: string) => { void moveAppointment(id, { status: col.key, position: 1 }); }}
                   />
                 );
               });

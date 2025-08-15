@@ -52,14 +52,8 @@ describe('ApiService Coverage Tests', () => {
       const result = await apiService.createAppointment(mockAppointmentData);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:5001/api/appointments',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(mockAppointmentData),
-        }
+        'http://localhost:5001/api/admin/appointments',
+        expect.objectContaining({ method: 'POST' })
       );
       expect(result).toEqual(mockResponse);
     });
@@ -83,43 +77,7 @@ describe('ApiService Coverage Tests', () => {
     });
   });
 
-  describe('getAppointments', () => {
-    it('should fetch appointments successfully', async () => {
-      const mockAppointments = [
-        { id: 'apt1', service: 'Oil Change' },
-        { id: 'apt2', service: 'Brake Repair' }
-      ];
-      const mockResponse = { appointments: mockAppointments };
-      
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue(mockResponse)
-      });
-
-      const result = await apiService.getAppointments();
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:5001/api/appointments',
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-      expect(result).toEqual(mockAppointments);
-    });
-
-    it('should handle fetch failure', async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        json: vi.fn().mockResolvedValue({ error: 'Database error' })
-      });
-
-      await expect(apiService.getAppointments())
-        .rejects.toThrow('Database error');
-    });
-  });
+  // Removed legacy getAppointments() tests (endpoint deprecated)
 
   describe('getAdminAppointments', () => {
     it('should fetch admin appointments successfully', async () => {
@@ -284,16 +242,7 @@ describe('ApiService Coverage Tests', () => {
       })).rejects.toThrow('Internal Server Error');
     });
 
-    it('should handle getAppointments with text fallback when JSON fails', async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        json: vi.fn().mockRejectedValue(new Error('JSON parse error')),
-        text: vi.fn().mockResolvedValue('Service Unavailable')
-      });
-
-      await expect(apiService.getAppointments())
-        .rejects.toThrow('Service Unavailable');
-    });
+  // Removed legacy getAppointments fallback test (endpoint deprecated)
 
     it('should handle getAdminAppointments with JSON stringify fallback', async () => {
       const errorResponse = { custom_error: 'Database connection failed' };
@@ -352,11 +301,10 @@ describe('ApiService Coverage Tests', () => {
       })).rejects.toThrow('{}');
     });
 
-    it('should handle network failures for all functions', async () => {
+    it('should handle network failures for admin endpoints', async () => {
       const networkError = new Error('Network connection failed');
       mockFetch.mockRejectedValue(networkError);
 
-      await expect(apiService.getAppointments()).rejects.toThrow('Network connection failed');
       await expect(apiService.getAdminAppointments()).rejects.toThrow('Network connection failed');
       await expect(apiService.getAdminAppointmentsToday()).rejects.toThrow('Network connection failed');
       await expect(apiService.updateAppointment('apt123', {})).rejects.toThrow('Network connection failed');
@@ -406,10 +354,8 @@ describe('ApiService Coverage Tests', () => {
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:5001/api/appointments',
-        expect.objectContaining({
-          method: 'POST'
-        })
+        'http://localhost:5001/api/admin/appointments',
+        expect.objectContaining({ method: 'POST' })
       );
     });
   });

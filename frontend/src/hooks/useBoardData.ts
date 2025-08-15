@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from '@/lib/api';
-import type { BoardCard, BoardColumn, DashboardStats, AppointmentStatus } from '@/types/models';
+import type { BoardCard, BoardColumn, DashboardStats } from '@/types/models';
 import { resolveHeadline, ServiceDefinition } from '@/types/serviceCatalog';
 import { useServiceCatalog } from './useServiceCatalog';
 import { useServiceOperations } from './useServiceOperations';
@@ -38,7 +38,6 @@ function enrichCards(
 export interface UseBoardResult {
   boardQuery: ReturnType<typeof useQuery<{ columns: BoardColumn[]; cards: BoardCard[] }>>;
   statsQuery: ReturnType<typeof useQuery<DashboardStats>>;
-  moveMutation: ReturnType<typeof useMutation<{ id: string; status: AppointmentStatus; position: number }, unknown, { id: string; status: AppointmentStatus; position: number }>>;
   refresh: () => void;
   boardError: Error | null;
   statsError: Error | null;
@@ -69,31 +68,9 @@ export function useBoard(): UseBoardResult {
     staleTime: 30_000,
   });
 
-  const moveMutation = useMutation({
-    mutationFn: (vars: { id: string; status: AppointmentStatus; position: number }) =>
-      api.moveAppointment(vars.id, { status: vars.status, position: vars.position }),
-    onMutate: async (vars) => {
-      await qc.cancelQueries({ queryKey: qk.board });
-      const prev = qc.getQueryData<{ columns: BoardColumn[]; cards: BoardCard[] }>(qk.board);
-      if (prev) {
-        const cards = prev.cards.map(c => c.id === vars.id ? { ...c, status: vars.status, position: vars.position } : c);
-        qc.setQueryData(qk.board, { columns: prev.columns, cards });
-      }
-      return { prev };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(qk.board, ctx.prev);
-    },
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey: qk.board });
-      qc.invalidateQueries({ queryKey: qk.stats });
-    }
-  });
-
   return {
     boardQuery,
     statsQuery,
-    moveMutation,
     refresh: () => {
       qc.invalidateQueries({ queryKey: qk.board });
       qc.invalidateQueries({ queryKey: qk.stats });

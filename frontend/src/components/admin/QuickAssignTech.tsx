@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTechnicians } from '@/hooks/useTechnicians';
-import * as api from '@/lib/api';
-import { useQueryClient } from '@tanstack/react-query';
-import type { BoardCard, BoardColumn } from '@/types/models';
+// api + react-query based optimistic logic replaced by centralized store action
+import { useBoardStore } from '@/state/useBoardStore';
 import { useToast } from '@/components/ui/Toast';
 
 interface Props {
@@ -31,8 +30,8 @@ export const QuickAssignTech: React.FC<Props> = ({ appointmentId, currentTechId,
       document.head.appendChild(style);
     }
   }, []);
-  const qc = useQueryClient();
   const toast = useToast();
+  const assignTechnician = useBoardStore(s => s.assignTechnician);
 
   // Position + dismissal
   useEffect(() => {
@@ -73,52 +72,17 @@ export const QuickAssignTech: React.FC<Props> = ({ appointmentId, currentTechId,
     root.style.setProperty('--qa-pop-width', coords.width + 'px');
   }, [coords, open]);
 
-  interface SnapshotEntry {
-    key: unknown[];
-    data: { columns: BoardColumn[]; cards: BoardCard[] } | undefined;
-  }
-
-  const applyOptimistic = (techId: string | null, techInitials: string | null) => {
-    const snapshots: SnapshotEntry[] = [];
-    // Grab every cached board query (they are keyed as ['board', techId|all])
-    const all = qc.getQueriesData<{ columns: BoardColumn[]; cards: BoardCard[] }>({ queryKey: ['board'] });
-    for (const [key, data] of all) {
-      if (!data) continue;
-      const hasCard = data.cards.some(c => c.id === appointmentId);
-      if (!hasCard) continue;
-      snapshots.push({ key: key as unknown[], data });
-      const mutated = {
-        columns: data.columns,
-        cards: data.cards.map(c => c.id === appointmentId ? { ...c, techAssigned: techId, techInitials } : c)
-      };
-      qc.setQueryData(key, mutated);
-    }
-    return snapshots;
-  };
-
-  const rollback = (snaps: SnapshotEntry[]) => {
-    for (const s of snaps) {
-      qc.setQueryData(s.key, s.data);
-    }
-  };
-
   const assign = async (techId: string | null) => {
     setSaving(true);
-    // Compute initials (prefer technician directory value)
-    const tech = techs.find(t => t.id === techId);
-    const techInitials = tech ? (tech.initials || tech.name.slice(0,2).toUpperCase()) : null;
-    const snaps = applyOptimistic(techId, techInitials);
+    // Initial UI close for responsiveness
     setOpen(false); // close immediately for snappy feel
     try {
-      await api.patchAppointment(appointmentId, { tech_id: techId });
+      await assignTechnician(appointmentId, techId);
       if (onAssigned) onAssigned(techId);
       toast.success(techId ? 'Technician assigned' : 'Technician cleared');
-      // Background refresh to reconcile any server-side transforms
-      qc.invalidateQueries({ queryKey: ['board'] });
     } catch (e) {
-      rollback(snaps);
-      console.error('Failed to assign technician:', e);
-      toast.error('Failed to assign technician');
+      console.error('Failed to assign technician via store:', e);
+      toast.error('Failed to assign technician'); // store rollback already handled
     } finally {
       setSaving(false);
     }

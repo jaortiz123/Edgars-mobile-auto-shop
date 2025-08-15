@@ -7,7 +7,6 @@ import * as api from '@/lib/api';
 import type { DrawerPayload, AppointmentService } from '@/types/models';
 import MessageThread from './MessageThread';
 import CustomerHistory from './CustomerHistory';
-import { useAppointments } from '@/contexts/AppointmentContext';
 import { useToast } from '@/components/ui/Toast';
 import vehicleCatalogSeed from '@/data/vehicleCatalog';
 import buildCatalogFromRaw from '@/data/vehicleCatalogFromRaw';
@@ -22,7 +21,7 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
   const ref = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
-  const { refreshBoard } = useAppointments();
+  const refreshBoard = React.useCallback(() => { /* deprecated context refresh no-op */ }, []);
   const toast = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const deletedIdRef = useRef<string | null>(null);
@@ -50,8 +49,8 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
   }, []);
   const updateWorking = useCallback((updater: (prev: WorkingState) => WorkingState) => {
     setWorking(prev => {
-      if (!prev) return prev as unknown as WorkingState; // should not happen when flag on
-      const next = updater(prev);
+      const base: WorkingState = prev ?? { servicesById: {}, serviceOrder: [], addedTempIds: [], deletedIds: [], modifiedIds: new Set() };
+      const next = updater(base);
       setWorkingDirty(recomputeDirty(next));
       return next;
     });
@@ -773,35 +772,33 @@ const Services = React.memo(function Services({
         notes: newService.notes,
         estimated_hours: hours ? parseFloat(hours) : undefined,
         estimated_price: price ? parseFloat(price) : undefined,
-  category: newService.category,
-  service_operation_id: newService.service_operation_id || undefined
+        category: newService.category,
+        service_operation_id: newService.service_operation_id || undefined
       }
     });
-    
-  if (working) {
-      const tempId = `manual-${Date.now()}`;
-      onWorkingChange(prev => {
-        const next = { ...prev };
-        next.servicesById = { ...next.servicesById, [tempId]: {
-          id: tempId,
-          appointment_id: data.appointment.id,
-          name: newService.name,
-          notes: newService.notes,
-          estimated_hours: hours ? parseFloat(hours) : undefined,
-          estimated_price: price ? parseFloat(price) : undefined,
-          category: newService.category || null,
-          service_operation_id: newService.service_operation_id || null
-        } as unknown as AppointmentService };
-        next.serviceOrder = [...next.serviceOrder, tempId];
-        next.addedTempIds = [...next.addedTempIds, tempId];
-        return next;
-      });
-      setNewService({ name: '', notes: '', estimated_hours: '', estimated_price: '', category: '', service_operation_id: '' });
-      setIsAddingService(false);
-  // cleared form state (no-op after removal)
-      return;
-    }
-  // legacy path removed
+
+    // Always stage locally, initializing working state if necessary
+    const tempId = `manual-${Date.now()}`;
+    onWorkingChange(prev => {
+      const base = prev ?? { servicesById: {}, serviceOrder: [], addedTempIds: [], deletedIds: [], modifiedIds: new Set() };
+      const next = { ...base } as typeof base;
+      next.servicesById = { ...next.servicesById, [tempId]: {
+        id: tempId,
+        appointment_id: data.appointment!.id,
+        name: newService.name,
+        notes: newService.notes,
+        estimated_hours: hours ? parseFloat(hours) : undefined,
+        estimated_price: price ? parseFloat(price) : undefined,
+        category: newService.category || null,
+        service_operation_id: newService.service_operation_id || null
+      } as unknown as AppointmentService };
+      next.serviceOrder = [...next.serviceOrder, tempId];
+      next.addedTempIds = [...next.addedTempIds, tempId];
+      return next;
+    });
+    setNewService({ name: '', notes: '', estimated_hours: '', estimated_price: '', category: '', service_operation_id: '' });
+    setIsAddingService(false); // hide form after staging
+    // cleared form state (no-op after removal)
   };
 
   // Persist locally staged services with partial failure handling
@@ -814,6 +811,8 @@ const Services = React.memo(function Services({
   
   const baseServices = working ? working.serviceOrder.map(id => working.servicesById[id]).filter(Boolean).filter(s => !!s && !working.deletedIds.includes(s.id)) as AppointmentService[] : [];
   const effectiveServices = baseServices.map(s => working!.addedTempIds.includes(s.id) ? ({ ...s, __staged: true } as unknown as AppointmentService) : s);
+  // Debug: expose count for tests (non-production impact)
+  const effectiveServicesCount = effectiveServices.length;
 
   if (!effectiveServices.length && !isAddingService) {
     return (
@@ -1029,7 +1028,7 @@ const Services = React.memo(function Services({
       )}
 
       {/* Services List */}
-      <div data-testid="services-list" className="space-y-2">
+  <div data-testid="services-list" data-count={effectiveServicesCount} className="space-y-2">
   {effectiveServices.map(service => (
           <ServiceItem
             key={service.id}

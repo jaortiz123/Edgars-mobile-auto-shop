@@ -11,8 +11,11 @@ import {
   BarChart3
 } from 'lucide-react';
 import { CardPreferencesProvider } from '@/contexts/CardPreferencesContext';
+import { useBoardStoreInitializer } from '@/state/useBoardStore';
 
 export default function AdminLayout() {
+  // Initialize board store once for all admin routes
+  useBoardStoreInitializer(true);
   const navigate = useNavigate();
   const location = useLocation();
   const { logout: authLogout } = useAuth();
@@ -102,7 +105,7 @@ export default function AdminLayout() {
   <main className="flex-1 overflow-auto bg-transparent">
         <CardPreferencesProvider>
           <div className="px-sp-8 py-sp-6">
-            <Suspense fallback={<div className="p-4 text-sm opacity-70">Loading admin module…</div>}>
+            <Suspense fallback={<div className="p-sp-2 text-fs-0 opacity-70">Loading admin module…</div>}>
               <Outlet />
             </Suspense>
           </div>

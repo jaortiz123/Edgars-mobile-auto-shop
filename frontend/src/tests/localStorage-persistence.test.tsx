@@ -1,11 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
-import { AppointmentProvider } from '../contexts/AppointmentContext';
+import { BoardStoreProvider } from '../state/BoardStoreProvider';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../components/ui/Toast';
 
-// Mock API to ensure createAppointmentService succeeds in this test file
+// NOTE: The original localStorage persistence for the add-service form was removed.
+// These tests were rewritten to validate the CURRENT behaviour (no persistence, simple add flow).
+// Mock API minimal responses required by AppointmentDrawer.
 vi.mock('@/lib/api', () => ({
   getDrawer: vi.fn().mockResolvedValue({
     appointment: {
@@ -13,7 +16,7 @@ vi.mock('@/lib/api', () => ({
       status: 'SCHEDULED',
       start: '2024-01-15T14:00:00Z',
       end: '2024-01-15T15:00:00Z',
-      total_amount: 250.00,
+      total_amount: 250.0,
       paid_amount: 0,
       check_in_at: null,
       check_out_at: null,
@@ -23,26 +26,21 @@ vi.mock('@/lib/api', () => ({
     vehicle: { id: 'veh-123', year: 2020, make: 'Toyota', model: 'Camry', vin: 'TEST123456' },
     services: []
   }),
-  createAppointmentService: vi.fn().mockResolvedValue({
-    service: {
-      id: 'service-123',
-      name: 'Test Service',
-      notes: 'Test notes',
-      estimated_hours: 1,
-      estimated_price: 100,
-      category: 'Test'
-    }
-  }),
-  handleApiError: vi.fn((err: any, defaultMessage: string) => {
-    if (err && err.message) return err.message; return defaultMessage || 'Request failed';
-  })
+  getServiceOperations: vi.fn().mockResolvedValue([
+    { id: 'op-brake', name: 'Brake Service', category: 'Safety', default_hours: 2, default_price: 150 },
+    { id: 'op-oil', name: 'Oil Change', category: 'General', default_hours: 1, default_price: 80 }
+  ]),
+  // createAppointmentService no longer invoked directly after refactor; keep stub for safety
+  createAppointmentService: vi.fn(),
+  handleApiError: vi.fn()
 }));
 
 // Mock Tabs component
 vi.mock('@/components/ui/Tabs', () => ({
-  Tabs: ({ children, value, onValueChange, tabs }: any) => (
+  // Deliberately using unknown for generic test tab shape
+  Tabs: ({ children, value, onValueChange, tabs }: { children: React.ReactNode; value: string; onValueChange: (v: string) => void; tabs: Array<{ value: string; label: string }> }) => (
     <div data-testid="tabs">
-      {tabs.map((tab: any) => (
+      {tabs.map((tab) => (
         <button
           key={tab.value}
           onClick={() => onValueChange(tab.value)}
@@ -62,304 +60,104 @@ import AppointmentDrawer from '../components/admin/AppointmentDrawer';
 
 // Test wrapper
 function TestWrapper({ children }: { children: React.ReactNode }) {
+  // Provide a dedicated QueryClient for each test render to satisfy hooks using React Query
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return (
     <ToastProvider>
       <BrowserRouter>
-        <AppointmentProvider>
-          {children}
-        </AppointmentProvider>
+        <QueryClientProvider client={qc}>
+          <BoardStoreProvider>
+            {children}
+          </BoardStoreProvider>
+        </QueryClientProvider>
       </BrowserRouter>
     </ToastProvider>
   );
 }
 
-describe('localStorage Persistence Fix', () => {
+describe('Add Service Form (no persistence)', () => {
   const appointmentId = 'test-appointment-123';
-  const storageKey = `appointment-form-${appointmentId}`;
 
   beforeEach(() => {
-    // Clear localStorage before each test
-    localStorage.clear();
     vi.clearAllMocks();
   });
 
-  it('should persist form state to localStorage when user types', async () => {
+  it('allows opening the form, entering valid data and staging a new service', async () => {
     const user = userEvent.setup();
-
     render(
       <TestWrapper>
-        <AppointmentDrawer 
-          open={true} 
-          onClose={() => {}} 
-          id={appointmentId} 
-        />
+        <AppointmentDrawer open onClose={() => {}} id={appointmentId} />
       </TestWrapper>
     );
 
-    // Wait for drawer to load and switch to services tab
+  await screen.findByTestId('drawer-open');
+    await user.click(screen.getByTestId('tab-services'));
+
+    // Open the form
+    const addBtn = await screen.findByTestId('add-service-button');
+    await user.click(addBtn);
+    const form = await screen.findByTestId('add-service-form');
+    const formScope = within(form);
+
+  // ServiceOperationSelect first textbox (search)
+  const nameSearchInput = formScope.getAllByRole('textbox')[0];
+  expect(nameSearchInput).toHaveValue('');
+  const submit = formScope.getByTestId('add-service-submit-button');
+  expect(submit).toBeDisabled();
+
+  // Type partial to trigger dropdown then select option
+  await user.type(nameSearchInput, 'Brake');
+  const option = await screen.findByTestId('service-op-option-op-brake');
+  await user.click(option);
+
+  // After selection, hours/price/category should auto-populate via effect
+  await user.type(formScope.getByLabelText(/notes/i), 'Replace pads');
+
+  // Submit should now be enabled (name is set via selection)
+  await waitFor(() => expect(submit).not.toBeDisabled());
+    await user.click(submit);
+
+    // After submit, form should hide and empty state should disappear
+    await waitFor(() => expect(screen.queryByTestId('add-service-form')).not.toBeInTheDocument());
+    expect(screen.queryByTestId('services-empty-state')).not.toBeInTheDocument();
+    // Services list should contain a staged item (by staged background class marker data attribute)
     await waitFor(() => {
-      expect(screen.getByTestId('drawer-open')).toBeInTheDocument();
-    });
-
-    // Click the services tab
-    const servicesTab = screen.getByTestId('tab-services');
-    await user.click(servicesTab);
-
-    // Wait for services content to load
-    await waitFor(() => {
-      expect(screen.getByTestId('add-service-button')).toBeInTheDocument();
-    });
-
-    // Click Add Service button
-    const addServiceButton = screen.getByTestId('add-service-button');
-    await user.click(addServiceButton);
-
-    // Wait for form to appear
-    await waitFor(() => {
-      expect(screen.getByTestId('add-service-form')).toBeInTheDocument();
-    });
-
-    // Start typing in the service name field
-    const serviceNameInput = screen.getByLabelText(/service name/i);
-    
-    // Clear the field first and then type
-    await user.clear(serviceNameInput);
-    await user.type(serviceNameInput, 'Oil Change');
-
-    // Add a small delay to ensure typing is complete
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Wait for all typing to complete and check field value
-    await waitFor(() => {
-      expect(serviceNameInput).toHaveValue('Oil Change');
-    }, { timeout: 3000 });
-
-    // Check if localStorage was updated
-    await waitFor(() => {
-      const storedData = localStorage.getItem(storageKey);
-      expect(storedData).toBeTruthy();
-    });
-    
-    const storedData = localStorage.getItem(storageKey);
-    const parsed = JSON.parse(storedData!);
-    expect(parsed.formState.name).toBe('Oil Change');
-    expect(parsed.isAdding).toBe(true);
-    expect(parsed.timestamp).toBeLessThanOrEqual(Date.now());
-
-    // Type in notes field
-    const notesInput = screen.getByLabelText(/notes/i);
-    await user.type(notesInput, 'Full synthetic oil');
-
-    // Wait for typing to complete and verify localStorage is updated with notes
-    await waitFor(() => {
-      expect(notesInput).toHaveValue('Full synthetic oil');
-    });
-    
-    const updatedStoredData = localStorage.getItem(storageKey);
-    const updatedParsed = JSON.parse(updatedStoredData!);
-    expect(updatedParsed.formState.name).toBe('Oil Change');
-    expect(updatedParsed.formState.notes).toBe('Full synthetic oil');
-  });
-
-  it('should restore form state from localStorage on component re-render', async () => {
-    // Pre-populate localStorage with form state
-    const formState = {
-      name: 'Brake Service',
-      notes: 'Replace brake pads',
-      estimated_hours: '2',
-      estimated_price: '150',
-      category: 'Safety'
-    };
-    
-    const storageData = {
-      formState,
-      isAdding: true,
-      timestamp: Date.now()
-    };
-    
-    localStorage.setItem(storageKey, JSON.stringify(storageData));
-
-    render(
-      <TestWrapper>
-        <AppointmentDrawer 
-          open={true} 
-          onClose={() => {}} 
-          id={appointmentId} 
-        />
-      </TestWrapper>
-    );
-
-    // Wait for drawer to load and switch to services tab
-    await waitFor(() => {
-      expect(screen.getByTestId('drawer-open')).toBeInTheDocument();
-    });
-
-    const servicesTab = screen.getByTestId('tab-services');
-    await userEvent.setup().click(servicesTab);
-
-    // Wait for services content and form to appear (should be restored from localStorage)
-    await waitFor(() => {
-      expect(screen.getByTestId('add-service-form')).toBeInTheDocument();
-    });
-
-    // Verify form fields are populated from localStorage
-    expect(screen.getByDisplayValue('Brake Service')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Replace brake pads')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('2')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('150')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Safety')).toBeInTheDocument();
-  });
-
-  it('should clear localStorage on successful form submission', async () => {
-    const user = userEvent.setup();
-
-    // Pre-populate localStorage
-    const storageData = {
-      formState: {
-        name: 'Test Service',
-        notes: 'Test notes',
-        estimated_hours: '1',
-        estimated_price: '100',
-        category: 'Test'
-      },
-      isAdding: true,
-      timestamp: Date.now()
-    };
-    localStorage.setItem(storageKey, JSON.stringify(storageData));
-
-    render(
-      <TestWrapper>
-        <AppointmentDrawer 
-          open={true} 
-          onClose={() => {}} 
-          id={appointmentId} 
-        />
-      </TestWrapper>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('drawer-open')).toBeInTheDocument();
-    });
-
-    const servicesTab = screen.getByTestId('tab-services');
-    await user.click(servicesTab);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('add-service-form')).toBeInTheDocument();
-    });
-
-    // Submit the form
-    const submitButton = screen.getByTestId('add-service-submit-button');
-    await user.click(submitButton);
-
-    // Wait for localStorage to be cleared after successful submission
-    await waitFor(() => {
-      expect(localStorage.getItem(storageKey)).toBeNull();
+      const items = screen.queryAllByTestId(/service-item-/i);
+      const hasBrake = items.some(el => /Brake Service/.test(el.textContent || ''));
+      expect(hasBrake).toBe(true);
     });
   });
 
-  it('should clear localStorage on form cancellation', async () => {
+  it('allows cancelling the form which resets fields and hides it', async () => {
     const user = userEvent.setup();
-
-    // Pre-populate localStorage
-    const storageData = {
-      formState: {
-        name: 'Test Service',
-        notes: 'Test notes',
-        estimated_hours: '',
-        estimated_price: '',
-        category: ''
-      },
-      isAdding: true,
-      timestamp: Date.now()
-    };
-    localStorage.setItem(storageKey, JSON.stringify(storageData));
-
     render(
       <TestWrapper>
-        <AppointmentDrawer 
-          open={true} 
-          onClose={() => {}} 
-          id={appointmentId} 
-        />
+        <AppointmentDrawer open onClose={() => {}} id={appointmentId} />
       </TestWrapper>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('drawer-open')).toBeInTheDocument();
-    });
+  await screen.findByTestId('drawer-open');
+    await user.click(screen.getByTestId('tab-services'));
 
-    const servicesTab = screen.getByTestId('tab-services');
-    await user.click(servicesTab);
+    const addBtn = await screen.findByTestId('add-service-button');
+    await user.click(addBtn);
+    const form = await screen.findByTestId('add-service-form');
+    const formScope = within(form);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('add-service-form')).toBeInTheDocument();
-    });
+  const searchInput = formScope.getAllByRole('textbox')[0];
+  await user.type(searchInput, 'Oil');
+  const oilOption = await screen.findByTestId('service-op-option-op-oil');
+  await user.click(oilOption);
+  // After selecting, the input should show the operation name
+  await waitFor(() => expect(searchInput).toHaveValue('Oil Change'));
 
-    // Cancel the form
-    const cancelButton = screen.getByTestId('add-service-cancel-button');
-    await user.click(cancelButton);
+    await user.click(formScope.getByTestId('add-service-cancel-button'));
+    await waitFor(() => expect(screen.queryByTestId('add-service-form')).not.toBeInTheDocument());
 
-    // Verify localStorage is cleared
-    expect(localStorage.getItem(storageKey)).toBeNull();
-  });
-
-  it('should handle localStorage errors gracefully', async () => {
-    // Mock localStorage to throw errors
-    const originalLocalStorage = window.localStorage;
-    const mockLocalStorage = {
-      setItem: vi.fn().mockImplementation(() => {
-        throw new Error('Storage quota exceeded');
-      }),
-      getItem: vi.fn().mockImplementation(() => {
-        throw new Error('Storage access denied');
-      }),
-      removeItem: vi.fn().mockImplementation(() => {
-        throw new Error('Storage access denied');
-      })
-    };
-    
-    // @ts-ignore
-    window.localStorage = mockLocalStorage;
-
-    const user = userEvent.setup();
-
-    render(
-      <TestWrapper>
-        <AppointmentDrawer 
-          open={true} 
-          onClose={() => {}} 
-          id={appointmentId} 
-        />
-      </TestWrapper>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('drawer-open')).toBeInTheDocument();
-    });
-
-    const servicesTab = screen.getByTestId('tab-services');
-    await user.click(servicesTab);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('add-service-button')).toBeInTheDocument();
-    });
-
-    const addServiceButton = screen.getByTestId('add-service-button');
-    await user.click(addServiceButton);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('add-service-form')).toBeInTheDocument();
-    });
-
-    // Type in form field - should not throw error even if localStorage fails
-    const serviceNameInput = screen.getByLabelText(/service name/i);
-    await user.type(serviceNameInput, 'Test Service');
-
-    // Component should still function normally
-    expect(serviceNameInput).toHaveValue('Test Service');
-
-    // Restore original localStorage
-    window.localStorage = originalLocalStorage;
+    // Re-open and ensure field reset
+    await user.click(await screen.findByTestId('add-service-button'));
+    const form2 = await screen.findByTestId('add-service-form');
+    const nameInput2 = within(form2).getAllByRole('textbox')[0];
+    expect(nameInput2).toHaveValue('');
   });
 });

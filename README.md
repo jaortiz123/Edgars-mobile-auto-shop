@@ -67,7 +67,72 @@ Our design system features:
 
 **📋 [View the complete cheat sheet, migration guide, and real-world examples →](docs/UI-Standards.md)**
 
-## 📋 Testing Framework
+## � State Management (Frontend)
+
+The legacy React context (AppointmentContext) has been fully replaced by a centralized **Zustand** store found in `frontend/src/state/useBoardStore.ts`.
+
+### Why the Change?
+
+- Simplifies data flow – one canonical source of truth for board columns & cards.
+- Enables fine‑grained subscription (components re-render only for the slices they use).
+- Supports optimistic updates with built‑in rollback for critical mutations.
+- Easier to test – store actions are pure async functions that can be invoked directly.
+
+### Core Concepts
+
+| Concern | Where | Notes |
+|---------|-------|-------|
+| Canonical board data | `useBoardStore` state (`columns`, `cardsById`, `cardIds`) | Populated by `useBoardStoreInitializer()` bridging existing React Query fetch. |
+| Derived / filtered cards | `selectFilteredCards` selector | Applies search, status, technician & date filters. |
+| Optimistic mutations | `moveAppointment`, `assignTechnician` | Apply local change, call API, rollback + error on failure. |
+| Filters | `filters` + `setFilters` | Pure client-side refinements. |
+| Devtools | Enabled in development only | Zustand devtools middleware auto-attached when `NODE_ENV=development`. |
+
+### Usage Pattern
+
+```tsx
+import { useBoardStore, selectFilteredCards } from '@/state/useBoardStore';
+
+// Subscribe to derived cards
+const cards = useBoardStore(selectFilteredCards);
+
+// Invoke an optimistic mutation
+const move = useBoardStore(s => s.moveAppointment);
+await move(cardId, { status: 'IN_PROGRESS', position: 0 });
+```
+
+### Initialization
+
+`<BoardStoreProvider>` (thin wrapper) mounts once near the application root and simply invokes `useBoardStoreInitializer(true)`, which:
+
+1. Wires React Query's existing `useBoardData()` results into the store.
+2. Mirrors loading & error state.
+3. Replaces store contents whenever fresh data arrives.
+
+### Testing
+
+Store success & rollback behaviours are covered by targeted Vitest suites:
+
+- `useBoardStore.move.success/rollback.test.ts`
+- `useBoardStore.assignTechnician.success/rollback.test.ts`
+
+These assert:
+
+- State shape updates correctly after optimistic apply.
+- API call contract (payload & endpoint) is respected.
+- Rollback restores previous snapshot on thrown error.
+
+### Devtools
+
+The store now auto-enables Zustand devtools only in development builds (no runtime overhead in production bundles). Use your browser's Redux/Zustand extension to inspect actions & state diffs.
+
+### Migration Status
+
+✅ AppointmentContext removed. All consumers should now rely on the store & selectors.
+
+If you still find `AppointmentProvider` references in feature branches, remove them and wrap your tree with `BoardStoreProvider` instead.
+
+## �📋 Testing Framework
 
 The project includes comprehensive testing infrastructure across multiple layers:
 

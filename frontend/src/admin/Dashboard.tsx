@@ -8,7 +8,6 @@ import QuickAddModal from '@/components/QuickAddModal/QuickAddModal';
 // import PersonalizedHeader from '@/components/admin/PersonalizedHeader';
 import ScheduleFilterToggle from '@/components/admin/ScheduleFilterToggle';
 import type { AppointmentFormData } from '@/components/admin/AppointmentFormModal';
-import { useAppointments } from '@/contexts/AppointmentContext';
 import { getViewMode, setViewMode, ViewMode } from '@lib/prefs';
 import StatusBoard from '@/components/admin/StatusBoard';
 import FloatingActionButton from '@/components/ui/FloatingActionButton';
@@ -118,7 +117,9 @@ interface ApiAppointmentResponse {
 }
 
 export function Dashboard() {
-  const { refreshTrigger, triggerRefresh, isRefreshing, setRefreshing } = useAppointments();
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const triggerRefresh = () => setRefreshTrigger(r => r + 1);
+  const [isRefreshing, setRefreshing] = useState(false);
   const [view, setView] = useState<ViewMode>(getViewMode());
   const [loading, setLoading] = useState(true);
   // Dashboard state

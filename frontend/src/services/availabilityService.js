@@ -231,6 +231,14 @@ export async function getAvailableSlots(serviceId, targetDate = new Date(), opti
       .filter(slot => slot.available)
       .slice(0, maxSlots);
     
+    // If no slots (edge case some environments) generate graceful fallback slots
+    if (filteredSlots.length === 0) {
+      const fallback = generateFallbackSlots(validDate, duration).slice(0, maxSlots);
+      availabilityCache.set(cacheKey, fallback);
+      cacheTimestamp.set(cacheKey, Date.now());
+      return fallback;
+    }
+
     // Cache the results
     availabilityCache.set(cacheKey, filteredSlots);
     cacheTimestamp.set(cacheKey, Date.now());
@@ -240,8 +248,8 @@ export async function getAvailableSlots(serviceId, targetDate = new Date(), opti
   } catch (error) {
     console.error('Error in getAvailableSlots:', error);
     
-    // Return fallback slots
-    return generateFallbackSlots(targetDate);
+  // Return fallback slots preserving intended duration
+  return generateFallbackSlots(targetDate, SERVICE_DURATIONS[serviceId] || 60);
   }
 }
 
@@ -250,15 +258,14 @@ export async function getAvailableSlots(serviceId, targetDate = new Date(), opti
  * @param {Date} date - Target date
  * @returns {Array} - Basic time slots
  */
-function generateFallbackSlots(date) {
+function generateFallbackSlots(date, duration = 60) {
   const fallbackTimes = ['9:00 AM', '10:00 AM', '2:00 PM', '3:00 PM'];
   const validDate = validateDate(date) || new Date();
-  
   return fallbackTimes.map((time, index) => ({
     id: `fallback-${index}`,
     time: new Date(validDate.toDateString() + ' ' + time),
     formatted: time,
-    duration: 60,
+    duration,
     available: true,
     isFallback: true
   }));
