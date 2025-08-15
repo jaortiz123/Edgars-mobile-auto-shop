@@ -7,7 +7,7 @@ import type { AppointmentStatus } from '@/types/models';
 import { format } from 'date-fns';
 import CardCustomizationModal from './CardCustomizationModal';
 import { BoardFilterProvider, useBoardFilters } from '@/contexts/BoardFilterContext';
-import { BoardFilterBar } from './BoardFilterBar';
+import { BoardFilterPopover } from './BoardFilterPopover';
 
 function InnerStatusBoard({ onOpen, minimalHero }: { onOpen: (id: string) => void; minimalHero?: boolean }) {
   const { columns, cards, optimisticMove, triggerRefresh, loading, boardError, isFetchingBoard } = useAppointments();
@@ -80,7 +80,7 @@ function InnerStatusBoard({ onOpen, minimalHero }: { onOpen: (id: string) => voi
             </div>
           </div>
         </div>
-        <div>
+  <div>
           {overdueAppointments.length > 0 ? (
             <div className="nb-surface nb-border p-4 urgent-pulse">
               <div className="flex items-center gap-3">
@@ -106,18 +106,27 @@ function InnerStatusBoard({ onOpen, minimalHero }: { onOpen: (id: string) => voi
           ) : (
             <div className="nb-surface nb-border p-4">You're caught up!</div>
           )}
-        </div>
-  <CardCustomizationModal open={showCustomize} onClose={() => setShowCustomize(false)} />
+  </div>
       </div>
     );
   };
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="overflow-x-auto pb-4 nb-board-bg" role="region" aria-label="Status Board">
-        <div className="px-4 pt-3">
-          <BoardFilterBar />
-        </div>
+      <div className="overflow-x-auto pb-4 nb-board-bg relative" role="region" aria-label="Status Board">
+  {minimalHero && (
+          <div className="absolute top-2 right-4 z-20 flex items-center gap-2">
+            <BoardFilterPopover />
+            <button
+              title="Customize cards"
+              aria-label="Customize cards"
+              onClick={() => setShowCustomize(true)}
+              className="nb-chip flex items-center justify-center"
+              data-variant="primary"
+            >⚙️</button>
+          </div>
+        )}
+  <CardCustomizationModal open={showCustomize} onClose={() => setShowCustomize(false)} />
         {boardError && (
           <div className="mx-4 mt-4 mb-2 border border-danger-300 bg-danger-50 text-danger-800 px-4 py-3 rounded-md flex items-start gap-3">
             <span>⚠️</span>
@@ -132,16 +141,7 @@ function InnerStatusBoard({ onOpen, minimalHero }: { onOpen: (id: string) => voi
           </div>
         )}
         {minimalHero ? (
-          <div className="flex justify-end pr-4 pt-2">
-            <button
-              title="Customize cards"
-              aria-label="Customize cards"
-              onClick={() => setShowCustomize(true)}
-              className="nb-chip"
-              data-variant="primary"
-            >⚙️</button>
-            <CardCustomizationModal open={showCustomize} onClose={() => setShowCustomize(false)} />
-          </div>
+          <div className="h-0" aria-hidden />
         ) : <TodaysFocusHero />}
         <div className="nb-board-grid mt-4">
           {showInitialSkeleton ? (

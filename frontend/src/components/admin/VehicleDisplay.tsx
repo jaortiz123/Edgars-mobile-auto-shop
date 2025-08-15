@@ -17,7 +17,7 @@ export const VehicleDisplay = ({
   const final = label || vehicle || 'Vehicle';
   return (
     <div className="text-sm text-neutral-600">
-      <span>🚗 {final}</span>
+      <span>{final}</span>
       {typeof mileage === 'number' && (
         <span className="ml-2 text-neutral-500">• {mileage.toLocaleString()} mi</span>
       )}

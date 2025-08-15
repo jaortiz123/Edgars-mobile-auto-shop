@@ -131,8 +131,8 @@ def pg_container():
 
 
 @pytest.fixture()
-def client():
-    """Flask test client fixture."""
+def client(pg_container):  # depend on pg_container so env vars & DB are ready
+    """Flask test client fixture using real Postgres (no in-memory fallback)."""
     flask_app.testing = True
     flask_app.config["PROPAGATE_EXCEPTIONS"] = False
     with flask_app.test_client() as c:

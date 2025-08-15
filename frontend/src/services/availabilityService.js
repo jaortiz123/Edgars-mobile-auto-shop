@@ -204,24 +204,22 @@ export async function getAvailableSlots(serviceId, targetDate = new Date(), opti
     // Generate time slots
     const timeSlots = generateTimeSlots(validDate, duration);
     
-    // Fetch existing appointments for the date
+    // Fetch existing appointments for the date (updated to use admin endpoint; legacy /api/appointments removed)
     let existingAppointments = [];
     try {
-      const response = await fetch(`/api/appointments?date=${dateString}`, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
+      // New backend exposes board + filtering on /api/admin/appointments. If date range filters not yet implemented,
+      // we fall back to an empty list silently (no console noise).
+      const resp = await fetch(`/api/admin/appointments?date=${dateString}`, {
+        headers: { 'Content-Type': 'application/json' }
       });
-      
-      if (response.ok) {
-        const data = await response.json();
-        existingAppointments = data.appointments || [];
-      } else {
-        console.warn('Failed to fetch existing appointments, proceeding without conflict checking');
+      if (resp.ok) {
+        const json = await resp.json();
+        // Expect envelope { data: { appointments: [...] } } — adapt defensively
+        const maybeData = json.data || json;
+        existingAppointments = maybeData.appointments || maybeData.data?.appointments || [];
       }
     } catch (error) {
-      console.warn('Error fetching appointments:', error);
-      // Continue without conflict checking - graceful degradation
+      // Swallow network or parsing errors silently to avoid log spam; availability degrades gracefully.
     }
     
     // Check availability

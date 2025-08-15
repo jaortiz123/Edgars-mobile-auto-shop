@@ -94,28 +94,9 @@ export async function createAppointment(appointmentData: AppointmentPayload): Pr
  * @returns An array of appointments.
  * @throws An error with a user-friendly message if the request fails.
  */
-export async function getAppointments(): Promise<AdminAppointment[]> {
-  const response = await fetch(`${API_BASE_URL}/api/appointments`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    let errorMessage = 'Failed to fetch appointments.';
-    try {
-      const errorBody = await response.json();
-      errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
-    } catch {
-      errorMessage = await response.text();
-    }
-    throw new Error(errorMessage);
-  }
-
-  const data = await response.json();
-  return data.appointments || [];
-}
+// REMOVED: getAppointments() hitting legacy /api/appointments endpoint (404 in new backend).
+// If needed for archived tests, prefer getAdminAppointments() or add a compatibility shim there.
+// export async function getAppointments(): Promise<AdminAppointment[]> { ... }
 
 /**
  * Fetches admin appointments from the proper admin endpoint.

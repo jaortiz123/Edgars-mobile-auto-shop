@@ -3,6 +3,8 @@ import * as api from '@/lib/api';
 import type { BoardCard, BoardColumn, DashboardStats, AppointmentStatus } from '@/types/models';
 import { resolveHeadline, ServiceDefinition } from '@/types/serviceCatalog';
 import { useServiceCatalog } from './useServiceCatalog';
+import { useServiceOperations } from './useServiceOperations';
+import type { ServiceOperation } from '@/types/models';
 
 // Query Keys
 export const qk = {
@@ -11,11 +13,20 @@ export const qk = {
 };
 
 // Transform cards to enrich headline if catalog data present
-function enrichCards(cards: BoardCard[], byId: Record<string, ServiceDefinition>): BoardCard[] {
+function enrichCards(
+  cards: BoardCard[],
+  catalogById: Record<string, ServiceDefinition>,
+  opsById: Record<string, ServiceOperation>
+): BoardCard[] {
   return cards.map(c => {
-    if (c.headline) return c; // already enriched
+    if (c.headline) return c;
+    // If backend provided primaryOperationId, use operation name directly
+    if (c.primaryOperationId) {
+      const op = opsById[c.primaryOperationId];
+      if (op) return { ...c, headline: op.name };
+    }
     if (c.primaryOperation) {
-      const def = byId[c.primaryOperation.serviceId];
+      const def = catalogById[c.primaryOperation.serviceId];
       const headline = resolveHeadline(c.primaryOperation, def, c.servicesSummary, (c.additionalOperations||[]).length);
       return { ...c, headline };
     }
@@ -37,6 +48,7 @@ export interface UseBoardResult {
 export function useBoard(): UseBoardResult {
   const qc = useQueryClient();
   const { byId } = useServiceCatalog();
+  const { byId: opsById } = useServiceOperations();
 
   const boardQuery = useQuery<{ columns: BoardColumn[]; cards: BoardCard[] }>({
     queryKey: qk.board,
@@ -44,7 +56,7 @@ export function useBoard(): UseBoardResult {
     staleTime: 15_000,
     select: (data) => ({
       columns: data.columns,
-      cards: enrichCards(data.cards, byId),
+      cards: enrichCards(data.cards, byId, opsById),
     }),
   });
 

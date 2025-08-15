@@ -130,6 +130,10 @@ docker-compose up -d db redis
 # Wait for database to be ready
 wait_for_service "postgresql" "PostgreSQL" || exit 1
 
+# Run raw SQL migrations (idempotent) before starting backend
+echo -e "${BLUE}🧱 Applying raw SQL migrations (idempotent)...${NC}"
+python3 backend/run_sql_migrations.py || { echo -e "${RED}❌ Raw SQL migrations failed${NC}"; exit 1; }
+
 # Kill any existing backend processes on port 3001
 if port_in_use 3001; then
     echo -e "${YELLOW}🔄 Stopping existing backend process...${NC}"

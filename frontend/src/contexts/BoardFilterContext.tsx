@@ -15,6 +15,7 @@ interface BoardFilterContextValue {
   clearFilters: () => void;
   applyFilters: (cards: BoardCard[]) => BoardCard[];
   filtersActive: boolean;
+  activeCount: number;
 }
 
 const BoardFilterContext = createContext<BoardFilterContextValue | undefined>(undefined);
@@ -48,7 +49,16 @@ export function BoardFilterProvider({ children }: { children: ReactNode }) {
     return !!(filters.search.trim() || (filters.statuses && filters.statuses.length) || filters.techs.length || filters.blockers.length);
   }, [filters]);
 
-  const value = useMemo<BoardFilterContextValue>(() => ({ filters, setFilters, clearFilters, applyFilters, filtersActive }), [filters, applyFilters, filtersActive]);
+  const activeCount = useMemo(() => {
+    let count = 0;
+    if (filters.search.trim()) count += 1; // treat search as one
+    if (filters.statuses && filters.statuses.length) count += filters.statuses.length;
+    if (filters.techs.length) count += filters.techs.length;
+    if (filters.blockers.length) count += filters.blockers.length;
+    return count;
+  }, [filters]);
+
+  const value = useMemo<BoardFilterContextValue>(() => ({ filters, setFilters, clearFilters, applyFilters, filtersActive, activeCount }), [filters, applyFilters, filtersActive, activeCount]);
 
   return <BoardFilterContext.Provider value={value}>{children}</BoardFilterContext.Provider>;
 }

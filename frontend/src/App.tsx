@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Suspense, lazy } from 'react';
 import { AuthProvider } from './contexts/AuthContextRobust';
 import { ToastProvider } from './components/ui/Toast';
@@ -28,18 +27,10 @@ const AdminAppointments = lazy(() => import('./pages/AdminAppointments'));
 const CustomersPage = lazy(() => import('./pages/admin/CustomersPage'));
 
 // --- React Query Client ---
-const queryClient = new QueryClient();
-
-interface AppProps {
-  queryClient?: QueryClient;
-}
-
-export default function App({ queryClient: injectedClient }: AppProps = {}) {
-  const client = injectedClient || queryClient;
+export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <QueryClientProvider client={client}>
           <BrowserRouter>
           <Routes>
             {/* === Public Routes === */}
@@ -85,7 +76,6 @@ export default function App({ queryClient: injectedClient }: AppProps = {}) {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-      </QueryClientProvider>
       </ToastProvider>
     </AuthProvider>
   );

@@ -37,7 +37,7 @@ export default function StatusColumn({
   drop(columnRef);
 
   return (
-    <div ref={columnRef} className="w-64 flex-shrink-0 nb-column" data-column={column.key}>
+  <div ref={columnRef} className="nb-column" data-column={column.key}>
     <div className="nb-column-header">
   <h3 className="font-bold flex items-center justify-center gap-2 w-full text-center">
           {column.title}

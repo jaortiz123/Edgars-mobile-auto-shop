@@ -133,12 +133,7 @@ export function Dashboard() {
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const openDrawer = (id: string) => setDrawerId(id);
   const closeDrawer = () => setDrawerId(null);
-  const handleDeletedFromDrawer = (deletedId: string) => {
-    // Remove from local state so it disappears from the schedule immediately
-    setAppointments(prev => prev.filter(a => a.id !== deletedId));
-    // Soft refresh to ensure any derived state (next appt, slots) updates
-    loadDashboardData({ soft: true });
-  };
+  // Appointment deletion now triggers global board refresh internally; local pruning handler removed.
 
   const handleRescheduledFromDrawer = (apptId: string, startISO: string) => {
     // Update local list so it moves to the new time immediately
@@ -367,9 +362,11 @@ export function Dashboard() {
         .trim();
       const vehicleNote = vehicleBits ? `Vehicle: ${vehicleBits}.` : '';
 
-      const appointmentData = {
-        customer_id: formData.customerName,
-        service: formData.serviceType,
+  // Prefer catalog service name; fallback to custom or legacy field
+  const chosenServiceName = formData.serviceType || 'Service';
+  const appointmentData = {
+    customer_id: formData.customerName,
+    service: chosenServiceName,
         requested_time: requestedTime,
         customer_phone: formData.customerPhone || '',
         customer_email: formData.customerEmail || '',
@@ -381,6 +378,8 @@ export function Dashboard() {
   vehicle_year: formData.vehicleYear || undefined,
   vehicle_make: formData.vehicleMake || undefined,
   vehicle_model: formData.vehicleModel || undefined,
+  // Service catalog linkage
+  primary_operation_id: formData.primaryOperationId || undefined,
       };
 
       console.log('📤 Sending appointment data:', appointmentData);
@@ -395,7 +394,7 @@ export function Dashboard() {
             id: Date.now().toString(),
             customer: formData.customerName,
             vehicle: vehicleBits || '—',
-            service: formData.serviceType,
+            service: chosenServiceName,
             timeSlot: formData.appointmentTime || '12:00 PM',
             dateTime: formData.appointmentDate && formData.appointmentTime ? new Date(`${formData.appointmentDate}T${formData.appointmentTime}`) : new Date(),
             status: formData.appointmentType === 'emergency' ? 'in-progress' : 'scheduled',
@@ -753,7 +752,7 @@ export function Dashboard() {
        />
 
       {/* Appointment Details Drawer */}
-  <AppointmentDrawer open={!!drawerId} id={drawerId} onClose={closeDrawer} onDeleted={handleDeletedFromDrawer} onRescheduled={handleRescheduledFromDrawer} />
+  <AppointmentDrawer open={!!drawerId} id={drawerId} onClose={closeDrawer} onRescheduled={handleRescheduledFromDrawer} />
     </>
   ); // close return of Dashboard
 } // close Dashboard function
