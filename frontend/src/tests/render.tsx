@@ -3,15 +3,15 @@ import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '@/components/ui/Toast';
 import { AuthProvider } from '@/contexts/AuthContext';
-import { AppointmentProvider } from '@/contexts/AppointmentContext';
+import { BoardStoreProvider } from '@/state/BoardStoreProvider';
 
 export function appRender(ui: React.ReactElement) {
   return render(
     <ToastProvider>
       <AuthProvider>
-        <AppointmentProvider>
+        <BoardStoreProvider>
           <MemoryRouter>{ui}</MemoryRouter>
-        </AppointmentProvider>
+        </BoardStoreProvider>
       </AuthProvider>
     </ToastProvider>
   );

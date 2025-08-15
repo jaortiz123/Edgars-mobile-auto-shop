@@ -37,7 +37,7 @@ export default function StatusColumn({
   drop(columnRef);
 
   return (
-  <div ref={columnRef} className="nb-column" data-column={column.key}>
+  <div ref={columnRef} className="nb-column" data-column={column.key} data-status-key={column.key}>
     <div className="nb-column-header">
   <h3 className="font-bold flex items-center justify-center gap-2 w-full text-center">
           {column.title}
@@ -53,12 +53,14 @@ export default function StatusColumn({
           // @ts-expect-error internal marker injected upstream
           const isFirstGlobal = Boolean(c.__isFirstGlobal);
           return (
-            <EnhancedAppointmentCard
-              key={c.id}
-              card={c}
-              onOpen={onOpen}
-              isFirst={isFirstGlobal}
-            />
+            <div data-appointment-id={c.id}>
+              <EnhancedAppointmentCard
+                key={c.id}
+                card={c}
+                onOpen={onOpen}
+                isFirst={isFirstGlobal}
+              />
+            </div>
           );
         })}
         {cards.length === 0 && (

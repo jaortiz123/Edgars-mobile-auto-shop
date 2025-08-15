@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import type { BoardCard } from '@/types/models';
 import { WorkflowIntelligence } from '@/utils/workflowIntelligence';
 import { updateAppointmentStatus, moveAppointment, deleteAppointment, patchAppointment } from '@/lib/api';
-import { useAppointments } from '@/contexts/AppointmentContext';
 
 interface QuickAction {
   label: string;
@@ -15,7 +14,7 @@ interface QuickAction {
 export const ContextualQuickActions = ({ card }: { card: BoardCard }) => {
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
-  const { refreshBoard } = useAppointments();
+  const refreshBoard = () => { /* board data refresh handled externally; no-op */ };
 
   const getSmartActions = (): QuickAction[] => {
     const actions: QuickAction[] = [];

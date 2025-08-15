@@ -1,9 +1,12 @@
 import React from 'react';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
 import { CardPreferencesProvider } from '@/contexts/CardPreferencesContext';
 import CardCustomizationModal from '@/components/admin/CardCustomizationModal';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 
 // Helper to open modal with provider
 function setup(initialOrder?: string[]) {
@@ -12,10 +15,15 @@ function setup(initialOrder?: string[]) {
   } else {
     localStorage.removeItem('adm.cardPrefs.v1.order');
   }
+  const qc = new QueryClient();
   return render(
-    <CardPreferencesProvider>
-      <CardCustomizationModal open onClose={() => {}} />
-    </CardPreferencesProvider>
+    <QueryClientProvider client={qc}>
+      <DndProvider backend={HTML5Backend}>
+        <CardPreferencesProvider>
+          <CardCustomizationModal open onClose={() => {}} />
+        </CardPreferencesProvider>
+      </DndProvider>
+    </QueryClientProvider>
   );
 }
 

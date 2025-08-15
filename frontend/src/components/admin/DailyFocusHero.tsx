@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAppointments } from '@/contexts/AppointmentContext';
+import { useBoardStore } from '@/state/useBoardStore';
 import { getGreeting } from '@/lib/time';
 import { Skeleton } from '@/components/ui/Skeleton';
 import NextActionCard from './NextActionCard';
@@ -26,7 +26,15 @@ interface DailyFocusHeroProps {
 }
 
 export default function DailyFocusHero({ nextAppointment, appointments }: DailyFocusHeroProps) {
-  const { stats } = useAppointments();
+  const cards = useBoardStore(s => s.cardIds.map(id => s.cardsById[id]));
+  interface MinimalStats { unpaidTotal: number; scheduled: number; inProgress: number; ready: number; completed: number; }
+  const stats: MinimalStats | null = cards.length ? {
+    unpaidTotal: 0,
+    scheduled: cards.filter(c => c.status === 'SCHEDULED').length,
+    inProgress: cards.filter(c => c.status === 'IN_PROGRESS').length,
+    ready: cards.filter(c => c.status === 'READY').length,
+    completed: cards.filter(c => c.status === 'COMPLETED').length,
+  } : null;
   const [greeting, setGreeting] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
 

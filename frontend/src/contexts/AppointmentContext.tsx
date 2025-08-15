@@ -29,7 +29,7 @@ interface AppointmentState {
 const Ctx = createContext<AppointmentState | undefined>(undefined);
 
 export function AppointmentProvider({ children }: { children: React.ReactNode }) {
-  const { boardQuery, statsQuery, moveMutation, refresh, boardError, statsError, isFetchingBoard, isFetchingStats } = useBoard();
+  const { boardQuery, statsQuery, refresh, boardError, statsError, isFetchingBoard, isFetchingStats } = useBoard();
   const loading = boardQuery.isLoading;
   const [view, setViewState] = useState<'calendar' | 'board'>(() => {
     try {
@@ -62,9 +62,9 @@ export function AppointmentProvider({ children }: { children: React.ReactNode })
   const refreshBoard = useCallback(async () => { refresh(); }, [refresh]);
   const refreshStats = useCallback(async () => { refresh(); }, [refresh]);
 
-  const optimisticMove: AppointmentState['optimisticMove'] = useCallback(async (id, next) => {
-    moveMutation.mutate({ id, status: next.status, position: next.position });
-  }, [moveMutation]);
+  const optimisticMove: AppointmentState['optimisticMove'] = useCallback(async () => {
+    console.warn('AppointmentContext.optimisticMove is deprecated after store migration. Use store actions instead.');
+  }, []);
 
   useEffect(() => { /* initial fetch handled by React Query automatically */ }, []);
 
