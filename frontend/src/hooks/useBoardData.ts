@@ -5,6 +5,7 @@ import { resolveHeadline, ServiceDefinition } from '@/types/serviceCatalog';
 import { useServiceCatalog } from './useServiceCatalog';
 import { useServiceOperations } from './useServiceOperations';
 import type { ServiceOperation } from '@/types/models';
+import { useBoardServerFilters } from '@/state/boardServerFilters';
 
 // Query Keys
 export const qk = {
@@ -49,10 +50,12 @@ export function useBoard(): UseBoardResult {
   const qc = useQueryClient();
   const { byId } = useServiceCatalog();
   const { byId: opsById } = useServiceOperations();
+  const { techId: serverTechId } = useBoardServerFilters();
 
   const boardQuery = useQuery<{ columns: BoardColumn[]; cards: BoardCard[] }>({
-    queryKey: qk.board,
-    queryFn: () => api.getBoard({}),
+    // include server filter discriminator in key so caches are segmented per tech
+  queryKey: [...qk.board, serverTechId || 'all'],
+    queryFn: () => api.getBoard(serverTechId ? { techId: serverTechId } : {}),
     staleTime: 15_000,
     select: (data) => ({
       columns: data.columns,

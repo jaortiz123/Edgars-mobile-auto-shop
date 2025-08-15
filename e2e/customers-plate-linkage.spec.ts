@@ -52,7 +52,8 @@ test('appointment creation links vehicle by plate and is searchable on Customers
   });
   expect(res.status(), 'create appointment status').toBe(201);
   const body = await res.json();
-  expect(body?.data?.id, 'created appointment id').toBeTruthy();
+  const createdId = body?.data?.id || body?.data?.appointment?.id;
+  expect(createdId, 'created appointment id').toBeTruthy();
 
   // Open Customers page and search by plate
   await page.goto('http://localhost:5173/admin/customers');

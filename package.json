@@ -33,6 +33,7 @@
   "devDependencies": {
     "@playwright/test": "^1.53.1",
     "@vitest/ui": "^3.2.4",
+  "@types/node": "^20.11.0",
   "cross-env": "^7.0.3",
     "jest-axe": "^10.0.0",
     "monocart-reporter": "^2.9.21",

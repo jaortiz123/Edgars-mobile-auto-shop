@@ -2,7 +2,9 @@ import React from 'react';
 import { useBoardFilters } from '@/contexts/BoardFilterContext';
 import type { AppointmentStatus } from '@/types/models';
 import type { BlockerCode } from '@/types/serviceCatalog';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, Users } from 'lucide-react';
+import { useTechnicians } from '@/hooks/useTechnicians';
+// server tech filter syncing handled in context now
 
 // Status & blocker option sets
 const STATUS_OPTIONS: AppointmentStatus[] = ['SCHEDULED','IN_PROGRESS','READY','COMPLETED','NO_SHOW','CANCELED'];
@@ -23,12 +25,19 @@ function Chip({ active, onClick, children, tone }: { active: boolean; onClick: (
 
 export const BoardFilterBar: React.FC = () => {
   const { filters, setFilters, clearFilters, filtersActive } = useBoardFilters();
+  const { data: technicians = [], isLoading: techLoading } = useTechnicians();
 
   const toggleStatus = (s: AppointmentStatus) => {
     setFilters({ statuses: (filters.statuses || []).includes(s) ? (filters.statuses || []).filter(x => x !== s) : [ ...(filters.statuses || []), s ] });
   };
   const toggleBlocker = (b: BlockerCode) => {
     setFilters({ blockers: filters.blockers.includes(b) ? filters.blockers.filter(x => x !== b) : [ ...filters.blockers, b ] });
+  };
+  // Single-select tech server filter; second click clears.
+  const currentTechId = filters.techs[0];
+  const toggleTech = (id: string) => {
+    const next = currentTechId === id ? [] : [id];
+    setFilters({ techs: next });
   };
 
   return (
@@ -87,6 +96,26 @@ export const BoardFilterBar: React.FC = () => {
                 </Chip>
               );
             })}
+          </div>
+        </div>
+        <div className="flex-1 min-w-[240px]">
+          <div className="flex items-center gap-1 mb-2">
+            <Users size={14} className="text-neutral-400" />
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-400">Technicians</p>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {techLoading && <span className="text-[11px] opacity-70">Loading…</span>}
+            {!techLoading && technicians.map(t => {
+              const active = currentTechId === t.id;
+              return (
+                <Chip key={t.id} active={active} onClick={() => toggleTech(t.id)} tone="slate">
+                  {t.initials || t.name}
+                </Chip>
+              );
+            })}
+            {!techLoading && technicians.length === 0 && (
+              <span className="text-[11px] opacity-50">No technicians</span>
+            )}
           </div>
         </div>
       </div>

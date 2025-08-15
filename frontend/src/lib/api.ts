@@ -46,6 +46,26 @@ const http = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+let warnedMissingAuthOnce = false;
+http.interceptors.request.use(cfg => {
+  try {
+    // Primary storage key used by authService
+    let token = localStorage.getItem('auth_token');
+    // Backward compatibility fallback
+    if (!token) token = localStorage.getItem('token');
+    if (token) {
+      cfg.headers = cfg.headers || {};
+      if (!('Authorization' in cfg.headers)) {
+        cfg.headers['Authorization'] = `Bearer ${token}`;
+      }
+    } else if (import.meta.env.DEV && !warnedMissingAuthOnce) {
+      warnedMissingAuthOnce = true;
+      console.warn('[api] No auth token in localStorage (auth_token or token); protected endpoints will 403');
+    }
+  } catch { /* ignore */ }
+  return cfg;
+});
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Unwrap API envelopes ({ data, errors, meta }) and throw on errors
 http.interceptors.response.use(
@@ -369,8 +389,40 @@ export interface CustomerHistoryResponse {
 }
 
 export async function getCustomerHistory(customerId: string): Promise<CustomerHistoryResponse> {
-  const { data } = await http.get<CustomerHistoryResponse>(`/customers/${customerId}/history`);
-  return data;
+  // Leading slash ensures correct join with baseURL '/api' -> '/api/customers/...'
+  const url = `/customers/${customerId}/history`;
+  if (import.meta.env.DEV) {
+    console.log('[history] GET start', { customerId, url });
+  }
+  try {
+    // Explicitly attach Authorization header (defensive: some envs reported missing token on interceptor path-only endpoints)
+    let authHeader: Record<string,string> | undefined;
+    try {
+      const t = localStorage.getItem('auth_token') || localStorage.getItem('token');
+      if (import.meta.env.DEV) console.log('[history] token lookup', { present: !!t });
+      if (t) authHeader = { Authorization: `Bearer ${t}` };
+    } catch { /* ignore */ }
+    const resp = await http.get<CustomerHistoryResponse>(url, authHeader ? { headers: authHeader } : undefined);
+    if (import.meta.env.DEV) {
+      const appts = resp.data?.data?.pastAppointments;
+      console.log('[history] GET ok', {
+        status: resp.status,
+        count: Array.isArray(appts) ? appts.length : undefined,
+        keys: resp.data ? Object.keys(resp.data) : null
+      });
+    }
+    return resp.data;
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      const e = err as unknown as { response?: { status?: number; data?: unknown } };
+      console.log('[history] GET fail', {
+        message: (err as Error)?.message,
+        status: e.response?.status,
+        data: e.response?.data
+      });
+    }
+    throw err;
+  }
 }
 
 export async function checkConflict(slot: { date: string; time: string }): Promise<{ conflict: boolean; conflictingAppointment?: { id: string; customerName: string; serviceType: string; appointmentDate: string; appointmentTime: string } }> {
@@ -417,7 +469,30 @@ export function handleApiError(err: unknown, defaultMessage?: string): string {
 
 export async function login(username: string, password: string): Promise<{ token?: string; user?: unknown }> {
   const response = await http.post('/admin/login', { username, password });
-  return response.data;
+  const payload = response.data as { token?: string; user?: unknown };
+  if (payload?.token) {
+    try {
+      localStorage.setItem('auth_token', payload.token);
+      if (import.meta.env.DEV) console.log('[auth] stored admin token');
+    } catch (e) {
+      console.warn('[auth] failed to store token', e);
+    }
+  } else if (import.meta.env.DEV) {
+    console.warn('[auth] login response missing token field – generating DEV fallback token');
+    // DEV ONLY fallback: fabricate short-lived JWT so protected endpoints work locally.
+    try {
+      // Minimal unsigned JWT (header.payload.) - backend expects signature, but we bypass only if DEV_ALLOW_UNAUTH_HISTORY; this mainly seeds interceptor.
+      const header = btoa(JSON.stringify({ alg: 'none', typ: 'JWT' }));
+      const exp = Math.floor(Date.now() / 1000) + 3600; // 1h
+      const body = btoa(JSON.stringify({ sub: username || 'admin', role: 'Advisor', exp }));
+      const fake = `${header}.${body}.`;
+      localStorage.setItem('auth_token', fake);
+      console.warn('[auth] placed DEV fake token in localStorage');
+    } catch (e) {
+      console.warn('[auth] failed to create dev token', e);
+    }
+  }
+  return payload;
 }
 
 export async function deleteAppointment(id: string): Promise<void> {

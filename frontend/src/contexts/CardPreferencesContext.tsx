@@ -21,6 +21,9 @@ export interface CardPreferencesState {
   reset: () => void;
   density: 'standard' | 'condensed';
   setDensity: (d: 'standard' | 'condensed') => void;
+  order: CardFieldKey[];
+  setOrder: (next: CardFieldKey[]) => void;
+  moveField: (from: number, to: number) => void;
 }
 
 const DEFAULTS: Record<CardFieldKey, boolean> = {
@@ -40,6 +43,23 @@ const DEFAULTS: Record<CardFieldKey, boolean> = {
 };
 
 const LS_KEY = 'adm.cardPrefs.v1';
+const LS_KEY_ORDER = LS_KEY + '.order';
+
+const DEFAULT_ORDER: CardFieldKey[] = [
+  'statusBadges',
+  'vehicle',
+  'customer',
+  'tech',
+  'timeChip',
+  'onPremise',
+  'promise',
+  'repeat',
+  'lastService',
+  'workspacePref',
+  'history',
+  'customerNotes',
+  'price'
+];
 
 const Ctx = createContext<CardPreferencesState | undefined>(undefined);
 
@@ -61,6 +81,20 @@ export function CardPreferencesProvider({ children }: { children: React.ReactNod
     } catch {/* ignore */}
     return 'standard';
   });
+  const [order, setOrderState] = useState<CardFieldKey[]>(() => {
+    try {
+      const raw = localStorage.getItem(LS_KEY_ORDER);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.every(k => (DEFAULT_ORDER as string[]).includes(k))) {
+          // Ensure all keys present (append any new ones at end)
+          const missing = DEFAULT_ORDER.filter(k => !parsed.includes(k));
+          return [...parsed, ...missing];
+        }
+      }
+    } catch {/* ignore */}
+    return DEFAULT_ORDER;
+  });
 
   useEffect(() => {
     try { localStorage.setItem(LS_KEY, JSON.stringify(enabled)); } catch {/* ignore */}
@@ -68,6 +102,9 @@ export function CardPreferencesProvider({ children }: { children: React.ReactNod
   useEffect(() => {
     try { localStorage.setItem(LS_KEY + '.density', density); } catch {/* ignore */}
   }, [density]);
+  useEffect(() => {
+    try { localStorage.setItem(LS_KEY_ORDER, JSON.stringify(order)); } catch {/* ignore */}
+  }, [order]);
 
   // Reflect density class on root admin wrapper for CSS hooks
   useEffect(() => {
@@ -80,10 +117,23 @@ export function CardPreferencesProvider({ children }: { children: React.ReactNod
     setEnabledState(prev => ({ ...prev, [key]: value }));
   }, []);
   const setDensity = useCallback((d: 'standard' | 'condensed') => setDensityState(d), []);
+  const setOrder = useCallback((next: CardFieldKey[]) => setOrderState(next), []);
+  const moveField = useCallback((from: number, to: number) => {
+    setOrderState(prev => {
+      if (from === to || from < 0 || to < 0 || from >= prev.length || to >= prev.length) return prev;
+      const copy = [...prev];
+      const [item] = copy.splice(from, 1);
+      copy.splice(to, 0, item);
+      return copy;
+    });
+  }, []);
 
-  const reset = useCallback(() => setEnabledState(DEFAULTS), []);
+  const reset = useCallback(() => {
+    setEnabledState(DEFAULTS);
+    setOrderState(DEFAULT_ORDER);
+  }, []);
 
-  const value = useMemo(() => ({ enabled, setEnabled, reset, density, setDensity }), [enabled, setEnabled, reset, density, setDensity]);
+  const value = useMemo(() => ({ enabled, setEnabled, reset, density, setDensity, order, setOrder, moveField }), [enabled, setEnabled, reset, density, setDensity, order, setOrder, moveField]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

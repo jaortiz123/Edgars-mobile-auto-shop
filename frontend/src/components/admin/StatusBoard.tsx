@@ -113,7 +113,13 @@ function InnerStatusBoard({ onOpen, minimalHero }: { onOpen: (id: string) => voi
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="overflow-x-auto pb-4 nb-board-bg relative" role="region" aria-label="Status Board">
+      <div
+        className="overflow-x-auto pb-4 nb-board-bg relative"
+        role="region"
+        aria-label="Status Board"
+        data-board-ready={!showInitialSkeleton && cards.length > 0 ? '1' : undefined}
+        data-first-apt-id={!showInitialSkeleton && cards.length > 0 ? cards[0]?.id : undefined}
+      >
   {minimalHero && (
           <div className="absolute top-2 right-4 z-20 flex items-center gap-2">
             <BoardFilterPopover />
@@ -155,23 +161,32 @@ function InnerStatusBoard({ onOpen, minimalHero }: { onOpen: (id: string) => voi
               </div>
             ))
           ) : (
-            columns.map((col) => {
-              const all = byStatus.get(col.key) ?? [];
-              const filtered = filtersActive ? applyFilters(all) : all;
-              return (
-                <StatusColumn
-                  key={col.key}
-                  column={col}
-                  cards={filtered}
-                  totalCount={all.length}
-                  filteredCount={filtered.length}
-                  onOpen={onOpen}
-                  onMove={(id: string) => {
-                    void optimisticMove(id, { status: col.key as AppointmentStatus, position: 1 });
-                  }}
-                />
-              );
-            })
+            (() => {
+              let firstAssigned = false;
+              return columns.map((col) => {
+                const all = byStatus.get(col.key) ?? [];
+                const filtered = filtersActive ? applyFilters(all) : all;
+                return (
+                  <StatusColumn
+                    key={col.key}
+                    column={col}
+                    cards={filtered.map((c, idx) => {
+                      if (!firstAssigned && idx === 0) {
+                        firstAssigned = true;
+                        return { ...c, __isFirstGlobal: true } as typeof c & { __isFirstGlobal: true };
+                      }
+                      return c;
+                    })}
+                    totalCount={all.length}
+                    filteredCount={filtered.length}
+                    onOpen={onOpen}
+                    onMove={(id: string) => {
+                      void optimisticMove(id, { status: col.key as AppointmentStatus, position: 1 });
+                    }}
+                  />
+                );
+              });
+            })()
           )}
         </div>
         {isFetchingBoard && !showInitialSkeleton && !boardError && (

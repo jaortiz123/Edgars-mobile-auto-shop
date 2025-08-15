@@ -123,12 +123,13 @@ export const ServiceOperationSelect: React.FC<Props> = ({
               {allowCustom ? 'No matches. Continue typing.' : 'No matches.'}
             </div>
           )}
-          {filtered.map((op, i) => {
+      {filtered.map((op, i) => {
             const active = i === highlight;
             return (
               <button
                 key={op.id}
                 type="button"
+        data-testid={`service-op-option-${op.id}`}
                 onMouseDown={(e) => { e.preventDefault(); selectOp(op as unknown as RawOp); }}
                 onMouseEnter={() => setHighlight(i)}
                 className={`w-full text-left px-3 py-2 text-xs ${active ? 'bg-blue-50' : ''} hover:bg-blue-50`}

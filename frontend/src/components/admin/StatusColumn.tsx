@@ -48,10 +48,19 @@ export default function StatusColumn({
           </span>
         </h3>
       </div>
-      <div className="nb-column-scroll">
-        {cards.map((c) => (
-          <EnhancedAppointmentCard key={c.id} card={c} onOpen={onOpen} />
-        ))}
+  <div className="nb-column-scroll" data-testid="status-column-scroll">
+        {cards.map((c) => {
+          // @ts-expect-error internal marker injected upstream
+          const isFirstGlobal = Boolean(c.__isFirstGlobal);
+          return (
+            <EnhancedAppointmentCard
+              key={c.id}
+              card={c}
+              onOpen={onOpen}
+              isFirst={isFirstGlobal}
+            />
+          );
+        })}
         {cards.length === 0 && (
           <div className="text-xs opacity-60 nb-card nb-card-empty" data-status="empty">No items</div>
         )}

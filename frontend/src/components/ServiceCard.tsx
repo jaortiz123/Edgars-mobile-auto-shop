@@ -14,6 +14,7 @@ export default function ServiceCard<T extends BaseService = BaseService>({ servi
     <Card 
       className="card-base flex flex-col h-full cursor-pointer min-h-[320px]" 
       onClick={() => onSelect(service)}
+      data-testid={`service-card-${service.id}`}
     >
       <CardHeader>
         <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary text-primary mb-4 border shadow-sm">

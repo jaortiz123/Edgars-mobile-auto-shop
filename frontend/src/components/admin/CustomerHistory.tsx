@@ -18,42 +18,36 @@ export default function CustomerHistory({ customerId, onAppointmentClick }: Cust
   const [error, setError] = useState<string | null>(null);
   const [historyData, setHistoryData] = useState<CustomerHistoryResponse | null>(null);
   const [expandedYears, setExpandedYears] = useState<Set<number>>(new Set([new Date().getFullYear()]));
+  const [unauthorized, setUnauthorized] = useState(false);
+
+  // Single data loader (deduped – previously duplicated logic)
+  const fetchHistory = async () => {
+    if (!customerId) return;
+    try {
+      setLoading(true);
+      setError(null);
+      setUnauthorized(false);
+      const data = await getCustomerHistory(customerId);
+      setHistoryData(data);
+    } catch (err) {
+      const msg = (err as Error)?.message || '';
+      // Heuristic: backend returns this message for missing / invalid token
+      if (/missing or invalid authorization token/i.test(msg) || /403/.test(msg)) {
+        setUnauthorized(true);
+      }
+      console.error('Error fetching customer history:', err);
+      setError('Failed to load customer history');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!customerId) return;
-
-    const fetchHistory = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await getCustomerHistory(customerId);
-        setHistoryData(data);
-      } catch (err) {
-        console.error('Error fetching customer history:', err);
-        setError('Failed to load customer history');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId]);
 
-  const handleRetry = () => {
-    setError(null);
-    const fetchHistory = async () => {
-      try {
-        setLoading(true);
-        const data = await getCustomerHistory(customerId);
-        setHistoryData(data);
-      } catch (err) {
-        setError('Failed to load customer history');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchHistory();
-  };
+  const handleRetry = () => fetchHistory();
 
   const toggleYear = (year: number) => {
     const newExpanded = new Set(expandedYears);
@@ -129,9 +123,17 @@ export default function CustomerHistory({ customerId, onAppointmentClick }: Cust
     return (
       <div className="text-center py-8">
         <div className="text-red-600 mb-4">{error}</div>
+        {unauthorized && (
+          <div className="text-sm text-gray-500 mb-4 max-w-md mx-auto px-4">
+            You appear to be unauthorized to view history. Ensure you are logged in as an Advisor. If this is a
+            local dev environment you can set <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">DEV_ALLOW_UNAUTH_HISTORY=1</code>{' '}
+            on the backend for temporary bypass (never in production).
+          </div>
+        )}
         <button
           onClick={handleRetry}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+          disabled={loading}
         >
           Retry
         </button>

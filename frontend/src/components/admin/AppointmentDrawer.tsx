@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import type { ServiceCatalogItem } from '@/types/serviceCatalog';
+import { useServiceCatalogSearch } from '@/hooks/useServiceCatalogSearch';
 import ServiceOperationSelect, { ServiceOperationSelectValue } from '@/components/admin/ServiceOperationSelect';
 import { Tabs } from '@/components/ui/Tabs';
 import * as api from '@/lib/api';
@@ -168,7 +170,7 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div ref={ref} data-testid="drawer-open" className="absolute right-0 top-0 h-full w-full max-w-xl bg-white shadow-xl flex flex-col">
+  <div ref={ref} data-testid="drawer-open" data-customer-id={data?.customer?.id || undefined} className="absolute right-0 top-0 h-full w-full max-w-xl bg-white shadow-xl flex flex-col">
         <div className="p-4 border-b flex items-center justify-between">
           <h2 id="drawer-title" className="text-lg font-semibold">Appointment</h2>
           <div className="flex items-center gap-2">
@@ -218,6 +220,7 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
           {tab === 'services' && <Services data={data} isAddingService={isAddingService} setIsAddingService={memoizedSetIsAddingService} />}
           {tab === 'messages' && id && <MessageThread appointmentId={id} drawerOpen={open} />}
           {tab === 'history' && data?.customer?.id && (
+            (import.meta.env.DEV && console.log('[drawer] mounting CustomerHistory', { customerId: data.customer.id, tokenPresent: !!(localStorage.getItem('auth_token')||localStorage.getItem('token')) })) ||
             <CustomerHistory 
               customerId={data.customer.id} 
               onAppointmentClick={(appointmentId) => {
@@ -531,9 +534,51 @@ const Services = React.memo(function Services({
   isAddingService: boolean; 
   setIsAddingService: (value: boolean) => void; 
 }) {
+  // Phase 2 Increment 1: Read-only catalog search foundation
+  // Feature flag can be toggled off if needed.
+  const ENABLE_CATALOG_SEARCH = true;
+  // Increment 1: keep services list read-only (no add/edit/delete) while we introduce catalog search foundation.
+  const ALLOW_SERVICE_MUTATIONS = true; // enable mutations (deletion increment)
+  const ALLOW_STAGING_FROM_CATALOG = true; // enable adding local staged items
+  const [searchTerm, setSearchTerm] = useState('');
+  const { search: catalogSearch, all: catalogAll } = useServiceCatalogSearch();
+  const filteredCatalog: ServiceCatalogItem[] = useMemo(() => (ENABLE_CATALOG_SEARCH ? catalogSearch(searchTerm) : []), [ENABLE_CATALOG_SEARCH, catalogSearch, searchTerm]);
+
+  // Helper to stage a new unsaved service entry derived from catalog item
+  const apptId = data?.appointment?.id;
+  // Track persistence state for staged services (declare before callbacks referencing it)
+  const [savingStaged, setSavingStaged] = useState(false);
+  const stageFromCatalog = useCallback((item: ServiceCatalogItem) => {
+    if (!apptId || savingStaged) return; // Prevent staging while persisting
+    const stagedId = `staged-${item.id}-${Date.now()}`;
+  // Derive a provisional price using a simple hourly rate heuristic (can be replaced by pricing engine later)
+  const hours = item.defaultHours ?? item.defaultLaborHours ?? null;
+  const HOURLY_RATE = 120; // temporary stub for UI prefill
+  const provisionalPrice = hours != null ? Number((hours * HOURLY_RATE).toFixed(2)) : null;
+  setServices(prev => [
+      ...prev,
+      {
+        id: stagedId,
+        appointment_id: apptId,
+        name: item.name,
+        notes: '',
+    estimated_hours: hours,
+    estimated_price: provisionalPrice,
+        category: item.system || null,
+        service_operation_id: null,
+        __staged: true as unknown as undefined
+      } as unknown as AppointmentService
+    ]);
+    setSearchTerm('');
+  }, [apptId, savingStaged]);
+  const hasSearch = ENABLE_CATALOG_SEARCH && (searchTerm.trim().length > 0);
+
   const [services, setServices] = useState<AppointmentService[]>([]);
-  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set());
+  const [editingIds, setEditingIds] = useState<Set<string>>(new Set());
+  const [modifiedMap, setModifiedMap] = useState<Record<string, { estimated_hours?: number | null; estimated_price?: number | null }>>({});
+  const [savingModified, setSavingModified] = useState(false);
   const [newService, setNewService] = useState({
     name: '',
     notes: '',
@@ -542,6 +587,7 @@ const Services = React.memo(function Services({
   category: '',
   service_operation_id: '' as string | undefined
   });
+  const toast = useToast();
 
   // Track if we've initialized services to prevent resetting form state on subsequent data updates
   const [servicesInitialized, setServicesInitialized] = useState(false);
@@ -601,7 +647,6 @@ const Services = React.memo(function Services({
         setServices(data.services);
         calculateTotal(data.services);
         setServicesInitialized(true);
-        setEditingServiceId(null);
         
         // Try to restore form state from localStorage
         const savedState = loadFormStateFromStorage(appointmentId);
@@ -643,6 +688,51 @@ const Services = React.memo(function Services({
       return sum + (service.estimated_price || 0);
     }, 0);
     setTotal(totalAmount);
+  };
+
+  const markServiceModified = (id: string, changes: { estimated_hours?: number | null; estimated_price?: number | null }) => {
+    setModifiedMap(prev => ({
+      ...prev,
+      [id]: { ...prev[id], ...changes }
+    }));
+  };
+
+  const isStagedService = (s: AppointmentService) => (s as unknown as { __staged?: boolean }).__staged === true;
+  const isModifiedSaved = (s: AppointmentService) => !isStagedService(s) && Boolean(modifiedMap[s.id]);
+
+  const persistModifiedServices = async () => {
+    if (!data?.appointment?.id) return;
+    const apptIdLocal = data.appointment.id;
+    const modifiedIds = Object.keys(modifiedMap).filter(id => services.find(s => s.id === id && !isStagedService(s)));
+    if (!modifiedIds.length) return;
+    setSavingModified(true);
+    try {
+      for (const sid of modifiedIds) {
+        const svc = services.find(s => s.id === sid);
+        if (!svc) continue;
+        const diff = modifiedMap[sid];
+        await api.updateAppointmentService(apptIdLocal, sid, {
+          estimated_hours: diff.estimated_hours != null ? diff.estimated_hours : svc.estimated_hours,
+          estimated_price: diff.estimated_price != null ? diff.estimated_price : svc.estimated_price
+        });
+      }
+      // Refresh services
+      const fresh = await api.getAppointmentServices(apptIdLocal);
+      setServices(fresh);
+      calculateTotal(fresh);
+      // Clear modified map for saved services
+      setModifiedMap(prev => {
+        const clone = { ...prev };
+        for (const id of modifiedIds) delete clone[id];
+        return clone;
+      });
+      setEditingIds(new Set());
+      toast.success('Changes saved');
+    } catch {
+      toast.error('Failed to save changes');
+    } finally {
+      setSavingModified(false);
+    }
   };
 
   const handleAddService = async () => {
@@ -726,24 +816,50 @@ const Services = React.memo(function Services({
     }
   };
 
-  const handleEditService = async (serviceId: string, updatedData: Partial<AppointmentService>) => {
+  // Persist locally staged services with partial failure handling
+  const persistStagedServices = useCallback(async () => {
     if (!data?.appointment?.id) return;
-    
+    const apptIdLocal = data.appointment.id;
+    const staged = services.filter(s => (s as unknown as { __staged?: boolean }).__staged);
+    if (!staged.length) return;
+    setSavingStaged(true);
+    const successes: string[] = [];
     try {
-      const response = await api.updateAppointmentService(data.appointment.id, serviceId, updatedData);
-      const updatedServices = services.map(service => 
-        service.id === serviceId ? response.service : service
-      );
-      setServices(updatedServices);
-      calculateTotal(updatedServices);
-      setEditingServiceId(null);
-    } catch (error) {
-      console.error('Error updating service:', error);
-      if (api.handleApiError) {
-        api.handleApiError(error);
+      for (const s of staged) {
+        try {
+          await api.createAppointmentService(apptIdLocal, {
+            name: s.name,
+            notes: s.notes || undefined,
+            estimated_hours: s.estimated_hours != null ? s.estimated_hours : undefined,
+            estimated_price: s.estimated_price != null ? s.estimated_price : undefined,
+            category: (s as unknown as { category?: string }).category || undefined,
+            service_operation_id: (s as unknown as { service_operation_id?: string }).service_operation_id || undefined
+          });
+          successes.push(s.id);
+  } catch {
+          // On first failure: sync successes, retain remaining staged for retry
+          try {
+            const fresh = await api.getAppointmentServices(apptIdLocal);
+            const remaining = services.filter(orig => (orig as any).__staged && !successes.includes(orig.id)); // eslint-disable-line @typescript-eslint/no-explicit-any
+            setServices([...fresh, ...remaining]);
+            calculateTotal([...fresh, ...remaining]);
+          } catch {/* ignore sync failure */}
+          toast.error('Failed to save all services. Retry to continue.');
+          return; // exit early, leave unsaved staged intact
+        }
       }
+      // All succeeded
+      try {
+        const fresh = await api.getAppointmentServices(apptIdLocal);
+        setServices(fresh);
+        calculateTotal(fresh);
+      } catch {/* ignore */}
+      toast.success(successes.length === 1 ? 'Service added' : `${successes.length} services added`);
+    } finally {
+      setSavingStaged(false);
     }
-  };
+  }, [data?.appointment?.id, services, toast]);
+
 
   const handleDeleteService = async (serviceId: string) => {
     if (!data?.appointment?.id) return;
@@ -772,28 +888,155 @@ const Services = React.memo(function Services({
       <div data-testid="services-empty-state" className="text-center py-8">
         <div className="text-gray-500 mb-4">
           <div>No services added yet.</div>
-          <div className="text-sm">Add your first service</div>
+          {ALLOW_SERVICE_MUTATIONS && <div className="text-sm">Add your first service</div>}
         </div>
-        <button
-          data-testid="add-service-button"
-          onClick={() => setIsAddingService(true)}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Add Service
-        </button>
+        {ENABLE_CATALOG_SEARCH && (
+          <div className="mb-4 max-w-xs mx-auto">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search catalog…"
+              className="w-full border rounded px-3 py-2 text-sm"
+              aria-label="Search services catalog"
+              data-testid="svc-catalog-search"
+            />
+            {hasSearch && (
+              <ul className="mt-2 text-left border rounded divide-y max-h-56 overflow-auto" data-testid="svc-catalog-results">
+                {filteredCatalog.slice(0, 25).map((item: ServiceCatalogItem) => (
+                  <li
+                    key={item.id}
+                    className="p-2 text-sm flex flex-col gap-0.5 cursor-pointer hover:bg-blue-50"
+                    onClick={() => ALLOW_STAGING_FROM_CATALOG && stageFromCatalog(item)}
+                    data-testid={`catalog-result-${item.id}`}
+                  >
+                    <span className="font-medium">{item.name}</span>
+                    <span className="text-gray-500 text-xs">{item.system || 'General'}{item.position ? ` • ${item.position}` : ''}</span>
+                  </li>
+                ))}
+                {filteredCatalog.length === 0 && (
+                  <li className="p-2 text-xs text-gray-500">No matches</li>
+                )}
+              </ul>
+            )}
+          </div>
+        )}
+        {ALLOW_SERVICE_MUTATIONS && (
+          <button
+            data-testid="add-service-button"
+            onClick={() => setIsAddingService(true)}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Add Service
+          </button>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="services-tab-root">
       {/* Services Total */}
       <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
         <span data-testid="services-total" className="font-bold">Total: ${total.toFixed(2)}</span>
+        {/* Save staged services button (appears only when there are unsaved staged entries) */}
+        {services.some(s => (s as unknown as { __staged?: boolean }).__staged) && (
+          <button
+            type="button"
+            disabled={savingStaged}
+            onClick={persistStagedServices}
+            data-testid="services-save-staged"
+            className="px-3 py-1 text-sm rounded bg-blue-600 text-white disabled:opacity-50"
+            title="Persist staged services"
+          >
+            {savingStaged ? 'Saving…' : 'Save'}
+          </button>
+        )}
+        {pendingDeleteIds.size > 0 && (
+          <button
+            type="button"
+            data-testid="services-save-deletions"
+            className="px-3 py-1 text-sm rounded bg-red-600 text-white"
+            onClick={async () => {
+              if (!data?.appointment?.id) return;
+              const apptIdLocal = data.appointment.id;
+              const ids = Array.from(pendingDeleteIds);
+              try {
+                for (const idDel of ids) {
+                  await api.deleteAppointmentService(apptIdLocal, idDel);
+                }
+                const fresh = await api.getAppointmentServices(apptIdLocal);
+                setServices(fresh);
+                calculateTotal(fresh);
+                setPendingDeleteIds(new Set());
+                toast.success(ids.length === 1 ? 'Service removed' : `${ids.length} services removed`);
+              } catch (e) {
+                toast.error('Failed to delete services');
+              }
+            }}
+            title="Confirm deletions"
+          >Delete ({pendingDeleteIds.size})</button>
+        )}
+        {Object.keys(modifiedMap).some(id => !isStagedService(services.find(s=>s.id===id) as AppointmentService)) && (
+          <button
+            type="button"
+            data-testid="services-save-modified"
+            disabled={savingModified}
+            onClick={persistModifiedServices}
+            className="px-3 py-1 text-sm rounded bg-amber-600 text-white disabled:opacity-50"
+            title="Save modified services"
+          >{savingModified ? 'Saving…' : 'Save changes'}</button>
+        )}
       </div>
 
+      {ENABLE_CATALOG_SEARCH && (
+        <div className="space-y-2" data-testid="svc-catalog-search-box">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={`Search ${catalogAll.length} catalog services…`}
+              className="flex-1 border rounded px-3 py-2 text-sm"
+              aria-label="Search services catalog"
+              data-testid="svc-catalog-search"
+              disabled={savingStaged}
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="text-xs text-gray-600 underline"
+                data-testid="svc-catalog-clear"
+                disabled={savingStaged}
+              >Clear</button>
+            )}
+          </div>
+          {hasSearch && (
+            <div className={`border rounded max-h-64 overflow-auto ${savingStaged ? 'pointer-events-none opacity-60' : ''}`} data-testid="svc-catalog-results" aria-disabled={savingStaged ? 'true' : undefined}>
+              <ul className="divide-y text-sm">
+                {filteredCatalog.slice(0, 50).map((item: ServiceCatalogItem) => (
+                  <li
+                    key={item.id}
+                    className="p-2 flex flex-col gap-0.5 cursor-pointer hover:bg-blue-50"
+                    onClick={() => !savingStaged && ALLOW_STAGING_FROM_CATALOG && stageFromCatalog(item)}
+                    data-testid={`catalog-result-${item.id}`}
+                  >
+                    <span className="font-medium">{item.name}</span>
+                    <span className="text-gray-500 text-xs">{item.system || 'General'}{item.position ? ` • ${item.position}` : ''}</span>
+                  </li>
+                ))}
+                {filteredCatalog.length === 0 && (
+                  <li className="p-2 text-xs text-gray-500">No matches</li>
+                )}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Add Service Button */}
-      {!isAddingService && (
+  {ALLOW_SERVICE_MUTATIONS && !isAddingService && (
         <button
           data-testid="add-service-button"
           onClick={() => setIsAddingService(true)}
@@ -804,7 +1047,7 @@ const Services = React.memo(function Services({
       )}
 
       {/* Add Service Form */}
-      {isAddingService && (
+  {ALLOW_SERVICE_MUTATIONS && isAddingService && (
         <div data-testid="add-service-form" className="border rounded p-4 bg-gray-50">
           <h4 className="font-medium mb-3">Add New Service</h4>
           <form
@@ -902,17 +1145,46 @@ const Services = React.memo(function Services({
 
       {/* Services List */}
       <div data-testid="services-list" className="space-y-2">
-        {services.map((service) => (
+        {services.map(service => (
           <ServiceItem
             key={service.id}
             service={service}
-            isEditing={editingServiceId === service.id}
-            onEdit={(updatedData) => handleEditService(service.id, updatedData)}
-            onDelete={() => handleDeleteService(service.id)}
-            onStartEdit={() => setEditingServiceId(service.id)}
-            onCancelEdit={() => setEditingServiceId(null)}
-          />)
-        )}
+            allowMutations={ALLOW_SERVICE_MUTATIONS}
+            isMarkedForDeletion={pendingDeleteIds.has(service.id)}
+            isModified={isModifiedSaved(service)}
+            editing={editingIds.has(service.id)}
+            onStartEdit={() => { /* future inline edit */ }}
+            onDelete={() => {
+              if (!ALLOW_SERVICE_MUTATIONS) return;
+              const isStaged = (service as unknown as { __staged?: boolean }).__staged;
+              if (isStaged) {
+                setServices(prev => prev.filter(s => s.id !== service.id));
+                calculateTotal(services.filter(s => s.id !== service.id));
+                return;
+              }
+              setPendingDeleteIds(prev => {
+                const next = new Set(prev);
+                if (next.has(service.id)) next.delete(service.id); else next.add(service.id);
+                return next;
+              });
+            }}
+            onToggleEdit={() => {
+              setEditingIds(prev => {
+                const next = new Set(prev);
+                if (next.has(service.id)) next.delete(service.id); else next.add(service.id);
+                return next;
+              });
+            }}
+            onFieldChange={(fields) => {
+              // Update local displayed values (optimistic) for hours/price
+              setServices(prev => prev.map(s => s.id === service.id ? { ...s, ...fields } : s));
+              // Track modifications only for saved services
+              if (!isStagedService(service)) {
+                markServiceModified(service.id, fields as { estimated_hours?: number | null; estimated_price?: number | null });
+              }
+            }}
+          />
+        ))}
       </div>
     </div>
   );
@@ -948,129 +1220,87 @@ const Services = React.memo(function Services({
     );
   }
 
-function ServiceItem({ service, isEditing, onEdit, onDelete, onStartEdit, onCancelEdit }: {
+function ServiceItem({ service, allowMutations, onDelete, onStartEdit, isMarkedForDeletion, isModified, editing, onToggleEdit, onFieldChange }: {
   service: AppointmentService;
-  isEditing: boolean;
-  onEdit: (data: Partial<AppointmentService>) => void;
+  allowMutations: boolean;
   onDelete: () => void;
   onStartEdit: () => void;
-  onCancelEdit: () => void;
+  isMarkedForDeletion?: boolean;
+  isModified?: boolean;
+  editing?: boolean;
+  onToggleEdit?: () => void;
+  onFieldChange?: (fields: Partial<Pick<AppointmentService,'estimated_hours'|'estimated_price'>>) => void;
 }) {
-  const [editData, setEditData] = useState({
-    name: service.name || '',
-    notes: service.notes || '',
-    estimated_hours: service.estimated_hours?.toString() || '',
-    estimated_price: service.estimated_price?.toString() || '',
-    category: service.category || ''
-  });
-
-  const handleSave = () => {
-    onEdit({
-      name: editData.name,
-      notes: editData.notes,
-      estimated_hours: parseFloat(editData.estimated_hours) || undefined,
-      estimated_price: parseFloat(editData.estimated_price) || undefined,
-      category: editData.category
-    });
-  };
-
-  if (isEditing) {
-    return (
-      <div data-testid={`service-item-${service.id}`} className="border rounded p-3 bg-yellow-50">
-        <div className="space-y-2">
-          <input
-            type="text"
-            value={editData.name}
-            onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-            className="w-full p-1 border rounded"
-            placeholder="Service name"
-            aria-label="Service name"
-          />
-          <input
-            type="text"
-            value={editData.notes}
-            onChange={(e) => setEditData({ ...editData, notes: e.target.value })}
-            className="w-full p-1 border rounded"
-            placeholder="Notes"
-            aria-label="Notes"
-          />
-          <input
-            type="number"
-            value={editData.estimated_hours}
-            onChange={(e) => setEditData({ ...editData, estimated_hours: e.target.value })}
-            className="w-full p-1 border rounded"
-            placeholder="Hours"
-            aria-label="Hours"
-          />
-          <input
-            type="number"
-            value={editData.estimated_price}
-            onChange={(e) => setEditData({ ...editData, estimated_price: e.target.value })}
-            className="w-full p-1 border rounded"
-            placeholder="Price"
-            aria-label="Price"
-          />
-          <input
-            type="text"
-            value={editData.category}
-            onChange={(e) => setEditData({ ...editData, category: e.target.value })}
-            className="w-full p-1 border rounded"
-            placeholder="Category"
-            aria-label="Category"
-          />
-          <div className="flex gap-2">
-            <button
-              data-testid={`save-edit-service-${service.id}`}
-              onClick={handleSave}
-              className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
-            >
-              Save
-            </button>
-            <button
-              onClick={onCancelEdit}
-              className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  const isStaged = (service as unknown as { __staged?: boolean }).__staged === true;
   return (
-    <div data-testid={`service-item-${service.id}`} className="border rounded p-3">
+    <div
+      data-testid={`service-item-${service.id}`}
+      data-staged={ isStaged ? '1' : undefined }
+      data-marked-deleted={ isMarkedForDeletion ? '1' : undefined }
+      className={`border rounded p-3 ${ isStaged ? 'bg-blue-50 ring-1 ring-blue-200' : 'bg-white'} ${ isMarkedForDeletion ? 'opacity-60 line-through' : ''} ${ isModified ? 'ring-1 ring-amber-400' : ''}`}
+    >
       <div className="flex justify-between items-start">
         <div className="flex-1">
-          <div data-testid={`service-name-${service.id}`} className="font-medium">{service.name}</div>
-          <div data-testid={`service-notes-${service.id}`} className="text-sm text-gray-600">{service.notes}</div>
-          <div className="text-sm mt-1">
-            {service.estimated_hours && <span data-testid={`service-hours-${service.id}`}>{service.estimated_hours}h</span>}
-            {service.estimated_hours && service.estimated_price && ' • '}
-            {service.estimated_price && <span data-testid={`service-price-${service.id}`}>${service.estimated_price.toFixed(2)}</span>}
+          <div data-testid={`service-name-${service.id}`} className="font-medium">{service.name || 'Service'}</div>
+          {service.notes && <div data-testid={`service-notes-${service.id}`} className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{service.notes}</div>}
+          <div className="text-xs mt-1 text-gray-500 flex flex-wrap gap-2 items-center">
+            {service.category && <span data-testid={`service-category-${service.id}`}>{service.category}</span>}
+            {(service.estimated_hours != null || service.estimated_price != null) && <span className="text-gray-300">|</span>}
+            <div className="flex items-center gap-1" data-testid={`service-hours-${service.id}`}>
+              {editing ? (
+                <input
+                  aria-label="Hours"
+                  className="w-14 border rounded px-1 py-0.5 text-xs"
+                  defaultValue={service.estimated_hours ?? ''}
+                  onChange={(e)=>{
+                    const v = e.target.value.trim();
+                    const num = v === '' ? null : Number(v);
+                    if (!isNaN(num as number)) onFieldChange?.({ estimated_hours: (num as number|null) ?? null });
+                  }}
+                />
+              ) : (
+                service.estimated_hours != null && <span>{service.estimated_hours}h</span>
+              )}
+            </div>
+            <div className="flex items-center gap-1" data-testid={`service-price-${service.id}`}>
+              {editing ? (
+                <input
+                  aria-label="Price"
+                  className="w-16 border rounded px-1 py-0.5 text-xs"
+                  defaultValue={service.estimated_price != null ? service.estimated_price.toFixed(2) : ''}
+                  onChange={(e)=>{
+                    const v = e.target.value.trim();
+                    const num = v === '' ? null : Number(v);
+                    if (!isNaN(num as number)) onFieldChange?.({ estimated_price: (num as number|null) ?? null });
+                  }}
+                />
+              ) : (
+                service.estimated_price != null && <span>${service.estimated_price.toFixed(2)}</span>
+              )}
+            </div>
+            {isModified && !editing && <span className="text-amber-600 font-semibold" data-testid={`service-modified-${service.id}`}>• modified</span>}
           </div>
-          {service.category && (
-            <div data-testid={`service-category-${service.id}`} className="text-xs text-gray-500 mt-1">{service.category}</div>
-          )}
         </div>
-        <div className="flex gap-2 ml-4">
-          <button
-            data-testid={`edit-service-${service.id}`}
-            onClick={onStartEdit}
-            title="Edit service"
-            className="px-2 py-1 text-blue-500 hover:text-blue-700"
-          >
-            Edit
-          </button>
-          <button
-            data-testid={`delete-service-${service.id}`}
-            onClick={onDelete}
-            title="Delete service"
-            className="px-2 py-1 text-red-500 hover:text-red-700"
-          >
-            Delete
-          </button>
-        </div>
+        {allowMutations && (
+          <div className="flex gap-2 ml-4">
+            <button
+              data-testid={`edit-service-${service.id}`}
+              onClick={onToggleEdit || onStartEdit}
+              title={editing ? 'Stop editing' : 'Edit service'}
+              className={`px-2 py-1 ${editing ? 'text-amber-600 hover:text-amber-700' : 'text-blue-500 hover:text-blue-700'}`}
+            >
+              {editing ? 'Done' : 'Edit'}
+            </button>
+            <button
+              data-testid={`delete-service-${service.id}`}
+              onClick={onDelete}
+              title={isStaged ? 'Remove staged service' : (isMarkedForDeletion ? 'Undo delete' : 'Delete service')}
+              className={`px-2 py-1 ${isMarkedForDeletion ? 'text-gray-500 hover:text-gray-700' : 'text-red-500 hover:text-red-700'}`}
+            >
+              {isStaged ? 'Remove' : (isMarkedForDeletion ? 'Undo' : 'Delete')}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
