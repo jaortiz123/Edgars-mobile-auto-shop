@@ -6,30 +6,51 @@ import { format } from 'date-fns';
 import CardCustomizationModal from './CardCustomizationModal';
 import { BoardFilterProvider, useBoardFilters } from '@/contexts/BoardFilterContext';
 import { BoardFilterPopover } from './BoardFilterPopover';
-import { useBoardFilteredCards, useBoardStore } from '@/state/useBoardStore';
+import { useBoardStore } from '@/state/useBoardStore';
 import { useToast } from '@/components/ui/Toast';
 import type { BoardCard, BoardColumn } from '@/types/models';
 import type { BoardState } from '@/state/useBoardStore';
 
-function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDisableDnd, __debugDisableFilter }: { onOpen: (id: string) => void; minimalHero?: boolean; __debugDisableModal?: boolean; __debugDisableDnd?: boolean; __debugDisableFilter?: boolean }) {
+function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDisableDnd, __debugDisableFilter, __debugSimpleCols, __debugSimpleCards, __debugDisableToast }: { onOpen: (id: string) => void; minimalHero?: boolean; __debugDisableModal?: boolean; __debugDisableDnd?: boolean; __debugDisableFilter?: boolean; __debugSimpleCols?: boolean; __debugSimpleCards?: boolean; __debugDisableToast?: boolean }) {
   // Store is initialized at the AdminLayout level now (singleton for admin session)
+  // IMPORTANT: Avoid constructing new arrays/objects inside Zustand selectors; that causes
+  // a new reference every render and thus an infinite re-render loop under StrictMode.
   const columns = useBoardStore((s: BoardState) => s.columns);
   const loading = useBoardStore((s: BoardState) => s.loading);
-  const boardError = useBoardStore((s: BoardState) => (s.error ? new Error(s.error) : null));
-  const cards = useBoardFilteredCards();
-  const allCards = useBoardStore((s: BoardState) => s.cardIds.map((id: string) => s.cardsById[id]).filter(Boolean));
+  const storeErrorStr = useBoardStore((s: BoardState) => s.error);
+  const cardIds = useBoardStore((s: BoardState) => s.cardIds);
+  const cardsById = useBoardStore((s: BoardState) => s.cardsById);
+  const allCards = useMemo(() => cardIds.map((id: string) => cardsById[id]).filter(Boolean), [cardIds, cardsById]);
+  // Compute filtered cards once; applyFilters identity only changes when filters change.
+  // This keeps downstream grouping efficient and stable.
+  let filterCtx = useBoardFilters();
+  if (__debugDisableFilter) {
+    filterCtx = {
+      filters: { search: '', statuses: null, techs: [], blockers: [] },
+      setFilters: () => {},
+      clearFilters: () => {},
+      applyFilters: (cards: BoardCard[]) => cards,
+      filtersActive: false,
+      activeCount: 0,
+    } as typeof filterCtx;
+  }
+  const { applyFilters, filtersActive } = filterCtx;
+  const filteredCards = useMemo(() => (filtersActive ? applyFilters(allCards) : allCards), [filtersActive, applyFilters, allCards]);
+  const cards = filteredCards; // alias retained for existing usages (hero, etc.)
+  const boardError = React.useMemo(() => (storeErrorStr ? new Error(storeErrorStr) : null), [storeErrorStr]);
   const triggerRefresh = () => {/* future: call refresh action or invalidate query via legacy path */};
   const moveAppointment = useBoardStore((s: BoardState) => s.moveAppointment);
-  const storeError = useBoardStore((s: BoardState) => s.error);
+  const storeError = storeErrorStr;
   const setError = useBoardStore((s: BoardState) => s.setError);
   const toast = useToast();
   // Side-effects must not run during render; isolate in effect to avoid render loops
   useEffect(() => {
+    if (__debugDisableToast) return;
     if (storeError) {
       toast.error(storeError);
       setError(null); // clear after surfacing
     }
-  }, [storeError, toast, setError]);
+  }, [storeError, toast, setError, __debugDisableToast]);
   // Debug instrumentation (dev only) to trace board population issues in E2E
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -45,19 +66,7 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
   const isFetchingBoard = false; // placeholder until wired to query status
   const showInitialSkeleton = loading && cards.length === 0;
   const [showCustomize, setShowCustomize] = useState(false);
-  // Always call hook (Rules of Hooks), but ignore its values when debug-disabling filters.
-  let filterCtx = useBoardFilters();
-  if (__debugDisableFilter) {
-    filterCtx = {
-      filters: { search: '', statuses: null, techs: [], blockers: [] },
-      setFilters: () => {},
-      clearFilters: () => {},
-      applyFilters: (cards: BoardCard[]) => cards,
-      filtersActive: false,
-      activeCount: 0,
-    } as typeof filterCtx;
-  }
-  const { applyFilters, filtersActive } = filterCtx;
+  // (Filtering logic moved earlier to compute filteredCards once.)
 
   const getTimeGreeting = () => {
     const h = new Date().getHours();
@@ -66,18 +75,30 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
     return 'Good evening';
   };
 
-  const byStatus = useMemo(() => {
-    // Show ALL cards grouped by status; no date-based filtering or slicing.
-  const map = new Map<string, BoardCard[]>();
-  for (const col of columns) map.set(col.key, []);
-  for (const c of allCards) {
+  const byStatusAll = useMemo(() => {
+    const map = new Map<string, BoardCard[]>();
+    for (const col of columns) map.set(col.key, []);
+    for (const c of allCards) {
       const statusKey = String(c.status || 'UNKNOWN');
       if (!map.has(statusKey)) map.set(statusKey, []);
       map.get(statusKey)!.push(c);
     }
-  for (const [, arr] of map) arr.sort((a: BoardCard, b: BoardCard) => (a.position || 0) - (b.position || 0));
+    for (const [, arr] of map) arr.sort((a: BoardCard, b: BoardCard) => (a.position || 0) - (b.position || 0));
     return map;
   }, [columns, allCards]);
+
+  const byStatusFiltered = useMemo(() => {
+    if (!filtersActive) return byStatusAll;
+    const map = new Map<string, BoardCard[]>();
+    for (const col of columns) map.set(col.key, []);
+    for (const c of filteredCards) {
+      const statusKey = String(c.status || 'UNKNOWN');
+      if (!map.has(statusKey)) map.set(statusKey, []);
+      map.get(statusKey)!.push(c);
+    }
+    for (const [, arr] of map) arr.sort((a: BoardCard, b: BoardCard) => (a.position || 0) - (b.position || 0));
+    return map;
+  }, [filtersActive, filteredCards, byStatusAll, columns]);
 
   const TodaysFocusHero = () => {
     const now = new Date();
@@ -198,7 +219,7 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
         {minimalHero ? (
           <div className="h-0" aria-hidden />
         ) : <TodaysFocusHero />}
-        <div className="nb-board-grid mt-4">
+        <div className="nb-board-grid mt-4" data-debug-simple-cols={__debugSimpleCols || __debugSimpleCards || __debugDisableDnd ? '1' : undefined}>
           {showInitialSkeleton ? (
             Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="flex flex-col gap-3 p-4 nb-surface nb-border rounded-md animate-pulse">
@@ -212,21 +233,38 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
           ) : (
             (() => {
               let firstAssigned = false;
+              const simplified = __debugSimpleCols || __debugSimpleCards || __debugDisableDnd;
               return columns.map((col: BoardColumn) => {
-                const allList = byStatus.get(col.key) ?? [];
+                const allList = byStatusFiltered.get(col.key) ?? [];
                 const filteredAll = filtersActive && applyFilters ? applyFilters(allList) : allList;
-                // Already store-level filtered list used for counts; use filteredAll for per-column filtering
+                const cardList = filteredAll.map((c: BoardCard, idx: number) => {
+                  if (!firstAssigned && idx === 0) {
+                    firstAssigned = true;
+                    return { ...c, __isFirstGlobal: true } as typeof c & { __isFirstGlobal: true };
+                  }
+                  return c;
+                });
+                if (simplified) {
+                  return (
+                    <div key={col.key} className="nb-column" data-status-key={col.key} data-simplified="1">
+                      <div className="nb-column-header"><h3 className="font-bold flex items-center justify-center gap-2 w-full text-center">{col.title} <span className="nb-chip" data-variant="primary">{cardList.length}</span></h3></div>
+                      <div className="nb-column-scroll" data-testid="status-column-scroll">
+                        {cardList.map((c: BoardCard) => (
+                          <div key={c.id} data-appointment-id={c.id} className="nb-card p-2 border mb-2 rounded bg-white shadow-sm">
+                            <div className="text-xs font-semibold">{c.headline || c.servicesSummary || c.id}</div>
+                            {__debugSimpleCards ? null : <div className="text-[10px] opacity-70">{c.customerName}</div>}
+                          </div>
+                        ))}
+                        {cardList.length === 0 && <div className="text-xs opacity-60 nb-card nb-card-empty" data-status="empty">No items</div>}
+                      </div>
+                    </div>
+                  );
+                }
                 return (
                   <StatusColumn
                     key={col.key}
                     column={col}
-                    cards={filteredAll.map((c: BoardCard, idx: number) => {
-                      if (!firstAssigned && idx === 0) {
-                        firstAssigned = true;
-                        return { ...c, __isFirstGlobal: true } as typeof c & { __isFirstGlobal: true };
-                      }
-                      return c;
-                    })}
+                    cards={cardList}
                     totalCount={allList.length}
                     filteredCount={filteredAll.length}
                     onOpen={onOpen}
@@ -252,23 +290,36 @@ export default function StatusBoard(props: { onOpen: (id: string) => void; minim
   const DISABLE_MODAL = !!dbgParams?.has('sb_nomodal');
   const DISABLE_FILTER = !!dbgParams?.has('sb_nofilter');
   const DISABLE_DND = !!dbgParams?.has('sb_nodnd');
+  const SIMPLE_COLS = !!dbgParams?.has('sb_simplecols');
+  const SIMPLE_CARDS = !!dbgParams?.has('sb_simplecards');
+  const MINIMAL = !!dbgParams?.has('sb_min');
+  const DISABLE_TOAST = !!dbgParams?.has('sb_notost');
 
   // Wrap InnerStatusBoard to conditionally skip modal / dnd / filters.
   // We intercept props here rather than duplicating logic inside.
+  if (MINIMAL) {
+    // Extreme short-circuit to binary search loop source: only touch board store minimally.
+    // Keep provider shell identical to rule out provider-level effects.
+    return (
+      <BoardFilterProvider debugShim={true}>
+        <div className="nb-board-grid" data-minimal-board>
+          <div className="nb-column" data-status-key="stub"><div className="nb-column-header"><h3>Stub</h3></div><div className="nb-column-scroll"><div className="nb-card p-2">Minimal</div></div></div>
+        </div>
+      </BoardFilterProvider>
+    );
+  }
+
   const Inner = (
     <InnerStatusBoard
       {...props}
       __debugDisableModal={DISABLE_MODAL}
       __debugDisableDnd={DISABLE_DND}
       __debugDisableFilter={DISABLE_FILTER}
+      __debugSimpleCols={SIMPLE_COLS}
+      __debugSimpleCards={SIMPLE_CARDS}
+      __debugDisableToast={DISABLE_TOAST}
     />
   );
 
-  if (DISABLE_FILTER) {
-    // Minimal no-op filter context implementation
-    const NoopFilterProvider: React.FC<{children: React.ReactNode}> = ({ children }) => <>{children}</>;
-    if (import.meta.env.DEV) console.log('[StatusBoard debug] Filters disabled via sb_nofilter');
-    return <NoopFilterProvider>{Inner}</NoopFilterProvider>;
-  }
-  return <BoardFilterProvider>{Inner}</BoardFilterProvider>;
+  return <BoardFilterProvider debugShim={DISABLE_FILTER}>{Inner}</BoardFilterProvider>;
 }
