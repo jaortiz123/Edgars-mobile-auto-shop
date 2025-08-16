@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import traceback
 import uuid
 import csv
@@ -33,6 +34,7 @@ import time
 import json
 import base64
 import threading
+import hashlib
 from http import HTTPStatus
 from datetime import datetime, date, timezone, timedelta, time as dtime
 from typing import Any, Dict, Optional, Tuple
@@ -634,6 +636,7 @@ def list_message_templates():
     channel = request.args.get("channel")
     category = request.args.get("category")
     q = request.args.get("q")
+    appt_status_raw = request.args.get("appointment_status")  # optional heuristic input
     conn = db_conn()
     sql = ["SELECT id, slug, label, channel, category, body, variables, is_active, created_at, updated_at FROM message_templates WHERE 1=1"]
     params: list = []
@@ -654,7 +657,38 @@ def list_message_templates():
         with conn.cursor() as cur:
             cur.execute(" ".join(sql), params)
             rows = cur.fetchall()
-    return _ok({"message_templates": [_row_to_template(r) for r in rows]})
+    templates = [_row_to_template(r) for r in rows]
+
+    # ------------------------------------------------------------------
+    # Suggestions (heuristic: appointment_status -> ordered slug list)
+    # ------------------------------------------------------------------
+    suggested_payload = None
+    if appt_status_raw:
+        def _norm_status(s: str) -> str:
+            return re.sub(r"[^A-Z0-9]+", "_", s.strip().upper()) if s else ""
+        status_norm = _norm_status(appt_status_raw)
+        # Mapping (extendable). Slugs must match message_templates.slug values.
+        STATUS_TEMPLATE_SUGGESTIONS = {
+            "AWAITING_CUSTOMER_APPROVAL": ["quote_approval_request"],
+            "WORK_COMPLETE": ["vehicle_ready_for_pickup"],
+        }
+        slug_map = {t["slug"]: t for t in templates}
+        ordered_slugs = STATUS_TEMPLATE_SUGGESTIONS.get(status_norm, [])
+        suggested = []
+        for rank, slug in enumerate(ordered_slugs):
+            tpl = slug_map.get(slug)
+            if not tpl:
+                continue  # slug not present (maybe inactive or missing)
+            # Enrich with relevance + reason
+            enriched = {**tpl, "relevance": 1.0 - (rank * 0.01), "reason": f"status_match:{status_norm}"}
+            suggested.append(enriched)
+        suggested_payload = suggested
+
+    resp = {"message_templates": templates}
+    if appt_status_raw and suggested_payload is not None:
+        # Always include suggested (possibly empty list) when appointment_status provided
+        resp["suggested"] = suggested_payload
+    return _ok(resp)
 
 @app.route("/api/admin/message-templates", methods=["POST"])
 def create_message_template():
@@ -755,6 +789,136 @@ def delete_message_template(tid: str):
                 cur.execute("DELETE FROM message_templates WHERE id=%s", (existing["id"],))
                 audit(conn, user.get("sub"), "DELETE", "message_template", existing["id"], existing, {})
     return _ok({"deleted": True, "soft": soft})
+
+# ----------------------------------------------------------------------------
+# Template Usage Telemetry
+# ----------------------------------------------------------------------------
+@app.route("/api/admin/template-usage", methods=["POST"])
+def log_template_usage():
+    """Log a template usage event.
+
+    Expected JSON:
+      {
+        "template_id"?: string (uuid or slug),
+        "template_slug"?: string,
+        "channel"?: "sms"|"email" (optional if template looked up),
+        "appointment_id"?: number,
+        "delivery_ms"?: number >=0,
+        "was_automated"?: bool,
+        "idempotency_key"?: string (client-provided stable key),
+        "user_id"?: string (override; default current user sub)
+      }
+
+    Rules:
+      - Provide at least one of template_id or template_slug.
+      - If both provided they must reference the same template.
+      - If idempotency_key provided we derive a SHA256 hash combining template_id + key + channel.
+      - Returns existing row if duplicate (HTTP 200) else creates new (HTTP 201).
+      - Non-blocking: failures return 400/404 etc; caller may ignore.
+    """
+    # Allow Advisor or Owner but require auth (no maybe_auth for audit quality)
+    user = require_or_maybe()
+    body = request.get_json(silent=True) or {}
+    raw_tid = (body.get("template_id") or "").strip()
+    tpl_slug = (body.get("template_slug") or "").strip()
+    channel = (body.get("channel") or "").strip()
+    appt_id = body.get("appointment_id")
+    delivery_ms = body.get("delivery_ms")
+    was_automated = bool(body.get("was_automated", False))
+    idempotency_key = (body.get("idempotency_key") or "").strip()
+    explicit_user_id = (body.get("user_id") or "").strip() or user.get("sub")
+
+    if not raw_tid and not tpl_slug:
+        return _fail(HTTPStatus.BAD_REQUEST, "MISSING_TEMPLATE", "template_id or template_slug required")
+
+    conn = db_conn()
+    with conn:
+        with conn.cursor() as cur:
+            # Resolve template row (id, slug, channel)
+            if raw_tid:
+                cur.execute("SELECT id, slug, channel FROM message_templates WHERE id=%s OR slug=%s", (raw_tid, raw_tid))
+            else:
+                cur.execute("SELECT id, slug, channel FROM message_templates WHERE slug=%s", (tpl_slug,))
+            tpl = cur.fetchone()
+            if not tpl:
+                return _fail(HTTPStatus.NOT_FOUND, "TEMPLATE_NOT_FOUND", "Template not found")
+            if tpl_slug and tpl_slug != tpl["slug"]:
+                return _fail(HTTPStatus.BAD_REQUEST, "SLUG_MISMATCH", "Provided slug does not match template")
+            if channel and channel not in ("sms","email"):
+                return _fail(HTTPStatus.BAD_REQUEST, "INVALID_CHANNEL", "channel must be sms or email")
+            channel_final = channel or tpl["channel"]
+
+            # Basic validation
+            if delivery_ms is not None:
+                try:
+                    delivery_ms = int(delivery_ms)
+                    if delivery_ms < 0:
+                        raise ValueError
+                except Exception:
+                    return _fail(HTTPStatus.BAD_REQUEST, "INVALID_DELIVERY_MS", "delivery_ms must be non-negative integer")
+
+            # Compute hash for idempotency if key supplied
+            row_hash = None
+            if idempotency_key:
+                h = hashlib.sha256()
+                h.update((str(tpl["id"]) + "|" + idempotency_key + "|" + channel_final).encode("utf-8"))
+                row_hash = h.hexdigest()
+                # Check duplicate
+                cur.execute("SELECT id, template_id, template_slug, channel, appointment_id, user_id, sent_at, delivery_ms, was_automated FROM template_usage_events WHERE hash=%s", (row_hash,))
+                existing = cur.fetchone()
+                if existing:
+                    return _ok({
+                        "template_usage_event": {
+                            "id": existing["id"],
+                            "template_id": existing["template_id"],
+                            "template_slug": existing["template_slug"],
+                            "channel": existing["channel"],
+                            "appointment_id": existing["appointment_id"],
+                            "user_id": existing["user_id"],
+                            "sent_at": existing["sent_at"].isoformat() if existing.get("sent_at") else None,
+                            "delivery_ms": existing["delivery_ms"],
+                            "was_automated": existing["was_automated"],
+                            "hash": row_hash,
+                            "idempotent": True,
+                        }
+                    })
+
+            # Insert new event
+            cur.execute(
+                """
+                INSERT INTO template_usage_events (template_id, template_slug, channel, appointment_id, user_id, delivery_ms, was_automated, hash)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                RETURNING id, template_id, template_slug, channel, appointment_id, user_id, sent_at, delivery_ms, was_automated, hash
+                """,
+                (
+                    tpl["id"],
+                    tpl["slug"],
+                    channel_final,
+                    appt_id,
+                    explicit_user_id or None,
+                    delivery_ms,
+                    was_automated,
+                    row_hash,
+                ),
+            )
+            new_row = cur.fetchone()
+            audit(conn, explicit_user_id, "CREATE", "template_usage_event", new_row["id"], {}, {k: new_row[k] for k in new_row.keys()})
+
+    return _ok({
+        "template_usage_event": {
+            "id": new_row["id"],
+            "template_id": new_row["template_id"],
+            "template_slug": new_row["template_slug"],
+            "channel": new_row["channel"],
+            "appointment_id": new_row["appointment_id"],
+            "user_id": new_row["user_id"],
+            "sent_at": new_row["sent_at"].isoformat() if new_row.get("sent_at") else None,
+            "delivery_ms": new_row["delivery_ms"],
+            "was_automated": new_row["was_automated"],
+            "hash": new_row["hash"],
+            "idempotent": False,
+        }
+    }, status=HTTPStatus.CREATED)
 @app.route("/api/admin/technicians", methods=["GET"])
 def technicians_list():
     """List active technicians for assignment dropdown.
@@ -2177,26 +2341,3 @@ def check_in_alias(appt_id: str):
 @app.route("/appointments/<appt_id>/check-out", methods=["POST"]) 
 def check_out_alias(appt_id: str):
     return check_out(appt_id)
-
-# ----------------------------------------------------------------------------
-# Entrypoint
-# ----------------------------------------------------------------------------
-if __name__ == "__main__":
-    # Configure host/port via env, default to 0.0.0.0:3001 for container and local use
-    host = os.getenv("HOST", "0.0.0.0")
-    try:
-        port = int(os.getenv("PORT", "3001"))
-    except ValueError:
-        port = 3001
-    debug = os.getenv("FLASK_DEBUG", "0") in ("1", "true", "True")
-
-    log.info(
-        "Starting API server",
-        extra={
-            "host": host,
-            "port": port,
-            "db_host": os.getenv("POSTGRES_HOST") or (urlparse(os.getenv("DATABASE_URL", "")).hostname if os.getenv("DATABASE_URL") else "db"),
-        },
-    )
-    # Ensure the app listens externally so Docker/host can reach it
-    app.run(host=host, port=port, threaded=True, use_reloader=False, debug=debug)

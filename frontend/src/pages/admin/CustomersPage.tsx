@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { formatInShopTZ } from '@/lib/timezone';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import CustomerCard, { CustomerVehicleInfo } from '@/components/admin/CustomerCard';
 
 const API_BASE_URL = import.meta.env.VITE_API_ENDPOINT_URL || '';
 
@@ -15,158 +15,93 @@ type SearchItem = {
   lastVisit?: string | null;
 };
 
-type Visit = {
-  id: string;
-  status: string;
-  start?: string | null;
-  end?: string | null;
-  price: number;
-  checkInAt?: string | null;
-  checkOutAt?: string | null;
-  vehicle?: string;
-  plate?: string | null;
-  services?: Array<{ id: string; name: string; notes?: string | null; estimated_price?: number | null }>;
-  notes?: Array<{ id: string; channel: string; direction: string; body: string; status: string; created_at: string }>;
-};
 
 async function searchCustomers(q: string): Promise<SearchItem[]> {
   if (!q.trim()) return [];
-  const res = await fetch(`${API_BASE_URL}/api/admin/customers/search?q=${encodeURIComponent(q)}&limit=25`);
+  const controller = new AbortController();
+  const res = await fetch(`${API_BASE_URL}/api/admin/customers/search?q=${encodeURIComponent(q)}&limit=25`, { signal: controller.signal });
   const json = await res.json();
   return json.data?.items || [];
 }
 
-async function fetchCustomerVisits(customerId: string): Promise<Visit[]> {
-  const res = await fetch(`${API_BASE_URL}/api/admin/customers/${customerId}/visits`);
-  const json = await res.json();
-  return json.data?.visits || [];
-}
 
 export default function CustomersPage() {
-  const [q, setQ] = useState('');
+  const [query, setQuery] = useState('');
+  const [debounced, setDebounced] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<SearchItem[]>([]);
-  const [selected, setSelected] = useState<SearchItem | null>(null);
-  const [visits, setVisits] = useState<Visit[]>([]);
-  const [visitsLoading, setVisitsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const debounceRef = useRef<number | undefined>(undefined);
 
+  // Debounce input -> debounced value
   useEffect(() => {
-    const t = setTimeout(async () => {
-      if (!q.trim()) {
-        setResults([]);
-        setSelected(null);
-        setVisits([]);
-        return;
-      }
-      setLoading(true);
-      try {
-        const items = await searchCustomers(q.trim());
-        setResults(items);
-        if (items.length) {
-          // Prefer an exact plate match when query looks like a plate
-          const exact = items.find(i => (i.plate || '').toLowerCase() === q.trim().toLowerCase());
-          setSelected(exact || items[0]);
-        } else {
-          setSelected(null);
-        }
-      } finally {
-        setLoading(false);
-      }
-    }, 250);
-    return () => clearTimeout(t);
-  }, [q]);
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => setDebounced(query), 300);
+    return () => { if (debounceRef.current) window.clearTimeout(debounceRef.current); };
+  }, [query]);
 
-  useEffect(() => {
-    if (!selected) { setVisits([]); return; }
-    setVisitsLoading(true);
-    fetchCustomerVisits(selected.customerId)
-      .then(setVisits)
-      .finally(() => setVisitsLoading(false));
-  }, [selected]);
+  const runSearch = useCallback(async (term: string) => {
+    if (!term.trim()) { setResults([]); setError(null); return; }
+    setLoading(true); setError(null);
+    try {
+      const items = await searchCustomers(term.trim());
+      setResults(items);
+    } catch (e) {
+      setError((e as Error).message || 'Search failed');
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { runSearch(debounced); }, [debounced, runSearch]);
+
+  // Transform results -> aggregated customers (group by customerId w/ vehicles list)
+  const customerCards = useMemo(() => {
+    const byCustomer: Record<string, { name: string; phone?: string; email?: string; vehicles: CustomerVehicleInfo[] }> = {};
+    results.forEach(r => {
+      if (!byCustomer[r.customerId]) byCustomer[r.customerId] = { name: r.name, phone: r.phone, email: r.email, vehicles: [] };
+      byCustomer[r.customerId].vehicles.push({ vehicleId: r.vehicleId, plate: r.plate, vehicle: r.vehicle, visitsCount: r.visitsCount, lastVisit: r.lastVisit });
+    });
+    return Object.entries(byCustomer).map(([customerId, data]) => ({ customerId, ...data }));
+  }, [results]);
+
+  // 3 UI states for main content
+  const state: 'initial' | 'empty' | 'results' = !debounced.trim() ? 'initial' : (customerCards.length === 0 && !loading ? 'empty' : 'results');
 
   return (
-    <div>
+    <div className="flex flex-col h-full" data-testid="customers-page">
       <h1 className="text-2xl font-semibold mb-4">Customers</h1>
-      <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-4">
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by plate, name, phone, or email…"
-            className="w-full border rounded-lg px-3 py-2"
-          />
-          <div className="mt-3 border rounded-lg divide-y max-h-[70vh] overflow-y-auto" data-testid="customer-results">
-            {loading && <div className="p-3 text-sm text-gray-500">Searching…</div>}
-            {!loading && results.length === 0 && <div className="p-3 text-sm text-gray-500">No customers</div>}
-            {results.map((c) => (
-              <button
-                key={`${c.vehicleId}:${c.customerId}`}
-                className={`w-full text-left p-3 hover:bg-gray-50 ${selected?.vehicleId === c.vehicleId ? 'bg-blue-50' : ''}`}
-                onClick={() => setSelected(c)}
-              >
-                <div className="font-mono text-sm">{c.plate || '—'}</div>
-                <div className="text-sm">{c.vehicle || 'Vehicle'}</div>
-                <div className="text-xs text-gray-500">{c.name} {c.phone ? `• ${c.phone}` : ''} {c.email ? `• ${c.email}` : ''}</div>
-                <div className="text-xs text-gray-500">{c.visitsCount} visit{c.visitsCount === 1 ? '' : 's'} {c.lastVisit ? `• Last: ${formatInShopTZ(c.lastVisit, 'date')}` : ''}</div>
-              </button>
+      <div className="mb-4">
+        <input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search by plate, name, phone, or email…"
+          className="w-full border rounded-lg px-3 py-2"
+          data-testid="customers-search"
+        />
+      </div>
+      {error && <div className="text-sm text-red-600 mb-3" data-testid="customers-error">{error}</div>}
+      {loading && <div className="text-sm text-gray-500 mb-3" data-testid="customers-loading">Searching…</div>}
+      <div className="flex-1" data-testid="customers-content">
+        {state === 'initial' && (
+          <div className="text-gray-500 text-sm p-6" data-testid="customers-initial">Type above to search for customers by name, contact, or plate.</div>
+        )}
+        {state === 'empty' && (
+          <div className="text-gray-500 text-sm p-6" data-testid="customers-empty">No customers matched your search.</div>
+        )}
+        {state === 'results' && (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-testid="customers-results-grid">
+            {customerCards.map(c => (
+              <CustomerCard
+                key={c.customerId}
+                customerId={c.customerId}
+                name={c.name}
+                phone={c.phone}
+                email={c.email}
+                vehicles={c.vehicles}
+                onViewHistory={() => {/* Placeholder CTA for Phase 1 */}}
+              />
             ))}
           </div>
-        </div>
-
-        <div className="col-span-8">
-          {selected ? (
-            <div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-mono text-lg">{selected.plate || '—'}</div>
-                  <div className="text-gray-600">{selected.vehicle || 'Vehicle'}</div>
-                  <div className="text-sm text-gray-600">{selected.name} {selected.phone ? `• ${selected.phone}` : ''} {selected.email ? `• ${selected.email}` : ''}</div>
-                </div>
-              </div>
-
-              <h3 className="mt-6 mb-2 font-semibold">Past Visits</h3>
-              <div className="border rounded-lg divide-y" data-testid="customer-visits">
-                {visitsLoading && <div className="p-3 text-sm text-gray-500">Loading visits…</div>}
-                {!visitsLoading && visits.length === 0 && (
-                  <div className="p-3 text-sm text-gray-500">No visits</div>
-                )}
-                {visits.map((v) => (
-                  <div key={v.id} className="p-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">{formatInShopTZ(v.start || v.end, 'datetime')} • {v.status.replace('_', ' ')}</div>
-                        <div className="text-sm text-gray-600">{v.vehicle || 'Vehicle N/A'} {v.plate ? `• ${v.plate}` : ''}</div>
-                      </div>
-                      <div className="text-sm"><span className="font-semibold">${(v.price || 0).toFixed(2)}</span></div>
-                    </div>
-                    {v.services && v.services.length > 0 && (
-                      <div className="mt-2 text-sm text-gray-700">
-                        <div className="font-medium">Services</div>
-                        <ul className="list-disc ml-5">
-                          {v.services.map(s => (
-                            <li key={s.id}>{s.name}{s.estimated_price ? ` — $${Number(s.estimated_price).toFixed(2)}` : ''}{s.notes ? ` — ${s.notes}` : ''}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {v.notes && v.notes.length > 0 && (
-                      <div className="mt-2 text-sm text-gray-700">
-                        <div className="font-medium">Notes</div>
-                        <ul className="list-disc ml-5">
-                          {v.notes.map(n => (
-                            <li key={n.id}><span className="uppercase text-xs text-gray-500">{n.channel}/{n.direction}</span> — {n.body}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="text-gray-500 p-6">Search and pick a customer or plate to view their history.</div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
