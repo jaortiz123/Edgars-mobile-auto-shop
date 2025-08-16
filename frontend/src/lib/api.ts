@@ -551,25 +551,30 @@ export interface MessageTemplateRecord {
   created_at?: string | null;
   updated_at?: string | null;
 }
+export interface SuggestedMessageTemplate extends MessageTemplateRecord {
+  relevance?: number;
+  reason?: string;
+}
 export interface MessageTemplateListResponse {
   message_templates: MessageTemplateRecord[];
+  suggested?: SuggestedMessageTemplate[]; // present only when appointment_status supplied
 }
 
 // Fetch list (active by default)
-export async function fetchMessageTemplates(params: { channel?: MessageChannel; category?: string; q?: string; includeInactive?: boolean } = {}): Promise<MessageTemplateRecord[]> {
+export async function fetchMessageTemplates(params: { channel?: MessageChannel; category?: string; q?: string; includeInactive?: boolean; appointment_status?: string } = {}): Promise<MessageTemplateListResponse> {
   const resp = await http.get<Envelope<MessageTemplateListResponse> | MessageTemplateListResponse>('/admin/message-templates', { params });
   const payload = resp.data as unknown;
-  if (typeof payload === 'object' && payload !== null) {
-    if ('data' in (payload as Record<string, unknown>)) {
-      const maybe = (payload as { data?: MessageTemplateListResponse }).data;
-      if (maybe && Array.isArray(maybe.message_templates)) return maybe.message_templates;
-    }
-    if ('message_templates' in (payload as Record<string, unknown>)) {
-      const mt = (payload as MessageTemplateListResponse).message_templates;
-      if (Array.isArray(mt)) return mt;
-    }
+  // Envelope form
+  if (payload && typeof payload === 'object' && 'data' in (payload as Record<string, unknown>)) {
+    const data = (payload as { data?: MessageTemplateListResponse }).data;
+    if (data && Array.isArray(data.message_templates)) return data as MessageTemplateListResponse;
   }
-  return [];
+  // Direct form
+  if (payload && typeof payload === 'object' && 'message_templates' in (payload as Record<string, unknown>)) {
+    const direct = payload as MessageTemplateListResponse;
+    if (Array.isArray(direct.message_templates)) return direct;
+  }
+  return { message_templates: [] };
 }
 
 export async function fetchMessageTemplate(idOrSlug: string): Promise<MessageTemplateRecord | null> {
@@ -646,15 +651,63 @@ export async function deleteMessageTemplate(idOrSlug: string, opts: { soft?: boo
   throw new Error('Unexpected deleteMessageTemplate response shape');
 }
 
+// ----------------------------------------------------------------------------
+// Template Usage Telemetry (Increment 5)
+// ----------------------------------------------------------------------------
+export interface TemplateUsageEventRecord {
+  id: string;
+  template_id: string;
+  template_slug: string;
+  channel: MessageChannel;
+  appointment_id?: number | null;
+  user_id?: string | null;
+  sent_at?: string | null;
+  delivery_ms?: number | null;
+  was_automated: boolean;
+  hash?: string | null;
+  idempotent?: boolean;
+}
+export interface LogTemplateUsageInput {
+  template_id?: string; // uuid or slug
+  template_slug?: string; // slug (optional if template_id provided)
+  channel?: MessageChannel; // optional, resolved server-side if omitted
+  appointment_id?: number;
+  delivery_ms?: number;
+  was_automated?: boolean;
+  idempotency_key?: string;
+  user_id?: string; // override (rare)
+}
+export async function logTemplateUsage(payload: LogTemplateUsageInput): Promise<TemplateUsageEventRecord | null> {
+  try {
+    const resp = await http.post<Envelope<{ template_usage_event: TemplateUsageEventRecord }> | { template_usage_event: TemplateUsageEventRecord }>(
+      '/admin/template-usage',
+      payload
+    );
+    const raw = resp.data;
+    if (raw && typeof raw === 'object') {
+      const env = raw as Envelope<{ template_usage_event: TemplateUsageEventRecord }>;
+      if ('data' in env && env.data && typeof env.data === 'object' && 'template_usage_event' in env.data) {
+        return env.data.template_usage_event;
+      }
+      const direct = raw as { template_usage_event?: TemplateUsageEventRecord };
+      if (direct.template_usage_event) return direct.template_usage_event;
+    }
+    return null;
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn('[telemetry] logTemplateUsage failed', e);
+    return null; // swallow errors, telemetry is best-effort
+  }
+}
+
 // Resilient loader with static fallback (uses existing import lazily to avoid bundling if not needed)
 let cachedTemplates: MessageTemplateRecord[] | null = null;
 export async function loadTemplatesWithFallback(): Promise<MessageTemplateRecord[]> {
   if (cachedTemplates) return cachedTemplates;
   try {
-    const list = await fetchMessageTemplates();
-    if (list.length > 0) {
-      cachedTemplates = list;
-      return list;
+    const response = await fetchMessageTemplates();
+    if (response.message_templates.length > 0) {
+      cachedTemplates = response.message_templates;
+      return response.message_templates;
     }
   } catch (e) {
     if (import.meta.env.DEV) console.warn('[templates] primary fetch failed, will fallback', e);

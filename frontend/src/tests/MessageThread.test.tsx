@@ -4,8 +4,20 @@ import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import MessageThread from '../components/admin/MessageThread';
 
+// Ensure module is mocked including new fetchMessageTemplates export used by component
+vi.mock('@/lib/api', async () => {
+  const actual = await vi.importActual<any>('@/lib/api'); // eslint-disable-line @typescript-eslint/no-explicit-any
+  return {
+    ...actual,
+    getAppointmentMessages: vi.fn(),
+    createAppointmentMessage: vi.fn(),
+    fetchMessageTemplates: vi.fn().mockResolvedValue({ message_templates: [], suggested: [] }),
+    getDrawer: vi.fn().mockResolvedValue({ appointment: { id: 'appt-123', status: 'READY' } }),
+  };
+});
+
 // Import the mocked functions from centralized setup
-import { getAppointmentMessages, createAppointmentMessage } from '@/lib/api';
+import { getAppointmentMessages, createAppointmentMessage, fetchMessageTemplates } from '@/lib/api';
 
 describe('MessageThread', () => {
   const mockMessages = [
@@ -34,7 +46,8 @@ describe('MessageThread', () => {
   });
 
   it('renders message thread with messages', async () => {
-    vi.mocked(getAppointmentMessages).mockResolvedValue(mockMessages);
+  vi.mocked(getAppointmentMessages).mockResolvedValue(mockMessages);
+  vi.mocked(fetchMessageTemplates).mockResolvedValue({ message_templates: [], suggested: [] });
 
     render(<MessageThread appointmentId="appt-123" drawerOpen={true} />);
 
@@ -43,7 +56,8 @@ describe('MessageThread', () => {
   });
 
   it('renders empty state when no messages', async () => {
-    vi.mocked(getAppointmentMessages).mockResolvedValue([]);
+  vi.mocked(getAppointmentMessages).mockResolvedValue([]);
+  vi.mocked(fetchMessageTemplates).mockResolvedValue({ message_templates: [], suggested: [] });
 
     render(<MessageThread appointmentId="appt-123" drawerOpen={true} />);
 
@@ -53,7 +67,8 @@ describe('MessageThread', () => {
 
   it('allows sending a new message', async () => {
     const user = userEvent.setup();
-    vi.mocked(getAppointmentMessages).mockResolvedValue([]);
+  vi.mocked(getAppointmentMessages).mockResolvedValue([]);
+  vi.mocked(fetchMessageTemplates).mockResolvedValue({ message_templates: [], suggested: [] });
     vi.mocked(createAppointmentMessage).mockResolvedValue({
       id: 'new-msg',
       status: 'sending',
@@ -79,7 +94,8 @@ describe('MessageThread', () => {
   });
 
   it('validates empty messages', async () => {
-    vi.mocked(getAppointmentMessages).mockResolvedValue([]);
+  vi.mocked(getAppointmentMessages).mockResolvedValue([]);
+  vi.mocked(fetchMessageTemplates).mockResolvedValue({ message_templates: [], suggested: [] });
 
     render(<MessageThread appointmentId="appt-123" drawerOpen={true} />);
 
@@ -95,7 +111,8 @@ describe('MessageThread', () => {
   it('handles API errors when sending messages', async () => {
     const user = userEvent.setup();
     
-    vi.mocked(getAppointmentMessages).mockResolvedValue([]);
+  vi.mocked(getAppointmentMessages).mockResolvedValue([]);
+  vi.mocked(fetchMessageTemplates).mockResolvedValue({ message_templates: [], suggested: [] });
     vi.mocked(createAppointmentMessage).mockRejectedValue(new Error('Network error'));
 
     render(<MessageThread appointmentId="appt-123" drawerOpen={true} />);

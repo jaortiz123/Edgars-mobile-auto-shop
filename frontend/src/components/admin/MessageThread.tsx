@@ -3,7 +3,7 @@ import { toast } from '@/lib/toast';
 import * as api from '@/lib/api';
 import type { Message, MessageChannel, MessageStatus } from '@/types/models';
 import { applyTemplate, buildTemplateContext, extractTemplateVariables } from '@/lib/messageTemplates';
-import { loadTemplatesWithFallback, MessageTemplateRecord, createAppointmentMessageWithTemplate, handleApiError, getDrawer } from '@/lib/api';
+import { loadTemplatesWithFallback, MessageTemplateRecord, SuggestedMessageTemplate, createAppointmentMessageWithTemplate, handleApiError, getDrawer, fetchMessageTemplates } from '@/lib/api';
 
 interface MessageThreadProps {
   appointmentId: string;
@@ -23,8 +23,10 @@ export default function MessageThread({ appointmentId, drawerOpen }: MessageThre
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [optimistic, setOptimistic] = useState<Record<string, { state: 'sending' | 'failed'; templateId?: string }>>({});
   const [templates, setTemplates] = useState<MessageTemplateRecord[]>([]);
+  const [suggested, setSuggested] = useState<(MessageTemplateRecord | SuggestedMessageTemplate)[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
+  const [appointmentStatus, setAppointmentStatus] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pollingRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -52,11 +54,20 @@ export default function MessageThread({ appointmentId, drawerOpen }: MessageThre
     }
   }, [appointmentId, loadMessages]);
 
-  // Load drawer bundle for context (appointment + customer + vehicle)
+  // Load drawer bundle for context (appointment + customer + vehicle) and derive status
   useEffect(() => {
     let active = true;
     if (appointmentId) {
-  getDrawer(appointmentId).then(d => { if (active) setBundle(d as unknown as Record<string, unknown>); }).catch(()=>{});
+      getDrawer(appointmentId)
+        .then(d => {
+          if (!active) return;
+            setBundle(d as unknown as Record<string, unknown>);
+            try {
+              const raw: unknown = (d as any).appointment || d; // eslint-disable-line @typescript-eslint/no-explicit-any
+              if (raw && typeof (raw as { status?: unknown }).status === 'string') setAppointmentStatus((raw as { status: string }).status);
+            } catch { /* ignore */ }
+        })
+        .catch(()=>{});
     }
     return () => { active = false; };
   }, [appointmentId]);
@@ -119,6 +130,8 @@ export default function MessageThread({ appointmentId, drawerOpen }: MessageThre
       setNewMessage('');
       toast.success('Message sent');
 
+  // (Telemetry intentionally only captures template-based sends)
+
       // Refetch messages after a short delay to get updated status
       setTimeout(() => {
         loadMessages();
@@ -163,6 +176,16 @@ export default function MessageThread({ appointmentId, drawerOpen }: MessageThre
       setMessages(prev => prev.map(msg => msg.id === tempId ? { ...msg, id: resp.id, status: resp.status } : msg));
       setOptimistic(m => { const copy = { ...m }; delete copy[tempId]; return copy; });
       toast.success('Message sent');
+      // Telemetry for template-based send (fire-and-forget)
+  try {
+        api.logTemplateUsage({
+            template_id: t.slug,
+            channel,
+            appointment_id: Number(appointmentId),
+            was_automated: false,
+            idempotency_key: `template:${t.slug}:${resp.id}`
+        });
+  } catch { /* swallow */ }
       setTimeout(() => loadMessages(), 800);
     } catch (e) {
       setOptimistic(m => ({ ...m, [tempId]: { state: 'failed', templateId } }));
@@ -193,16 +216,24 @@ export default function MessageThread({ appointmentId, drawerOpen }: MessageThre
     }
   };
 
-  // Load templates (dynamic backend + fallback)
+  // Load templates (dynamic backend + fallback). Re-run if appointmentStatus appears later for contextual suggestions.
   useEffect(() => {
     let cancelled = false;
     setTemplatesLoading(true);
-    loadTemplatesWithFallback()
-      .then(list => { if (!cancelled) { setTemplates(list); } })
-      .catch(err => { if (!cancelled) { setTemplatesError((err as Error).message || 'Failed to load templates'); } })
+    const params = appointmentStatus ? { appointment_status: appointmentStatus } : {};
+    fetchMessageTemplates(params)
+      .then(resp => {
+        if (cancelled) return;
+        setTemplates(resp.message_templates);
+        setSuggested(resp.suggested || []);
+      })
+      .catch(() => {
+        return loadTemplatesWithFallback().then(list => { if (!cancelled) setTemplates(list); });
+      })
+      .catch(err => { if (!cancelled) setTemplatesError((err as Error).message || 'Failed to load templates'); })
       .finally(() => { if (!cancelled) setTemplatesLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [appointmentStatus]);
 
   // Template handling
   const categories = React.useMemo(() => {
@@ -438,14 +469,39 @@ export default function MessageThread({ appointmentId, drawerOpen }: MessageThre
         )}
         {showTemplates && (
           <div id="template-panel" className="mb-3 max-h-40 overflow-y-auto border rounded p-2 bg-gray-50 space-y-1" data-testid="template-panel">
+            {suggested.length > 0 && (
+              <div className="mb-2">
+                <div className="text-[10px] font-semibold text-blue-600 tracking-wide uppercase mb-1">Suggested</div>
+                <div className="space-y-1">
+                  {suggested.filter(s => s.channel === channel).map(s => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => handleInsertTemplate(s.id)}
+                      className="w-full text-left text-xs px-2 py-1 rounded border bg-white hover:bg-blue-50"
+                      title="Suggested template"
+                      data-testid={`suggested-template-${s.id}`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div className="font-medium flex items-center gap-1">{s.label}<span className="text-[9px] bg-blue-100 text-blue-700 px-1 rounded">Suggested</span></div>
+                        <div className="text-[10px] text-blue-500 underline">Insert</div>
+                      </div>
+                      <div className="line-clamp-2 text-gray-600">{s.body}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="h-px bg-gray-200 my-2" />
+              </div>
+            )}
             {templatesForChannel.length === 0 && !templatesLoading && (
               <div className="text-xs text-gray-500">No templates for channel</div>
             )}
-            {templatesForChannel.map(t => {
+             {templatesForChannel.map(t => {
               const isPreview = previewTemplateId === t.id || previewTemplateId === t.slug;
               const ctx = buildTemplateContext(bundle || {});
               const resolved = applyTemplate({ id: t.slug, label: t.label, channel: t.channel, category: t.category || undefined, body: t.body }, ctx, { missingTag: p => `[${p}]` });
-              return (
+               const isSuggested = suggested.some(s => s.id === t.id || s.slug === t.slug);
+               return (
                 <div key={t.id} className={`border rounded ${isPreview ? 'bg-white' : 'bg-gray-100'} p-1`}>
                   <button
                     type="button"
@@ -455,7 +511,20 @@ export default function MessageThread({ appointmentId, drawerOpen }: MessageThre
                   >
                     <div className="flex justify-between items-center">
                       <div>
-                        <div className="font-medium">{t.label}</div>
+                        <div className="font-medium flex items-center gap-1">
+                          {t.label}
+                          {isSuggested && (
+                            <span
+                              className="text-[9px] bg-blue-100 text-blue-700 px-1 rounded"
+                              data-testid={`template-badge-${t.id}`}
+                              title={(() => {
+                                const match = suggested.find(s => s.id === t.id || s.slug === t.slug);
+                                if (match && 'reason' in match && (match as any).reason) return (match as any).reason as string; // eslint-disable-line @typescript-eslint/no-explicit-any
+                                return 'Suggested template';
+                              })()}
+                            >Suggested</span>
+                          )}
+                        </div>
                         {t.category && <div className="text-[10px] uppercase tracking-wide text-gray-500">{t.category}</div>}
                       </div>
                       <div className="text-[10px] text-blue-600 underline">{isPreview ? 'Hide' : 'Preview'}</div>

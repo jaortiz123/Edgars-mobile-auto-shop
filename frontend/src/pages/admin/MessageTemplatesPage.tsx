@@ -45,7 +45,7 @@ const MessageTemplatesPage: React.FC = () => {
     if (debouncedQuery) params.q = debouncedQuery;
     if (showInactive) params.includeInactive = true;
     fetchMessageTemplates(params)
-      .then(list => { if (!cancelled) setTemplates(list); })
+      .then(resp => { if (!cancelled) setTemplates(resp.message_templates); })
       .catch(err => { if (!cancelled) setError((err as Error).message || 'Failed to load templates'); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -70,7 +70,7 @@ const MessageTemplatesPage: React.FC = () => {
     if (debouncedQuery) params.q = debouncedQuery;
     if (showInactive) params.includeInactive = true;
     fetchMessageTemplates(params)
-      .then(list => { if (!cancelled) setTemplates(list); })
+      .then(resp => { if (!cancelled) setTemplates(resp.message_templates); })
       .catch(err => { if (!cancelled) setError((err as Error).message || 'Failed to load templates'); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
