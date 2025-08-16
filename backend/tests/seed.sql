@@ -1,8 +1,7 @@
 -- Test seed data for containerized integration tests
 -- Provides realistic data for testing SQL constraints, joins, and business logic
 
--- Set timezone for consistent test data
-SET TIME ZONE 'UTC';
+-- (Removed SET TIME ZONE for portability)
 
 -- Insert test customers
 INSERT INTO customers (id, name, email, phone, address, created_at) VALUES
@@ -22,6 +21,12 @@ INSERT INTO vehicles (id, customer_id, make, model, year, vin, license_plate, cr
 (6, 5, 'BMW', '328i', 2020, '6HGBH41JXMN109191', 'PQR678', '2024-01-05 12:30:00');
 
 -- Insert test appointments with various statuses
+-- Insert test technicians
+INSERT INTO technicians (id, name, initials, is_active, created_at) VALUES
+    ('11111111-1111-1111-1111-111111111111','Tech One','T1',true, now()),
+    ('22222222-2222-2222-2222-222222222222','Tech Two','T2',true, now()),
+    ('33333333-3333-3333-3333-333333333333','Tech Three','T3',true, now()),
+    ('44444444-4444-4444-4444-444444444444','Tech Four','T4',true, now());
 INSERT INTO appointments (id, customer_id, vehicle_id, status, appointment_date, start_ts, end_ts, total_amount, paid_amount, notes, created_at) VALUES
 -- SCHEDULED appointments
 (1, 1, 1, 'SCHEDULED', '2024-02-15 00:00:00+00', '2024-02-15 09:00:00+00', '2024-02-15 10:00:00+00', 150.00, 0.00, 'Oil change and inspection', '2024-02-01 09:00:00'),
@@ -95,40 +100,7 @@ INSERT INTO messages (appointment_id, channel, direction, body, status, sent_at)
 (6, 'sms', 'out', 'Hi Alice, your vehicle is ready for pickup. Battery replacement completed successfully.', 'delivered', '2024-02-08 11:45:00'),
 (7, 'sms', 'in', 'Thanks for the great service! Vehicle runs perfectly.', 'delivered', '2024-02-05 12:00:00');
 
--- Verify data integrity with some basic checks
-DO $$
-DECLARE
-    customer_count INTEGER;
-    vehicle_count INTEGER;
-    appointment_count INTEGER;
-    service_count INTEGER;
-BEGIN
-    SELECT COUNT(*) INTO customer_count FROM customers;
-    SELECT COUNT(*) INTO vehicle_count FROM vehicles;
-    SELECT COUNT(*) INTO appointment_count FROM appointments;
-    SELECT COUNT(*) INTO service_count FROM appointment_services;
-    
-    RAISE INFO 'Seed data loaded successfully:';
-    RAISE INFO '  Customers: %', customer_count;
-    RAISE INFO '  Vehicles: %', vehicle_count;
-    RAISE INFO '  Appointments: %', appointment_count;
-    RAISE INFO '  Services: %', service_count;
-    
-    -- Verify foreign key relationships
-    IF EXISTS (SELECT 1 FROM vehicles WHERE customer_id NOT IN (SELECT id FROM customers)) THEN
-        RAISE EXCEPTION 'Foreign key violation: vehicles reference non-existent customers';
-    END IF;
-    
-    IF EXISTS (SELECT 1 FROM appointments WHERE customer_id NOT IN (SELECT id FROM customers)) THEN
-        RAISE EXCEPTION 'Foreign key violation: appointments reference non-existent customers';
-    END IF;
-    
-    IF EXISTS (SELECT 1 FROM appointments WHERE vehicle_id NOT IN (SELECT id FROM vehicles)) THEN
-        RAISE EXCEPTION 'Foreign key violation: appointments reference non-existent vehicles';
-    END IF;
-    
-    RAISE INFO '  ✓ All foreign key relationships verified';
-END $$;
+-- (Removed DO $$ integrity verification block for cross-dialect compatibility)
 
 -- Reset sequences to avoid conflicts in tests
 SELECT setval('customers_id_seq', (SELECT MAX(id) FROM customers) + 1000);

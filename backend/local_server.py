@@ -1855,12 +1855,19 @@ def patch_appointment(appt_id: str):
                 err = result.errors[0]
                 return _fail(err.status, err.code, err.detail)
             # naive memory conflict detection
-            if find_conflicts and result.cleaned.get('start_ts') and (body.get('tech_id') or appt.get('tech_id')):
+            if find_conflicts and result.cleaned.get('start_ts') and (body.get('tech_id') or appt.get('tech_id') or body.get('license_plate') or appt.get('vehicle_id')):
+                start_iso = result.cleaned['start_ts'].isoformat()
+                tech_conf_ids = []
+                veh_conf_ids = []
                 for a in _MEM_APPTS:  # type: ignore
                     if a.get('id') == appt_id:
                         continue
-                    if a.get('tech_id') == (body.get('tech_id') or appt.get('tech_id')) and a.get('start_ts') == result.cleaned['start_ts'].isoformat():
-                        return _fail(HTTPStatus.CONFLICT, 'CONFLICT', 'Scheduling conflict detected', meta={'conflicts': {'tech':[a.get('id')], 'vehicle': []}})
+                    if (body.get('tech_id') or appt.get('tech_id')) and a.get('tech_id') == (body.get('tech_id') or appt.get('tech_id')) and a.get('start_ts') == start_iso:
+                        tech_conf_ids.append(a.get('id'))
+                    if (body.get('license_plate') or appt.get('vehicle_id')) and a.get('vehicle_id') == (body.get('license_plate') or appt.get('vehicle_id')) and a.get('start_ts') == start_iso:
+                        veh_conf_ids.append(a.get('id'))
+                if tech_conf_ids or veh_conf_ids:
+                    return _fail(HTTPStatus.CONFLICT, 'CONFLICT', 'Scheduling conflict detected', meta={'conflicts': {'tech': tech_conf_ids, 'vehicle': veh_conf_ids}})
         updated = []
         # Memory mode technician validation: reject clearly invalid all-zero UUID sentinel (tests use this)
         if body.get("tech_id") == "00000000-0000-0000-0000-000000000000":
@@ -1909,13 +1916,14 @@ def patch_appointment(appt_id: str):
         raise err
     with conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT id::text, status::text, customer_id::text, vehicle_id::text FROM appointments WHERE id = %s FOR UPDATE", (appt_id,))
+            cur.execute("SELECT id::text, status::text, customer_id::text, vehicle_id::text, tech_id::text, start_ts, end_ts FROM appointments WHERE id = %s FOR UPDATE", (appt_id,))
             old = cur.fetchone()
             if not old:
                 raise NotFound("Appointment not found")
             if validate_appointment_payload:
                 merged = {**old, **body}
-                if 'start' in merged and 'start_ts' not in merged:
+                # Always map provided 'start' to canonical 'start_ts' for validation/conflict checks
+                if 'start' in merged:
                     merged['start_ts'] = merged.get('start')
                 result = validate_appointment_payload(merged, mode='edit', existing=old)
                 if result.errors:
@@ -1927,6 +1935,10 @@ def patch_appointment(appt_id: str):
                         exclude_int = int(appt_id) if appt_id.isdigit() else None
                     except Exception:
                         exclude_int = None
+                    try:
+                        app.logger.debug("patch conflict check: appt_id=%s start_ts=%s end_ts=%s tech_id=%s", appt_id, result.cleaned.get('start_ts'), result.cleaned.get('end_ts'), body.get('tech_id') or old.get('tech_id'))
+                    except Exception:
+                        pass
                     conflicts = find_conflicts(conn, tech_id=body.get('tech_id') or old.get('tech_id'), vehicle_id=body.get('vehicle_id') or old.get('vehicle_id'), start_ts=result.cleaned.get('start_ts'), end_ts=result.cleaned.get('end_ts'), exclude_id=exclude_int)
                     if conflicts.get('tech') or conflicts.get('vehicle'):
                         return _fail(HTTPStatus.CONFLICT, 'CONFLICT', 'Scheduling conflict detected', meta={'conflicts': conflicts})
@@ -2320,11 +2332,17 @@ def create_appointment():
         if tech_id == "00000000-0000-0000-0000-000000000000":
             return _fail(HTTPStatus.BAD_REQUEST, "invalid", "tech_id not found or inactive")
         # Memory-mode conflict detection (simplified; just returns conflict if same tech & identical start)
-        if find_conflicts and validation_result and validation_result.cleaned.get('start_ts') and tech_id:
-            # naive scan of in-memory list
+        if find_conflicts and validation_result and validation_result.cleaned.get('start_ts') and (tech_id or license_plate):
+            start_iso = validation_result.cleaned['start_ts'].isoformat()
+            tech_conf_ids = []
+            veh_conf_ids = []
             for a in _MEM_APPTS:  # type: ignore
-                if a.get('tech_id') == tech_id and a.get('start_ts') == validation_result.cleaned['start_ts'].isoformat():
-                    return _fail(HTTPStatus.CONFLICT, 'CONFLICT', 'Scheduling conflict detected', meta={'conflicts': {'tech':[a.get('id')], 'vehicle': []}})
+                if tech_id and a.get('tech_id') == tech_id and a.get('start_ts') == start_iso:
+                    tech_conf_ids.append(a.get('id'))
+                if license_plate and a.get('vehicle_id') == license_plate and a.get('start_ts') == start_iso:
+                    veh_conf_ids.append(a.get('id'))
+            if tech_conf_ids or veh_conf_ids:
+                return _fail(HTTPStatus.CONFLICT, 'CONFLICT', 'Scheduling conflict detected', meta={'conflicts': {'tech': tech_conf_ids, 'vehicle': veh_conf_ids}})
         new_id = f"mem-appt-{_MEM_APPTS_SEQ}"  # type: ignore
         record = {
             "id": new_id,
@@ -2358,7 +2376,17 @@ def create_appointment():
             if find_conflicts and validation_result and validation_result.cleaned.get('start_ts'):
                 start_ts_v = validation_result.cleaned.get('start_ts') or start_dt
                 end_ts_v = validation_result.cleaned.get('end_ts')
-                conflicts = find_conflicts(conn, tech_id=tech_id, vehicle_id=None, start_ts=start_ts_v, end_ts=end_ts_v)
+                # Resolve vehicle id candidate if license_plate provided early (best-effort, ignore errors)
+                veh_id_candidate = None  # only set if an existing vehicle row is found
+                if license_plate:
+                    try:
+                        cur.execute("SELECT id FROM vehicles WHERE license_plate ILIKE %s", (license_plate,))
+                        vrow = cur.fetchone()
+                        if vrow:
+                            veh_id_candidate = vrow[0] if not isinstance(vrow, dict) else vrow.get('id')
+                    except Exception:
+                        veh_id_candidate = None
+                conflicts = find_conflicts(conn, tech_id=tech_id, vehicle_id=veh_id_candidate, start_ts=start_ts_v, end_ts=end_ts_v)
                 if conflicts.get('tech') or conflicts.get('vehicle'):
                     return _fail(HTTPStatus.CONFLICT, 'CONFLICT', 'Scheduling conflict detected', meta={'conflicts': conflicts})
             # Resolve or create customer
