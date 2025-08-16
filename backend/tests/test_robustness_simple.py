@@ -78,9 +78,11 @@ def test_database_constraints_enforcement(db_connection):
     with db_connection.cursor() as cur:
         # Test foreign key constraint
         with pytest.raises(psycopg2.IntegrityError):
+            # Use an obviously non-existent integer ID to trigger FK violation reliably.
+            # Aligns with containerized robustness test approach.
             cur.execute("""
                 INSERT INTO vehicles (customer_id, make, model, year, license_plate)
-                VALUES ('99999999-9999-9999-9999-999999999999', 'Test', 'Model', 2020, 'TEST123')
+                VALUES (999999, 'Test', 'Model', 2020, 'TEST123')
             """)
         
         # Rollback the transaction
