@@ -35,6 +35,10 @@ CREATE TABLE appointments (
   location_address TEXT,
   status VARCHAR(50) DEFAULT 'scheduled',
   notes TEXT,
+  -- Added columns used by analytics/search queries
+  start_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  end_ts TIMESTAMP,
+  total_amount NUMERIC(12,2) DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 INSERT INTO services (name, description, duration_minutes, base_price) VALUES
