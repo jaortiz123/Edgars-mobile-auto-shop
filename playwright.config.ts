@@ -7,6 +7,9 @@ export default defineConfig({
   // P2-T-009: Retry configuration for flaky test detection
   retries: process.env.CI ? 1 : 0, // Retry once in CI, no retries locally
   
+  // Global timeout for the entire test run (4 minutes) to prevent hangs
+  globalTimeout: 240000,
+  
   // Cross-browser projects for P2-T-005 and mobile viewport for P2-T-008
   projects: [
     {

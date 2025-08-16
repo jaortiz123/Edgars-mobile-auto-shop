@@ -4,11 +4,14 @@ services:
   backend:
     image: python:3.9-slim
     working_dir: /app
+    # Install deps then launch server; requirements.txt lives inside mounted /app directory
     command: >
-      sh -c "
-      pip install -r requirements.txt &&
-      python local_server.py
-      "
+      sh -c "set -e
+      echo 'Installing Python dependencies...';
+      if [ ! -f requirements.txt ]; then echo 'requirements.txt not found in /app'; ls -al; exit 1; fi;
+      pip install -r requirements.txt >/tmp/pip.log 2>&1 || { echo 'Pip install failed'; tail -n 40 /tmp/pip.log; exit 1; };
+      echo 'Starting Flask server...';
+      PYTHONUNBUFFERED=1 python run_server.py"
     volumes:
       - ./backend:/app
     ports:
