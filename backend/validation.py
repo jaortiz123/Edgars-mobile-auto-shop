@@ -120,38 +120,59 @@ def validate_appointment_payload(payload: Dict[str, Any], mode: str = 'create', 
 
 def find_conflicts(conn, *, tech_id: Optional[str], vehicle_id: Optional[int], start_ts: datetime, end_ts: Optional[datetime], exclude_id: Optional[int] = None) -> Dict[str, List[int]]:
     """Return conflicting appointment ids keyed by 'tech' and 'vehicle'.
-    Uses simplistic overlap on start_ts..COALESCE(end_ts, start_ts + default block)."""
+    Overlap logic: existing_start < new_end AND new_start < existing_end.
+    existing_end defaults to start_ts + DEFAULT_BLOCK_HOURS when NULL.
+    new_end similarly defaults when end_ts is None.
+    """
     cur = conn.cursor()
     conflicts = {"tech": [], "vehicle": []}
-    # Compute effective end (for open-ended appts)
-    eff_end = end_ts or (start_ts + timedelta(hours=DEFAULT_BLOCK_HOURS))
-
-    params: List[Any] = [start_ts, eff_end]
-    exclude_clause = ''
+    new_eff_end = end_ts or (start_ts + timedelta(hours=DEFAULT_BLOCK_HOURS))
+    exclude_clause = ""
+    params_extra: List[Any] = []
     if exclude_id is not None:
-        exclude_clause = 'AND a.id <> %s'
-        params.append(exclude_id)
+        exclude_clause = "AND a.id <> %s"
+        params_extra.append(exclude_id)
 
-    # Technician conflicts
+    # Tech conflicts
     if tech_id:
-        cur.execute(f"""
+        t_params: List[Any] = [tech_id]
+        if exclude_clause:
+            t_params.append(exclude_id)
+        t_params.extend([new_eff_end, start_ts])
+        cur.execute(
+            f"""
             SELECT a.id FROM appointments a
             WHERE a.tech_id = %s
               AND a.status NOT IN ('CANCELED','NO_SHOW')
               {exclude_clause}
-              AND tsrange(a.start_ts, COALESCE(a.end_ts, a.start_ts + INTERVAL '{DEFAULT_BLOCK_HOURS} hour')) && tsrange(%s, %s)
-        """, [tech_id] + params + ([] if exclude_id is None else []))
-        conflicts['tech'] = [r[0] for r in cur.fetchall()]
+              AND a.start_ts IS NOT NULL
+              AND a.start_ts < %s  -- existing_start < new_end
+              AND %s < COALESCE(a.end_ts, a.start_ts + INTERVAL '{DEFAULT_BLOCK_HOURS} hour') -- new_start < existing_end
+            """,
+            t_params,
+        )
+        rows = cur.fetchall()
+        conflicts['tech'] = [ (r[0] if not isinstance(r, dict) else r.get('id')) for r in rows ]
 
     # Vehicle conflicts
-    if vehicle_id:
-        cur.execute(f"""
+    if vehicle_id is not None and isinstance(vehicle_id, int):
+        v_params: List[Any] = [vehicle_id]
+        if exclude_clause:
+            v_params.append(exclude_id)
+        v_params.extend([new_eff_end, start_ts])
+        cur.execute(
+            f"""
             SELECT a.id FROM appointments a
             WHERE a.vehicle_id = %s
               AND a.status NOT IN ('CANCELED','NO_SHOW')
               {exclude_clause}
-              AND tsrange(a.start_ts, COALESCE(a.end_ts, a.start_ts + INTERVAL '{DEFAULT_BLOCK_HOURS} hour')) && tsrange(%s, %s)
-        """, [vehicle_id] + params + ([] if exclude_id is None else []))
-        conflicts['vehicle'] = [r[0] for r in cur.fetchall()]
+              AND a.start_ts IS NOT NULL
+              AND a.start_ts < %s
+              AND %s < COALESCE(a.end_ts, a.start_ts + INTERVAL '{DEFAULT_BLOCK_HOURS} hour')
+            """,
+            v_params,
+        )
+        rows = cur.fetchall()
+        conflicts['vehicle'] = [ (r[0] if not isinstance(r, dict) else r.get('id')) for r in rows ]
 
     return conflicts
