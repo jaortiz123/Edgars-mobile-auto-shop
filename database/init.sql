@@ -4,6 +4,8 @@ CREATE TABLE customers (
   phone VARCHAR(20),
   email VARCHAR(255),
   address TEXT,
+  -- Added in migration 20250816_007_add_customer_is_vip.sql; kept here so fresh init DBs have column without needing migration replay
+  is_vip BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE vehicles (
