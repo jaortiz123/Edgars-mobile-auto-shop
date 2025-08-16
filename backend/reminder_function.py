@@ -10,6 +10,11 @@ _SNS_CLIENT = None
 _DDB_RESOURCE = None
 _CLOUDWATCH_CLIENT = None
 
+# Module-level stub attributes expected by tests for monkeypatching
+dynamodb = None  # type: ignore
+sns = None  # type: ignore
+cloudwatch = None  # optional consistency
+
 def get_sns_client():
     global _SNS_CLIENT
     if _SNS_CLIENT is None:

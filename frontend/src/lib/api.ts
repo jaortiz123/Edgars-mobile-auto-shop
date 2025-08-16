@@ -736,3 +736,60 @@ export async function loadTemplatesWithFallback(): Promise<MessageTemplateRecord
 
 // Utility to clear cache (used by admin mutations to force refetch)
 export function invalidateTemplatesCache() { cachedTemplates = null; }
+
+// ----------------------------------------------------------------------------
+// Recent Customers (Customers Page Phase 2)
+// ----------------------------------------------------------------------------
+export interface RecentCustomerRecord {
+  customerId: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  latestAppointmentId?: string;
+  latestAppointmentAt?: string | null;
+  latestStatus?: string | null;
+  vehicles: Array<{ vehicleId: string; plate?: string; vehicle?: string }>;
+  totalSpent: number;
+  isVip?: boolean;
+  isOverdueForService?: boolean;
+}
+
+interface RawRecentCustomer {
+  customerId?: string; customer_id?: string;
+  name?: string; customer_name?: string;
+  phone?: string; email?: string;
+  latestAppointmentId?: string; latest_appointment_id?: string;
+  latestAppointmentAt?: string | null; latest_appointment_at?: string | null;
+  latestStatus?: string | null; latest_status?: string | null;
+  vehicles?: Array<{ vehicleId?: string; vehicle_id?: string; id?: string; plate?: string; vehicle?: string }>;
+  totalSpent?: number; total_spent?: number;
+  isVip?: boolean; is_vip?: boolean;
+  isOverdueForService?: boolean; is_overdue_for_service?: boolean;
+}
+
+export async function fetchRecentCustomers(limit = 8): Promise<RecentCustomerRecord[]> {
+  try {
+    const { data } = await http.get<{ data: { recent_customers: RawRecentCustomer[] } }>(`/admin/recent-customers`, { params: { limit } });
+    const list: RawRecentCustomer[] = data?.data?.recent_customers || [];
+    return list.map(c => ({
+      customerId: c.customerId || c.customer_id || '',
+      name: c.name || c.customer_name || 'Unknown',
+      phone: c.phone,
+      email: c.email,
+      latestAppointmentId: c.latestAppointmentId || c.latest_appointment_id,
+      latestAppointmentAt: c.latestAppointmentAt || c.latest_appointment_at,
+      latestStatus: c.latestStatus || c.latest_status,
+      vehicles: Array.isArray(c.vehicles) ? c.vehicles.map(v => ({
+        vehicleId: v.vehicleId || v.vehicle_id || v.id || '',
+        plate: v.plate,
+        vehicle: v.vehicle,
+      })) : [],
+      totalSpent: typeof c.totalSpent === 'number' ? c.totalSpent : (typeof c.total_spent === 'number' ? c.total_spent : 0),
+  isVip: c.isVip ?? c.is_vip ?? false,
+  isOverdueForService: c.isOverdueForService ?? c.is_overdue_for_service ?? false,
+    }));
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn('[recent-customers] fetch failed', e);
+    return [];
+  }
+}

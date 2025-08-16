@@ -156,7 +156,7 @@ class TestContainerizedDatabaseRobustness:
             with pytest.raises(psycopg2.IntegrityError):
                 cur.execute("""
                     INSERT INTO vehicles (customer_id, make, model, year, license_plate)
-                    VALUES ('99999999-9999-9999-9999-999999999999', 'Test', 'Model', 2020, 'TEST123')
+                    VALUES (999999, 'Test', 'Model', 2020, 'TEST123')
                 """)
             
             # Rollback the transaction

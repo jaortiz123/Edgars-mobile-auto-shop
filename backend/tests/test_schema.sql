@@ -27,6 +27,7 @@ CREATE TABLE customers (
     email TEXT,
     phone TEXT,
     address TEXT,
+    is_vip BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
@@ -75,6 +76,8 @@ CREATE TABLE appointments (
     customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE RESTRICT,
     vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE RESTRICT,
     status appointment_status NOT NULL DEFAULT 'SCHEDULED',
+    -- Added to align with robustness tests referencing appointment_date
+    appointment_date TIMESTAMPTZ,
     start_ts TIMESTAMPTZ,
     end_ts TIMESTAMPTZ,
     started_at TIMESTAMPTZ,

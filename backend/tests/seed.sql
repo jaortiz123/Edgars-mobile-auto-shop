@@ -22,26 +22,26 @@ INSERT INTO vehicles (id, customer_id, make, model, year, vin, license_plate, cr
 (6, 5, 'BMW', '328i', 2020, '6HGBH41JXMN109191', 'PQR678', '2024-01-05 12:30:00');
 
 -- Insert test appointments with various statuses
-INSERT INTO appointments (id, customer_id, vehicle_id, status, start_ts, end_ts, total_amount, paid_amount, notes, created_at) VALUES
+INSERT INTO appointments (id, customer_id, vehicle_id, status, appointment_date, start_ts, end_ts, total_amount, paid_amount, notes, created_at) VALUES
 -- SCHEDULED appointments
-(1, 1, 1, 'SCHEDULED', '2024-02-15 09:00:00+00', '2024-02-15 10:00:00+00', 150.00, 0.00, 'Oil change and inspection', '2024-02-01 09:00:00'),
-(2, 2, 3, 'SCHEDULED', '2024-02-16 14:00:00+00', '2024-02-16 16:00:00+00', 350.00, 0.00, 'Brake pad replacement', '2024-02-02 10:00:00'),
-(3, 5, 6, 'SCHEDULED', '2024-02-20 11:00:00+00', '2024-02-20 12:30:00+00', 200.00, 0.00, 'Diagnostic check', '2024-02-05 11:00:00'),
+(1, 1, 1, 'SCHEDULED', '2024-02-15 00:00:00+00', '2024-02-15 09:00:00+00', '2024-02-15 10:00:00+00', 150.00, 0.00, 'Oil change and inspection', '2024-02-01 09:00:00'),
+(2, 2, 3, 'SCHEDULED', '2024-02-16 00:00:00+00', '2024-02-16 14:00:00+00', '2024-02-16 16:00:00+00', 350.00, 0.00, 'Brake pad replacement', '2024-02-02 10:00:00'),
+(3, 5, 6, 'SCHEDULED', '2024-02-20 00:00:00+00', '2024-02-20 11:00:00+00', '2024-02-20 12:30:00+00', 200.00, 0.00, 'Diagnostic check', '2024-02-05 11:00:00'),
 
 -- IN_PROGRESS appointments
-(4, 3, 4, 'IN_PROGRESS', '2024-02-10 08:00:00+00', '2024-02-10 10:00:00+00', 275.00, 0.00, 'Transmission service', '2024-02-01 08:00:00'),
-(5, 1, 2, 'IN_PROGRESS', '2024-02-12 13:00:00+00', '2024-02-12 15:00:00+00', 125.00, 0.00, 'Tire rotation and balance', '2024-02-03 13:00:00'),
+(4, 3, 4, 'IN_PROGRESS', '2024-02-10 00:00:00+00', '2024-02-10 08:00:00+00', '2024-02-10 10:00:00+00', 275.00, 0.00, 'Transmission service', '2024-02-01 08:00:00'),
+(5, 1, 2, 'IN_PROGRESS', '2024-02-12 00:00:00+00', '2024-02-12 13:00:00+00', '2024-02-12 15:00:00+00', 125.00, 0.00, 'Tire rotation and balance', '2024-02-03 13:00:00'),
 
 -- READY appointments  
-(6, 4, 5, 'READY', '2024-02-08 10:00:00+00', '2024-02-08 11:30:00+00', 95.00, 0.00, 'Battery replacement', '2024-01-28 10:00:00'),
+(6, 4, 5, 'READY', '2024-02-08 00:00:00+00', '2024-02-08 10:00:00+00', '2024-02-08 11:30:00+00', 95.00, 0.00, 'Battery replacement', '2024-01-28 10:00:00'),
 
 -- COMPLETED appointments
-(7, 2, 3, 'COMPLETED', '2024-02-05 09:00:00+00', '2024-02-05 11:00:00+00', 450.00, 450.00, 'Major service - completed', '2024-01-25 09:00:00'),
-(8, 1, 1, 'COMPLETED', '2024-02-01 14:00:00+00', '2024-02-01 15:00:00+00', 75.00, 75.00, 'Quick oil change - paid in full', '2024-01-20 14:00:00'),
-(9, 3, 4, 'COMPLETED', '2024-01-30 11:00:00+00', '2024-01-30 12:00:00+00', 180.00, 180.00, 'Brake inspection - completed', '2024-01-15 11:00:00'),
+(7, 2, 3, 'COMPLETED', '2024-02-05 00:00:00+00', '2024-02-05 09:00:00+00', '2024-02-05 11:00:00+00', 450.00, 450.00, 'Major service - completed', '2024-01-25 09:00:00'),
+(8, 1, 1, 'COMPLETED', '2024-02-01 00:00:00+00', '2024-02-01 14:00:00+00', '2024-02-01 15:00:00+00', 75.00, 75.00, 'Quick oil change - paid in full', '2024-01-20 14:00:00'),
+(9, 3, 4, 'COMPLETED', '2024-01-30 00:00:00+00', '2024-01-30 11:00:00+00', '2024-01-30 12:00:00+00', 180.00, 180.00, 'Brake inspection - completed', '2024-01-15 11:00:00'),
 
 -- NO_SHOW appointment
-(10, 5, 6, 'NO_SHOW', '2024-02-07 15:00:00+00', '2024-02-07 16:00:00+00', 120.00, 0.00, 'Customer did not show up', '2024-01-30 15:00:00');
+(10, 5, 6, 'NO_SHOW', '2024-02-07 00:00:00+00', '2024-02-07 15:00:00+00', '2024-02-07 16:00:00+00', 120.00, 0.00, 'Customer did not show up', '2024-01-30 15:00:00');
 
 -- Insert test appointment services (let PostgreSQL generate UUIDs)
 INSERT INTO appointment_services (appointment_id, name, notes, estimated_hours, estimated_price, category, created_at) VALUES

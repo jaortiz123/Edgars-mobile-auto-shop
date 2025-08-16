@@ -154,6 +154,11 @@ export function createMocks() {
         id: idOrSlug, slug: idOrSlug, label: payload.label || 'Updated', channel: (payload.channel || 'sms'), category: payload.category || null, body: payload.body || 'Updated body', variables: [], is_active: payload.is_active !== false
       })),
       deleteMessageTemplate: vi.fn().mockResolvedValue({ deleted: true, soft: true }),
+      fetchMessageTemplates: vi.fn().mockResolvedValue({ message_templates: [
+        { id: 'tpl-1', slug: 'tpl-1', label: 'Vehicle Ready', channel: 'sms', category: 'status', body: 'Hi {{customer.name}}, your vehicle is ready!', variables: [], is_active: true },
+        { id: 'tpl-2', slug: 'tpl-2', label: 'Reminder', channel: 'sms', category: 'reminder', body: 'Reminder: appointment tomorrow', variables: [], is_active: true }
+      ], suggested: [] }),
+  fetchRecentCustomers: vi.fn().mockResolvedValue([]),
     },
 
     // Build notification object with closure references so functions work when imported standalone
