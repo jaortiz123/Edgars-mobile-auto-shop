@@ -28,7 +28,9 @@ function emit() { listeners.forEach(l => { try { l(); } catch { /* ignore */ } }
 
 export function setBoardTechFilter(id?: string | null) {
   loadInitial();
-  techId = id || undefined;
+  const next = id || undefined;
+  if (techId === next) return; // no change, avoid redundant emit (prevents passive effect loops in StrictMode)
+  techId = next;
   emit();
 }
 

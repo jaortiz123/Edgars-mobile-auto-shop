@@ -589,6 +589,172 @@ def list_service_operations():
             } for r in rows
         ]
     })
+
+# ----------------------------------------------------------------------------
+# Message Templates (Increment 4) — dynamic CRUD for SMS/Email templates
+# ----------------------------------------------------------------------------
+def _extract_variables_from_body(body: str) -> list[str]:
+    """Lightweight server-side variable extractor to mirror frontend logic.
+
+    Matches {{ path.to.value }} ignoring escaped \{{ }} tokens. Only accepts a-zA-Z0-9_. paths.
+    """
+    import re
+    token_re = re.compile(r"\\?{{\s*([^{}]+?)\s*}}")
+    vars_set: set[str] = set()
+    for m in token_re.finditer(body or ""):
+        full = m.group(0)
+        inner = m.group(1).strip()
+        if full.startswith("\\{{"):
+            continue  # escaped literal
+        pipe_index = inner.find('|')
+        path = inner[:pipe_index].strip() if pipe_index != -1 else inner
+        if path and all(c.isalnum() or c in '._' for c in path):
+            vars_set.add(path)
+    return sorted(vars_set)
+
+def _row_to_template(r: dict) -> dict:
+    return {
+        "id": r["id"],
+        "slug": r["slug"],
+        "label": r["label"],
+        "channel": r["channel"],
+        "category": r.get("category"),
+        "body": r["body"],
+        "variables": r.get("variables") or [],
+        "is_active": r["is_active"],
+        "created_at": r["created_at"].isoformat() if r.get("created_at") else None,
+        "updated_at": r["updated_at"].isoformat() if r.get("updated_at") else None,
+    }
+
+@app.route("/api/admin/message-templates", methods=["GET"])
+def list_message_templates():
+    """List active message templates. Advisors can view; Owners manage."""
+    maybe_auth()  # allow dev bypass or Advisor/Owner
+    include_inactive = request.args.get("includeInactive", "false").lower() == "true"
+    channel = request.args.get("channel")
+    category = request.args.get("category")
+    q = request.args.get("q")
+    conn = db_conn()
+    sql = ["SELECT id, slug, label, channel, category, body, variables, is_active, created_at, updated_at FROM message_templates WHERE 1=1"]
+    params: list = []
+    if not include_inactive:
+        sql.append("AND is_active IS TRUE")
+    if channel:
+        sql.append("AND channel = %s")
+        params.append(channel)
+    if category:
+        sql.append("AND category = %s")
+        params.append(category)
+    if q:
+        sql.append("AND (LOWER(label) LIKE %s OR LOWER(body) LIKE %s OR LOWER(COALESCE(category,'')) LIKE %s)")
+        like = f"%{q.lower()}%"
+        params.extend([like, like, like])
+    sql.append("ORDER BY category NULLS LAST, label ASC LIMIT 500")
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(" ".join(sql), params)
+            rows = cur.fetchall()
+    return _ok({"message_templates": [_row_to_template(r) for r in rows]})
+
+@app.route("/api/admin/message-templates", methods=["POST"])
+def create_message_template():
+    user = require_auth_role("Owner")  # Owner only
+    body = request.get_json(silent=True) or {}
+    slug = (body.get("slug") or "").strip()
+    label = (body.get("label") or "").strip()
+    channel = (body.get("channel") or "").strip()
+    category = (body.get("category") or None) or None
+    tpl_body = body.get("body") or ""
+    if not slug or not label or channel not in ("sms","email") or not tpl_body:
+        return _fail(HTTPStatus.BAD_REQUEST, "INVALID_INPUT", "slug,label,channel(body) required and channel must be sms/email")
+    variables = _extract_variables_from_body(tpl_body)
+    conn = db_conn()
+    with conn:
+        with conn.cursor() as cur:
+            # Ensure uniqueness of slug
+            cur.execute("SELECT 1 FROM message_templates WHERE slug=%s", (slug,))
+            if cur.fetchone():
+                return _fail(HTTPStatus.CONFLICT, "SLUG_EXISTS", "Slug already in use")
+            cur.execute(
+                """
+                INSERT INTO message_templates (slug,label,channel,category,body,variables,created_by,updated_by)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                RETURNING id, slug, label, channel, category, body, variables, is_active, created_at, updated_at
+                """,
+                (slug, label, channel, category, tpl_body, variables, user.get("sub"), user.get("sub")),
+            )
+            row = cur.fetchone()
+            audit(conn, user.get("sub"), "CREATE", "message_template", row["id"], {}, row)
+    return _ok(_row_to_template(row), status=HTTPStatus.CREATED)
+
+@app.route("/api/admin/message-templates/<tid>", methods=["GET"])
+def get_message_template(tid: str):
+    maybe_auth()
+    conn = db_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, slug, label, channel, category, body, variables, is_active, created_at, updated_at FROM message_templates WHERE id=%s OR slug=%s", (tid, tid))
+            row = cur.fetchone()
+            if not row:
+                return _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Template not found")
+    return _ok(_row_to_template(row))
+
+@app.route("/api/admin/message-templates/<tid>", methods=["PATCH"])
+def update_message_template(tid: str):
+    user = require_auth_role("Owner")
+    body = request.get_json(silent=True) or {}
+    fields = {}
+    allowed = {"label", "channel", "category", "body", "is_active"}
+    for k in allowed:
+        if k in body:
+            fields[k] = body[k]
+    if not fields:
+        return _fail(HTTPStatus.BAD_REQUEST, "NO_FIELDS", "No updatable fields supplied")
+    if "channel" in fields and fields["channel"] not in ("sms","email"):
+        return _fail(HTTPStatus.BAD_REQUEST, "INVALID_CHANNEL", "channel must be sms or email")
+    conn = db_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, slug, label, channel, category, body, variables, is_active, created_at, updated_at FROM message_templates WHERE id=%s OR slug=%s", (tid, tid))
+            existing = cur.fetchone()
+            if not existing:
+                return _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Template not found")
+            before = dict(existing)
+            if "body" in fields:
+                fields["variables"] = _extract_variables_from_body(fields["body"])
+            set_parts = []
+            params = []
+            for k, v in fields.items():
+                set_parts.append(f"{k}=%s")
+                params.append(v)
+            set_parts.append("updated_by=%s")
+            params.append(user.get("sub"))
+            params.extend([existing["id"]])
+            cur.execute(
+                f"UPDATE message_templates SET {', '.join(set_parts)} WHERE id=%s RETURNING id, slug, label, channel, category, body, variables, is_active, created_at, updated_at"
+            , params)
+            updated = cur.fetchone()
+            audit(conn, user.get("sub"), "UPDATE", "message_template", existing["id"], before, updated)
+    return _ok(_row_to_template(updated))
+
+@app.route("/api/admin/message-templates/<tid>", methods=["DELETE"])
+def delete_message_template(tid: str):
+    user = require_auth_role("Owner")
+    soft = request.args.get("soft", "true").lower() != "false"  # default soft delete
+    conn = db_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, slug, label, channel, category, body, variables, is_active, created_at, updated_at FROM message_templates WHERE id=%s OR slug=%s", (tid, tid))
+            existing = cur.fetchone()
+            if not existing:
+                return _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Template not found")
+            if soft:
+                cur.execute("UPDATE message_templates SET is_active=FALSE, updated_by=%s WHERE id=%s", (user.get("sub"), existing["id"]))
+                audit(conn, user.get("sub"), "SOFT_DELETE", "message_template", existing["id"], existing, {**existing, "is_active": False})
+            else:
+                cur.execute("DELETE FROM message_templates WHERE id=%s", (existing["id"],))
+                audit(conn, user.get("sub"), "DELETE", "message_template", existing["id"], existing, {})
+    return _ok({"deleted": True, "soft": soft})
 @app.route("/api/admin/technicians", methods=["GET"])
 def technicians_list():
     """List active technicians for assignment dropdown.

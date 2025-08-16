@@ -59,7 +59,7 @@ export function BoardFilterProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(filters)); } catch { /* ignore */ }
   }, [filters]);
 
-  // Sync server tech filter when techs selection changes
+  // Sync server tech filter when techs selection changes (guarded to avoid redundant emits)
   useEffect(() => { setBoardTechFilter(filters.techs[0]); }, [filters.techs]);
 
   const applyFilters = useCallback((cards: BoardCard[]) => {

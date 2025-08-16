@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { stubCustomerProfile } from './utils/stubAuthProfile';
 
 // Assumptions:
 // - Backend test DB seeded with at least one appointment in SCHEDULED and a target column (e.g., IN_PROGRESS) exists.
@@ -17,8 +18,9 @@ function columnByKey(page: Page, key: string) {
 
 test.describe('Board drag-and-drop optimistic move', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/admin/dashboard');
-    await expect(page.locator('.nb-board-grid')).toBeVisible();
+    await stubCustomerProfile(page);
+  await page.goto('/e2e/board');
+  await expect(page.locator('.nb-board-grid')).toBeVisible();
     await page.locator('[data-first-apt-id]').first().waitFor();
   });
 

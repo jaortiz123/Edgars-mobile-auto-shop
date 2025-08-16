@@ -137,6 +137,23 @@ export function createMocks() {
         }
         return defaultMessage;
       }),
+
+      // -------------------------------------------------------------
+      // Message Templates (Increment 4 dynamic CRUD) - added to match
+      // new api.ts exports so global vi.mock('@/lib/api') provides them.
+      // Tests can override return values as needed.
+      // -------------------------------------------------------------
+      loadTemplatesWithFallback: vi.fn().mockResolvedValue([
+        { id: 'tpl-1', slug: 'vehicle_ready_sms', label: 'Vehicle Ready', channel: 'sms', category: 'status', body: 'Hi {{customer.name}}, your vehicle is ready!', variables: ['customer.name'], is_active: true },
+        { id: 'tpl-2', slug: 'appointment_reminder_sms', label: 'Reminder', channel: 'sms', category: 'reminder', body: 'Reminder: your appointment is tomorrow', variables: [], is_active: true }
+      ]),
+      createMessageTemplate: vi.fn().mockImplementation((payload: { slug: string; label: string; channel: 'sms' | 'email'; category?: string | null; body: string }) => Promise.resolve({
+        id: 'tpl-new', slug: payload.slug, label: payload.label, channel: payload.channel, category: payload.category || null, body: payload.body, variables: [], is_active: true
+      })),
+      updateMessageTemplate: vi.fn().mockImplementation((idOrSlug: string, payload: { label?: string; channel?: 'sms' | 'email'; category?: string | null; body?: string; is_active?: boolean }) => Promise.resolve({
+        id: idOrSlug, slug: idOrSlug, label: payload.label || 'Updated', channel: (payload.channel || 'sms'), category: payload.category || null, body: payload.body || 'Updated body', variables: [], is_active: payload.is_active !== false
+      })),
+      deleteMessageTemplate: vi.fn().mockResolvedValue({ deleted: true, soft: true }),
     },
 
     // Build notification object with closure references so functions work when imported standalone
