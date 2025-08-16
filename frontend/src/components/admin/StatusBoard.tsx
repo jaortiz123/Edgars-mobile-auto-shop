@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import StatusColumn from './StatusColumn';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/Toast';
 import type { BoardCard, BoardColumn } from '@/types/models';
 import type { BoardState } from '@/state/useBoardStore';
 
-function InnerStatusBoard({ onOpen, minimalHero }: { onOpen: (id: string) => void; minimalHero?: boolean }) {
+function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDisableDnd, __debugDisableFilter }: { onOpen: (id: string) => void; minimalHero?: boolean; __debugDisableModal?: boolean; __debugDisableDnd?: boolean; __debugDisableFilter?: boolean }) {
   // Store is initialized at the AdminLayout level now (singleton for admin session)
   const columns = useBoardStore((s: BoardState) => s.columns);
   const loading = useBoardStore((s: BoardState) => s.loading);
@@ -23,15 +23,41 @@ function InnerStatusBoard({ onOpen, minimalHero }: { onOpen: (id: string) => voi
   const storeError = useBoardStore((s: BoardState) => s.error);
   const setError = useBoardStore((s: BoardState) => s.setError);
   const toast = useToast();
-  if (storeError) {
-    // Show toast (non-blocking) then clear error so it doesn't loop
-    toast.error(storeError);
-    setError(null);
-  }
+  // Side-effects must not run during render; isolate in effect to avoid render loops
+  useEffect(() => {
+    if (storeError) {
+      toast.error(storeError);
+      setError(null); // clear after surfacing
+    }
+  }, [storeError, toast, setError]);
+  // Debug instrumentation (dev only) to trace board population issues in E2E
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log('🎪 StatusBoard debug', {
+        columnsLen: columns.length,
+        cardsLen: allCards.length,
+        loading,
+        storeError,
+        boardError: boardError?.message
+      });
+    }
+  }, [columns.length, allCards.length, loading, storeError, boardError]);
   const isFetchingBoard = false; // placeholder until wired to query status
   const showInitialSkeleton = loading && cards.length === 0;
   const [showCustomize, setShowCustomize] = useState(false);
-  const { applyFilters, filtersActive } = useBoardFilters();
+  // Always call hook (Rules of Hooks), but ignore its values when debug-disabling filters.
+  let filterCtx = useBoardFilters();
+  if (__debugDisableFilter) {
+    filterCtx = {
+      filters: { search: '', statuses: null, techs: [], blockers: [] },
+      setFilters: () => {},
+      clearFilters: () => {},
+      applyFilters: (cards: BoardCard[]) => cards,
+      filtersActive: false,
+      activeCount: 0,
+    } as typeof filterCtx;
+  }
+  const { applyFilters, filtersActive } = filterCtx;
 
   const getTimeGreeting = () => {
     const h = new Date().getHours();
@@ -129,9 +155,14 @@ function InnerStatusBoard({ onOpen, minimalHero }: { onOpen: (id: string) => voi
     );
   };
 
+  const Wrapper: React.FC<{children: React.ReactNode}> = ({ children }) => {
+    if (__debugDisableDnd) return <>{children}</>;
+    return <DndProvider backend={HTML5Backend}>{children}</DndProvider>;
+  };
   return (
-    <DndProvider backend={HTML5Backend}>
-      <div
+    <Wrapper>
+  {/* Early guard: if columns & cards populated but grid failed to mount previously, ensure a render path still outputs grid wrapper */}
+  <div
         className="overflow-x-auto pb-4 nb-board-bg relative"
         role="region"
         aria-label="Status Board"
@@ -150,7 +181,7 @@ function InnerStatusBoard({ onOpen, minimalHero }: { onOpen: (id: string) => voi
             >⚙️</button>
           </div>
         )}
-  <CardCustomizationModal open={showCustomize} onClose={() => setShowCustomize(false)} />
+  {!__debugDisableModal && <CardCustomizationModal open={showCustomize} onClose={() => setShowCustomize(false)} />}
         {boardError && (
           <div className="mx-4 mt-4 mb-2 border border-danger-300 bg-danger-50 text-danger-800 px-4 py-3 rounded-md flex items-start gap-3">
             <span>⚠️</span>
@@ -183,7 +214,7 @@ function InnerStatusBoard({ onOpen, minimalHero }: { onOpen: (id: string) => voi
               let firstAssigned = false;
               return columns.map((col: BoardColumn) => {
                 const allList = byStatus.get(col.key) ?? [];
-                const filteredAll = filtersActive ? applyFilters(allList) : allList;
+                const filteredAll = filtersActive && applyFilters ? applyFilters(allList) : allList;
                 // Already store-level filtered list used for counts; use filteredAll for per-column filtering
                 return (
                   <StatusColumn
@@ -210,14 +241,34 @@ function InnerStatusBoard({ onOpen, minimalHero }: { onOpen: (id: string) => voi
           <div className="mt-4 mx-4 text-xs opacity-70">Refreshing…</div>
         )}
       </div>
-    </DndProvider>
+  </Wrapper>
   );
 }
 
 export default function StatusBoard(props: { onOpen: (id: string) => void; minimalHero?: boolean }) {
-  return (
-    <BoardFilterProvider>
-      <InnerStatusBoard {...props} />
-    </BoardFilterProvider>
+  // Debug flags (DEV only) for isolating infinite render loop. Example:
+  // /e2e/board?full=1&sb_nomodal=1&sb_nofilter=1&sb_nodnd=1
+  const dbgParams = (import.meta.env.DEV && typeof window !== 'undefined') ? new URLSearchParams(window.location.search) : null;
+  const DISABLE_MODAL = !!dbgParams?.has('sb_nomodal');
+  const DISABLE_FILTER = !!dbgParams?.has('sb_nofilter');
+  const DISABLE_DND = !!dbgParams?.has('sb_nodnd');
+
+  // Wrap InnerStatusBoard to conditionally skip modal / dnd / filters.
+  // We intercept props here rather than duplicating logic inside.
+  const Inner = (
+    <InnerStatusBoard
+      {...props}
+      __debugDisableModal={DISABLE_MODAL}
+      __debugDisableDnd={DISABLE_DND}
+      __debugDisableFilter={DISABLE_FILTER}
+    />
   );
+
+  if (DISABLE_FILTER) {
+    // Minimal no-op filter context implementation
+    const NoopFilterProvider: React.FC<{children: React.ReactNode}> = ({ children }) => <>{children}</>;
+    if (import.meta.env.DEV) console.log('[StatusBoard debug] Filters disabled via sb_nofilter');
+    return <NoopFilterProvider>{Inner}</NoopFilterProvider>;
+  }
+  return <BoardFilterProvider>{Inner}</BoardFilterProvider>;
 }

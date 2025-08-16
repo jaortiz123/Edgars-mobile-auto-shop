@@ -1,0 +1,30 @@
+[
+  {
+    "id": "appt_reminder_basic_sms",
+    "label": "Appointment Reminder (SMS)",
+    "channel": "sms",
+    "category": "Reminders",
+    "body": "Hi there! This is a reminder about your upcoming service appointment. Reply YES to confirm or call us to reschedule."
+  },
+  {
+    "id": "appt_reminder_personalized_sms",
+    "label": "Appt Reminder (Personalized SMS)",
+    "channel": "sms",
+    "category": "Reminders",
+    "body": "Hi {{customer.name}}, this is a reminder for your appointment on {{appointment.start}} regarding your {{vehicle.year}} {{vehicle.make}} {{vehicle.model}}."
+  },
+  {
+    "id": "vehicle_ready_sms",
+    "label": "Vehicle Ready (SMS)",
+    "channel": "sms",
+    "category": "Status Updates",
+    "body": "Good news! Your vehicle service is complete and ready for pickup. Let us know when you're on the way."
+  },
+  {
+    "id": "thanks_followup_email",
+    "label": "Thank You + Review (Email)",
+    "channel": "email",
+    "category": "Follow Up",
+    "body": "Thank you for choosing us for your recent service. We'd love your feedback—reply to this email with any thoughts or questions!"
+  }
+]

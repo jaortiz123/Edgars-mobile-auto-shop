@@ -49,11 +49,11 @@ export default function StatusColumn({
         </h3>
       </div>
   <div className="nb-column-scroll" data-testid="status-column-scroll">
-        {cards.map((c) => {
+    {cards.map((c) => {
           // @ts-expect-error internal marker injected upstream
           const isFirstGlobal = Boolean(c.__isFirstGlobal);
           return (
-            <div data-appointment-id={c.id}>
+      <div key={c.id} data-appointment-id={c.id}>
               <EnhancedAppointmentCard
                 key={c.id}
                 card={c}

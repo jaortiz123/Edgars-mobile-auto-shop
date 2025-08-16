@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { stubCustomerProfile } from './utils/stubAuthProfile';
 
 /**
  * E2E: Verify service delete flow in Appointment Drawer.
@@ -11,7 +12,9 @@ import { test, expect } from '@playwright/test';
  */
 
 test('delete service from drawer updates UI', async ({ page }) => {
-  await page.goto('http://localhost:5173/admin/dashboard', { waitUntil: 'networkidle' });
+  await stubCustomerProfile(page);
+  await page.goto('http://localhost:5173/e2e/board', { waitUntil: 'networkidle' });
+  // Harness renders board directly; no viewMode toggle needed
 
   // Open first appointment via OPEN button (assumes at least one card present)
   const openButton = page.locator('button.nb-open-badge', { hasText: 'OPEN' }).first();

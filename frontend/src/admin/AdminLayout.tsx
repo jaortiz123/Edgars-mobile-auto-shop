@@ -11,11 +11,8 @@ import {
   BarChart3
 } from 'lucide-react';
 import { CardPreferencesProvider } from '@/contexts/CardPreferencesContext';
-import { useBoardStoreInitializer } from '@/state/useBoardStore';
 
 export default function AdminLayout() {
-  // Initialize board store once for all admin routes
-  useBoardStoreInitializer(true);
   const navigate = useNavigate();
   const location = useLocation();
   const { logout: authLogout } = useAuth();

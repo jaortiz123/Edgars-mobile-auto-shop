@@ -21,8 +21,10 @@ export default async function globalSetup() {
         origins: [
           {
             origin: 'http://localhost:5173',
+            // Seed both auth token and a default board view mode so StatusBoard renders deterministically.
             localStorage: [
-              { name: 'auth_token', value: token }
+              { name: 'auth_token', value: token },
+              { name: 'viewMode', value: 'board' }
             ]
           }
         ]

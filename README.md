@@ -236,6 +236,78 @@ python backend/run_sql_migrations.py
 
 ---
 
+## 🧪 E2E Test Harness Pattern
+
+Certain complex UI flows (for example, the appointment message thread with template selection and optimistic send / retry logic) were historically difficult to validate inside the full admin dashboard context because of unrelated layout concerns, auth timing, or board data dependencies. To make these flows deterministic and fast to test we introduced a lightweight, DEV‑only “test harness” route.
+
+### What Is a Harness?
+
+An isolated page whose single responsibility is to mount one target component with minimal surrounding providers. It:
+
+- Avoids unrelated dashboard rendering / data polling
+- Lets Playwright stub just the network calls the component cares about
+- Provides stable `data-testid` hooks
+- Keeps auth optional (we seed a token globally, but the harness does not require it)
+
+### Current Harnesses
+
+| Route | File | Purpose |
+|-------|------|---------|
+| `/e2e/message-thread/:appointmentId` | `frontend/src/pages/e2e/MessageThreadHarness.tsx` | Isolates `MessageThread` for template send success & failure/retry specs |
+
+The route is only registered when `import.meta.env.DEV` is true so it will never ship in production bundles.
+
+### Implementation Snapshot
+
+`App.tsx` (excerpt):
+
+```tsx
+{import.meta.env.DEV && (
+  <Route element={<Suspense fallback={<div>Loading...</div>}><Outlet /></Suspense>}>
+    <Route path="/e2e/message-thread/:appointmentId" element={<MessageThreadHarness />} />
+  </Route>
+)}
+```
+
+`MessageThreadHarness.tsx`:
+
+```tsx
+export default function MessageThreadHarness() {
+  const apptId = window.location.pathname.split('/').pop() || 'e2e-appt-1';
+  return (
+    <div data-testid="message-thread-harness">
+      <MessageThread appointmentId={apptId} drawerOpen={true} />
+    </div>
+  );
+}
+```
+
+### Playwright Usage Pattern
+
+In the relevant spec (e.g. `e2e/messageTemplates.send.spec.ts`):
+
+1. Navigate directly to the harness route (`page.goto('/e2e/message-thread/apt-123')`).
+2. Intercept only the endpoints used by `MessageThread` (template list, create message, failure simulation, etc.).
+3. Assert optimistic UI updates (pending state) then final success or retry path.
+
+### Adding a New Harness
+
+1. Create a page in `frontend/src/pages/e2e/YourHarness.tsx` that mounts the component.
+2. Add a DEV‑guarded route in `App.tsx`.
+3. Expose a root container with a stable `data-testid`.
+4. Write a focused Playwright spec that only stubs the component’s network surface.
+5. (Optional) Document the harness here once stabilized.
+
+### When NOT to Use a Harness
+
+- For simple flows already stable in the integrated UI.
+- When verifying true multi-component orchestration (use full-page spec instead).
+- If the component’s correctness depends on global layout interactions.
+
+This pattern keeps broad regression coverage (full dashboard specs) while letting fragile, stateful widgets have precise, inexpensive tests.
+
+---
+
 ## Architecture
 
 The system is designed as a serverless, event-driven architecture. The initial implementation provides a core RESTful API for quote generation.

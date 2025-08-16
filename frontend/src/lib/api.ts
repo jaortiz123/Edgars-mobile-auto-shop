@@ -340,6 +340,29 @@ export async function createAppointmentMessage(
   return data;
 }
 
+// Extended send with template metadata (Phase 5 Increment 3)
+export interface CreateAppointmentMessageWithTemplateRequest {
+  channel: MessageChannel;
+  body: string;
+  template_id?: string | null;
+  variables_used?: string[];
+}
+export interface CreateAppointmentMessageWithTemplateResponse {
+  id: string;
+  status: MessageStatus; // initial status from backend
+}
+
+export async function createAppointmentMessageWithTemplate(
+  appointmentId: string,
+  payload: CreateAppointmentMessageWithTemplateRequest
+): Promise<CreateAppointmentMessageWithTemplateResponse> {
+  const { data } = await http.post<CreateAppointmentMessageWithTemplateResponse>(
+    `/appointments/${appointmentId}/messages`,
+    payload
+  );
+  return data;
+}
+
 export async function updateMessageStatus(
   appointmentId: string,
   messageId: string,
@@ -512,3 +535,151 @@ export async function rescheduleAppointment(id: string, startISO: string): Promi
 export function useApi() {
   return http;
 }
+
+// ----------------------------------------------------------------------------
+// Message Templates (Increment 4 dynamic CRUD)
+// ----------------------------------------------------------------------------
+export interface MessageTemplateRecord {
+  id: string; // UUID
+  slug: string; // stable identifier
+  label: string;
+  channel: MessageChannel; // 'sms' | 'email'
+  category?: string | null;
+  body: string;
+  variables: string[];
+  is_active: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+export interface MessageTemplateListResponse {
+  message_templates: MessageTemplateRecord[];
+}
+
+// Fetch list (active by default)
+export async function fetchMessageTemplates(params: { channel?: MessageChannel; category?: string; q?: string; includeInactive?: boolean } = {}): Promise<MessageTemplateRecord[]> {
+  const resp = await http.get<Envelope<MessageTemplateListResponse> | MessageTemplateListResponse>('/admin/message-templates', { params });
+  const payload = resp.data as unknown;
+  if (typeof payload === 'object' && payload !== null) {
+    if ('data' in (payload as Record<string, unknown>)) {
+      const maybe = (payload as { data?: MessageTemplateListResponse }).data;
+      if (maybe && Array.isArray(maybe.message_templates)) return maybe.message_templates;
+    }
+    if ('message_templates' in (payload as Record<string, unknown>)) {
+      const mt = (payload as MessageTemplateListResponse).message_templates;
+      if (Array.isArray(mt)) return mt;
+    }
+  }
+  return [];
+}
+
+export async function fetchMessageTemplate(idOrSlug: string): Promise<MessageTemplateRecord | null> {
+  try {
+    const resp = await http.get<Envelope<MessageTemplateRecord> | MessageTemplateRecord>(`/admin/message-templates/${idOrSlug}`);
+    const payload = resp.data as unknown;
+    if (typeof payload === 'object' && payload !== null) {
+      if ('data' in (payload as Record<string, unknown>)) {
+        const inner = (payload as { data?: MessageTemplateRecord }).data;
+        if (inner && typeof inner === 'object' && 'id' in inner) return inner;
+      }
+      if ('id' in (payload as Record<string, unknown>)) return payload as MessageTemplateRecord;
+    }
+    return null;
+  } catch (err) {
+    if (import.meta.env.DEV) console.warn('[templates] fetchMessageTemplate failed', err);
+    return null;
+  }
+}
+
+export interface CreateMessageTemplateInput {
+  slug: string;
+  label: string;
+  channel: MessageChannel;
+  category?: string | null;
+  body: string;
+}
+export async function createMessageTemplate(payload: CreateMessageTemplateInput): Promise<MessageTemplateRecord> {
+  const resp = await http.post<Envelope<MessageTemplateRecord> | MessageTemplateRecord>('/admin/message-templates', payload);
+  const out = resp.data as unknown;
+  if (typeof out === 'object' && out !== null) {
+    if ('data' in (out as Record<string, unknown>)) {
+      const inner = (out as { data?: MessageTemplateRecord }).data;
+      if (inner && typeof inner === 'object' && 'id' in inner) return inner;
+    }
+    if ('id' in (out as Record<string, unknown>)) return out as MessageTemplateRecord;
+  }
+  throw new Error('Unexpected createMessageTemplate response shape');
+}
+
+export interface UpdateMessageTemplateInput {
+  label?: string;
+  channel?: MessageChannel;
+  category?: string | null;
+  body?: string;
+  is_active?: boolean;
+}
+export async function updateMessageTemplate(idOrSlug: string, payload: UpdateMessageTemplateInput): Promise<MessageTemplateRecord> {
+  const resp = await http.patch<Envelope<MessageTemplateRecord> | MessageTemplateRecord>(`/admin/message-templates/${idOrSlug}`, payload);
+  const out = resp.data as unknown;
+  if (typeof out === 'object' && out !== null) {
+    if ('data' in (out as Record<string, unknown>)) {
+      const inner = (out as { data?: MessageTemplateRecord }).data;
+      if (inner && typeof inner === 'object' && 'id' in inner) return inner;
+    }
+    if ('id' in (out as Record<string, unknown>)) return out as MessageTemplateRecord;
+  }
+  throw new Error('Unexpected updateMessageTemplate response shape');
+}
+
+export async function deleteMessageTemplate(idOrSlug: string, opts: { soft?: boolean } = {}): Promise<{ deleted: boolean; soft: boolean }> {
+  const params = opts.soft === false ? { soft: 'false' } : undefined;
+  const resp = await http.delete<Envelope<{ deleted: boolean; soft: boolean }> | { deleted: boolean; soft: boolean }>(`/admin/message-templates/${idOrSlug}`, { params });
+  const out = resp.data as unknown;
+  if (typeof out === 'object' && out !== null) {
+    if ('data' in (out as Record<string, unknown>)) {
+      const inner = (out as { data?: { deleted: boolean; soft: boolean } }).data;
+      if (inner && typeof inner === 'object' && 'deleted' in inner) return inner;
+    }
+    if ('deleted' in (out as Record<string, unknown>) && 'soft' in (out as Record<string, unknown>)) {
+      return out as { deleted: boolean; soft: boolean };
+    }
+  }
+  throw new Error('Unexpected deleteMessageTemplate response shape');
+}
+
+// Resilient loader with static fallback (uses existing import lazily to avoid bundling if not needed)
+let cachedTemplates: MessageTemplateRecord[] | null = null;
+export async function loadTemplatesWithFallback(): Promise<MessageTemplateRecord[]> {
+  if (cachedTemplates) return cachedTemplates;
+  try {
+    const list = await fetchMessageTemplates();
+    if (list.length > 0) {
+      cachedTemplates = list;
+      return list;
+    }
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn('[templates] primary fetch failed, will fallback', e);
+  }
+  // Dynamic import to keep tree-shaking; existing static JSON shape maps reasonably to our record.
+  try {
+    const mod = await import('@/data/messageTemplates.json');
+    const rawList = (mod as { default: Array<{ id: string; label: string; channel: MessageChannel; category?: string; body: string }> }).default;
+    const transformed: MessageTemplateRecord[] = rawList.map(t => ({
+      id: t.id,
+      slug: t.id,
+      label: t.label,
+      channel: t.channel,
+      category: t.category,
+      body: t.body,
+      variables: [],
+      is_active: true,
+    }));
+    cachedTemplates = transformed;
+    return transformed;
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[templates] fallback load failed', err);
+    return [];
+  }
+}
+
+// Utility to clear cache (used by admin mutations to force refetch)
+export function invalidateTemplatesCache() { cachedTemplates = null; }

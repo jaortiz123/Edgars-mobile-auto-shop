@@ -1,8 +1,6 @@
 // NOTE: Ensure 'zustand' is added as a dependency (npm i zustand) before building.
 import { create } from 'zustand';
 import type { StateCreator } from 'zustand';
-// Devtools are enabled only in development to avoid production bundle bloat.
-// Devtools intentionally disabled for type stability in this refactor step; can be reintroduced with proper generic typing later.
 import type { BoardCard, BoardColumn } from '@/types/models';
 import { useEffect } from 'react';
 import { useBoard } from '@/hooks/useBoardData';
@@ -50,7 +48,8 @@ const initialFilters: BoardFilters = {
   date: null,
 };
 
-const withDevtools = (fn: StateCreator<BoardState>) => fn; // no-op (safe placeholder)
+// Devtools disabled temporarily to investigate infinite render loop (Maximum update depth exceeded)
+const withDevtools = (fn: StateCreator<BoardState>) => fn;
 
 export const useBoardStore = create<BoardState>(
   withDevtools((set: (partial: Partial<BoardState> | ((state: BoardState) => Partial<BoardState>)) => void) => ({
@@ -171,6 +170,8 @@ export function useBoardStoreInitializer(enabled = true) {
   const replaceBoard = useBoardStore((s: BoardState) => s.replaceBoard);
   const setLoading = useBoardStore((s: BoardState) => s.setLoading);
   const setError = useBoardStore((s: BoardState) => s.setError);
+  const existingColumns = useBoardStore((s: BoardState) => s.columns);
+  const existingCardIds = useBoardStore((s: BoardState) => s.cardIds);
 
   const { boardQuery } = useBoard();
   const { data, isLoading, error } = boardQuery;
@@ -178,20 +179,43 @@ export function useBoardStoreInitializer(enabled = true) {
   useEffect(() => {
     if (!enabled) return;
     setLoading(isLoading);
+    if (import.meta.env.DEV) {
+      console.log('🧩 BoardInit effect: loading state', { isLoading });
+    }
   }, [enabled, isLoading, setLoading]);
 
   useEffect(() => {
     if (!enabled) return;
     if (error) setError((error as Error).message || 'Board load failed');
     else setError(null);
+    if (import.meta.env.DEV) {
+      console.log('🧩 BoardInit effect: error state', { error });
+    }
   }, [enabled, error, setError]);
 
   useEffect(() => {
     if (!enabled) return;
     if (data?.columns && data?.cards) {
-      replaceBoard(data.columns, data.cards);
+      // Idempotency guard: only replace if structural changes detected (counts or order of cards)
+      const incomingCardIds = data.cards.map(c => c.id);
+      const sameColumnCount = existingColumns.length === data.columns.length;
+      const sameCardCount = existingCardIds.length === incomingCardIds.length;
+      const sameCardOrder = sameCardCount && existingCardIds.every((id, i) => id === incomingCardIds[i]);
+      if (sameColumnCount && sameCardOrder) {
+        // Skip redundant replace to prevent render loops under StrictMode
+        if (import.meta.env.DEV) {
+          console.log('🧩 BoardInit effect: skip replace (no structural change)');
+        }
+      } else {
+        if (import.meta.env.DEV) {
+          console.log('🧩 BoardInit effect: replacing board', { cols: data.columns.length, cards: data.cards.length });
+        }
+        replaceBoard(data.columns, data.cards);
+      }
+    } else if (import.meta.env.DEV) {
+      console.log('🧩 BoardInit effect: data incomplete', { hasColumns: !!data?.columns, hasCards: !!data?.cards });
     }
-  }, [enabled, data, replaceBoard]);
+  }, [enabled, data, replaceBoard, existingColumns.length, existingCardIds]);
 }
 
 /* --------- Convenience Hooks --------- */

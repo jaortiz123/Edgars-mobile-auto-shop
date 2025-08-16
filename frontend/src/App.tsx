@@ -25,6 +25,9 @@ const ServiceAreas = lazy(() => import('./pages/ServiceAreas'));
 const EmergencyService = lazy(() => import('./pages/EmergencyService'));
 const AdminAppointments = lazy(() => import('./pages/AdminAppointments'));
 const CustomersPage = lazy(() => import('./pages/admin/CustomersPage'));
+const MessageTemplatesPage = lazy(() => import('./pages/admin/MessageTemplatesPage'));
+const MessageThreadHarness = lazy(() => import('./pages/e2e/MessageThreadHarness'));
+const BoardHarness = lazy(() => import('./pages/e2e/BoardHarness'));
 
 // --- React Query Client ---
 export default function App() {
@@ -69,8 +72,16 @@ export default function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="appointments" element={<AdminAppointments />} />
               <Route path="customers" element={<CustomersPage />} />
+              <Route path="templates" element={<MessageTemplatesPage />} />
               {/* Future admin routes can be added here, e.g., <Route path="users" element={<Users />} /> */}
             </Route>
+
+            {import.meta.env.DEV && (
+              <Route element={<Suspense fallback={<div>Loading...</div>}><Outlet /></Suspense>}>
+                <Route path="/e2e/message-thread/:appointmentId" element={<MessageThreadHarness />} />
+                <Route path="/e2e/board" element={<BoardHarness />} />
+              </Route>
+            )}
 
             {/* === Catch-all / Not Found Route === */}
             <Route path="*" element={<NotFound />} />
