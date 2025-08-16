@@ -1295,63 +1295,267 @@ def log_template_usage():
     }, status=HTTPStatus.CREATED)
 @app.route("/api/admin/technicians", methods=["GET"])
 def technicians_list():
-    """List active technicians for assignment dropdown.
+        """List technicians (active by default) for UI selection.
 
-    Query params:
-      includeInactive=true -> include inactive techs (for admin screens)
-    """
+        Query Parameters:
+            includeInactive: 'true' to include inactive technicians (default false)
+
+        Response:
+            200 JSON { "technicians": [ { id, name, initials, isActive, createdAt?, updatedAt? } ] }
+        """
+        maybe_auth()
+        include_inactive = request.args.get("includeInactive", "false").lower() == "true"
+        where_clause = "TRUE" if include_inactive else "is_active IS TRUE"
+        conn = db_conn()
+        with conn:
+                with conn.cursor() as cur:
+                        cur.execute(
+                                f"""
+                                SELECT id::text, name, initials, is_active, created_at, updated_at
+                                    FROM technicians
+                                 WHERE {where_clause}
+                                 ORDER BY initials ASC
+                                """
+                        )
+                        rows = cur.fetchall()
+        technicians = []
+        for r in rows:
+                technicians.append({
+                        "id": r["id"],
+                        "name": r["name"],
+                        "initials": r["initials"],
+                        "isActive": r["is_active"],
+                        "createdAt": r["created_at"].isoformat() if r.get("created_at") else None,
+                        "updatedAt": r["updated_at"].isoformat() if r.get("updated_at") else None,
+                })
+        return jsonify({"technicians": technicians})
+
+# ----------------------------------------------------------------------------
+# Analytics: Template Usage
+# ----------------------------------------------------------------------------
+_TEMPLATE_ANALYTICS_CACHE: dict[str, tuple[float, dict]] = {}
+_TEMPLATE_ANALYTICS_TTL_SECONDS = 60
+
+def _cache_get(key: str):
+    now = time.time()
+    entry = _TEMPLATE_ANALYTICS_CACHE.get(key)
+    if not entry:
+        return None
+    if now - entry[0] > _TEMPLATE_ANALYTICS_TTL_SECONDS:
+        _TEMPLATE_ANALYTICS_CACHE.pop(key, None)
+        return None
+    return entry[1]
+
+def _cache_set(key: str, value: dict):
+    _TEMPLATE_ANALYTICS_CACHE[key] = (time.time(), value)
+
+def _parse_range(range_param: str | None):
+    mapping = {"7d": 7, "30d": 30, "90d": 90, "180d": 180}
+    days = mapping.get((range_param or '').lower(), 30)
+    return days
+
+def _granularity(days: int, override: str | None):
+    if override in ("day", "week"):
+        return override
+    return "week" if days > 90 else "day"
+
+def _bucket_edges(start: datetime, end: datetime, granularity: str):
+    buckets = []
+    cursor = start
+    delta = timedelta(days=7) if granularity == 'week' else timedelta(days=1)
+    while cursor <= end:
+        buckets.append(cursor)
+        cursor += delta
+    return buckets
+
+@app.route('/api/admin/analytics/templates', methods=['GET'])
+def analytics_templates():
     maybe_auth()
-    include_inactive = request.args.get("includeInactive", "false").lower() == "true"
-    where = "1=1" if include_inactive else "is_active IS TRUE"
-    conn = db_conn()
-    with conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                f"""
-                SELECT id::text, name, initials, is_active, created_at, updated_at
-                  FROM technicians
-                 WHERE {where}
-                 ORDER BY initials ASC
-                """
-            )
-            rows = cur.fetchall()
-    techs = [
-        {
-            "id": r["id"],
-            "name": r["name"],
-            "initials": r["initials"],
-            "isActive": r["is_active"],
-            "createdAt": r["created_at"].isoformat() if r.get("created_at") else None,
-            "updatedAt": r["updated_at"].isoformat() if r.get("updated_at") else None,
+    rng = request.args.get('range')
+    gran_override = request.args.get('granularity')
+    channel_filter = request.args.get('channel', 'all').lower()
+    limit = int(request.args.get('limit', '50'))
+    flush = request.args.get('flush', '0').lower() in ('1','true','yes')
+    include_raw = (request.args.get('include') or '').strip()
+    include_parts = set([p for p in include_raw.split(',') if p]) if include_raw else set()
+    days = _parse_range(rng)
+    granularity = _granularity(days, gran_override)
+    now_utc = datetime.now(timezone.utc).replace(microsecond=0, tzinfo=timezone.utc)
+    start_utc = (now_utc - timedelta(days=days)).replace(hour=0, minute=0, second=0)
+    # Cache key
+    cache_key = f"v1:{days}:{granularity}:{channel_filter}:{limit}:{','.join(sorted(include_parts))}"  # stable order
+    if flush:
+        _TEMPLATE_ANALYTICS_CACHE.pop(cache_key, None)
+    else:
+        cached = _cache_get(cache_key)
+        if cached:
+            # Return a shallow copy with cache.hit = True
+            cached_copy = json.loads(json.dumps(cached))  # deep copy via JSON for safety
+            try:
+                cached_copy['meta']['cache']['hit'] = True
+            except Exception:
+                pass
+            return jsonify(cached_copy)
+    conn, use_memory, err = safe_conn()
+    if err and not use_memory:
+        raise err
+    if use_memory:
+        # No analytics in memory mode (return empty shape)
+        empty = {
+            "range": {"from": start_utc.isoformat(), "to": now_utc.isoformat(), "granularity": granularity},
+            "filters": {"channel": channel_filter, "limit": limit},
+            "totals": {"events": 0, "uniqueTemplates": 0, "uniqueUsers": 0, "uniqueCustomers": 0, "byChannel": {}},
+            "trend": [],
+            "channelTrend": [],
+            "templates": [],
+            "usageSummary": {"topTemplates": [], "topUsers": []},
+            "meta": {"generatedAt": now_utc.isoformat(), "cache": {"hit": False}, "version": 1}
         }
-        for r in rows
-    ]
-    return jsonify({"technicians": techs})
-
-# ----------------------------------------------------------------------------
-# Technicians (Phase 2 read-only list)
-# ----------------------------------------------------------------------------
-@app.route("/api/admin/technicians", methods=["GET"])
-def list_technicians():
-    maybe_auth()
-    conn = db_conn()
+        _cache_set(cache_key, empty)
+        return jsonify(empty)
+    # Build dynamic SQL
+    params = [start_utc, now_utc]
+    chan_where = ''
+    if channel_filter in ('sms','email'):
+        chan_where = 'AND channel = %s'
+        params.append(channel_filter)
+    bucket_expr = 'date_trunc(\'week\', sent_at)' if granularity == 'week' else 'date_trunc(\'day\', sent_at)'
     with conn:
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id::text, name, initials, is_active
-                FROM technicians
-                WHERE is_active IS TRUE
-                ORDER BY name ASC
-                LIMIT 200
-                """
-            )
-            rows = cur.fetchall()
-    return jsonify({
-        "technicians": [
-            {"id": r["id"], "name": r["name"], "initials": r["initials"], "is_active": r["is_active"]} for r in rows
-        ]
-    })
+            # Base filtered set CTE
+            cur.execute(f"""
+                WITH base AS (
+                  SELECT template_id, channel, sent_at, user_id
+                    FROM template_usage_events
+                   WHERE sent_at BETWEEN %s AND %s
+                     {chan_where}
+                ), agg AS (
+                  SELECT template_id, channel, {bucket_expr} AS bucket_start, count(*) AS cnt
+                    FROM base
+                   GROUP BY template_id, channel, bucket_start
+                ), totals AS (
+                  SELECT count(*) AS events,
+                         COUNT(DISTINCT template_id) AS unique_templates,
+                         COUNT(DISTINCT user_id) FILTER (WHERE user_id IS NOT NULL) AS unique_users
+                    FROM base
+                ), by_channel AS (
+                  SELECT channel, count(*) AS events
+                    FROM base
+                   GROUP BY channel
+                                ), template_totals AS (
+                                    SELECT b.template_id,
+                                                 MIN(b.sent_at) AS first_used,
+                                                 MAX(b.sent_at) AS last_used,
+                                                 COUNT(*) AS total_count,
+                                                 COUNT(DISTINCT b.user_id) FILTER (WHERE b.user_id IS NOT NULL) AS unique_users,
+                                                 COALESCE(mt.label, b.template_id::text) AS template_label
+                                        FROM base b
+                                        LEFT JOIN message_templates mt ON mt.id = b.template_id
+                                     GROUP BY b.template_id, template_label
+                ), recent_slice AS (
+                  SELECT template_id, {bucket_expr} AS bucket_start, count(*) AS cnt
+                    FROM base
+                   WHERE sent_at >= %s - INTERVAL '7 days'
+                   GROUP BY template_id, bucket_start
+                )
+                SELECT 
+                  (SELECT row_to_json(t) FROM totals t) AS totals,
+                  (SELECT json_agg(row_to_json(b)) FROM by_channel b) AS by_channel,
+                  (SELECT json_agg(row_to_json(a)) FROM agg a) AS agg_rows,
+            (SELECT json_agg(row_to_json(tt)) FROM (
+                SELECT * FROM template_totals
+                ORDER BY total_count DESC
+                LIMIT %s
+             ) tt) AS template_totals,
+                  (SELECT json_agg(row_to_json(r)) FROM recent_slice r) AS slice_rows
+            """, params + [start_utc, limit])
+            row = cur.fetchone()
+    totals_row = row['totals'] or {}
+    by_channel_rows = row['by_channel'] or []
+    agg_rows = row['agg_rows'] or []
+    template_total_rows = row['template_totals'] or []
+    slice_rows = row['slice_rows'] or []
+    total_events = totals_row.get('events', 0) or 0
+    # Build bucket map
+    buckets = _bucket_edges(start_utc, now_utc, granularity)
+    bucket_key = 'bucket_start'
+    trend_counts = {b.date().isoformat(): 0 for b in buckets}
+    channel_trend = {b.date().isoformat(): {'sms': 0, 'email': 0} for b in buckets}
+    for r in agg_rows:
+        b = r[bucket_key]
+        if isinstance(b, datetime):
+            key = b.date().isoformat()
+        else:
+            key = str(b)[:10]
+        trend_counts.setdefault(key, 0)
+        trend_counts[key] += r['cnt']
+        if channel_filter == 'all' and r.get('channel') in ('sms','email'):
+            channel_trend.setdefault(key, {'sms': 0, 'email': 0})
+            channel_trend[key][r['channel']] += r['cnt']
+    trend = [ { 'bucketStart': k, 'count': trend_counts[k] } for k in sorted(trend_counts.keys()) ]
+    channelTrend = []
+    if channel_filter == 'all':
+        channelTrend = [ { 'bucketStart': k, 'sms': channel_trend[k]['sms'], 'email': channel_trend[k]['email'] } for k in sorted(channel_trend.keys()) ]
+    # Template details
+    slice_map: dict[str, list[dict]] = {}
+    for s in slice_rows:
+        tid = s['template_id']
+        bs = s[bucket_key]
+        bs_key = bs.date().isoformat() if isinstance(bs, datetime) else str(bs)[:10]
+        slice_map.setdefault(tid, []).append({'bucketStart': bs_key, 'count': s['cnt']})
+    templates = []
+    for t in template_total_rows:
+        tid = t['template_id']
+        pct = (t['total_count'] / total_events) if total_events else 0
+        def _iso(val):
+            if not val:
+                return None
+            if isinstance(val, datetime):
+                return val.isoformat()
+            # Assume string already ISO-ish
+            return str(val)
+        templates.append({
+            'templateId': tid,
+            'name': t.get('template_label') or tid,
+            'channel': channel_filter if channel_filter in ('sms','email') else 'mixed',
+            'totalCount': t['total_count'],
+            'uniqueUsers': t['unique_users'],
+            'uniqueCustomers': 0,  # not tracked yet
+            'lastUsedAt': _iso(t.get('last_used')),
+            'firstUsedAt': _iso(t.get('first_used')),
+            'trendSlice': sorted(slice_map.get(tid, []), key=lambda x: x['bucketStart'])[-7:],
+            'pctOfTotal': pct,
+            'channels': {channel_filter: t['total_count']} if channel_filter in ('sms','email') else {},
+        })
+    # Usage summary
+    usageSummary = {
+        'topTemplates': [ {'templateId': t['templateId'], 'count': t['totalCount']} for t in templates[:5] ],
+        'topUsers': []  # Future enhancement (requires joining users)
+    }
+    # byChannel map
+    by_channel_map = {}
+    for b in by_channel_rows:
+        c = b['channel']
+        ev = b['events']
+        by_channel_map[c] = {'events': ev, 'pct': (ev / total_events) if total_events else 0}
+    resp = {
+        'range': { 'from': start_utc.isoformat(), 'to': now_utc.isoformat(), 'granularity': granularity },
+        'filters': { 'channel': channel_filter, 'limit': limit },
+        'totals': {
+            'events': total_events,
+            'uniqueTemplates': totals_row.get('unique_templates', 0) or 0,
+            'uniqueUsers': totals_row.get('unique_users', 0) or 0,
+            'uniqueCustomers': 0,
+            'byChannel': by_channel_map
+        },
+        'trend': trend,
+        'channelTrend': channelTrend,
+        'templates': templates,
+        'usageSummary': usageSummary,
+        'meta': { 'generatedAt': now_utc.isoformat(), 'cache': { 'hit': False }, 'version': 1 }
+    }
+    _cache_set(cache_key, resp)
+    return jsonify(resp)
 
 # ----------------------------------------------------------------------------
 # Move endpoint
@@ -1739,6 +1943,8 @@ def get_appointment(appt_id: str):
                  a.notes,
                  a.check_in_at,
                  a.check_out_at,
+                 a.created_at,
+                 a.updated_at,
                  a.tech_id::text AS tech_id,
                  c.id::text AS customer_id,
                  c.name AS customer_name,
@@ -1763,48 +1969,102 @@ def get_appointment(appt_id: str):
 
             cur.execute(
                 """
-                SELECT id::text, name, notes, estimated_hours, estimated_price, service_operation_id
-                FROM appointment_services
-                WHERE appointment_id = %s ORDER BY created_at
+                SELECT s.id::text, s.name, s.notes, s.estimated_hours, s.estimated_price, s.service_operation_id,
+                       op.default_price AS op_default_price, op.category AS op_category
+                FROM appointment_services s
+                LEFT JOIN service_operations op ON op.id = s.service_operation_id
+                WHERE s.appointment_id = %s ORDER BY s.created_at
                 """,
                 (appt_id,),
             )
             services = cur.fetchall()
 
+            # Fetch all customer vehicles for vehicle switcher (if customer present)
+            vehicles_for_customer: list[dict[str, Any]] = []
+            if row.get("customer_id"):
+                cur.execute(
+                    """
+                    SELECT id::text AS id, year, make, model, license_plate, license_plate AS vin
+                    FROM vehicles WHERE customer_id = %s ORDER BY created_at
+                    """,
+                    (row.get("customer_id"),),
+                )
+                vehicles_for_customer = cur.fetchall() or []
+
     def iso(dt):
         return dt.isoformat() if dt else None
 
+    # Build customer vehicles list
+    customer_vehicles = [
+        {
+            "id": v.get("id"),
+            "plate": v.get("license_plate"),
+            "year": v.get("year"),
+            "make": v.get("make"),
+            "model": v.get("model"),
+            "vin": v.get("vin"),
+            "display": f"{v.get('year')} {v.get('make')} {v.get('model')}".strip() if v.get("year") or v.get("make") or v.get("model") else (v.get("license_plate") or "Vehicle")
+        }
+        for v in vehicles_for_customer
+    ]
+
+    services_list = [
+        {
+            "id": s["id"],
+            "name": s["name"],
+            "notes": s.get("notes"),
+            "estimated_hours": float(s["estimated_hours"]) if s.get("estimated_hours") is not None else None,
+            "estimated_price": float(s["estimated_price"]) if s.get("estimated_price") is not None else None,
+            "service_operation_id": s.get("service_operation_id"),
+            "operation": (
+                {
+                    "id": s.get("service_operation_id"),
+                    "default_price": float(s.get("op_default_price")) if s.get("op_default_price") is not None else None,
+                    "category": s.get("op_category"),
+                }
+                if s.get("service_operation_id") else None
+            ),
+        }
+        for s in services
+    ]
+
     appointment_data = {
         "appointment": {
-            "id": row["id"], "status": row["status"],
-            "start": iso(row.get("start_ts")), "end": iso(row.get("end_ts")),
+            "id": row["id"],
+            "status": row["status"],
+            "start": iso(row.get("start_ts")),
+            "end": iso(row.get("end_ts")),
             "total_amount": float(row.get("total_amount") or 0),
             "paid_amount": float(row.get("paid_amount") or 0),
             "location_address": row.get("location_address"),
             "notes": row.get("notes"),
-            "check_in_at": iso(row.get("check_in_at")), "check_out_at": iso(row.get("check_out_at")),
+            "check_in_at": iso(row.get("check_in_at")),
+            "check_out_at": iso(row.get("check_out_at")),
             "tech_id": row.get("tech_id"),
+            "customer_id": row.get("customer_id"),
+            "vehicle_id": row.get("vehicle_id"),
+            "created_at": iso(row.get("created_at")),
+            "updated_at": iso(row.get("updated_at")),
+            "service_operation_ids": [s.get("service_operation_id") for s in services if s.get("service_operation_id")],
         },
         "customer": {
-            "id": row.get("customer_id"), "name": row.get("customer_name"),
-            "email": row.get("email"), "phone": row.get("phone"),
+            "id": row.get("customer_id"),
+            "name": row.get("customer_name"),
+            "email": row.get("email"),
+            "phone": row.get("phone"),
+            "vehicles": customer_vehicles,
         },
         "vehicle": {
-            "id": row.get("vehicle_id"), "year": row.get("year"),
-            "make": row.get("make"), "model": row.get("model"), "vin": row.get("vin"),
-            "license_plate": row.get("license_plate"),
+            "id": row.get("vehicle_id"),
+            "plate": row.get("license_plate"),
+            "year": row.get("year"),
+            "make": row.get("make"),
+            "model": row.get("model"),
+            "vin": row.get("vin"),
+            "display": f"{row.get('year')} {row.get('make')} {row.get('model')}".strip() if row.get("year") or row.get("make") or row.get("model") else row.get("license_plate"),
         },
-        "services": [
-            {
-                "id": s["id"],
-                "name": s["name"],
-                "notes": s.get("notes"),
-                "estimated_hours": float(s["estimated_hours"]) if s.get("estimated_hours") is not None else None,
-                "estimated_price": float(s["estimated_price"]) if s.get("estimated_price") is not None else None,
-                "service_operation_id": s.get("service_operation_id"),
-            }
-            for s in services
-        ],
+        "services": services_list,
+        "meta": {"version": 1},
     }
     return _ok(appointment_data)
 

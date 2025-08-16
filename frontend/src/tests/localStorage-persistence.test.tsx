@@ -9,31 +9,45 @@ import { ToastProvider } from '../components/ui/Toast';
 // NOTE: The original localStorage persistence for the add-service form was removed.
 // These tests were rewritten to validate the CURRENT behaviour (no persistence, simple add flow).
 // Mock API minimal responses required by AppointmentDrawer.
-vi.mock('@/lib/api', () => ({
-  getDrawer: vi.fn().mockResolvedValue({
-    appointment: {
-      id: 'test-appointment-123',
-      status: 'SCHEDULED',
-      start: '2024-01-15T14:00:00Z',
-      end: '2024-01-15T15:00:00Z',
-      total_amount: 250.0,
-      paid_amount: 0,
-      check_in_at: null,
-      check_out_at: null,
-      tech_id: null
-    },
-    customer: { id: 'cust-123', name: 'Test Customer' },
-    vehicle: { id: 'veh-123', year: 2020, make: 'Toyota', model: 'Camry', vin: 'TEST123456' },
-    services: []
-  }),
-  getServiceOperations: vi.fn().mockResolvedValue([
-    { id: 'op-brake', name: 'Brake Service', category: 'Safety', default_hours: 2, default_price: 150 },
-    { id: 'op-oil', name: 'Oil Change', category: 'General', default_hours: 1, default_price: 80 }
-  ]),
-  // createAppointmentService no longer invoked directly after refactor; keep stub for safety
-  createAppointmentService: vi.fn(),
-  handleApiError: vi.fn()
-}));
+vi.mock('@/lib/api', () => {
+  const baseAppointment = {
+    id: 'test-appointment-123',
+    status: 'SCHEDULED',
+    start: '2024-01-15T14:00:00Z',
+    end: '2024-01-15T15:00:00Z',
+    total_amount: 250.0,
+    paid_amount: 0,
+    check_in_at: null,
+    check_out_at: null,
+    tech_id: null
+  };
+  const customer = { id: 'cust-123', name: 'Test Customer', phone: '555-1111', email: 'test@example.com', vehicles: [{ id: 'veh-123', year: 2020, make: 'Toyota', model: 'Camry', vin: 'TEST123456' }] };
+  const vehicle = { id: 'veh-123', year: 2020, make: 'Toyota', model: 'Camry', vin: 'TEST123456' };
+  return {
+    getDrawer: vi.fn().mockResolvedValue({
+      appointment: baseAppointment,
+      customer,
+      vehicle,
+      services: []
+    }),
+    // New rich appointment fetch used by AppointmentDrawer edit flow
+    getAppointment: vi.fn().mockResolvedValue({
+      appointment: baseAppointment,
+      customer,
+      vehicle,
+      services: [],
+      service_operation_ids: [],
+      meta: { version: 1 }
+    }),
+    getServiceOperations: vi.fn().mockResolvedValue([
+      { id: 'op-brake', name: 'Brake Service', category: 'Safety', default_hours: 2, default_price: 150 },
+      { id: 'op-oil', name: 'Oil Change', category: 'General', default_hours: 1, default_price: 80 }
+    ]),
+    // createAppointmentService no longer invoked directly after refactor; keep stub for safety
+    createAppointmentService: vi.fn(),
+    handleApiError: vi.fn()
+  };
+});
 
 // Mock Tabs component
 vi.mock('@/components/ui/Tabs', () => ({

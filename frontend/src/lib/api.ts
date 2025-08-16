@@ -1,4 +1,5 @@
 import axios from 'axios';
+import type { TemplateAnalyticsResponse, FetchTemplateAnalyticsParams } from '../types/analytics';
 import type {
   Appointment, AppointmentService, AppointmentStatus,
   BoardCard, BoardColumn, DashboardStats, DrawerPayload,
@@ -13,6 +14,7 @@ export type {
   Message, MessageChannel, MessageStatus
 } from '../types/models';
 export type { Technician } from '../types/models';
+export type { TemplateAnalyticsResponse } from '../types/analytics';
 
 export async function getServiceOperations(): Promise<ServiceOperation[]> {
   const { data } = await http.get<{ service_operations: ServiceOperation[] }>(
@@ -134,6 +136,77 @@ export async function createAppointment(
     appointmentData
   );
   return resp.data.id;
+}
+
+// ---------------------------------------------------------------------------
+// Rich single appointment fetch (edit workflow)
+// Backend (get_appointment) returns a denormalized structure at root level.
+// We accept both direct object and envelope forms for resilience during rollout.
+// ---------------------------------------------------------------------------
+export interface RichAppointmentServiceOperationMeta {
+  id: string;
+  name: string;
+  default_hours?: number | null;
+  default_price?: number | null;
+  category?: string | null;
+}
+export interface RichAppointmentService extends AppointmentService {
+  // The backend enriches each service with `operation` metadata when linked
+  operation?: RichAppointmentServiceOperationMeta | null;
+}
+export interface RichAppointmentCustomerVehicle {
+  id: string;
+  year?: number | null;
+  make?: string | null;
+  model?: string | null;
+  vin?: string | null;
+  license_plate?: string | null;
+}
+export interface RichAppointmentCustomer {
+  id: string;
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  vehicles?: RichAppointmentCustomerVehicle[]; // added for edit flow vehicle selection
+}
+export interface RichAppointmentMeta { version?: number; [k: string]: unknown }
+export interface RichAppointmentResponse {
+  appointment: Appointment & { created_at?: string | null; updated_at?: string | null };
+  customer: RichAppointmentCustomer | null;
+  vehicle: RichAppointmentCustomerVehicle | null;
+  services: RichAppointmentService[];
+  service_operation_ids?: string[]; // convenience duplication from backend
+  meta?: RichAppointmentMeta;
+}
+
+export async function getAppointment(id: string): Promise<RichAppointmentResponse> {
+  // Primary endpoint: /api/admin/appointments/:id (admin namespace)
+  // Fallbacks: /api/appointments/:id (legacy drawer) if needed.
+  const paths = [`/admin/appointments/${id}`, `/appointments/${id}`];
+  let lastErr: unknown;
+  for (const p of paths) {
+    try {
+      const resp = await http.get(p);
+      const payload = resp.data as unknown;
+      if (payload && typeof payload === 'object') {
+        // Envelope form
+        if ('data' in (payload as Record<string, unknown>)) {
+          const inner = (payload as { data?: unknown }).data;
+          if (inner && typeof inner === 'object' && 'appointment' in (inner as Record<string, unknown>)) {
+            return inner as RichAppointmentResponse;
+          }
+        }
+        // Direct form
+        if ('appointment' in (payload as Record<string, unknown>)) {
+          return payload as RichAppointmentResponse;
+        }
+      }
+      throw new Error('Unexpected appointment response shape');
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error('Failed to load appointment');
 }
 
 export async function moveAppointment(
@@ -302,6 +375,14 @@ export async function deleteAppointmentService(
     `/appointments/${appointmentId}/services/${serviceId}`
   );
   return resp.data;
+}
+
+// ----------------------------------------------------------------------------
+// Analytics - Template Usage
+// ----------------------------------------------------------------------------
+export async function fetchTemplateAnalytics(params: FetchTemplateAnalyticsParams = {}): Promise<TemplateAnalyticsResponse> {
+  const { data } = await http.get<TemplateAnalyticsResponse>('/admin/analytics/templates', { params });
+  return data;
 }
 // Deprecated: use typed patchAppointment above
 // export async function patchAppointment(id: string, body: Partial<Appointment>) {
