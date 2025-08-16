@@ -1829,6 +1829,12 @@ def patch_appointment(appt_id: str):
     wants_vehicle_update = any(k in body for k in vehicle_keys)
 
     conn, use_memory, err = safe_conn()
+    # Attempt to import validation helpers (optional)
+    try:
+        from backend.validation import validate_appointment_payload, find_conflicts
+    except Exception:
+        validate_appointment_payload = None  # type: ignore
+        find_conflicts = None  # type: ignore
     if not conn and not use_memory and err:
         use_memory = True
     if not conn and use_memory:
@@ -1840,6 +1846,21 @@ def patch_appointment(appt_id: str):
             appt = None
         if appt is None:
             return _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Appointment not found")
+        if validate_appointment_payload:
+            merged = {**appt, **body}
+            if 'start' in merged and 'start_ts' not in merged:
+                merged['start_ts'] = merged.get('start')
+            result = validate_appointment_payload(merged, mode='edit', existing=appt)
+            if result.errors:
+                err = result.errors[0]
+                return _fail(err.status, err.code, err.detail)
+            # naive memory conflict detection
+            if find_conflicts and result.cleaned.get('start_ts') and (body.get('tech_id') or appt.get('tech_id')):
+                for a in _MEM_APPTS:  # type: ignore
+                    if a.get('id') == appt_id:
+                        continue
+                    if a.get('tech_id') == (body.get('tech_id') or appt.get('tech_id')) and a.get('start_ts') == result.cleaned['start_ts'].isoformat():
+                        return _fail(HTTPStatus.CONFLICT, 'CONFLICT', 'Scheduling conflict detected', meta={'conflicts': {'tech':[a.get('id')], 'vehicle': []}})
         updated = []
         # Memory mode technician validation: reject clearly invalid all-zero UUID sentinel (tests use this)
         if body.get("tech_id") == "00000000-0000-0000-0000-000000000000":
@@ -1892,6 +1913,23 @@ def patch_appointment(appt_id: str):
             old = cur.fetchone()
             if not old:
                 raise NotFound("Appointment not found")
+            if validate_appointment_payload:
+                merged = {**old, **body}
+                if 'start' in merged and 'start_ts' not in merged:
+                    merged['start_ts'] = merged.get('start')
+                result = validate_appointment_payload(merged, mode='edit', existing=old)
+                if result.errors:
+                    err = result.errors[0]
+                    return _fail(err.status, err.code, err.detail)
+                if find_conflicts and result.cleaned.get('start_ts') and (body.get('tech_id') or old.get('tech_id')):
+                    try:
+                        # typed id conversion if numeric ids used
+                        exclude_int = int(appt_id) if appt_id.isdigit() else None
+                    except Exception:
+                        exclude_int = None
+                    conflicts = find_conflicts(conn, tech_id=body.get('tech_id') or old.get('tech_id'), vehicle_id=body.get('vehicle_id') or old.get('vehicle_id'), start_ts=result.cleaned.get('start_ts'), end_ts=result.cleaned.get('end_ts'), exclude_id=exclude_int)
+                    if conflicts.get('tech') or conflicts.get('vehicle'):
+                        return _fail(HTTPStatus.CONFLICT, 'CONFLICT', 'Scheduling conflict detected', meta={'conflicts': conflicts})
             updated_keys: list[str] = []
             if sets:
                 params.append(appt_id)
@@ -2205,6 +2243,33 @@ def create_appointment():
     user = require_or_maybe("Owner")
     body = request.get_json(silent=True) or {}
 
+    # Integrated validation + conflict detection (Phase 1)
+    try:
+        from backend.validation import validate_appointment_payload, find_conflicts
+    except Exception:
+        validate_appointment_payload = None  # type: ignore
+        find_conflicts = None  # type: ignore
+    # Normalize start alias for validator
+    # Provide validator a canonical start_ts if alternative keys supplied
+    if 'start_ts' not in body:
+        if 'start' in body:
+            body['start_ts'] = body.get('start')
+        elif 'requested_time' in body:
+            body['start_ts'] = body.get('requested_time')
+    validation_result = None
+    if validate_appointment_payload:
+        validation_result = validate_appointment_payload(body, mode='create')
+        # Relax requirement: if validator complains start_ts required but we will derive start from requested_time later, ignore that specific error
+        if validation_result.errors:
+            filtered = []
+            for e in validation_result.errors:
+                if e.field == 'start_ts' and 'requested_time' in body:
+                    continue
+                filtered.append(e)
+            if filtered:
+                err = filtered[0]
+                return _fail(err.status, err.code, err.detail)
+
     # Accept either 'start' or 'requested_time'
     start_val = body.get("start") or body.get("requested_time") or utcnow().isoformat()
     try:
@@ -2254,6 +2319,12 @@ def create_appointment():
         # Reject clearly invalid sentinel tech id like all-zero UUID to satisfy technician validation tests
         if tech_id == "00000000-0000-0000-0000-000000000000":
             return _fail(HTTPStatus.BAD_REQUEST, "invalid", "tech_id not found or inactive")
+        # Memory-mode conflict detection (simplified; just returns conflict if same tech & identical start)
+        if find_conflicts and validation_result and validation_result.cleaned.get('start_ts') and tech_id:
+            # naive scan of in-memory list
+            for a in _MEM_APPTS:  # type: ignore
+                if a.get('tech_id') == tech_id and a.get('start_ts') == validation_result.cleaned['start_ts'].isoformat():
+                    return _fail(HTTPStatus.CONFLICT, 'CONFLICT', 'Scheduling conflict detected', meta={'conflicts': {'tech':[a.get('id')], 'vehicle': []}})
         new_id = f"mem-appt-{_MEM_APPTS_SEQ}"  # type: ignore
         record = {
             "id": new_id,
@@ -2283,6 +2354,13 @@ def create_appointment():
         raise err
     with conn:
         with conn.cursor() as cur:
+            # Conflict detection before insert (DB path)
+            if find_conflicts and validation_result and validation_result.cleaned.get('start_ts'):
+                start_ts_v = validation_result.cleaned.get('start_ts') or start_dt
+                end_ts_v = validation_result.cleaned.get('end_ts')
+                conflicts = find_conflicts(conn, tech_id=tech_id, vehicle_id=None, start_ts=start_ts_v, end_ts=end_ts_v)
+                if conflicts.get('tech') or conflicts.get('vehicle'):
+                    return _fail(HTTPStatus.CONFLICT, 'CONFLICT', 'Scheduling conflict detected', meta={'conflicts': conflicts})
             # Resolve or create customer
             resolved_customer_id = None
             if customer_id:
