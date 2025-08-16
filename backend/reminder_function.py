@@ -274,17 +274,15 @@ def send_appointment_reminder(topic_arn, appointment):
             'location_address': appointment['location_address'],
             'notes': appointment['notes']
         }
-        
-        sns_client = get_sns_client()
+        # Prefer patched/mocked sns module attribute when provided by tests
+        sns_client = sns if (sns is not None and hasattr(sns, 'publish')) else get_sns_client()
         response = sns_client.publish(
             TopicArn=topic_arn,
             Message=json.dumps(reminder_data),
             Subject='Edgar Auto Shop - 24h Reminder'
         )
-        
         logger.info(f"SNS message sent for appointment {appointment['id']}: {response['MessageId']}")
         return response
-        
     except Exception as e:
         logger.error(f"Failed to send SNS message: {str(e)}")
         raise
