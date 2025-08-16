@@ -25,6 +25,7 @@ const ServiceAreas = lazy(() => import('./pages/ServiceAreas'));
 const EmergencyService = lazy(() => import('./pages/EmergencyService'));
 const AdminAppointments = lazy(() => import('./pages/AdminAppointments'));
 const CustomersPage = lazy(() => import('./pages/admin/CustomersPage'));
+const CustomerProfilePage = lazy(() => import('./pages/admin/CustomerProfilePage'));
 const MessageTemplatesPage = lazy(() => import('./pages/admin/MessageTemplatesPage'));
 const MessageThreadHarness = lazy(() => import('./pages/e2e/MessageThreadHarness'));
 const BoardHarness = lazy(() => import('./pages/e2e/BoardHarness'));
@@ -72,6 +73,7 @@ export default function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="appointments" element={<AdminAppointments />} />
               <Route path="customers" element={<CustomersPage />} />
+              <Route path="customers/:id" element={<CustomerProfilePage />} />
               <Route path="templates" element={<MessageTemplatesPage />} />
               {/* Future admin routes can be added here, e.g., <Route path="users" element={<Users />} /> */}
             </Route>

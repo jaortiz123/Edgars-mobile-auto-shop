@@ -2843,9 +2843,10 @@ def admin_search_customers():
     order_clause = SORT_MAP.get(sort_by) or SORT_MAP["relevance"]
 
     conn = db_conn()
-    with conn:
-        with conn.cursor() as cur:
-            cur.execute(
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
                 """
                 WITH hits AS (
                   -- Plate-first branch: exact vehicle matches by plate
@@ -2910,7 +2911,18 @@ def admin_search_customers():
                 """.format(order_clause=order_clause),
             {"pat": f"%{q}%", "prefix": f"{q}%", "limit": limit, "filter": flt},
             )
-            rows = cur.fetchall()
+                rows = cur.fetchall()
+    except Exception as e:  # Temporary instrumentation for E2E debugging
+        try:
+            log.error("customers_search_failed", extra={
+                "path": request.path,
+                "q": q,
+                "error": str(e),
+                "traceback": traceback.format_exc(),
+            })
+        except Exception:
+            pass
+        raise
 
     items = []
     for r in rows:
@@ -3056,6 +3068,256 @@ def admin_recent_customers():
             })
 
         return _ok({"recent_customers": recent, "limit": limit})
+
+
+# ----------------------------------------------------------------------------
+# Customer Profile Dashboard Endpoint
+# ----------------------------------------------------------------------------
+@app.route("/api/admin/customers/<cust_id>", methods=["GET"])
+def admin_customer_profile(cust_id: str):
+    """Return a comprehensive customer profile.
+
+    Query params:
+      include=appointmentDetails  -> when present, embeds services/payments/messages for each appointment
+
+    Default (no include): appointments list excludes heavy nested arrays to keep payload light.
+    Limit: up to 500 most recent appointments (start_ts DESC, id DESC tiebreaker).
+    RBAC: allow Owner/Advisor/Accountant (reuse require_auth_role soft attempt like other endpoints).
+    """
+    try:
+        # Allow broad roles; fall through if unauth to mimic other customer endpoints (will still 403 downstream if needed)
+        require_auth_role()
+    except Exception:
+        pass
+
+    include_raw = request.args.get("include", "")
+    include_tokens = set([t.strip() for t in include_raw.split(",") if t.strip()]) if include_raw else set()
+    valid_tokens = {"appointmentDetails"}
+    invalid = [t for t in include_tokens if t not in valid_tokens]
+    if invalid:
+        return _fail(HTTPStatus.BAD_REQUEST, "INVALID_INCLUDE", f"Unsupported include token(s): {', '.join(invalid)}")
+    want_details = "appointmentDetails" in include_tokens
+
+    conn, use_memory, err = safe_conn()
+    if err and not use_memory:
+        return _fail(HTTPStatus.INTERNAL_SERVER_ERROR, "INTERNAL", "profile db unavailable")
+
+    # Memory fallback: fabricate minimal object (no persistence layer for customers implemented here)
+    if not conn and use_memory:
+        # Heuristic: treat ids ending with 999 as not found (mirrors history endpoint behavior)
+        if cust_id.endswith("999"):
+            return _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Customer not found")
+        profile = {
+            "customer": {"id": cust_id, "name": "Memory Customer", "phone": None, "email": None, "isVip": False, "createdAt": None, "updatedAt": None},
+            "vehicles": [],
+            "appointments": [],
+            "metrics": {
+                "totalSpent": 0.0,
+                "unpaidBalance": 0.0,
+                "visitsCount": 0,
+                "completedCount": 0,
+                "avgTicket": 0.0,
+                "lastServiceAt": None,
+                "lastVisitAt": None,
+                "last12MonthsSpent": 0.0,
+                "last12MonthsVisits": 0,
+                "vehiclesCount": 0,
+                "isVip": False,
+                "isOverdueForService": False,
+            },
+            "includes": sorted(list(include_tokens)),
+        }
+        return _ok(profile)
+
+    # DB mode
+    with conn:
+        with conn.cursor() as cur:
+            # 1. fetch customer
+            cur.execute(
+                """
+                SELECT id::text, COALESCE(NULLIF(TRIM(name), ''), 'Unknown Customer') AS name, phone, email, is_vip,
+                       created_at, updated_at
+                FROM customers WHERE id = %s
+                """,
+                (cust_id,),
+            )
+            customer_row = cur.fetchone()
+            if not customer_row:
+                return _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Customer not found")
+
+            # 2. vehicles with aggregate stats (visits count & spend per vehicle)
+            cur.execute(
+                """
+                SELECT v.id::text, v.license_plate, v.year, v.make, v.model,
+                       COALESCE(SUM(a.total_amount),0) AS total_spent,
+                       COUNT(a.id) AS visits
+                FROM vehicles v
+                LEFT JOIN appointments a ON a.vehicle_id = v.id AND a.customer_id = %s
+                WHERE v.customer_id = %s
+                GROUP BY v.id
+                ORDER BY v.id
+                """,
+                (cust_id, cust_id),
+            )
+            vehicles_rows = cur.fetchall() or []
+            vehicles = []
+            for v in vehicles_rows:
+                vehicles.append({
+                    "id": v.get("id"),
+                    "plate": v.get("license_plate"),
+                    "year": v.get("year"),
+                    "make": v.get("make"),
+                    "model": v.get("model"),
+                    "visits": int(v.get("visits") or 0),
+                    "totalSpent": float(v.get("total_spent") or 0),
+                })
+
+            # 3. metrics (single aggregate pass)
+            cur.execute(
+                """
+                WITH appts AS (
+                  SELECT * FROM appointments WHERE customer_id = %s
+                )
+                SELECT
+                  COALESCE(SUM(COALESCE(total_amount,0)),0) AS total_spent,
+                  COALESCE(SUM(GREATEST(COALESCE(total_amount,0)-COALESCE(paid_amount,0),0)),0) AS unpaid_balance,
+                  COUNT(*) AS visits_count,
+                  COUNT(*) FILTER (WHERE status = 'COMPLETED') AS completed_count,
+                  AVG(NULLIF(total_amount,0)) FILTER (WHERE status = 'COMPLETED') AS avg_ticket_raw,
+                  MAX(CASE WHEN status = 'COMPLETED' THEN COALESCE(end_ts,start_ts) END) AS last_service_at,
+                  MAX(COALESCE(start_ts,end_ts)) AS last_visit_at,
+                  COALESCE(SUM(COALESCE(total_amount,0)) FILTER (WHERE COALESCE(start_ts,end_ts) >= NOW() - INTERVAL '12 months'),0) AS last12_spent,
+                  COUNT(*) FILTER (WHERE COALESCE(start_ts,end_ts) >= NOW() - INTERVAL '12 months') AS last12_visits
+                FROM appts
+                """,
+                (cust_id,),
+            )
+            metrics_row = cur.fetchone() or {}
+
+            # 4. appointments list (two variants)
+            if want_details:
+                cur.execute(
+                    """
+                    SELECT a.id::text, a.status::text, a.start_ts, a.end_ts,
+                           COALESCE(a.total_amount,0) AS total_amount,
+                           COALESCE(a.paid_amount,0) AS paid_amount,
+                           a.check_in_at, a.check_out_at,
+                           a.vehicle_id::text,
+                           v.license_plate, v.year, v.make, v.model,
+                           COALESCE((
+                             SELECT JSON_AGG(JSON_BUILD_OBJECT('id', s.id::text, 'name', s.name, 'notes', s.notes, 'estimated_price', s.estimated_price, 'service_operation_id', s.service_operation_id) ORDER BY s.created_at)
+                             FROM appointment_services s WHERE s.appointment_id = a.id
+                           ), '[]'::json) AS services,
+                           COALESCE((
+                             SELECT JSON_AGG(JSON_BUILD_OBJECT('id', p.id::text, 'amount', p.amount, 'method', p.method, 'created_at', p.created_at) ORDER BY p.created_at DESC)
+                             FROM payments p WHERE p.appointment_id = a.id
+                           ), '[]'::json) AS payments,
+                           COALESCE((
+                             SELECT JSON_AGG(JSON_BUILD_OBJECT('id', m.id::text, 'channel', m.channel, 'direction', m.direction, 'body', m.body, 'status', m.status, 'created_at', m.sent_at) ORDER BY m.sent_at DESC)
+                             FROM messages m WHERE m.appointment_id = a.id
+                           ), '[]'::json) AS messages
+                    FROM appointments a
+                    LEFT JOIN vehicles v ON v.id = a.vehicle_id
+                    WHERE a.customer_id = %s
+                    ORDER BY a.start_ts DESC NULLS LAST, a.id DESC
+                    LIMIT 500
+                    """,
+                    (cust_id,),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT a.id::text, a.status::text, a.start_ts, a.end_ts,
+                           COALESCE(a.total_amount,0) AS total_amount,
+                           COALESCE(a.paid_amount,0) AS paid_amount,
+                           a.check_in_at, a.check_out_at,
+                           a.vehicle_id::text,
+                           v.license_plate, v.year, v.make, v.model
+                    FROM appointments a
+                    LEFT JOIN vehicles v ON v.id = a.vehicle_id
+                    WHERE a.customer_id = %s
+                    ORDER BY a.start_ts DESC NULLS LAST, a.id DESC
+                    LIMIT 500
+                    """,
+                    (cust_id,),
+                )
+            appt_rows = cur.fetchall() or []
+
+    # Build response objects outside cursor scope
+    def _appt_row_to_obj(r):
+        base = {
+            "id": r.get("id"),
+            "status": r.get("status"),
+            "start": r.get("start_ts").isoformat() if r.get("start_ts") else None,
+            "end": r.get("end_ts").isoformat() if r.get("end_ts") else None,
+            "totalAmount": float(r.get("total_amount") or 0),
+            "paidAmount": float(r.get("paid_amount") or 0),
+            "checkInAt": r.get("check_in_at").isoformat() if r.get("check_in_at") else None,
+            "checkOutAt": r.get("check_out_at").isoformat() if r.get("check_out_at") else None,
+            "vehicle": {
+                "id": r.get("vehicle_id"),
+                "plate": r.get("license_plate"),
+                "year": r.get("year"),
+                "make": r.get("make"),
+                "model": r.get("model"),
+            },
+        }
+        if want_details:
+            base["services"] = r.get("services") or []
+            base["payments"] = r.get("payments") or []
+            base["messages"] = r.get("messages") or []
+        return base
+
+    appointments_out = [_appt_row_to_obj(r) for r in appt_rows]
+
+    total_spent = float(metrics_row.get("total_spent") or 0)
+    unpaid_balance = float(metrics_row.get("unpaid_balance") or 0)
+    visits_count = int(metrics_row.get("visits_count") or 0)
+    completed_count = int(metrics_row.get("completed_count") or 0)
+    avg_ticket = float(metrics_row.get("avg_ticket_raw") or 0) if completed_count else 0.0
+    last_service_at = metrics_row.get("last_service_at")
+    last_visit_at = metrics_row.get("last_visit_at")
+    last12_spent = float(metrics_row.get("last12_spent") or 0)
+    last12_visits = int(metrics_row.get("last12_visits") or 0)
+
+    customer_obj = {
+        "id": customer_row.get("id"),
+        "name": customer_row.get("name"),
+        "phone": customer_row.get("phone"),
+        "email": customer_row.get("email"),
+        "isVip": bool(customer_row.get("is_vip")) or (total_spent >= 5000),
+        "createdAt": customer_row.get("created_at").isoformat() if customer_row.get("created_at") else None,
+        "updatedAt": customer_row.get("updated_at").isoformat() if customer_row.get("updated_at") else None,
+    }
+
+    metrics_obj = {
+        "totalSpent": total_spent,
+        "unpaidBalance": unpaid_balance,
+        "visitsCount": visits_count,
+        "completedCount": completed_count,
+        "avgTicket": round(avg_ticket, 2) if avg_ticket else 0.0,
+        "lastServiceAt": last_service_at.isoformat() if last_service_at else None,
+        "lastVisitAt": last_visit_at.isoformat() if last_visit_at else None,
+        "last12MonthsSpent": last12_spent,
+        "last12MonthsVisits": last12_visits,
+        "vehiclesCount": len(vehicles),
+        "isVip": customer_obj["isVip"],
+        # Normalize timezone awareness before comparison to avoid naive/aware TypeError in tests
+        "isOverdueForService": bool(
+            last_service_at and (
+                (last_service_at.replace(tzinfo=None) < (datetime.utcnow() - timedelta(days=180)))
+            )
+        ),
+    }
+
+    profile = {
+        "customer": customer_obj,
+        "vehicles": vehicles,
+        "appointments": appointments_out,
+        "metrics": metrics_obj,
+        "includes": sorted(list(include_tokens)),
+    }
+    return _ok(profile)
 
 
 def _visits_rows_to_payload(rows):

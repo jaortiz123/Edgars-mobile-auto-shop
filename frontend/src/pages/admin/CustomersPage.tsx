@@ -158,35 +158,39 @@ export default function CustomersPage() {
             )}
           </div>
         )}
-        {state === 'empty' && (
-          <div className="text-gray-500 text-sm p-6" data-testid="customers-empty">No customers matched your search.</div>
-        )}
-        {state === 'results' && (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-testid="customers-results-grid">
-            {customerCards.map(c => {
-              // For now search results don't surface totalSpent per vehicle; rely on top-level fields if present later
-              const isVip = (c as unknown as { isVip?: boolean }).isVip;
-              const isOverdue = (c as unknown as { isOverdueForService?: boolean }).isOverdueForService;
-              return (
-                <CustomerCard
-                  key={c.customerId}
-                  customerId={c.customerId}
-                  name={c.name}
-                  phone={c.phone}
-                  email={c.email}
-                  vehicles={c.vehicles}
-                  totalSpent={undefined}
-                  isVip={isVip}
-                  isOverdueForService={isOverdue}
-                  onViewHistory={() => navigate(`/admin/customers/${c.customerId}`)}
-                  onBookAppointment={() => {
-                    window.dispatchEvent(new CustomEvent('open-booking-drawer', { detail: { customerId: c.customerId, name: c.name } }));
-                  }}
-                />
-              );
-            })}
-          </div>
-        )}
+          {state !== 'initial' && (
+            <div data-testid="customer-results">
+              {state === 'empty' && (
+                <div className="text-gray-500 text-sm p-6" data-testid="customers-empty">No customers matched your search.</div>
+              )}
+              {state === 'results' && (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-testid="customers-results-grid">
+                  {customerCards.map(c => {
+                    // For now search results don't surface totalSpent per vehicle; rely on top-level fields if present later
+                    const isVip = (c as unknown as { isVip?: boolean }).isVip;
+                    const isOverdue = (c as unknown as { isOverdueForService?: boolean }).isOverdueForService;
+                    return (
+                      <CustomerCard
+                        key={c.customerId}
+                        customerId={c.customerId}
+                        name={c.name}
+                        phone={c.phone}
+                        email={c.email}
+                        vehicles={c.vehicles}
+                        totalSpent={undefined}
+                        isVip={isVip}
+                        isOverdueForService={isOverdue}
+                        onViewHistory={() => navigate(`/admin/customers/${c.customerId}`)}
+                        onBookAppointment={() => {
+                          window.dispatchEvent(new CustomEvent('open-booking-drawer', { detail: { customerId: c.customerId, name: c.name } }));
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
       </div>
     </div>
   );

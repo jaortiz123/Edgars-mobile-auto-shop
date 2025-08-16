@@ -53,16 +53,22 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
   }, [storeError, toast, setError, __debugDisableToast]);
   // Debug instrumentation (dev only) to trace board population issues in E2E
   useEffect(() => {
-    if (import.meta.env.DEV) {
-      console.log('🎪 StatusBoard debug', {
-        columnsLen: columns.length,
-        cardsLen: allCards.length,
-        loading,
-        storeError,
-        boardError: boardError?.message
-      });
-    }
-  }, [columns.length, allCards.length, loading, storeError, boardError]);
+    if (!import.meta.env.DEV) return;
+    console.log('🎪 StatusBoard debug', {
+      columnsLen: columns.length,
+      cardsLen: allCards.length,
+      loading,
+      storeError,
+      boardError: boardError?.message
+    });
+    // Expose a testing hook to trigger moves without relying on drag events (E2E stability)
+    try {
+      interface BoardWindow extends Window { __boardMove?: (id: string, status: string) => Promise<void>; }
+      (window as BoardWindow).__boardMove = async (id: string, status: string) => {
+        try { await moveAppointment(id, { status, position: 1 }); } catch { /* swallow */ }
+      };
+    } catch { /* no-op */ }
+  }, [columns.length, allCards.length, loading, storeError, boardError, moveAppointment]);
   const isFetchingBoard = false; // placeholder until wired to query status
   const showInitialSkeleton = loading && cards.length === 0;
   const [showCustomize, setShowCustomize] = useState(false);
