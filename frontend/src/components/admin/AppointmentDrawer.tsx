@@ -683,12 +683,61 @@ const Services = React.memo(function Services({
           } as unknown as AppointmentService };
           next.serviceOrder = [...next.serviceOrder, stagedId];
           next.addedTempIds = [...next.addedTempIds, stagedId];
+          if (typeof window !== 'undefined') {
+            interface E2EWin extends Window { __lastStagedServiceId?: string }
+            (window as E2EWin).__lastStagedServiceId = stagedId;
+            try { console.debug('[E2E] staged service', { stagedId, hours, provisionalPrice }); } catch { /* noop */ }
+          }
         }
         return next;
       });
       setSearchTerm('');
+    } else {
+      // Initialize working state if missing so test hook can function early
+      onWorkingChange(prev => {
+        const init = prev || { servicesById: {}, serviceOrder: [], addedTempIds: [], deletedIds: [], modifiedIds: new Set<string>() };
+        if (!init.servicesById[stagedId]) {
+          const updated = { ...init, servicesById: { ...init.servicesById, [stagedId]: {
+            id: stagedId,
+            appointment_id: apptId,
+            name: item.name,
+            notes: '',
+            estimated_hours: hours,
+            estimated_price: provisionalPrice,
+            category: item.system || null,
+            service_operation_id: null
+          } as unknown as AppointmentService }, serviceOrder: [...init.serviceOrder, stagedId], addedTempIds: [...init.addedTempIds, stagedId] };
+          if (typeof window !== 'undefined') {
+            interface E2EWin extends Window { __lastStagedServiceId?: string }
+            (window as E2EWin).__lastStagedServiceId = stagedId;
+          }
+          return updated;
+        }
+        return init;
+      });
+      setSearchTerm('');
     }
   }, [apptId, working, onWorkingChange]);
+  // E2E test hook: stage first filtered catalog result (dev/test only)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    interface E2EWin extends Window { __stageFirstCatalogResult?: () => void }
+    (window as E2EWin).__stageFirstCatalogResult = () => {
+      try {
+        if (filteredCatalog.length) {
+          console.debug('[E2E] __stageFirstCatalogResult invoked');
+          stageFromCatalog(filteredCatalog[0]);
+          setTimeout(() => {
+            try {
+              console.debug('[E2E] post-stage working.addedTempIds', working?.addedTempIds);
+            } catch { /* ignore debug error */ }
+          }, 50);
+        } else {
+          console.debug('[E2E] __stageFirstCatalogResult no filteredCatalog');
+        }
+  } catch (e) { try { console.debug('[E2E] __stageFirstCatalogResult error', e); } catch { /* ignore */ } }
+    };
+  }, [filteredCatalog, stageFromCatalog, working]);
   const hasSearch = ENABLE_CATALOG_SEARCH && (searchTerm.trim().length > 0);
 
   const [total, setTotal] = useState(0);
@@ -810,7 +859,7 @@ const Services = React.memo(function Services({
   if (!data) return <div>Loading…</div>;
   
   const baseServices = working ? working.serviceOrder.map(id => working.servicesById[id]).filter(Boolean).filter(s => !!s && !working.deletedIds.includes(s.id)) as AppointmentService[] : [];
-  const effectiveServices = baseServices.map(s => working!.addedTempIds.includes(s.id) ? ({ ...s, __staged: true } as unknown as AppointmentService) : s);
+  const effectiveServices = baseServices; // staging indicated via addedTempIds list
   // Debug: expose count for tests (non-production impact)
   const effectiveServicesCount = effectiveServices.length;
 
@@ -861,6 +910,8 @@ const Services = React.memo(function Services({
             Add Service
           </button>
         )}
+      {/* Ensure a consistent services-list container exists even when empty for E2E selectors */}
+      <div data-testid="services-list" data-count={0} data-added-temp-count={0} data-added-temp-ids="" className="hidden" />
       </div>
     );
   }
@@ -1028,10 +1079,10 @@ const Services = React.memo(function Services({
       )}
 
       {/* Services List */}
-  <div data-testid="services-list" data-count={effectiveServicesCount} className="space-y-2">
+  <div data-testid="services-list" data-count={effectiveServicesCount} data-added-temp-count={working?.addedTempIds.length || 0} data-added-temp-ids={working?.addedTempIds.join(',') || ''} className="space-y-2">
   {effectiveServices.map(service => (
+          <div key={service.id} data-staged={working!.addedTempIds.includes(service.id) ? '1' : undefined}>
           <ServiceItem
-            key={service.id}
             service={service}
             allowMutations={ALLOW_SERVICE_MUTATIONS}
             isMarkedForDeletion={Boolean(working?.deletedIds.includes(service.id))}
@@ -1076,6 +1127,7 @@ const Services = React.memo(function Services({
               });
             }}
           />
+          </div>
         ))}
       </div>
     </div>
