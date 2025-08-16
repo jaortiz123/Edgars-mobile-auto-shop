@@ -4,6 +4,7 @@ import { useServiceCatalogSearch } from '@/hooks/useServiceCatalogSearch';
 import ServiceOperationSelect, { ServiceOperationSelectValue } from '@/components/admin/ServiceOperationSelect';
 import { Tabs } from '@/components/ui/Tabs';
 import * as api from '@/lib/api';
+import type { RichAppointmentResponse } from '@/lib/api';
 import type { DrawerPayload, AppointmentService } from '@/types/models';
 import MessageThread from './MessageThread';
 import CustomerHistory from './CustomerHistory';
@@ -11,11 +12,16 @@ import { useToast } from '@/components/ui/Toast';
 import vehicleCatalogSeed from '@/data/vehicleCatalog';
 import buildCatalogFromRaw from '@/data/vehicleCatalogFromRaw';
 import { useAppointmentBundle } from '@/hooks/useAppointmentBundle';
+import AppointmentForm from '@/components/appointments/AppointmentForm';
 
 // Wrap the main component in React.memo to prevent unnecessary re-renders
 const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { open: boolean; onClose: () => void; id: string | null; onRescheduled?: (id: string, startISO: string) => void }) => {
   const [tab, setTab] = useState('overview');
-  const [data, setData] = useState<DrawerPayload | null>(null);
+  const [data, setData] = useState<DrawerPayload | null>(null); // legacy drawer payload
+  // New rich appointment state for edit flow
+  const [rich, setRich] = useState<RichAppointmentResponse | null>(null);
+  const [richLoading, setRichLoading] = useState(false);
+  const [richError, setRichError] = useState<string | null>(null);
   const [isAddingService, setIsAddingService] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -90,6 +96,8 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
       loadedDataIdRef.current = id;
       setError(null);
       setData(null);
+      setRich(null);
+      setRichError(null);
 
       const timeoutMs = 8000;
       const timeoutId = setTimeout(() => {
@@ -115,20 +123,24 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
         setData(fallbackData);
       }, timeoutMs);
 
+      // Fire both legacy drawer (for existing dependent UI) and rich fetch (for edit form wiring)
       api.getDrawer(id)
-        .then(result => {
+        .then(result => { if (!cancelled) setData(result); })
+        .catch(err => { if (!cancelled) { console.warn('[drawer] legacy drawer load failed', err); setError('Failed to load appointment'); } });
+      // Rich fetch
+      setRichLoading(true);
+      api.getAppointment(id)
+        .then(full => {
           if (cancelled) return;
-          clearTimeout(timeoutId);
-          setData(result);
+          console.log('[AppointmentDrawer] Loaded rich appointment', full);
+          setRich(full);
         })
         .catch(err => {
-          console.error('🔍 DEBUG: Error calling api.getDrawer:', err);
           if (cancelled) return;
-          clearTimeout(timeoutId);
-          if (!(deletedIdRef.current && deletedIdRef.current === id)) {
-            setError('Failed to load appointment');
-          }
-        });
+            console.error('[AppointmentDrawer] Failed to load rich appointment', err);
+            setRichError((err as Error)?.message || 'Failed to load appointment details');
+        })
+        .finally(()=>{ if (!cancelled) setRichLoading(false); });
 
       return () => {
         cancelled = true;
@@ -140,6 +152,8 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
       loadedDataIdRef.current = null;
       setIsAddingService(false);
       deletedIdRef.current = null;
+      setRich(null);
+      setRichError(null);
     }
 
     return () => { cancelled = true; };
@@ -209,6 +223,11 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
         Loading appointment…
       </div>
     );
+  }
+  // Dev log to ensure rich state referenced
+  if (import.meta.env?.DEV && rich && (rich as any)._logged_once !== true) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    try { console.log('[AppointmentDrawer] rich appointment loaded (debug)', { id: rich.appointment?.id, serviceCount: rich.services?.length }); } catch { /* ignore */ }
+    (rich as any)._logged_once = true; // eslint-disable-line @typescript-eslint/no-explicit-any
   }
 
   return (
@@ -304,9 +323,9 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
             </button>
           </div>
         </div>
-        {error && (
+    {(error || richError) && (
           <div className="px-4 py-2 text-sm text-red-700 bg-red-50 border-b border-red-200" role="alert">
-            {error}
+      {error || richError}
           </div>
         )}
         <Tabs
@@ -320,7 +339,68 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
           ]}
         />
         <div className="p-4 overflow-auto flex-1">
-          {tab === 'overview' && <Overview data={data} onEditTime={() => setShowReschedule(true)} />}
+          {tab === 'overview' && (
+            !id ? (
+              <AppointmentForm
+                mode="create"
+                onSubmit={(vals) => {
+                  const startISO = vals.start ? new Date(vals.start).toISOString() : null;
+                  const endISO = vals.end ? new Date(vals.end).toISOString() : null;
+                  console.log('[AppointmentForm submit]', { ...vals, startISO, endISO });
+                }}
+                onCreated={() => {
+                  try { window.dispatchEvent(new CustomEvent('board:refresh')); } catch { /* ignore */ }
+                  onClose();
+                }}
+                onCancel={onClose}
+              />
+            ) : (
+              <>
+                {richLoading && <div className="mb-2 text-xs text-gray-500">Loading details…</div>}
+                {/* Edit form wiring: show form when rich data present, else fallback overview */}
+                {rich ? (
+                  <AppointmentForm
+                    mode="edit"
+                    appointmentId={rich.appointment.id}
+                    initial={{
+                      title: rich.appointment?.notes || '',
+                      start: rich.appointment?.start || '',
+                      end: rich.appointment?.end || '',
+                      status: rich.appointment?.status || 'SCHEDULED',
+                      customerId: rich.customer?.id || null,
+                      vehicleId: rich.vehicle?.id || null,
+                      techId: rich.appointment?.tech_id || null
+                    }}
+                    presetCustomer={rich.customer ? {
+                      customerId: rich.customer.id,
+                      name: rich.customer.name,
+                      phone: rich.customer.phone || undefined,
+                      email: rich.customer.email || undefined,
+                      vehicles: (rich.customer.vehicles || []).map(v => ({
+                        vehicleId: v.id,
+                        plate: v.license_plate || v.vin || undefined,
+                        vehicle: [v.year, v.make, v.model].filter(Boolean).join(' ') || undefined,
+                      }))
+                    } : null}
+                    initialServices={(rich.services || []).map(s => ({
+                      id: s.service_operation_id || s.operation?.id || s.id,
+                      name: s.name || s.operation?.name || 'Service',
+                      category: s.operation?.category || s.category || undefined,
+                      estimated_hours: s.estimated_hours || s.operation?.default_hours || undefined,
+                      estimated_price: s.estimated_price || s.operation?.default_price || undefined,
+                    }))}
+                    onSubmit={() => {
+                      try { window.dispatchEvent(new CustomEvent('board:refresh')); } catch { /* ignore */ }
+                      onClose();
+                    }}
+                    onCancel={onClose}
+                  />
+                ) : (
+                  <Overview data={data} onEditTime={() => setShowReschedule(true)} />
+                )}
+              </>
+            )
+          )}
           {tab === 'services' && <Services data={data} isAddingService={isAddingService} setIsAddingService={memoizedSetIsAddingService} working={working ? { servicesById: working.servicesById, serviceOrder: working.serviceOrder, addedTempIds: working.addedTempIds, deletedIds: working.deletedIds, modifiedIds: working.modifiedIds } : null} onWorkingChange={updateWorking} dirty={workingDirty} />}
           {tab === 'messages' && id && <MessageThread appointmentId={id} drawerOpen={open} />}
           {tab === 'history' && data?.customer?.id && (

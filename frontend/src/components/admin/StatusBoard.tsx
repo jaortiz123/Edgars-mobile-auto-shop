@@ -10,6 +10,7 @@ import { useBoardStore } from '@/state/useBoardStore';
 import { useToast } from '@/components/ui/Toast';
 import type { BoardCard, BoardColumn } from '@/types/models';
 import type { BoardState } from '@/state/useBoardStore';
+import { useBoard } from '@/hooks/useBoardData';
 
 function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDisableDnd, __debugDisableFilter, __debugSimpleCols, __debugSimpleCards, __debugDisableToast }: { onOpen: (id: string) => void; minimalHero?: boolean; __debugDisableModal?: boolean; __debugDisableDnd?: boolean; __debugDisableFilter?: boolean; __debugSimpleCols?: boolean; __debugSimpleCards?: boolean; __debugDisableToast?: boolean }) {
   // Store is initialized at the AdminLayout level now (singleton for admin session)
@@ -38,7 +39,9 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
   const filteredCards = useMemo(() => (filtersActive ? applyFilters(allCards) : allCards), [filtersActive, applyFilters, allCards]);
   const cards = filteredCards; // alias retained for existing usages (hero, etc.)
   const boardError = React.useMemo(() => (storeErrorStr ? new Error(storeErrorStr) : null), [storeErrorStr]);
-  const triggerRefresh = () => {/* future: call refresh action or invalidate query via legacy path */};
+  // Access underlying React Query board fetch so we can manually refresh on custom events
+  const { boardQuery } = useBoard();
+  const triggerRefresh = React.useCallback(() => { try { void boardQuery.refetch(); } catch { /* ignore */ } }, [boardQuery]);
   const moveAppointment = useBoardStore((s: BoardState) => s.moveAppointment);
   const storeError = storeErrorStr;
   const setError = useBoardStore((s: BoardState) => s.setError);
@@ -94,6 +97,17 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
       };
     } catch { /* no-op */ }
   }, [columns.length, allCards.length, allCards, loading, storeError, boardError, moveAppointment]);
+
+  // Listen for global board:refresh or appointments:created events to refetch board data
+  useEffect(() => {
+    const handler = () => triggerRefresh();
+    window.addEventListener('board:refresh', handler);
+    window.addEventListener('appointments:created', handler);
+    return () => {
+      window.removeEventListener('board:refresh', handler);
+      window.removeEventListener('appointments:created', handler);
+    };
+  }, [triggerRefresh]);
   const isFetchingBoard = false; // placeholder until wired to query status
   const showInitialSkeleton = loading && cards.length === 0;
   const [showCustomize, setShowCustomize] = useState(false);

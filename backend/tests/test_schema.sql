@@ -173,4 +173,42 @@ CREATE INDEX idx_payments_appt ON payments(appointment_id);
 CREATE INDEX idx_checklists_appt ON inspection_checklists(appointment_id);
 CREATE INDEX idx_items_checklist ON inspection_items(checklist_id);
 
+-- message_templates table (subset of production fields)
+CREATE TABLE message_templates (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        slug TEXT UNIQUE NOT NULL,
+        label TEXT NOT NULL,
+        channel message_channel NOT NULL,
+        category TEXT,
+        body TEXT NOT NULL,
+        variables TEXT[] DEFAULT ARRAY[]::TEXT[],
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP NOT NULL DEFAULT now(),
+        updated_at TIMESTAMP NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_message_templates_active ON message_templates(is_active) WHERE is_active IS TRUE;
+CREATE INDEX idx_message_templates_channel ON message_templates(channel) WHERE is_active IS TRUE;
+
+-- Seed a few templates used by tests (idempotent style)
+INSERT INTO message_templates (slug, label, channel, category, body, variables)
+VALUES
+    ('appt_reminder_basic_sms', 'Appointment Reminder (SMS)', 'sms', 'Reminders', 'Hi there! This is a reminder about your upcoming service appointment.', ARRAY[]::TEXT[]),
+    ('vehicle_ready_sms', 'Vehicle Ready (SMS)', 'sms', 'Status Updates', 'Good news! Your vehicle service is complete and ready for pickup.', ARRAY[]::TEXT[]),
+    ('thanks_followup_email', 'Thank You + Review (Email)', 'email', 'Follow Up', 'Thank you for choosing us for your recent service.', ARRAY[]::TEXT[])
+ON CONFLICT (slug) DO NOTHING;
+
+-- template_usage_events table
+CREATE TABLE template_usage_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    template_id UUID NOT NULL REFERENCES message_templates(id) ON DELETE RESTRICT,
+    template_slug TEXT NOT NULL,
+    channel message_channel NOT NULL,
+    appointment_id INTEGER NULL REFERENCES appointments(id) ON DELETE SET NULL,
+    user_id UUID NULL,
+    sent_at TIMESTAMP NOT NULL DEFAULT now(),
+    was_automated BOOLEAN NOT NULL DEFAULT FALSE
+);
+CREATE INDEX idx_template_usage_sent_at ON template_usage_events(sent_at);
+CREATE INDEX idx_template_usage_template ON template_usage_events(template_id, sent_at DESC);
+
 COMMIT;

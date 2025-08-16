@@ -3,6 +3,7 @@ import type {
   BoardColumn, BoardCard, DashboardStats, DrawerPayload, AppointmentStatus
 } from '@/types/models';
 import type { MockMoveAppointmentRequest, MockMoveAppointmentResponse } from '@/types/test';
+import type { TemplateAnalyticsResponse } from '../../types/analytics';
 
 export async function getBoard(): Promise<{ columns: BoardColumn[]; cards: BoardCard[] }> {
   return { 
@@ -133,3 +134,8 @@ export function handleApiError(): string { return ''; }
 // Export client and useApi to satisfy advanced imports
 export const client = {};
 export function useApi() { return client; }
+
+// Analytics mocks
+export async function fetchTemplateAnalytics(): Promise<TemplateAnalyticsResponse> {
+  throw new Error('fetchTemplateAnalytics mock not implemented');
+}
