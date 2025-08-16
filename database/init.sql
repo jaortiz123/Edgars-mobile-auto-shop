@@ -6,7 +6,8 @@ CREATE TABLE customers (
   address TEXT,
   -- Added in migration 20250816_007_add_customer_is_vip.sql; kept here so fresh init DBs have column without needing migration replay
   is_vip BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE vehicles (
   id SERIAL PRIMARY KEY,
