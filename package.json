@@ -21,8 +21,8 @@
     "verify:db": "docker compose exec db psql -U $POSTGRES_USER -d $POSTGRES_DB -c \"select enum_range(null::appointment_status);\"",
     "test": "playwright test",
     "test:e2e": "playwright test",
-  "test:e2e:smoke": "cross-env SKIP_KILL_5173=1 start-server-and-test 'npm run dev:frontend' http://localhost:5173 'playwright test --config=playwright-smoke.config.ts'",
-  "test:browsers": "cross-env SKIP_KILL_5173=1 start-server-and-test 'npm run dev:frontend' http://localhost:5173 'playwright test --config=playwright-smoke.config.ts --project=chromium --project=firefox --project=webkit'",
+    "test:e2e:smoke": "cross-env SKIP_KILL_5173=1 start-server-and-test 'npm run dev:frontend' http://localhost:5173 'playwright test --config=playwright-smoke.config.ts'",
+    "test:browsers": "cross-env SKIP_KILL_5173=1 start-server-and-test 'npm run dev:frontend' http://localhost:5173 'playwright test --config=playwright-smoke.config.ts --project=chromium --project=firefox --project=webkit'",
     "test:perf": "node tests/perf/endpointLatency.test.js",
     "test:backend": "pytest -q || true",
     "test:frontend": "cd frontend && npm test -- --run"
@@ -32,10 +32,11 @@
   "license": "ISC",
   "devDependencies": {
     "@playwright/test": "^1.53.1",
+    "@types/node": "^20.11.0",
     "@vitest/ui": "^3.2.4",
-  "@types/node": "^20.11.0",
-  "cross-env": "^7.0.3",
+    "cross-env": "^7.0.3",
     "jest-axe": "^10.0.0",
+    "jsdom": "^26.1.0",
     "monocart-reporter": "^2.9.21",
     "start-server-and-test": "^2.0.12",
     "why-is-node-running": "^3.2.2"

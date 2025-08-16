@@ -24,11 +24,12 @@ const BoardFilterContext = createContext<BoardFilterContextValue | undefined>(un
 const DEFAULT: BoardFilters = { search: '', statuses: null, techs: [], blockers: [] };
 const STORAGE_KEY = 'adm.board.filters.v1';
 
-export function BoardFilterProvider({ children }: { children: ReactNode }) {
+export function BoardFilterProvider({ children, debugShim }: { children: ReactNode; debugShim?: boolean }) {
   const [filters, setFiltersState] = useState<BoardFilters>(DEFAULT);
 
-  // Load persisted filters once on mount
+  // Load persisted filters once on mount (skip in debug shim)
   useEffect(() => {
+    if (debugShim) return; // skip all persistence & server sync logic
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
@@ -40,27 +41,31 @@ export function BoardFilterProvider({ children }: { children: ReactNode }) {
           }
         }
       } else {
-        // If no stored tech but a server tech exists (from early load), sync it
         const peek = peekBoardServerFilters();
         if (peek.techId) setFiltersState(prev => ({ ...prev, techs: [peek.techId!] }));
       }
     } catch { /* ignore */ }
-  }, []);
+  }, [debugShim]);
 
-  const setFilters = (f: Partial<BoardFilters>) => setFiltersState(prev => ({ ...prev, ...f }));
-  const clearFilters = () => {
+  const setFilters = useCallback((f: Partial<BoardFilters>) => {
+    if (debugShim) return; // no-op in shim to keep state stable
+    setFiltersState(prev => ({ ...prev, ...f }));
+  }, [debugShim]);
+  const clearFilters = useCallback(() => {
+    if (debugShim) return;
     setFiltersState(DEFAULT);
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT)); } catch { /* ignore */ }
     setBoardTechFilter(undefined);
-  };
+  }, [debugShim]);
 
   // Persist filters whenever they change
   useEffect(() => {
+    if (debugShim) return;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(filters)); } catch { /* ignore */ }
-  }, [filters]);
+  }, [filters, debugShim]);
 
   // Sync server tech filter when techs selection changes (guarded to avoid redundant emits)
-  useEffect(() => { setBoardTechFilter(filters.techs[0]); }, [filters.techs]);
+  useEffect(() => { if (!debugShim) setBoardTechFilter(filters.techs[0]); }, [filters.techs, debugShim]);
 
   const applyFilters = useCallback((cards: BoardCard[]) => {
     const { search, statuses, techs, blockers } = filters;
@@ -92,11 +97,12 @@ export function BoardFilterProvider({ children }: { children: ReactNode }) {
     return count;
   }, [filters]);
 
-  const value = useMemo<BoardFilterContextValue>(() => ({ filters, setFilters, clearFilters, applyFilters, filtersActive, activeCount }), [filters, applyFilters, filtersActive, activeCount]);
+  const value = useMemo<BoardFilterContextValue>(() => ({ filters, setFilters, clearFilters, applyFilters, filtersActive, activeCount }), [filters, setFilters, clearFilters, applyFilters, filtersActive, activeCount]);
 
   return <BoardFilterContext.Provider value={value}>{children}</BoardFilterContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useBoardFilters() {
   const ctx = useContext(BoardFilterContext);
   if (!ctx) throw new Error('useBoardFilters must be used within BoardFilterProvider');
