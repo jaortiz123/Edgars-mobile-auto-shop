@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { stubCustomerProfile } from './utils/stubAuthProfile';
 
 // End-to-end verification of the Customer History tab within the Appointment Drawer.
 // This covers: login -> dashboard -> open first appointment -> switch to History tab -> assert history loads without auth errors.
@@ -11,7 +12,9 @@ test.describe('Appointment Drawer History Tab', () => {
     if (vp && vp.width < 600) {
       test.skip(true, 'Mobile layout requires bespoke navigation adjustments – skipping for now');
     }
-    // 1. Perform real login to obtain token via existing API (mirrors admin-login.spec.ts approach)
+  // 1. Stub profile endpoint early to avoid CORS noise / auth init failures
+  await stubCustomerProfile(page);
+  // 2. Perform real login to obtain token via existing API (mirrors admin-login.spec.ts approach)
     const loginRes = await request.post('http://localhost:3001/api/admin/login', {
       data: { username: 'advisor', password: 'dev' },
       headers: { 'Content-Type': 'application/json' }
@@ -21,14 +24,14 @@ test.describe('Appointment Drawer History Tab', () => {
     const token = body?.data?.token;
     expect(token, 'jwt token present').toBeTruthy();
 
-  // 2. With storageState applied globally, just prime origin to load state into context
+  // 3. With storageState applied globally, just prime origin to load state into context
   await page.goto('http://localhost:5173/');
 
     // Capture history-related console logs for diagnostics
     const historyLogs: string[] = [];
     page.on('console', msg => { const txt = msg.text(); if (/history/i.test(txt)) historyLogs.push(txt); });
 
-  // 3. Navigate to dashboard (token should already reside in localStorage via storageState)
+  // 4. Navigate to dashboard (token should already reside in localStorage via storageState)
   await page.goto('http://localhost:5173/admin/dashboard');
 
     // 4. Wait for first card (data-first-card) and open deterministically

@@ -63,12 +63,37 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
     });
     // Expose a testing hook to trigger moves without relying on drag events (E2E stability)
     try {
-      interface BoardWindow extends Window { __boardMove?: (id: string, status: string) => Promise<void>; }
-      (window as BoardWindow).__boardMove = async (id: string, status: string) => {
-        try { await moveAppointment(id, { status, position: 1 }); } catch { /* swallow */ }
+      interface BoardWindow extends Window {
+        __boardMove?: (id: string, status: string) => Promise<void>;
+        __boardMoveAttempt?: (id: string, status: string) => Promise<{ ok: boolean; error?: string; status?: string }>;
+        __boardMoveLastError?: string | null;
+        __boardStatusMap?: () => Record<string,string>;
+      }
+      const w = window as BoardWindow;
+      w.__boardMove = async (id: string, status: string) => {
+        try { await moveAppointment(id, { status, position: 1 }); } catch { /* swallow legacy */ }
+      };
+      w.__boardMoveAttempt = async (id: string, status: string) => {
+        try {
+          await moveAppointment(id, { status, position: 1 });
+          w.__boardMoveLastError = null;
+          return { ok: true, status };
+        } catch (e: unknown) {
+          let msg: string;
+          if (typeof e === 'string') msg = e;
+          else if (e && typeof e === 'object' && 'message' in e) msg = String((e as { message?: unknown }).message || 'error');
+          else msg = 'unknown error';
+          w.__boardMoveLastError = msg;
+          return { ok: false, error: msg };
+        }
+      };
+      w.__boardStatusMap = () => {
+        const map: Record<string,string> = {};
+        for (const c of allCards) { if (c?.id) map[c.id] = String(c.status||''); }
+        return map;
       };
     } catch { /* no-op */ }
-  }, [columns.length, allCards.length, loading, storeError, boardError, moveAppointment]);
+  }, [columns.length, allCards.length, allCards, loading, storeError, boardError, moveAppointment]);
   const isFetchingBoard = false; // placeholder until wired to query status
   const showInitialSkeleton = loading && cards.length === 0;
   const [showCustomize, setShowCustomize] = useState(false);
