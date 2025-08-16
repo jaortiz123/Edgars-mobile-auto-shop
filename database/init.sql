@@ -39,6 +39,11 @@ CREATE TABLE appointments (
   start_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   end_ts TIMESTAMP,
   total_amount NUMERIC(12,2) DEFAULT 0,
+  paid_amount NUMERIC(12,2) DEFAULT 0,
+  check_in_at TIMESTAMP,
+  check_out_at TIMESTAMP,
+  title TEXT,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 INSERT INTO services (name, description, duration_minutes, base_price) VALUES
