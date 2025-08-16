@@ -142,11 +142,12 @@ def client(pg_container):  # depend on pg_container so env vars & DB are ready
 @pytest.fixture()
 def db_connection(pg_container):
     """
-    Database connection fixture that provides a real PostgreSQL connection.
-    Use this fixture for integration tests that need real database behavior.
+    Database connection fixture that provides a real PostgreSQL connection
+    with a compatibility cursor supporting both dict and index access.
     """
     db_url = pg_container["db_url"]
-    conn = psycopg2.connect(db_url, cursor_factory=RealDictCursor)
+    from backend import db as _db
+    conn = psycopg2.connect(db_url, cursor_factory=_db.CompatCursor)
     try:
         yield conn
     finally:

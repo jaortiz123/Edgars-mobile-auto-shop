@@ -56,7 +56,10 @@ vi.mock('@/services/notificationService', () => notification);
 vi.mock('@/components/ui/Toast', () => toast);
 vi.mock('@/lib/toast', () => toast);
 vi.mock('@/utils/storage', () => storage);
-vi.mock('react-router-dom', () => router);
+vi.mock('react-router-dom', async () => {
+  const actual: any = await vi.importActual('react-router-dom');
+  return actual; // use real router to allow MemoryRouter navigation in tests
+});
 
 // (summaryService is intentionally not globally mocked here so individual tests
 //  can mock it locally with full control/hoisting semantics)

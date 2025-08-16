@@ -1,10 +1,22 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import MessageThread from '@/components/admin/MessageThread';
 
+import * as api from '@/lib/api';
+
 describe('Message Templates Insertion', () => {
   it('opens template panel and inserts a template into the composer', async () => {
+    // Ensure the api mock returns some templates with predictable IDs
+    if (vi.isMockFunction(api.fetchMessageTemplates)) {
+      vi.mocked(api.fetchMessageTemplates).mockResolvedValueOnce({
+        message_templates: [
+          { id: 'tpl-1', slug: 'tpl-1', label: 'Vehicle Ready', channel: 'sms', category: 'status', body: 'Hi {{customer.name}}, your vehicle is ready!', variables: [], is_active: true },
+          { id: 'tpl-2', slug: 'tpl-2', label: 'Reminder', channel: 'sms', category: 'reminder', body: 'Reminder: appointment soon', variables: [], is_active: true }
+        ],
+        suggested: []
+      });
+    }
     render(<MessageThread appointmentId="appt-1" drawerOpen={true} />);
 
   const user = userEvent.setup();

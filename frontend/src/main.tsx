@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContextRobust';
 import { BoardStoreProvider } from './state/BoardStoreProvider';
 import { ToastProvider } from './components/ui/Toast';
 import App from './App';
+import { BookingDrawerProvider } from './contexts/BookingDrawerContext';
 import './index.css';
 
 const queryClient = new QueryClient();
@@ -15,7 +16,9 @@ createRoot(document.getElementById('root')!).render(
       <AuthProvider>
         <ToastProvider>
           <BoardStoreProvider>
-            <App />
+            <BookingDrawerProvider>
+              <App />
+            </BookingDrawerProvider>
           </BoardStoreProvider>
         </ToastProvider>
       </AuthProvider>
