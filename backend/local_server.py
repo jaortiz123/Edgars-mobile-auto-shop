@@ -251,6 +251,10 @@ def record_invoice_payment(invoice_id: str):
         log.exception("payment_record_failed invoice_id=%s", invoice_id)
         return _fail(HTTPStatus.INTERNAL_SERVER_ERROR, 'INVOICE_ERROR', str(ex))
 
+### Removed insecure test-only seed endpoint `/api/test/seed_completed_appointment`.
+### Rationale: Phase 4 cleanup eliminated test seeding surface from production server.
+### All E2E tests now seed via public admin APIs (appointments/services/invoice) instead.
+
 @app.route("/api/admin/invoices/<invoice_id>/void", methods=["POST"])
 def void_invoice(invoice_id: str):
     """Void an invoice (DRAFT/SENT/PARTIALLY_PAID -> VOID)."""

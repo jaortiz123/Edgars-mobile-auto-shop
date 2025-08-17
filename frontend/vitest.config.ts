@@ -4,6 +4,9 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'globalThis.IS_REACT_ACT_ENVIRONMENT': 'true'
+  },
   
   // ✅ A SINGLE, CORRECT ALIAS CONFIGURATION
   resolve: {
@@ -24,26 +27,18 @@ export default defineConfig({
   },
 
   test: {
-    // ✅ SET THE ENVIRONMENT TO JSDOM FOR ALL TESTS.
+    // Single environment (jsdom). Deprecated environmentMatchGlobs removed.
     environment: 'jsdom',
-    // Increase global timeouts for slower integration-like tests; unit tests unaffected
     testTimeout: 10000,
     hookTimeout: 10000,
-    
-    // ✅ P1-T-013: Environment-specific test execution (using deprecated but working approach)
-    environmentMatchGlobs: [
-      ['**/*.utils.test.ts', 'node'],
-      ['**/*.components.test.tsx', 'jsdom']
-    ],
-    
-    // ✅ Point to a single, reliable setup file.
-    setupFiles: ['src/tests/setup.ts'],
+    // Pre-setup ensures act flag is set before React loads.
+    setupFiles: ['src/tests/preActEnv.ts','src/tests/setup.ts'],
     
     // ✅ Globals are needed for libraries like testing-library
     globals: true,
     
-    // ✅ Include .it. files for integration tests
-    include: ['**/*.{test,spec,it}.?(c|m)[jt]s?(x)'],
+  // Include all standard test naming patterns
+  include: ['**/*.{test,spec,it}.?(c|m)[jt]s?(x)'],
     
     // P2-T-009: Retry configuration for flaky test detection
     retry: 2, // Retry flaky tests up to 2 times
@@ -69,8 +64,9 @@ export default defineConfig({
       '**/src/tests/archived/**',
       '**/src/tests/triage-removed/**',
       // Exclude heavy integration test suites from the default unit run
-      '**/src/tests/integration/**',
-      '**/src/tests/**.it.*',
+  // Keep integration tests excluded by default; run them via dedicated script if desired
+  '**/src/tests/integration/**',
+  '**/src/tests/**.it.*',
       // Exclude empty or placeholder coverage backfill dateUtils files
       '**/src/tests/coverageBackfill/dateUtils.*.test.*',
       '**/src/tests/coverageBackfill/dateUtils.*.edge.*',

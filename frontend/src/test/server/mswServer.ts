@@ -1935,6 +1935,4 @@ export { enhancedHandlers };
 
 // Create the server instance with enhanced handlers for error scenario support
 export const server = setupServer(...enhancedHandlers);
-
-// Log that MSW is enabled
-console.log('🌐 MSW enabled for integration tests');
+// Removed noisy global console log to avoid duplicate MSW enable messages in tests.

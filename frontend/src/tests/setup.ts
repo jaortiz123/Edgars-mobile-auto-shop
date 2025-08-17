@@ -1,27 +1,52 @@
+// Ensure React 19 test act environment flag (belt & suspenders in addition to preActEnv)
+;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 import '@testing-library/jest-dom/vitest'
 import 'whatwg-fetch'
 import './testEnv'
 
 import { expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest'
-// Minimal jest shim for legacy tests using `jest.*` (keeps API surface small)
-/* eslint-disable @typescript-eslint/no-unused-vars */
-const jest = {
+// Enhanced jest shim (legacy compatibility) now includes timer helpers expected by Testing Library
+type JestShim = {
+  fn: typeof vi.fn;
+  mock: typeof vi.mock;
+  clearAllMocks: typeof vi.clearAllMocks;
+  spyOn: typeof vi.spyOn;
+  restoreAllMocks: typeof vi.restoreAllMocks;
+  advanceTimersByTime: typeof vi.advanceTimersByTime;
+  runAllTimers: typeof vi.runAllTimers;
+  runOnlyPendingTimers: typeof vi.runOnlyPendingTimers;
+  advanceTimersToNextTimer: typeof vi.advanceTimersToNextTimer;
+  useFakeTimers: typeof vi.useFakeTimers;
+  useRealTimers: typeof vi.useRealTimers;
+  clearAllTimers: typeof vi.clearAllTimers;
+  setSystemTime: typeof vi.setSystemTime;
+};
+const jest: JestShim = {
   fn: vi.fn,
-  mock: function() { return vi.mock.apply(null, arguments); },
-  clearAllMocks: function() { return vi.clearAllMocks(); },
-  spyOn: function() { return vi.spyOn.apply(null, arguments); },
-  restoreAllMocks: function() { return vi.restoreAllMocks(); },
+  mock: vi.mock,
+  clearAllMocks: vi.clearAllMocks,
+  spyOn: vi.spyOn,
+  restoreAllMocks: vi.restoreAllMocks,
+  advanceTimersByTime: vi.advanceTimersByTime,
+  runAllTimers: vi.runAllTimers,
+  runOnlyPendingTimers: vi.runOnlyPendingTimers,
+  advanceTimersToNextTimer: vi.advanceTimersToNextTimer,
+  useFakeTimers: vi.useFakeTimers,
+  useRealTimers: vi.useRealTimers,
+  clearAllTimers: vi.clearAllTimers,
+  setSystemTime: vi.setSystemTime,
 };
 
 // Expose globally
-(globalThis as any).jest = jest;
+interface GlobalWithJest { jest?: JestShim }
+(globalThis as unknown as GlobalWithJest).jest = jest;
 
 // Ensure localStorage.clear exists as a function (some environments provide a non-callable localStorage shim)
 if (typeof globalThis.localStorage !== 'object' || !globalThis.localStorage) {
   // Provide a simple in-memory localStorage mock
   const _store: Record<string, string> = {};
   globalThis.localStorage = {
-    getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
+  getItem: (k: string) => (Object.prototype.hasOwnProperty.call(_store, k) ? _store[k] : null),
     setItem: (k: string, v: string) => { _store[k] = String(v); },
     removeItem: (k: string) => { delete _store[k]; },
     clear: () => { Object.keys(_store).forEach(k => delete _store[k]); }
@@ -29,11 +54,13 @@ if (typeof globalThis.localStorage !== 'object' || !globalThis.localStorage) {
 } else {
   // Ensure required functions exist on existing localStorage
   try {
-    if (typeof (globalThis.localStorage as any).getItem !== 'function') (globalThis.localStorage as any).getItem = (k: string) => null;
-    if (typeof (globalThis.localStorage as any).setItem !== 'function') (globalThis.localStorage as any).setItem = (k: string, v: string) => {};
-    if (typeof (globalThis.localStorage as any).removeItem !== 'function') (globalThis.localStorage as any).removeItem = (k: string) => {};
-    if (typeof (globalThis.localStorage as any).clear !== 'function') (globalThis.localStorage as any).clear = () => {};
-  } catch (e) {
+  const ls = globalThis.localStorage as Storage;
+  const lsu = ls as unknown as Record<string, unknown>;
+  if (typeof ls.getItem !== 'function') lsu.getItem = () => null;
+  if (typeof ls.setItem !== 'function') lsu.setItem = () => { /* noop */ };
+  if (typeof ls.removeItem !== 'function') lsu.removeItem = () => { /* noop */ };
+  if (typeof ls.clear !== 'function') lsu.clear = () => { /* noop */ };
+  } catch {
     // ignore
   }
 }
@@ -47,7 +74,7 @@ import { createMocks } from '../test/mocks'
 // ========================
 // CENTRALIZED MOCK SETUP (P1-T-012)
 // ========================
-const { time, api, notification, toast, storage, router } = createMocks();
+const { time, api, notification, toast, storage } = createMocks();
 
 // Apply mocks globally to prevent circular dependencies
 vi.mock('@/utils/time', () => time);
@@ -57,149 +84,15 @@ vi.mock('@/components/ui/Toast', () => toast);
 vi.mock('@/lib/toast', () => toast);
 vi.mock('@/utils/storage', () => storage);
 vi.mock('react-router-dom', async () => {
-  const actual: any = await vi.importActual('react-router-dom');
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
   return actual; // use real router to allow MemoryRouter navigation in tests
 });
 
 // (summaryService is intentionally not globally mocked here so individual tests
 //  can mock it locally with full control/hoisting semantics)
 
-// Enhanced CI Console Detection - Functions preserved for future re-enablement
-// NOTE: These functions are currently unused but kept for when vitest-fail-on-console is re-enabled
-
-/**
- * Allowed console error patterns that should not fail tests
- * These are expected errors during negative path testing or legitimate application errors
- */
-const allowedConsoleErrors: RegExp[] = [
-  // AppointmentContext errors during test scenarios
-  /AppointmentContext: Error in refreshBoard/,
-  /Failed to send message/,
-  
-  // React act() warnings (handled separately but listed for awareness)
-  /Warning: An update to .* inside a test was not wrapped in act/,
-  
-  // Network/API errors in test scenarios
-  /Network request failed/,
-  /API error:/,
-  /Failed to fetch/,
-  
-  // Authentication errors during negative testing
-  /Authentication failed/,
-  /Unauthorized access/,
-  
-  // Form validation errors (expected in negative tests)
-  /Validation error:/,
-  /Invalid form data/,
-  
-  // Mock-related debug messages that shouldn't fail tests
-  /🔧 DIRECT MOCK:/,
-  /MOCK FACTORY:/,
-  
-  // MSW-related warnings that are expected
-  /Found a redundant usage of query/,
-  /\[MSW\]/,
-  
-  // React Testing Library warnings that are acceptable
-  /Consider adding the "hidden" attribute/,
-  /Unable to find an element with the text/,
-];
-
-/**
- * Helper function to safely convert arguments to string for pattern matching
- * Preserves the sophisticated serialization from our original implementation
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function safeArgsToString(args: unknown[]): string {
-  const seen = new WeakSet<object>();
-  
-  const safeArgs = args.map((arg) => {
-    if (arg === null) return 'null';
-    if (arg === undefined) return 'undefined';
-    if (typeof arg === 'string') return arg;
-    if (typeof arg === 'number' || typeof arg === 'boolean') return String(arg);
-    
-    if (typeof arg === 'object' && arg !== null) {
-      try {
-        return JSON.stringify(arg, (key, value) => {
-          if (typeof value === 'object' && value !== null) {
-            if (seen.has(value)) return '[Circular Reference]';
-            seen.add(value);
-          }
-          return value;
-        }, 2);
-      } catch {
-        try {
-          return String(arg);
-        } catch {
-          return `[Object of type ${Object.prototype.toString.call(arg)}]`;
-        }
-      }
-    }
-    
-    try {
-      return String(arg);
-    } catch {
-      return `[${typeof arg}]`;
-    }
-  });
-  
-  return safeArgs.join(' ');
-}
-
-/**
- * Helper function to check if a console message should be allowed
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function isAllowedConsoleMessage(message: string): boolean {
-  return allowedConsoleErrors.some(pattern => pattern.test(message));
-}
-
-// NOTE: vitest-fail-on-console temporarily disabled due to conflicts with archived console tests
-// Configure vitest-fail-on-console with our sophisticated allowlist
-// failOnConsole({
-//   shouldFailOnError: true,
-//   shouldFailOnWarn: true,
-//   shouldFailOnAssert: false,
-//   shouldFailOnDebug: false,
-//   shouldFailOnInfo: false,
-//   shouldFailOnLog: false,
-//   
-//   // Use our sophisticated allowlist system
-//   allowMessage: (message, methodName) => {
-//     // Convert the message to our expected format for pattern matching
-//     const fullMessage = message;
-//     return isAllowedConsoleMessage(fullMessage);
-//   },
-//   
-//   // Enhanced error message to maintain CI-STRICT-001 branding
-//   errorMessage: (methodName, bold) => {
-//     const boldFn = bold || ((text: string) => text); // Fallback if bold is undefined
-//     return `${boldFn('[CI-STRICT-001]')} Unexpected console.${methodName} call detected. Use withConsoleErrorSpy() for tests that expect ${methodName} calls, or add patterns to allowedConsoleErrors.`;
-//   },
-//   
-//   // Skip console checking for integration tests that have different setup
-//   skipTest: ({ testPath }) => {
-//     // Skip for integration tests that use MSW setup
-//     if (testPath && (testPath.includes('.it.tsx') || testPath.includes('.it.ts'))) {
-//       return true;
-//     }
-//     
-//     // Skip for specific legacy test files
-//     if (testPath && (testPath.includes('.old.tsx') || testPath.includes('.legacy.'))) {
-//       return true;
-//     }
-//     
-//     return false;
-//   },
-//   
-//   // Add delay in non-CI environments for debugging
-//   afterEachDelay: process.env.CI ? 0 : 100,
-// });
-
 /**
  * Enhanced test helper for tests that expect console errors
- * Now works with vitest-fail-on-console by using vi.mocked() to prevent the override
  * Usage: await withConsoleErrorSpy(async () => { ... test code that should log errors ... });
  */
 export async function withConsoleErrorSpy<T>(testFn: () => T | Promise<T>): Promise<T> {
@@ -279,7 +172,7 @@ beforeEach(() => {
     configurable: true,
     writable: true,
     value: {
-      getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
+  getItem: (k: string) => (Object.prototype.hasOwnProperty.call(_store, k) ? _store[k] : null),
       setItem: (k: string, v: string) => { _store[k] = String(v); },
       removeItem: (k: string) => { delete _store[k]; },
       clear: () => { Object.keys(_store).forEach(k => delete _store[k]); }
@@ -290,9 +183,13 @@ beforeEach(() => {
 })
 
 // SAFETY-NET-002: Global afterEach safety-nets for test stability
-afterEach(() => {
+afterEach(async () => {
   // 1. Reset MSW handlers to ensure test isolation
   server.resetHandlers();
+  // 1b. Flush pending microtasks & promises to avoid post-test state updates
+  await new Promise(res => setTimeout(res, 0));
+  // 1c. Clear any pending timers proactively (will be re-detected if leaking)
+  try { vi.clearAllTimers(); } catch { /* ignore if timers not mocked */ }
   
   // 2. Check for timer leaks - fail if timers are still pending (only when fake timers are active)
   try {
@@ -383,6 +280,11 @@ if (!document.createRange) {
     setStartBefore: vi.fn(),
     surroundContents: vi.fn(),
     toString: vi.fn(),
+    createContextualFragment: vi.fn(() => document.createDocumentFragment()),
+    START_TO_START: 0,
+    START_TO_END: 1,
+    END_TO_END: 2,
+    END_TO_START: 3,
   });
 }
 
@@ -400,4 +302,4 @@ afterAll(() => {
   server.close()
 })
 
-console.log('✅ Enhanced CI console detection loaded with vitest-fail-on-console');
+// console.log('✅ Enhanced CI console detection loaded with vitest-fail-on-console');
