@@ -34,7 +34,7 @@ export function InvoiceHeader({ id, status, totalCents, amountDueCents, amountPa
         <h1 className="text-2xl font-semibold">Invoice <span className="font-mono text-sm">{id}</span></h1>
         {customerName && <div className="text-gray-600">Customer: {customerName}</div>}
         <div className="flex items-center gap-3 flex-wrap">
-          <Badge variant={statusVariant(status)}>{status}</Badge>
+          <Badge variant={statusVariant(status)} data-testid="invoice-status-badge">{status}</Badge>
           <div className="text-sm text-gray-700">Total: <strong>{currency(totalCents)}</strong></div>
           <div className="text-sm text-gray-700">Paid: <strong>{currency(amountPaidCents)}</strong></div>
           <div className="text-sm text-gray-700">Due: <strong>{currency(amountDueCents)}</strong></div>

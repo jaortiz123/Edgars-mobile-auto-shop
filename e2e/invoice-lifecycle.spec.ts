@@ -19,7 +19,18 @@ async function createCompletedAppointment(page: Page) {
     throw new Error(`Failed to create completed appointment (${resp.status()}): ${body}`);
   }
   const json = await resp.json().catch(() => ({}));
-  return json.data?.id || json.id || json.appointment?.id;
+  const apptId = json.data?.id || json.id || json.appointment?.id;
+  if (!apptId) return apptId;
+  // Seed at least one service so invoice has non-zero total.
+  const svcResp = await page.request.post(`http://localhost:3001/api/appointments/${apptId}/services`, {
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    data: { name: 'Brake Inspection', estimated_price: 150.00, estimated_hours: 1.0 }
+  });
+  if (!svcResp.ok()) {
+    const body = await svcResp.text();
+    throw new Error(`Failed to seed service (${svcResp.status()}): ${body}`);
+  }
+  return apptId;
 }
 
 test.describe('Invoice Lifecycle (happy path)', () => {
@@ -100,27 +111,26 @@ test.describe('Invoice Lifecycle (happy path)', () => {
     const modal = page.getByTestId('record-payment-modal');
     await expect(modal).toBeVisible();
 
-  // Derive amount due (fallback to 125.00 if not found). If 0, skip payment (nothing to pay yet).
-  let amountDueDollars = 125.00;
-    try {
-      const dueRow = await page.locator('text=Due:').first().locator('..').innerText();
-      const m2 = dueRow.match(/\$([0-9]+\.[0-9]{2})/);
-      if (m2) amountDueDollars = parseFloat(m2[1]);
-    } catch { /* ignore */ }
-    if (amountDueDollars <= 0.009) {
-      // Nothing to pay; close modal and finish (treat as success for now until services create non-zero invoices)
-      await page.getByRole('button', { name: /cancel|close/i }).click().catch(()=>{});
-      return;
-    }
+  // Fetch fresh invoice JSON directly to obtain precise cents due.
+  const invUrl = page.url();
+  const idMatch = invUrl.match(/\/admin\/invoices\/(.+)$/);
+  if (!idMatch) throw new Error('Cannot parse invoice id from URL');
+  const invoiceIdForPay = idMatch[1];
+  const invApiResp = await page.request.get(`http://localhost:3001/api/admin/invoices/${invoiceIdForPay}`);
+  if (!invApiResp.ok()) throw new Error(`Failed to refetch invoice before payment (${invApiResp.status()})`);
+  const invJson = await invApiResp.json();
+  const amountDueCents = invJson.data?.invoice?.amount_due_cents ?? invJson.invoice?.amount_due_cents;
+  if (amountDueCents <= 0) throw new Error('Expected positive amount due after service seeding');
+  const amountDueDollars = (amountDueCents / 100);
     const amountInput = page.getByTestId('payment-amount-input');
     await amountInput.fill(amountDueDollars.toFixed(2));
     const submitBtn = page.getByTestId('payment-submit-btn');
     await expect(submitBtn).toBeEnabled({ timeout: 5000 });
-    await submitBtn.click();
+  await submitBtn.click(); // Method defaults to 'cash' (enum expects lowercase)
 
     // 6. Assert modal closes & status updates to PAID (button disabled)
     await expect(modal).toBeHidden({ timeout: 15_000 });
-    await expect(page.getByText('PAID')).toBeVisible({ timeout: 15_000 });
-    await expect(recordBtn).toBeDisabled();
+  await expect(page.getByTestId('invoice-status-badge').getByText('PAID')).toBeVisible({ timeout: 15_000 });
+  await expect(recordBtn).toBeDisabled();
   });
 });
