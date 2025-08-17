@@ -2,9 +2,6 @@ import pytest
 
 
 @pytest.mark.integration
-@pytest.mark.xfail(
-    reason="Service operations flattening reverted; awaiting re-implementation", strict=False
-)
 def test_service_operations_includes_new_fields_and_default_sort(client):
     resp = client.get("/api/admin/service-operations")
     assert resp.status_code == 200
@@ -32,9 +29,6 @@ def test_service_operations_includes_new_fields_and_default_sort(client):
 
 
 @pytest.mark.integration
-@pytest.mark.xfail(
-    reason="Service operations flattening reverted; awaiting re-implementation", strict=False
-)
 def test_service_operations_sort_desc(client):
     resp = client.get("/api/admin/service-operations?sort=display_order&dir=desc")
     assert resp.status_code == 200
@@ -44,9 +38,6 @@ def test_service_operations_sort_desc(client):
 
 
 @pytest.mark.integration
-@pytest.mark.xfail(
-    reason="Service operations flattening reverted; awaiting re-implementation", strict=False
-)
 def test_service_operations_legacy_wrapper(client):
     """Ensure ?legacy=1 still returns wrapped object during transition."""
     resp = client.get("/api/admin/service-operations?legacy=1")

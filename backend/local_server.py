@@ -1216,67 +1216,7 @@ def appointment_message_detail(appt_id: str, message_id: str):
 # ----------------------------------------------------------------------------
 # Service Operations (Phase 1 lightweight read-only API)
 # ----------------------------------------------------------------------------
-@app.route("/api/admin/service-operations", methods=["GET"])
-def list_service_operations():
-    maybe_auth()
-    conn = db_conn()
-    q = request.args.get("q", "").strip()
-    limit_raw = request.args.get("limit", "")
-    try:
-        limit = int(limit_raw) if limit_raw else None
-    except ValueError:
-        limit = None
-    # Default limits: 50 when searching, 500 when listing all
-    if not limit:
-        limit = 50 if len(q) >= 2 else 500
-    limit = max(1, min(limit, 500))
-
-    sql = [
-        "SELECT id, name, category, default_hours, default_price, keywords, skill_level, flags",
-        "FROM service_operations",
-        "WHERE is_active IS TRUE",
-    ]
-    params = []
-    if len(q) >= 2:
-        # Case-insensitive search across name, category, and keywords (ANY match)
-        # Use ILIKE for name/category, and an EXISTS on unnest(keywords) for keyword match
-        sql.append(
-            "AND (name ILIKE %s OR category ILIKE %s OR EXISTS (SELECT 1 FROM unnest(keywords) kw WHERE kw ILIKE %s))"
-        )
-        like = f"%{q}%"
-        params.extend([like, like, like])
-    sql.append("ORDER BY category NULLS LAST, name ASC")
-    sql.append("LIMIT %s")
-    params.append(limit)
-
-    final_sql = "\n".join(sql)
-
-    with conn:
-        with conn.cursor() as cur:
-            cur.execute(final_sql, params)
-            rows = cur.fetchall()
-    # Raw shape (to avoid wrapping overhead for now)
-    return jsonify(
-        {
-            "service_operations": [
-                {
-                    "id": r["id"],
-                    "name": r["name"],
-                    "category": r["category"],
-                    "default_hours": (
-                        float(r["default_hours"]) if r["default_hours"] is not None else None
-                    ),
-                    "default_price": (
-                        float(r["default_price"]) if r["default_price"] is not None else None
-                    ),
-                    "keywords": r["keywords"],
-                    "skill_level": r.get("skill_level"),
-                    "flags": r.get("flags"),
-                }
-                for r in rows
-            ]
-        }
-    )
+## Old list_service_operations implementation removed (replaced by flattened version later in file).
 
 
 # ----------------------------------------------------------------------------
@@ -3727,143 +3667,80 @@ def get_customer_history(customer_id: str):
 # ----------------------------------------------------------------------------
 # CSV Exports
 # ----------------------------------------------------------------------------
-@app.route("/api/admin/reports/appointments.csv", methods=["GET"])
-def export_appointments_csv():
-    """Export appointments as CSV file (legacy format expected by tests T-024).
+@app.route("/api/admin/service-operations", methods=["GET"])
+def list_service_operations():
+    """List active service operations.
 
-    RBAC: Owner, Advisor, Accountant allowed. Technician denied.
-    Headers (14 columns):
-      ID, Status, Start, End, Total Amount, Paid Amount, Customer Name, Customer Email,
-      Customer Phone, Vehicle Year, Vehicle Make, Vehicle Model, Vehicle VIN, Services
+    Default shape: a flat JSON array of objects.
+    Legacy shape: {"service_operations": [...]} when ?legacy=1 supplied.
+    Supports simple substring search across name/category/keywords when q>=2.
     """
+    maybe_auth()
+    conn = db_conn()
+    q = request.args.get("q", "").strip()
+    legacy = request.args.get("legacy") == "1"
+    sort_col = request.args.get("sort", "display_order")
+    sort_dir_raw = request.args.get("dir", "asc").lower()
+    sort_dir = "desc" if sort_dir_raw == "desc" else "asc"
+    limit_raw = request.args.get("limit", "")
     try:
-        user = require_auth_role("Advisor")  # Accept Advisor/Owner; later broaden
-    except Forbidden:
-        # Tests expect 403 with {'error_code': 'AUTH_REQUIRED'} when no/invalid token
-        return jsonify({"error_code": "AUTH_REQUIRED", "message": "Authentication required"}), 403
-    role = user.get("role")
-    if role not in ("Owner", "Advisor", "Accountant"):
-        return jsonify({"error_code": "RBAC_FORBIDDEN", "message": "Role not permitted"}), 403
-
-    # Rate limiting (tests patch rate_limit and expect key csv_export_<user>)
-    user_id = user.get("user_id") or user.get("sub") or "user"
-    try:
-        rate_limit(f"csv_export_{user_id}", 5, 3600)
-    except Exception:
-        return jsonify({"error_code": "RATE_LIMITED", "message": "Rate limit exceeded"}), 429
-
-    # Optional filters: from, to, status
-    raw_from = request.args.get("from")
-    raw_to = request.args.get("to")
-    raw_status = request.args.get("status")
-    where = ["1=1"]
-    params: list[Any] = []
-
-    def _parse(label, raw):
-        if not raw:
-            return None
-        try:
-            if re.match(r"^\d{4}-\d{2}-\d{2}$", raw):
-                return datetime.fromisoformat(raw + "T00:00:00+00:00")
-            return datetime.fromisoformat(raw.replace("Z", "+00:00"))
-        except Exception:
-            raise ValueError(label)
-
-    try:
-        if raw_from:
-            from_dt = _parse("from", raw_from)
-            where.append("a.start_ts >= %s")
-            params.append(from_dt)
-        if raw_to:
-            to_dt = _parse("to", raw_to)
-            where.append("a.end_ts <= %s")
-            params.append(to_dt)
+        limit = int(limit_raw) if limit_raw else None
     except ValueError:
-        return jsonify({"error_code": "INVALID_DATE_FORMAT", "message": "Invalid date format"}), 400
-    if raw_status:
-        try:
-            norm = norm_status(raw_status)
-            where.append("a.status = %s")
-            params.append(norm)
-        except BadRequest:
-            return jsonify({"error_code": "INVALID_STATUS", "message": "Invalid status"}), 400
+        limit = None
+    # Default limits: 50 when searching, 500 when listing all
+    if not limit:
+        limit = 50 if len(q) >= 2 else 500
+    limit = max(1, min(limit, 500))
 
-    sql = f"""
-        SELECT a.id::text AS id, a.status::text AS status, a.start_ts, a.end_ts,
-               a.total_amount, a.paid_amount,
-               c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone,
-               v.year, v.make, v.model, v.license_plate AS vin,
-               COALESCE( (
-                   SELECT STRING_AGG(s.name, ', ') FROM appointment_services s WHERE s.appointment_id = a.id
-               ), '') AS services_summary
-        FROM appointments a
-        LEFT JOIN customers c ON c.id = a.customer_id
-        LEFT JOIN vehicles v ON v.id = a.vehicle_id
-        WHERE {' AND '.join(where)}
-        ORDER BY a.start_ts DESC NULLS LAST
-    """
-    try:
-        conn = db_conn()
-        if conn is None:
-            raise RuntimeError("conn none")
-    except Exception:
-        return jsonify({"error_code": "DB_UNAVAILABLE", "message": "Database unavailable"}), 503
-    rows: list[Dict[str, Any]] = []
+    # Whitelist sortable columns
+    sortable = {"display_order", "name", "category"}
+    if sort_col not in sortable:
+        sort_col = "display_order"
+
+    sql = [
+        "SELECT id, name, category, subcategory, internal_code, skill_level, default_hours, default_price, keywords, flags, is_active, display_order",
+        "FROM service_operations",
+        "WHERE is_active IS TRUE",
+    ]
+    params = []
+    if len(q) >= 2:
+        sql.append("AND (name ILIKE %s OR category ILIKE %s OR %s = ANY(keywords))")
+        like = f"%{q}%"
+        params.extend([like, like, q])
+    sql.append(f"ORDER BY {sort_col} {sort_dir} NULLS LAST, id ASC")  # deterministic
+    sql.append("LIMIT %s")
+    params.append(limit)
+
+    final_sql = "\n".join(sql)
     with conn:
         with conn.cursor() as cur:
-            cur.execute(sql, params)
-            rows = cur.fetchall() or []
+            cur.execute(final_sql, params)
+            rows = cur.fetchall()
 
-    buf = io.StringIO()
-    w = csv.writer(buf, quoting=csv.QUOTE_MINIMAL)
-    header = [
-        "ID",
-        "Status",
-        "Start",
-        "End",
-        "Total Amount",
-        "Paid Amount",
-        "Customer Name",
-        "Customer Email",
-        "Customer Phone",
-        "Vehicle Year",
-        "Vehicle Make",
-        "Vehicle Model",
-        "Vehicle VIN",
-        "Services",
-    ]
-    w.writerow(header)
-    for r in rows:
-        w.writerow(
-            [
-                r.get("id"),
-                r.get("status"),
-                r.get("start_ts").isoformat() if r.get("start_ts") else "",
-                r.get("end_ts").isoformat() if r.get("end_ts") else "",
-                float(r.get("total_amount") or 0),
-                float(r.get("paid_amount") or 0),
-                r.get("customer_name"),
-                r.get("customer_email"),
-                r.get("customer_phone"),
-                r.get("year"),
-                r.get("make"),
-                r.get("model"),
-                r.get("vin"),
-                r.get("services_summary"),
-            ]
-        )
+    def _coerce(row):
+        return {
+            "id": row["id"],
+            "internal_code": row.get("internal_code"),
+            "name": row["name"],
+            "category": row["category"],
+            "subcategory": row.get("subcategory"),
+            "skill_level": row.get("skill_level"),
+            "default_hours": (
+                float(row["default_hours"]) if row["default_hours"] is not None else None
+            ),
+            "base_labor_rate": (
+                float(row["default_price"]) if row["default_price"] is not None else None
+            ),
+            "keywords": row.get("keywords"),
+            "is_active": row.get("is_active"),
+            "display_order": row.get("display_order"),
+            "flags": row.get("flags"),
+        }
 
-    # Audit trail (tests patch audit_log)
-    try:
-        audit_log(user_id, "CSV_EXPORT", f"appointments rows={len(rows)}")
-    except Exception:
-        pass
-
-    return Response(
-        buf.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=appointments_export.csv"},
-    )
+    payload = [_coerce(r) for r in rows]
+    if legacy:
+        return jsonify({"service_operations": payload})
+    return jsonify(payload)
 
 
 @app.route("/api/admin/reports/payments.csv", methods=["GET"])
