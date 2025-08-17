@@ -39,7 +39,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   errorMessage,
 }) => {
   const [amount, setAmount] = useState<string>('');
-  const [method, setMethod] = useState<string>('CASH');
+  const [method, setMethod] = useState<string>('cash');
   const [receivedDate, setReceivedDate] = useState<string>(todayIsoDate());
   const [note, setNote] = useState<string>('');
   const [touched, setTouched] = useState<boolean>(false);
@@ -47,7 +47,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   useEffect(() => {
     if (open) {
       setAmount(centsToDollarsString(amountDueCents));
-      setMethod('CASH');
+  setMethod('cash');
       setReceivedDate(todayIsoDate());
       setNote('');
       setTouched(false);
@@ -118,10 +118,10 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                 aria-label="Payment method"
                 title="Payment method"
               >
-                <option value="CASH">Cash</option>
-                <option value="CARD">Card</option>
-                <option value="CHECK">Check</option>
-                <option value="OTHER">Other</option>
+                <option value="cash">Cash</option>
+                <option value="card">Card</option>
+                <option value="ach">ACH</option>
+                <option value="other">Other</option>
               </select>
             </div>
             <div className="space-y-1">
