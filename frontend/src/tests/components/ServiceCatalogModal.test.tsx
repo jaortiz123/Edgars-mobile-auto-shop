@@ -31,7 +31,7 @@ describe('ServiceCatalogModal', () => {
   }
 
   it('searches and renders results', async () => {
-    mockFetch(async () => new Response(JSON.stringify({ service_operations: SERVICES }), { status: 200 }));
+  mockFetch(async () => new Response(JSON.stringify(SERVICES), { status: 200 }));
   render(<ServiceCatalogModal open initialSelected={[]} onConfirm={() => {}} onClose={() => {}} />);
   await typeSearch('oil');
   expect(await screen.findByText('Oil Change')).toBeInTheDocument();
@@ -39,7 +39,7 @@ describe('ServiceCatalogModal', () => {
   });
 
   it('toggles selection and updates selected count', async () => {
-    mockFetch(async () => new Response(JSON.stringify({ service_operations: SERVICES }), { status: 200 }));
+  mockFetch(async () => new Response(JSON.stringify(SERVICES), { status: 200 }));
   render(<ServiceCatalogModal open initialSelected={[]} onConfirm={() => {}} onClose={() => {}} />);
   await typeSearch('brake');
   expect(await screen.findByText('Brake Inspection')).toBeInTheDocument();
@@ -50,7 +50,7 @@ describe('ServiceCatalogModal', () => {
   });
 
   it('confirms selection with correct payload', async () => {
-    mockFetch(async () => new Response(JSON.stringify({ service_operations: SERVICES }), { status: 200 }));
+  mockFetch(async () => new Response(JSON.stringify(SERVICES), { status: 200 }));
     const onConfirm = vi.fn();
   render(<ServiceCatalogModal open initialSelected={[]} onConfirm={onConfirm} onClose={() => {}} />);
   await typeSearch('oil');
@@ -67,7 +67,7 @@ describe('ServiceCatalogModal', () => {
     let first = true;
     mockFetch(async () => {
       if (first) { first = false; return new Response('fail', { status: 500 }); }
-      return new Response(JSON.stringify({ service_operations: SERVICES }), { status: 200 });
+      return new Response(JSON.stringify(SERVICES), { status: 200 });
     });
   render(<ServiceCatalogModal open initialSelected={[]} onConfirm={() => {}} onClose={() => {}} />);
   await typeSearch('oil');

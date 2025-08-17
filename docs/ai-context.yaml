@@ -15,11 +15,11 @@ repo:
     containerization: "Docker"
     seed: "init_db.py"
     envFiles: [".env"]
-  hardeningSprint:
-    window: "2025-08 (Pre-Launch Hardening)"
-    focus: ["invoice test pyramid", "service catalog seeding", "quick add modal replacement", "search endpoint"]
-    removedSlowE2E: "Legacy full invoice lifecycle UI test (replaced by domain+API+slim E2E)"
-    domainLayer: "Invoice domain module now unit-tested (fast) to reduce reliance on UI flows"
+    hardeningSprint:
+      window: "2025-08 (Pre-Launch Hardening)"
+      focus: ["invoice test pyramid", "service catalog seeding", "quick add modal replacement", "search endpoint"]
+      removedSlowE2E: "Legacy full invoice lifecycle UI test (replaced by domain+API+slim E2E)"
+      domainLayer: "Invoice domain module now unit-tested (fast) to reduce reliance on UI flows"
 
 auth:
   mechanism: "JWT Bearer tokens"
@@ -40,15 +40,18 @@ api:
   realVsMock:
     real: ["/api/appointments/*", "/api/admin/*"]
     mock: []
-  serviceCatalog:
-    endpoint: "/api/admin/service-operations"
-    supportsSearch: true
-    queryParams:
-      q: "substring match (case-insensitive) across name, category, keywords; min length 2"
-      limit: "bounded 1..500 (default 50 with q, 500 without)"
-    responseShape: { key: "service_operations", itemFields: [id, name, category, default_hours, default_price, keywords, skill_level, flags] }
-    failureModes: ["empty-table => empty modal", "unseeded DB", "auth missing => 401/empty depending on middleware"]
-    p0Condition: "Zero active rows = appointment creation degraded (cannot add services)"
+    serviceCatalog:
+      endpoint: "/api/admin/service-operations"
+      supportsSearch: true
+      queryParams:
+        q: "substring match (case-insensitive) across name, category, keywords; min length 2"
+        limit: "bounded 1..500 (default 50 with q, 500 without)"
+      responseShape:
+        shape: "flat_array"
+        legacyWrapper: "?legacy=1"
+        itemFields: [id, name, category, default_hours, default_price, keywords, skill_level, flags]
+      failureModes: ["empty-table => empty modal", "unseeded DB", "auth missing => 401/empty depending on middleware"]
+      p0Condition: "Zero active rows = appointment creation degraded (cannot add services)"
 
 ci:
   requiredChecks: ["npm audit", "safety"]
@@ -174,5 +177,3 @@ commands:
   dbSeed: "python init_db_simple.py"
   start: "./quick-start.sh"
   stop: "./stop-dev.sh"
-
-

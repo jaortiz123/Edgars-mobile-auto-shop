@@ -11,7 +11,9 @@ test.describe('Service Catalog Data Presence', () => {
       const resp = await fetch('/api/admin/service-operations');
       if (!resp.ok) throw new Error('Bad status ' + resp.status);
       const data = await resp.json();
-      return Array.isArray(data.service_operations) ? data.service_operations.length : -1;
+      if (Array.isArray(data)) return data.length; // new flat shape
+      if (Array.isArray(data.service_operations)) return data.service_operations.length; // legacy fallback
+      return -1;
     });
     expect(len).toBeGreaterThan(0);
   });

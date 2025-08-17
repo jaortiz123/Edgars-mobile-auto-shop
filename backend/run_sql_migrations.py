@@ -23,30 +23,32 @@ Env Vars Consumed (mirrors local_server):
 Exit Codes:
   0 success, 1 failure.
 """
+
 from __future__ import annotations
 
 import os
 import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from pathlib import Path
-from datetime import datetime, timezone
 
-MIGRATIONS_DIR = Path(__file__).parent / 'migrations'
+MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 
 
 def connect():
-    database_url = os.getenv('DATABASE_URL')
+    database_url = os.getenv("DATABASE_URL")
     if database_url:
         # Rely on libpq parsing (psycopg2 accepts DATABASE_URL via dsn)
         return psycopg2.connect(database_url, cursor_factory=RealDictCursor)
     cfg = dict(
-        host=os.getenv('POSTGRES_HOST', 'localhost'),
-        port=int(os.getenv('POSTGRES_PORT', '5432')),
-        dbname=os.getenv('POSTGRES_DB', 'autoshop'),
-        user=os.getenv('POSTGRES_USER', 'user'),
-        password=os.getenv('POSTGRES_PASSWORD', 'password'),
-        connect_timeout=int(os.getenv('POSTGRES_CONNECT_TIMEOUT', '3')),
+        host=os.getenv("POSTGRES_HOST", "localhost"),
+        port=int(os.getenv("POSTGRES_PORT", "5432")),
+        dbname=os.getenv("POSTGRES_DB", "autoshop"),
+        user=os.getenv("POSTGRES_USER", "user"),
+        password=os.getenv("POSTGRES_PASSWORD", "password"),
+        connect_timeout=int(os.getenv("POSTGRES_CONNECT_TIMEOUT", "3")),
         cursor_factory=RealDictCursor,
     )
     return psycopg2.connect(**cfg)
@@ -66,7 +68,7 @@ def ensure_history_table(cur):
 
 def get_applied(cur) -> set[str]:
     cur.execute("SELECT filename FROM migration_sql_history")
-    return {row['filename'] for row in cur.fetchall()}
+    return {row["filename"] for row in cur.fetchall()}
 
 
 def discover_sql_files() -> list[Path]:
@@ -74,7 +76,12 @@ def discover_sql_files() -> list[Path]:
     if not MIGRATIONS_DIR.exists():
         return files
     for p in sorted(MIGRATIONS_DIR.iterdir()):
-        if p.is_file() and p.suffix == '.sql' and p.name != 'alembic.ini' and not p.name.startswith('.'):
+        if (
+            p.is_file()
+            and p.suffix == ".sql"
+            and p.name != "alembic.ini"
+            and not p.name.startswith(".")
+        ):
             files.append(p)
     return files
 
@@ -82,18 +89,18 @@ def discover_sql_files() -> list[Path]:
 def apply_file(conn, path: Path):
     with conn.cursor() as cur:
         print(f"🔧 Applying {path.name} ...", flush=True)
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding="utf-8") as f:
             sql = f.read()
         try:
-            cur.execute('BEGIN;')
+            cur.execute("BEGIN;")
             cur.execute(sql)
             cur.execute(
                 "INSERT INTO migration_sql_history (filename, applied_at) VALUES (%s, %s) ON CONFLICT (filename) DO NOTHING",
                 (path.name, datetime.now(timezone.utc)),
             )
-            cur.execute('COMMIT;')
+            cur.execute("COMMIT;")
         except Exception as e:
-            cur.execute('ROLLBACK;')
+            cur.execute("ROLLBACK;")
             # Heuristic: Some early raw files pre-dated full idempotency (e.g., CREATE TYPE without guards).
             # If the error is duplicate object or already exists, we treat as effectively applied.
             msg = str(e).lower()
@@ -137,5 +144,5 @@ def main():
         conn.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

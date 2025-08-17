@@ -31,10 +31,10 @@ beforeEach(() => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (globalThis as any).fetch = vi.fn(async (url: string) => {
     if (url.includes('/admin/service-operations')) {
-      return new Response(JSON.stringify({ service_operations: [
+      return new Response(JSON.stringify([
         { id: 'svc-1', name: 'Oil Change', default_price: 49.99, category: 'Maintenance' },
         { id: 'svc-2', name: 'Brake Inspection', default_price: 89.00, category: 'Safety' }
-      ] }), { status: 200 });
+      ]), { status: 200 });
     }
     return new Response('{}', { status: 200 });
   });

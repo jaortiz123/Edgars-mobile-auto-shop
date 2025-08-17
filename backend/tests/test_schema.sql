@@ -48,6 +48,9 @@ CREATE TABLE service_operations (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     category TEXT NOT NULL,
+    subcategory TEXT,
+    internal_code TEXT,
+    display_order INT,
     keywords TEXT[] NOT NULL DEFAULT '{}',
     default_hours NUMERIC(5,2),
     default_price NUMERIC(10,2),
@@ -166,6 +169,9 @@ CREATE TABLE invoice_line_items (
     invoice_id TEXT NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
     position INTEGER NOT NULL DEFAULT 0,
     service_operation_id TEXT,
+    service_category TEXT,
+    service_subcategory TEXT,
+    service_internal_code TEXT,
     name TEXT NOT NULL,
     description TEXT,
     quantity NUMERIC(10,2) NOT NULL DEFAULT 1,
@@ -183,6 +189,30 @@ CREATE TABLE invoice_line_items (
 );
 
 CREATE INDEX idx_invoice_line_items_invoice ON invoice_line_items(invoice_id, position);
+
+-- Snapshot trigger for invoice_line_items (mirrors production migration 20250817_009_invoice_snapshot_trigger.sql)
+CREATE OR REPLACE FUNCTION trg_invoice_line_items_snapshot()
+RETURNS TRIGGER AS $fn$
+DECLARE
+    so_category TEXT;
+    so_subcategory TEXT;
+    so_internal TEXT;
+BEGIN
+    IF NEW.service_operation_id IS NOT NULL THEN
+        SELECT category, subcategory, id INTO so_category, so_subcategory, so_internal
+        FROM service_operations WHERE id = NEW.service_operation_id;
+        NEW.service_category := COALESCE(NEW.service_category, so_category);
+        NEW.service_subcategory := COALESCE(NEW.service_subcategory, so_subcategory);
+        NEW.service_internal_code := COALESCE(NEW.service_internal_code, so_internal);
+    END IF;
+    RETURN NEW;
+END;
+$fn$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_invoice_line_items_snapshot ON invoice_line_items;
+CREATE TRIGGER trg_invoice_line_items_snapshot
+BEFORE INSERT ON invoice_line_items
+FOR EACH ROW EXECUTE PROCEDURE trg_invoice_line_items_snapshot();
 
 -- payments table
 CREATE TABLE payments (

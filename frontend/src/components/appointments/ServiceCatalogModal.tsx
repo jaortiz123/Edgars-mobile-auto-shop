@@ -64,8 +64,9 @@ export const ServiceCatalogModal: React.FC<ServiceCatalogModalProps> = ({ open, 
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const resp = await fetch(`${API_BASE}/admin/service-operations?${params.toString()}`, { signal: controller.signal, headers });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
-      const rows: ApiRow[] = data.service_operations || data.services || [];
+  const data = await resp.json();
+  // Phase 2 contract: flat array default; retain legacy wrapper fallback for short deprecation window
+  const rows: ApiRow[] = Array.isArray(data) ? data : (data.service_operations || data.services || []);
       const mapped = rows.map(r => ({ id: r.id, name: r.name, defaultPrice: r.default_price ?? null, category: r.category ?? null }));
       cacheRef.current.set(q, mapped);
       setResults(mapped);
