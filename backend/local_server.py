@@ -3712,10 +3712,18 @@ def list_service_operations():
     params.append(limit)
 
     final_sql = "\n".join(sql)
-    with conn:
-        with conn.cursor() as cur:
-            cur.execute(final_sql, params)
-            rows = cur.fetchall()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(final_sql, params)
+                rows = cur.fetchall()
+    except Exception as e:  # pragma: no cover - defensive runtime hardening
+        # Gracefully degrade if the table does not exist yet (brand-new DB)
+        msg = str(e).lower()
+        if "service_operations" in msg and ("does not exist" in msg or "undefined" in msg):
+            rows = []
+        else:
+            raise
 
     def _coerce(row):
         return {
@@ -3751,6 +3759,22 @@ def list_service_operations():
     except Exception:
         pass
     return resp
+
+
+# ----------------------------------------------------------------------------
+# Entrypoint (restored after refactor so `python backend/local_server.py` works)
+# ----------------------------------------------------------------------------
+if __name__ == "__main__":  # pragma: no cover - manual run convenience
+    host = os.getenv("HOST", "0.0.0.0")
+    try:
+        port = int(os.getenv("PORT", "3001"))
+    except ValueError:
+        port = 3001
+    debug = os.getenv("FLASK_DEBUG", "1") not in ("0", "false", "False")
+    log.info("Starting development server host=%s port=%s", host, port)
+    # Use reloader only if explicitly enabled (avoids double-registration surprises)
+    use_reloader = os.getenv("FLASK_RELOAD", "0") in ("1", "true", "True")
+    app.run(host=host, port=port, debug=debug, use_reloader=use_reloader)
 
 
 @app.route("/api/admin/reports/payments.csv", methods=["GET"])
