@@ -146,6 +146,73 @@ const mockServices: MockService[] = [
 
 // Request handlers
 const handlers = [
+  // Invoice detail endpoint mock
+  http.get('http://localhost:3000/api/admin/invoices/:id', ({ params }) => {
+    const { id } = params as { id: string };
+    const baseTotal = 15000; // cents
+    const mockInvoice = {
+      invoice: {
+        id,
+        status: 'DRAFT',
+        subtotal_cents: baseTotal,
+        tax_cents: 0,
+        total_cents: baseTotal,
+        amount_paid_cents: 5000,
+        amount_due_cents: baseTotal - 5000,
+        customer_id: 1,
+        customer_name: 'Mock Customer',
+        issued_at: null,
+        paid_at: null,
+        voided_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        notes: 'Mock invoice for testing',
+        appointment_id: 123,
+        currency: 'USD'
+      },
+      line_items: [
+        { id: 'li1', name: 'Oil Change', quantity: 1, unit_price_cents: 5000, line_subtotal_cents: 5000, tax_cents: 0, total_cents: 5000 },
+        { id: 'li2', name: 'Brake Inspection', quantity: 1, unit_price_cents: 10000, line_subtotal_cents: 10000, tax_cents: 0, total_cents: 10000 }
+      ],
+      payments: [
+        { id: 'pay1', amount_cents: 5000, method: 'card', created_at: new Date().toISOString() }
+      ]
+    };
+    return HttpResponse.json({ data: mockInvoice });
+  }),
+
+  http.get('http://localhost:3001/admin/invoices/:id', ({ params }) => {
+    const { id } = params as { id: string };
+    const mockInvoice = {
+      invoice: {
+        id,
+        status: 'PAID',
+        subtotal_cents: 20000,
+        tax_cents: 0,
+        total_cents: 20000,
+        amount_paid_cents: 20000,
+        amount_due_cents: 0,
+        customer_id: 2,
+        customer_name: 'Alt Customer',
+        issued_at: new Date().toISOString(),
+        paid_at: new Date().toISOString(),
+        voided_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        notes: 'Alternate host invoice',
+        appointment_id: 456,
+        currency: 'USD'
+      },
+      line_items: [
+        { id: 'li3', name: 'Tire Rotation', quantity: 1, unit_price_cents: 8000, line_subtotal_cents: 8000, tax_cents: 0, total_cents: 8000 },
+        { id: 'li4', name: 'Alignment', quantity: 1, unit_price_cents: 12000, line_subtotal_cents: 12000, tax_cents: 0, total_cents: 12000 }
+      ],
+      payments: [
+        { id: 'pay2', amount_cents: 20000, method: 'cash', created_at: new Date().toISOString() }
+      ]
+    };
+    return HttpResponse.json({ data: mockInvoice });
+  }),
   // Board endpoint for unit tests (when axios baseURL is '/api', resolves to localhost:3000/api/...)
   http.get('http://localhost:3000/api/admin/appointments/board', ({ request }) => {
     console.log('🔍 MSW: Board endpoint (unit test) hit!', request.url);

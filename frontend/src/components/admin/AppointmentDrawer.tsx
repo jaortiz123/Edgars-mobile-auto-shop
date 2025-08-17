@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
 import type { ServiceCatalogItem } from '@/types/serviceCatalog';
 import { useServiceCatalogSearch } from '@/hooks/useServiceCatalogSearch';
 import ServiceOperationSelect, { ServiceOperationSelectValue } from '@/components/admin/ServiceOperationSelect';
 import { Tabs } from '@/components/ui/Tabs';
 import * as api from '@/lib/api';
+import { generateInvoice } from '@/services/apiService';
 import type { RichAppointmentResponse } from '@/lib/api';
 import type { DrawerPayload, AppointmentService } from '@/types/models';
 import MessageThread from './MessageThread';
@@ -17,6 +20,43 @@ import AppointmentForm from '@/components/appointments/AppointmentForm';
 // Wrap the main component in React.memo to prevent unnecessary re-renders
 const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { open: boolean; onClose: () => void; id: string | null; onRescheduled?: (id: string, startISO: string) => void }) => {
   const [tab, setTab] = useState('overview');
+  const navigate = useNavigate();
+
+  // Lightweight internal button component to avoid bloating top-level render logic
+  const GenerateInvoiceButton: React.FC<{ appointmentId: string; onGenerated: (invoiceId: string) => void }> = ({ appointmentId, onGenerated }) => {
+    const mutation = useMutation<string, unknown, void>({
+      mutationFn: async () => {
+        const resp = await generateInvoice(appointmentId);
+        return resp.invoice.id;
+      },
+      onSuccess: (invoiceId: string) => {
+        toast.success('Invoice created');
+        try { window.dispatchEvent(new CustomEvent('invoices:refresh')); } catch { /* ignore */ }
+        onGenerated(invoiceId);
+      },
+      onError: (err: unknown) => {
+        toast.error(err instanceof Error ? err.message : 'Failed to create invoice');
+      }
+    });
+    return (
+      <div className="flex flex-col items-start">
+        <button
+          data-testid="generate-invoice-btn"
+          onClick={() => mutation.mutate()}
+          disabled={mutation.status === 'pending'}
+          className="px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+          title="Generate invoice for this completed appointment"
+        >
+          {mutation.status === 'pending' ? 'Generating…' : 'Generate Invoice'}
+        </button>
+        {mutation.error ? (
+          <span className="mt-1 text-xs text-red-600">
+            {mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}
+          </span>
+        ) : null}
+      </div>
+    );
+  };
   const [data, setData] = useState<DrawerPayload | null>(null); // legacy drawer payload
   // New rich appointment state for edit flow
   const [rich, setRich] = useState<RichAppointmentResponse | null>(null);
@@ -237,6 +277,17 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
         <div className="p-4 border-b flex items-center justify-between">
           <h2 id="drawer-title" className="text-lg font-semibold">Appointment</h2>
           <div className="flex items-center gap-2">
+            {/* Generate Invoice (visible only when appointment is COMPLETED & no invoice yet) */}
+            {(() => {
+              const aptStatus = rich?.appointment?.status || data?.appointment?.status;
+              // Use optional invoice_id if backend includes it (cast to any for forward compatibility)
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const hasInvoice = (rich as any)?.appointment?.invoice_id || (data as any)?.appointment?.invoice_id; // backend may add invoice_id later
+              const show = id && aptStatus === 'COMPLETED' && !hasInvoice;
+              return show ? (
+                <GenerateInvoiceButton appointmentId={id!} onGenerated={(invoiceId) => navigate(`/admin/invoices/${invoiceId}`)} />
+              ) : null;
+            })()}
             <button
               onClick={() => setShowReschedule(true)}
               disabled={!id}

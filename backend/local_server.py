@@ -49,6 +49,10 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import jwt
 from zoneinfo import ZoneInfo
+try:
+    from . import invoice_service  # package import
+except Exception:  # pragma: no cover
+    import invoice_service  # type: ignore
 
 # ----------------------------------------------------------------------------
 # App setup
@@ -163,6 +167,132 @@ def _fail(status: int, code: str, detail: str, meta: Optional[Dict] = None):
         }),
         status,
     )
+
+# ---------------------------------------------------------------------------
+# Invoice generation endpoint (Phase 1)
+# ---------------------------------------------------------------------------
+@app.route("/api/admin/appointments/<appt_id>/invoice", methods=["POST"])
+def generate_invoice(appt_id: str):
+    """Generate an invoice for a completed appointment.
+
+    Returns 201 with invoice summary or appropriate error status:
+      404 NOT_FOUND if appointment missing
+      409 ALREADY_EXISTS if invoice already present
+      400 INVALID_STATE if appointment not billable
+    """
+    # Role guard (Advisor or Owner) — reuse existing helper
+    auth = require_or_maybe("Advisor")
+    if not auth:
+        return _fail(HTTPStatus.FORBIDDEN, "FORBIDDEN", "Not authorized")
+    try:
+        inv = invoice_service.generate_invoice_for_appointment(appt_id)
+        return _ok(inv, HTTPStatus.CREATED)
+    except invoice_service.InvoiceError as e:
+        if e.code == 'NOT_FOUND':
+            return _fail(HTTPStatus.NOT_FOUND, e.code, e.message)
+        if e.code == 'ALREADY_EXISTS':
+            return _fail(HTTPStatus.CONFLICT, e.code, e.message)
+        if e.code == 'INVALID_STATE':
+            return _fail(HTTPStatus.BAD_REQUEST, e.code, e.message)
+        return _fail(HTTPStatus.INTERNAL_SERVER_ERROR, 'INVOICE_ERROR', e.message)
+    except Exception as ex:
+        log.exception("invoice_generation_failed appt_id=%s", appt_id)
+        return _fail(HTTPStatus.INTERNAL_SERVER_ERROR, 'INVOICE_ERROR', str(ex))
+
+# Invoice retrieval endpoint (Phase 1 view single)
+@app.route("/api/admin/invoices/<invoice_id>", methods=["GET"])
+def get_invoice(invoice_id: str):
+    """Return a detailed invoice with line items and payments.
+
+    200 OK with { invoice, lineItems, payments } or 404 NOT_FOUND.
+    """
+    try:
+        data = invoice_service.fetch_invoice_details(invoice_id)
+        return _ok(data)
+    except invoice_service.InvoiceError as e:
+        if e.code == 'NOT_FOUND':
+            return _fail(HTTPStatus.NOT_FOUND, e.code, e.message)
+        return _fail(HTTPStatus.BAD_REQUEST, e.code, e.message)
+    except Exception as ex:  # pragma: no cover
+        log.exception("invoice_fetch_failed invoice_id=%s", invoice_id)
+        return _fail(HTTPStatus.INTERNAL_SERVER_ERROR, 'INVOICE_ERROR', str(ex))
+
+@app.route("/api/admin/invoices/<invoice_id>/payments", methods=["POST"])
+def record_invoice_payment(invoice_id: str):
+    """Record a payment for an invoice.
+
+    Body JSON: { amountCents: int, method: str, receivedAt?: iso8601, note?: str }
+    Returns 201 with updated invoice + payment snapshot or appropriate error.
+    """
+    body = request.get_json(silent=True) or {}
+    amount_cents = int(body.get('amountCents') or 0)
+    method = (body.get('method') or '').strip() or 'unknown'
+    received_at = body.get('receivedAt')
+    note = body.get('note')
+    try:
+        result = invoice_service.record_payment_for_invoice(
+            invoice_id,
+            amount_cents=amount_cents,
+            method=method,
+            received_at=received_at,
+            note=note,
+        )
+        return _ok(result, status=HTTPStatus.CREATED)
+    except invoice_service.InvoiceError as e:
+        code_map = {
+            'NOT_FOUND': HTTPStatus.NOT_FOUND,
+            'INVALID_STATE': HTTPStatus.BAD_REQUEST,
+            'ALREADY_PAID': HTTPStatus.CONFLICT,
+            'OVERPAYMENT': HTTPStatus.BAD_REQUEST,
+            'INVALID_AMOUNT': HTTPStatus.BAD_REQUEST,
+        }
+        return _fail(code_map.get(e.code, HTTPStatus.BAD_REQUEST), e.code, e.message)
+    except Exception as ex:  # pragma: no cover
+        log.exception("payment_record_failed invoice_id=%s", invoice_id)
+        return _fail(HTTPStatus.INTERNAL_SERVER_ERROR, 'INVOICE_ERROR', str(ex))
+
+@app.route("/api/admin/invoices/<invoice_id>/void", methods=["POST"])
+def void_invoice(invoice_id: str):
+    """Void an invoice (DRAFT/SENT/PARTIALLY_PAID -> VOID)."""
+    try:
+        result = invoice_service.void_invoice(invoice_id)
+        return _ok(result['invoice'])
+    except invoice_service.InvoiceError as e:
+        code_map = {
+            'NOT_FOUND': HTTPStatus.NOT_FOUND,
+            'ALREADY_VOID': HTTPStatus.CONFLICT,
+            'ALREADY_PAID': HTTPStatus.CONFLICT,
+        }
+        return _fail(code_map.get(e.code, HTTPStatus.BAD_REQUEST), e.code, e.message)
+    except Exception as ex:  # pragma: no cover
+        log.exception("invoice_void_failed invoice_id=%s", invoice_id)
+        return _fail(HTTPStatus.INTERNAL_SERVER_ERROR, 'INVOICE_ERROR', str(ex))
+
+@app.route("/api/admin/invoices", methods=["GET"])
+def list_invoices():
+    """Paginated invoice summaries.
+
+    Query params:
+      status, customerId, createdFrom, createdTo, page, pageSize
+    """
+    q = request.args
+    try:
+        result = invoice_service.list_invoices(
+            status=q.get('status'),
+            customer_id=q.get('customerId'),
+            created_from=q.get('createdFrom'),
+            created_to=q.get('createdTo'),
+            page=int(q.get('page', '1') or 1),
+            page_size=int(q.get('pageSize', '20') or 20),
+        )
+        return _ok(result)
+    except invoice_service.InvoiceError as e:
+        return _fail(HTTPStatus.BAD_REQUEST, e.code, e.message)
+    except ValueError:
+        return _fail(HTTPStatus.BAD_REQUEST, 'INVALID_PAGINATION', 'Invalid page or pageSize')
+    except Exception as ex:  # pragma: no cover
+        log.exception("invoice_list_failed")
+        return _fail(HTTPStatus.INTERNAL_SERVER_ERROR, 'INVOICE_ERROR', str(ex))
 
 # ---------------------------------------------------------------------------
 # Backward compatibility helpers (older tests expect certain shapes/functions)
