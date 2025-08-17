@@ -1,183 +1,179 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
-export interface ServiceLite {
+export type ServiceOperation = {
   id: string;
+  internal_code?: string;
   name: string;
-  defaultPrice?: number | null;
-  category?: string | null;
+  category: string;
+  subcategory?: string | null;
+  skill_level?: number | null;
+  default_hours?: number | null;
+  base_labor_rate?: number | null;
+  keywords?: string[] | null;
+  is_active?: boolean;
+  display_order?: number | null;
+};
+
+function compareByDisplayOrder(a: ServiceOperation, b: ServiceOperation) {
+  const ao = a.display_order ?? Number.POSITIVE_INFINITY;
+  const bo = b.display_order ?? Number.POSITIVE_INFINITY;
+  if (ao !== bo) return ao - bo;
+  return a.name.localeCompare(b.name);
+}
+
+function formatHours(h: number | null | undefined) {
+  if (h == null) return '—';
+  return `${h.toFixed(2)} h`;
+}
+function formatPrice(p: number | null | undefined) {
+  if (p == null) return '—';
+  return `$${p.toFixed(2)}`;
+}
+
+async function fetchServiceOperations() {
+  const resp = await fetch('/api/admin/service-operations', { credentials: 'include' });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const data = await resp.json();
+  const list = Array.isArray(data) ? data : data?.service_operations;
+  if (!Array.isArray(list)) return [];
+  return list as ServiceOperation[];
 }
 
 interface ServiceCatalogModalProps {
   open: boolean;
-  initialSelected: ServiceLite[];
-  onConfirm(selected: ServiceLite[]): void;
   onClose(): void;
+  onAdd(op: ServiceOperation): void; // immediate add when clicked
 }
 
-interface ApiRow {
-  id: string; name: string; default_price?: number | null; category?: string | null;
-}
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
-
-export const ServiceCatalogModal: React.FC<ServiceCatalogModalProps> = ({ open, initialSelected, onConfirm, onClose }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [results, setResults] = useState<ServiceLite[]>([]);
+export const ServiceCatalogModal: React.FC<ServiceCatalogModalProps> = ({ open, onClose, onAdd }) => {
+  const [services, setServices] = useState<ServiceOperation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [draftMap, setDraftMap] = useState<Map<string, ServiceLite>>(new Map());
-  const cacheRef = useRef<Map<string, ServiceLite[]>>(new Map());
-  const abortRef = useRef<AbortController | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
-  const debounceRef = useRef<number | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
-  // Initialize draft selections when opened
   useEffect(() => {
-    if (open) {
-      const m = new Map<string, ServiceLite>();
-      initialSelected.forEach(s => m.set(s.id, s));
-      setDraftMap(m);
-      setSearchTerm('');
-      setResults([]);
-      setError(null);
-      setTimeout(() => inputRef.current?.focus(), 30);
-    }
-  }, [open, initialSelected]);
-
-  const draftSelected = useMemo(() => Array.from(draftMap.values()), [draftMap]);
-  const draftIds = useMemo(() => new Set(draftMap.keys()), [draftMap]);
-
-  const performSearch = useCallback(async (term: string) => {
-    const q = term.trim();
-    if (q.length < 2) { setResults([]); setError(null); return; }
-    if (cacheRef.current.has(q)) { setResults(cacheRef.current.get(q)!); return; }
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
+    if (!open) return;
     setLoading(true); setError(null);
-    try {
-      const params = new URLSearchParams({ q, limit: '25' });
-  // Include auth header if token present (admin endpoint requires bearer token)
-  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-  const headers: Record<string, string> = {};
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const resp = await fetch(`${API_BASE}/admin/service-operations?${params.toString()}`, { signal: controller.signal, headers });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  const data = await resp.json();
-  // Phase 2 contract: flat array default; retain legacy wrapper fallback for short deprecation window
-  const rows: ApiRow[] = Array.isArray(data) ? data : (data.service_operations || data.services || []);
-      const mapped = rows.map(r => ({ id: r.id, name: r.name, defaultPrice: r.default_price ?? null, category: r.category ?? null }));
-      cacheRef.current.set(q, mapped);
-      setResults(mapped);
-    } catch (e) {
-      if (e instanceof DOMException && e.name === 'AbortError') return; // ignore
-      setError(e instanceof Error ? e.message : 'Search failed');
-    } finally { setLoading(false); }
-  }, []);
+    let cancelled = false;
+    fetchServiceOperations()
+      .then(list => {
+        if (cancelled) return;
+        // sort global once by display_order and name
+        const sorted = [...list].sort(compareByDisplayOrder);
+        setServices(sorted);
+        const cats = Array.from(new Set(sorted.map(s => s.category))).filter(Boolean).sort();
+        if (cats.includes('MAINTENANCE')) setSelectedCategory('MAINTENANCE'); else setSelectedCategory(cats[0] || null);
+      })
+      .catch(e => { if (!cancelled) setError(e.message || 'Failed to load'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [open]);
 
-  // Debounce search
-  useEffect(() => {
-    if (!open) return;
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    debounceRef.current = window.setTimeout(() => { void performSearch(searchTerm); }, 300);
-    return () => { if (debounceRef.current) window.clearTimeout(debounceRef.current); };
-  }, [searchTerm, performSearch, open]);
-
-  // Keyboard: ESC closes
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [open, onClose]);
-
-  function toggleSelect(s: ServiceLite) {
-    setDraftMap(prev => {
-      const m = new Map(prev);
-      if (m.has(s.id)) m.delete(s.id); else m.set(s.id, s);
-      return m;
+  const categories = useMemo(() => {
+    const counts = new Map<string, number>();
+    services.forEach(s => {
+      if (s.is_active === false) return;
+      counts.set(s.category, (counts.get(s.category) || 0) + 1);
     });
-  }
+    return Array.from(counts.entries()).sort(([a],[b]) => a.localeCompare(b));
+  }, [services]);
 
-  function handleConfirm() {
-    onConfirm(draftSelected);
-    onClose();
-  }
+  const filtered = useMemo(() => {
+    return services
+      .filter(s => s.is_active !== false)
+      .filter(s => !selectedCategory || s.category === selectedCategory)
+      .filter(s => {
+        if (!query.trim()) return true;
+        const q = query.toLowerCase();
+        return s.name.toLowerCase().includes(q) || (s.internal_code || '').toLowerCase().includes(q) || (s.keywords || []).some(k => k.toLowerCase().includes(q));
+      })
+      .sort(compareByDisplayOrder);
+  }, [services, selectedCategory, query]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-6" role="dialog" aria-modal="true" aria-labelledby="svc-cat-title">
-      <div className="w-full max-w-2xl rounded bg-white text-gray-900 shadow-xl flex flex-col max-h-[80vh]">
-        <div className="border-b px-4 py-3 flex items-center gap-3">
-          <h2 id="svc-cat-title" className="text-lg font-semibold flex-1 text-gray-900">Add Services</h2>
-          <button onClick={onClose} className="text-sm px-2 py-1 border rounded text-gray-700 hover:bg-gray-100" type="button">Close</button>
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-6" role="dialog" aria-modal="true">
+      <div className="bg-white rounded-2xl shadow-lg w-full max-w-5xl h-[72vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-3 border-b">
+          <h2 className="text-lg font-semibold">Service Catalog</h2>
+          <button onClick={onClose} className="text-sm px-2 py-1 border rounded hover:bg-gray-100">Close</button>
         </div>
-        <div className="p-4 pt-3 space-y-3">
-          <div className="flex gap-2">
-            <input
-              ref={inputRef}
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              placeholder="Search services (min 2 chars)..."
-              aria-label="Search services"
-              data-testid="service-search-input"
-              className="flex-1 border rounded px-3 py-2 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoFocus
-            />
-            {searchTerm && <button type="button" className="px-3 py-2 border rounded" onClick={() => setSearchTerm('')}>Clear</button>}
-          </div>
-          <div className="text-xs text-gray-600 flex items-center gap-2" aria-live="polite">
-            <span>{loading ? 'Loading…' : error ? `Error: ${error}` : results.length ? `${results.length} result${results.length!==1?'s':''}` : 'Enter at least 2 characters to search'}</span>
-            {draftSelected.length > 0 && <span className="ml-auto font-medium">{draftSelected.length} selected</span>}
-          </div>
-          <div className="border rounded overflow-hidden min-h-[180px] bg-white">
-            <ul ref={listRef} className="max-h-64 overflow-auto divide-y" aria-label="Service results" data-testid="service-results-list">
-              {error && (
-                <li className="p-3 text-red-600 flex justify-between items-center bg-red-50">
-                  <span className="truncate">{error}</span>
-                  <button type="button" onClick={() => performSearch(searchTerm)} className="text-xs underline">Retry</button>
-                </li>
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left categories */}
+          <div className="w-60 border-r flex flex-col">
+            <div className="p-3">
+              <input
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Search…"
+                className="w-full border rounded px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="flex-1 overflow-auto pb-2">
+              {loading && <div className="px-3 py-2 text-xs text-gray-500">Loading…</div>}
+              {error && <div className="px-3 py-2 text-xs text-red-600">{error}</div>}
+              {!loading && !error && (
+                <ul className="space-y-1 px-2">
+                  {categories.map(([cat,count]) => {
+                    const active = cat === selectedCategory;
+                    return (
+                      <li key={cat}>
+                        <button
+                          onClick={() => setSelectedCategory(cat)}
+                          className={`w-full text-left px-3 py-2 rounded text-sm border hover:bg-gray-50 ${active ? 'bg-gray-100 border-gray-400' : 'border-transparent'}`}
+                        >
+                          <span className="font-medium mr-2">{cat.replace(/_/g,' ')}</span>
+                          <span className="text-xs text-gray-500">{count}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
-              {!error && loading && <li className="p-3 text-gray-500">Loading…</li>}
-              {!error && !loading && results.length === 0 && searchTerm.length >= 2 && <li className="p-3 text-gray-500">No services found</li>}
-              {results.map(s => {
-                const selected = draftIds.has(s.id);
-                return (
-                  <li key={s.id} className="p-0">
-                    <button
-                      type="button"
-                      onClick={() => toggleSelect(s)}
-                      className={`w-full text-left px-3 py-2 flex gap-3 items-start hover:bg-blue-50 focus:bg-blue-50 ${selected ? 'bg-blue-50' : ''}`}
-                      data-testid={`service-result-${s.id}`}
-                    >
-                      <span className="flex-1">
-                        <span className="font-medium block">{s.name}</span>
-                        <span className="text-xs text-gray-600 flex gap-2 flex-wrap">
-                          {s.category && <span>{s.category}</span>}
-                          {s.defaultPrice != null && <span>${s.defaultPrice.toFixed(2)}</span>}
-                        </span>
-                      </span>
-                      <span className="text-xs text-gray-600">{selected ? '✓' : '+'}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+            </div>
           </div>
-        </div>
-    <div className="mt-auto border-t px-4 py-3 flex gap-3 justify-end">
-      <button type="button" onClick={onClose} className="px-4 py-2 border rounded text-gray-700 hover:bg-gray-100">Cancel</button>
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={draftSelected.length === 0}
-              className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              data-testid="service-add-confirm-btn"
-            >
-              Add {draftSelected.length || ''} {draftSelected.length===1?'Service':'Services'}
-            </button>
+          {/* Right list */}
+          <div className="flex-1 flex flex-col">
+            <div className="px-5 py-2 border-b bg-gray-50 text-sm text-gray-600 flex items-center justify-between">
+              <div>
+                {selectedCategory || 'All'} • {filtered.length} item{filtered.length!==1 && 's'}
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto">
+              {loading && <div className="p-5 text-sm text-gray-500">Loading services…</div>}
+              {error && <div className="p-5 text-sm text-red-600">{error}</div>}
+              {!loading && !error && filtered.length === 0 && (
+                <div className="p-6 text-sm text-gray-500">No services match.</div>
+              )}
+              {!loading && !error && filtered.length > 0 && (
+                <ul className="divide-y">
+                  {filtered.map(op => (
+                    <li key={op.id}>
+                      <button
+                        onClick={() => onAdd(op)}
+                        className="w-full flex items-start gap-4 px-5 py-3 text-left hover:bg-blue-50 focus:bg-blue-50"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm truncate">{op.name}</div>
+                          <div className="text-xs text-gray-500 mt-0.5 flex gap-2 flex-wrap">
+                            {op.internal_code && <span>{op.internal_code}</span>}
+                            {op.default_hours != null && <span>{formatHours(op.default_hours)}</span>}
+                            {op.base_labor_rate != null && <span>{formatPrice(op.base_labor_rate)}</span>}
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-400 self-center">{op.display_order ?? ''}</div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="px-5 py-2 border-t flex justify-end">
+              <button onClick={onClose} className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50">Close</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
