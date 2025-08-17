@@ -3739,8 +3739,18 @@ def list_service_operations():
 
     payload = [_coerce(r) for r in rows]
     if legacy:
-        return jsonify({"service_operations": payload})
-    return jsonify(payload)
+        resp = jsonify({"service_operations": payload})
+    else:
+        resp = jsonify(payload)
+    # Fingerprint headers (debug observability)
+    try:  # pragma: no cover
+        import inspect
+
+        resp.headers["X-Catalog-Handler"] = "v2-flat"
+        resp.headers["X-Source-File"] = inspect.getsourcefile(list_service_operations) or "?"
+    except Exception:
+        pass
+    return resp
 
 
 @app.route("/api/admin/reports/payments.csv", methods=["GET"])
