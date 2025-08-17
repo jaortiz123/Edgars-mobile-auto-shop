@@ -34,6 +34,13 @@ def pg_container():
     Starts a containerized PostgreSQL instance, runs migrations, and loads seed data.
     """
     logger.info("🐘 Starting PostgreSQL container...")
+    # Reset any cached DB connection config from prior tests in same process
+    try:
+        import local_server as _srv
+        if hasattr(_srv, '_DB_CONN_CONFIG_CACHE'):
+            _srv._DB_CONN_CONFIG_CACHE = None  # type: ignore
+    except Exception:
+        pass
     
     with PostgresContainer("postgres:15-alpine") as postgres:
         # Container is now running

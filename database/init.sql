@@ -111,3 +111,27 @@ CREATE TABLE IF NOT EXISTS invoice_line_items (
     CHECK (total_cents = line_subtotal_cents + tax_cents)
 );
 CREATE INDEX IF NOT EXISTS idx_invoice_line_items_invoice ON invoice_line_items(invoice_id, position);
+
+-- ----------------------------------------------------------------------------
+-- Service Catalog Safety Check
+-- This runs at initial DB creation time. The raw SQL migration that creates
+-- the service_operations table executes AFTER this (via run_sql_migrations.py).
+-- Therefore we must guard the check so it only runs if the table already
+-- exists (e.g. when rebuilding a fresh environment after migrations copied in
+-- earlier, or future consolidated init scripts).
+-- If the table exists but has zero rows, raise a WARNING so the condition is
+-- highly visible in logs and during docker-compose startup.
+-- ----------------------------------------------------------------------------
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_name = 'service_operations'
+  ) THEN
+    PERFORM 1 FROM service_operations LIMIT 1; -- quick existence probe
+    IF NOT FOUND THEN
+      RAISE WARNING 'CRITICAL: No service_operations rows found. Run backend/seeds/seed_s1.sql to seed mandatory services (appointment creation depends on this).';
+    END IF;
+  END IF;
+END $$;
+

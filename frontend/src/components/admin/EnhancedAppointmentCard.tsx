@@ -116,12 +116,12 @@ export const EnhancedAppointmentCard = ({ card, onOpen, isFirst }: { card: Board
       {card.startedAt && !card.completedAt && <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-green-400 to-green-600 rounded-t" />}
       {card.completedAt && <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-indigo-400 to-indigo-600 rounded-t" />}
 
-      <div className="w-full flex flex-col items-center text-center">
+  <div className="w-full flex flex-col items-center text-center" data-testid="enhanced-card-head">
         <div className="nb-service-title" title={headline}>
           {headline || (card.primaryOperationId && opsLoading ? <Skeleton className="h-4 w-36" /> : `Service #${card.id.slice(-4)}`)}
         </div>
         {enabled.statusBadges && (
-          <div className="nb-status-badges">
+          <div className="nb-status-badges" data-testid="enhanced-card-status-badges">
             <span className="nb-status-badge" data-s={(card.status || 'OPEN').toLowerCase()}>{(card.status || 'OPEN').replace('_',' ')}</span>
             {card.isOverdue && <span className="nb-status-badge" data-s="overdue">Overdue</span>}
             {enabled.workspacePref && card.workspacePreference && <span className="nb-status-badge" data-s="pref">{String(card.workspacePreference).toUpperCase()}</span>}

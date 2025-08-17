@@ -57,28 +57,31 @@ describe('AnalyticsDashboardPage', () => {
   });
 
   it('renders summary, chart and table after load', async () => {
-    fetchTemplateAnalyticsMock.mockResolvedValueOnce(baseResponse);
-    render(<AnalyticsDashboardPage />);
-    expect(screen.getByText(/Loading analytics/i)).toBeInTheDocument();
-
-  await waitFor(() => expect(fetchTemplateAnalyticsMock.mock.calls.length).toBeGreaterThanOrEqual(1));
+    vi.useRealTimers();
+  fetchTemplateAnalyticsMock.mockResolvedValueOnce(baseResponse);
+  render(<AnalyticsDashboardPage />);
+  expect(screen.getByTestId('analytics-loading')).toBeInTheDocument();
+  await waitFor(() => expect(fetchTemplateAnalyticsMock).toHaveBeenCalled());
+  await waitFor(() => expect(screen.queryByTestId('analytics-loading')).toBeNull());
     expect(screen.getByTestId('totals-summary')).toBeInTheDocument();
     expect(screen.getByTestId('trend-chart')).toBeInTheDocument();
     expect(screen.getByTestId('templates-table')).toBeInTheDocument();
   });
 
   it('refetches when filters change', async () => {
-    fetchTemplateAnalyticsMock.mockResolvedValue(baseResponse);
-    render(<AnalyticsDashboardPage />);
-  await waitFor(() => expect(fetchTemplateAnalyticsMock.mock.calls.length).toBeGreaterThanOrEqual(1));
+    vi.useRealTimers();
+  fetchTemplateAnalyticsMock.mockResolvedValue(baseResponse);
+  render(<AnalyticsDashboardPage />);
+  await waitFor(() => expect(fetchTemplateAnalyticsMock).toHaveBeenCalled());
+  await waitFor(() => expect(screen.queryByTestId('analytics-loading')).toBeNull());
 
     const rangeSelect = screen.getByLabelText(/Range/i) as HTMLSelectElement;
     await userEvent.selectOptions(rangeSelect, '7d');
   // Instead of asserting call count delta (flaky under StrictMode), assert a call was made with updated range
-  await waitFor(() => {
-    const sawUpdatedRange = fetchTemplateAnalyticsMock.mock.calls.some(c => c[0]?.range === '7d');
-    expect(sawUpdatedRange).toBe(true);
-  });
+    await waitFor(() => {
+      const sawUpdatedRange = fetchTemplateAnalyticsMock.mock.calls.some(c => c[0]?.range === '7d');
+      expect(sawUpdatedRange).toBe(true);
+    });
   // Additionally verify the most recent call reflects the selected range
   const lastRangeArg = [...fetchTemplateAnalyticsMock.mock.calls].reverse().find(c => c[0])?.[0];
   expect(lastRangeArg).toMatchObject({ range: '7d' });

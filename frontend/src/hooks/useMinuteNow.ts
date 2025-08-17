@@ -18,6 +18,12 @@ function ensureTimer() {
   scheduleNext();
 }
 
+// Test-only: force trigger of a tick without waiting for real minute boundary.
+// Not part of public runtime API; used in tests to flush pending state updates.
+export function __flushMinuteNowTickForTests() {
+  subscribers.forEach(fn => { try { fn(); } catch { /* ignore */ } });
+}
+
 export function useMinuteNow(): number {
   const [stamp, setStamp] = useState(() => Date.now());
   useEffect(() => {

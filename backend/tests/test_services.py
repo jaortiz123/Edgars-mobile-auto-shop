@@ -4,18 +4,22 @@ T-017: Backend services API implementation
 """
 import pytest
 import json
+from datetime import datetime, timezone, timedelta
+import time
 
 
 def _create_appt(client):
     """Helper to create a minimally valid appointment returning its id or None if DB unavailable."""
+    future_start = (datetime.now(timezone.utc) + timedelta(minutes=2)).replace(microsecond=0).isoformat().replace('+00:00','Z')
+    unique_plate = f"TST{int(time.time()*1000)%100000}"  # avoid vehicle conflict across tests
     resp = client.post("/api/admin/appointments", json={
         "status": "SCHEDULED",
-        "start": "2025-08-14T10:00:00Z",
+        "start": future_start,
         "total_amount": 0,
         "paid_amount": 0,
         "customer_name": "Test User",
         "customer_phone": "5550001234",
-        "license_plate": "TST123",
+        "license_plate": unique_plate,
         "vehicle_year": 2024,
         "vehicle_make": "TestMake",
         "vehicle_model": "TestModel"
@@ -57,7 +61,8 @@ def test_create_service_success_memory_mode(client):
     # First create an appointment
     appointment_data = {
         "status": "SCHEDULED",
-        "start": "2025-07-29T10:00:00Z",
+        # use near-future time to satisfy validation rule (15 min past window)
+        "start": (datetime.now(timezone.utc) + timedelta(minutes=1)).replace(microsecond=0).isoformat().replace('+00:00','Z'),
         "total_amount": 0,
         "paid_amount": 0
     }

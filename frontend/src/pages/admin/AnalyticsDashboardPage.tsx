@@ -40,13 +40,13 @@ export const AnalyticsDashboardPage: React.FC = () => {
     setChannel(val);
   };
 
-  if (state.loading) return <div className="p-4 text-sm text-gray-500">Loading analytics…</div>;
-  if (state.error) return <div className="p-4 text-sm text-red-600">Error: {state.error}</div>;
-  if (!state.data) return <div className="p-4 text-sm">No data.</div>;
+  if (state.loading) return <div className="p-4 text-sm text-gray-500" data-testid="analytics-loading">Loading analytics…</div>;
+  if (state.error) return <div className="p-4 text-sm text-red-600" data-testid="analytics-error">Error: {state.error}</div>;
+  if (!state.data) return <div className="p-4 text-sm" data-testid="analytics-empty">No data.</div>;
 
   const { totals, trend, templates } = state.data;
   return (
-    <div className="p-6 space-y-6" data-testid="analytics-dashboard-root">
+  <div className="p-6 space-y-6" data-testid="analytics-dashboard-root">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-xl font-semibold">Messaging Analytics</h1>
         <div className="flex flex-wrap items-center gap-3">

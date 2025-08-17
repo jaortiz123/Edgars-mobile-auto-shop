@@ -1,5 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { waitFor } from '@testing-library/react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
@@ -47,31 +48,35 @@ describe('CustomerProfilePage', () => {
   });
 
   it('Loading State: shows loading indicator while fetching', async () => {
+    vi.useRealTimers();
     let resolveFn: (v: profileApi.CustomerProfileResponse) => void;
     const pending = new Promise<profileApi.CustomerProfileResponse>(res => { resolveFn = res; });
     vi.spyOn(profileApi, 'fetchCustomerProfile').mockReturnValue(pending);
     renderWithRoute();
-    expect(screen.getByTestId('customer-profile-loading')).toBeInTheDocument();
-    // resolve to avoid unhandled promise
-    resolveFn!(baseProfile);
+  expect(screen.getByTestId('customer-profile-loading')).toBeInTheDocument();
+  resolveFn!(baseProfile);
+  await waitFor(() => expect(screen.queryByTestId('customer-profile-loading')).toBeNull());
   });
 
   it('Success State: renders customer name on success', async () => {
-    vi.spyOn(profileApi, 'fetchCustomerProfile').mockResolvedValue(baseProfile);
+  vi.useRealTimers();
+  vi.spyOn(profileApi, 'fetchCustomerProfile').mockResolvedValue(baseProfile);
     renderWithRoute();
     const heading = await screen.findByTestId('customer-profile-name');
     expect(heading).toHaveTextContent('Alice Cooper');
   });
 
   it('Error State: displays error message when API fails', async () => {
-    vi.spyOn(profileApi, 'fetchCustomerProfile').mockRejectedValue(new Error('Server exploded'));
+  vi.useRealTimers();
+  vi.spyOn(profileApi, 'fetchCustomerProfile').mockRejectedValue(new Error('Server exploded'));
     renderWithRoute();
     const err = await screen.findByTestId('customer-profile-error');
     expect(err).toHaveTextContent(/Server exploded/);
   });
 
   it('Not Found State: shows specific message when customer missing', async () => {
-    vi.spyOn(profileApi, 'fetchCustomerProfile').mockRejectedValue(new Error('Customer not found'));
+  vi.useRealTimers();
+  vi.spyOn(profileApi, 'fetchCustomerProfile').mockRejectedValue(new Error('Customer not found'));
     renderWithRoute('/admin/customers/missing');
     const err = await screen.findByTestId('customer-profile-error');
     expect(err).toHaveTextContent(/Customer not found/);

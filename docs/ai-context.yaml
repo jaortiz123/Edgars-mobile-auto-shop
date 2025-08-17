@@ -15,6 +15,11 @@ repo:
     containerization: "Docker"
     seed: "init_db.py"
     envFiles: [".env"]
+  hardeningSprint:
+    window: "2025-08 (Pre-Launch Hardening)"
+    focus: ["invoice test pyramid", "service catalog seeding", "quick add modal replacement", "search endpoint"]
+    removedSlowE2E: "Legacy full invoice lifecycle UI test (replaced by domain+API+slim E2E)"
+    domainLayer: "Invoice domain module now unit-tested (fast) to reduce reliance on UI flows"
 
 auth:
   mechanism: "JWT Bearer tokens"
@@ -25,6 +30,9 @@ auth:
     owner: "owner@example.com"
     advisor: "advisor@example.com"
   invariants: ["auth-required-for-admin"]
+  additionalInvariants:
+    - "No public access to /api/admin/service-operations"
+    - "Seeded auth token in storageState for Playwright global-setup"
 
 api:
   openapi: null
@@ -32,6 +40,15 @@ api:
   realVsMock:
     real: ["/api/appointments/*", "/api/admin/*"]
     mock: []
+  serviceCatalog:
+    endpoint: "/api/admin/service-operations"
+    supportsSearch: true
+    queryParams:
+      q: "substring match (case-insensitive) across name, category, keywords; min length 2"
+      limit: "bounded 1..500 (default 50 with q, 500 without)"
+    responseShape: { key: "service_operations", itemFields: [id, name, category, default_hours, default_price, keywords, skill_level, flags] }
+    failureModes: ["empty-table => empty modal", "unseeded DB", "auth missing => 401/empty depending on middleware"]
+    p0Condition: "Zero active rows = appointment creation degraded (cannot add services)"
 
 ci:
   requiredChecks: ["npm audit", "safety"]
@@ -40,17 +57,38 @@ ci:
     backend: 0.60
   flakyJobs: ["performance", "accessibility"]
   previews: false
+  smokeTests:
+    - name: "service-catalog-populated"
+      file: "e2e/service-catalog-populated.spec.ts"
+      asserts: [">0 active services"]
+    - name: "user-pays-invoice"
+      file: "e2e/user_pays_invoice.spec.ts"
+      notes: "Slim flow ensuring invoice lifecycle intact without full heavy UI path"
 
 testing:
   locations: ["frontend/src/__tests__/**", "backend/tests/**"]
   criticalFlows: ["appointment-create", "appointment-update", "status-board"]
   brittleAreas: ["appointment history", "customer messaging"]
   uiStrategy: "React Testing Library"
+  pyramidAdjustments:
+    invoice:
+      removed: "monolithic invoice lifecycle UI test"
+      replacedWith: ["invoice domain unit tests", "focused API workflow test", "slim E2E payment confirmation"]
+  newSmoke:
+    - "service catalog seeded"
+  seedsRequiredForTests:
+    - path: "backend/seeds/seed_s1.sql"
+      reason: "Provides 20+ catalog services; empty state is a P0 outage for creation"
+  warningsAddressed: ["React act() warnings (in progress cleanup)"]
 
 boundaries:
   offLimitsPaths: []
   maxComponentSize: 500
   noRefactorWithoutADR: ["auth middleware"]
+  adrReferences:
+    - id: "2025-08-17-service-catalog"
+      file: "docs/decisions/2025-08-17-service-catalog.md"
+      summary: "Initial decision to defer enrichment later; superseded by P0 seed requirement once empty state discovered"
 
 dependencies:
   pinned:
@@ -58,6 +96,8 @@ dependencies:
     backend: false
   doNotBump: []
   advisories: ["form-data"]
+  notes:
+    - "Backend Python deps installed inside container; restart backend container to pick up code changes (no autoreload)"
 
 budgets:
   maxFiles: 8
@@ -69,6 +109,11 @@ risk:
   criticalFlows: ["authentication", "appointment-board", "appointment-creation", "customer-history", "payment-processing"]
   sensitiveDataAreas: ["/api/customers/*", "/api/appointments/*"]
   blackoutDates: []
+  catalog:
+    emptyTableImpact: "P0 – service selection impossible"
+    mitigation: ["seed_s1.sql mandatory", "startup WARNING in init.sql", "smoke test"]
+  search:
+    perfFuture: "Add index (btree lower(name), GIN keywords) if dataset grows > 1k rows"
 
 owners:
   auth: ["@jesusortiz"]
@@ -84,10 +129,38 @@ plan:
   outOfScope: ["payment processing"]
   fixtures: ["backend/init_db.py"]
   knownFlakes: []
+  currentFocus:
+    hardening: ["finish act() warning cleanup", "ensure service search latency acceptable", "add index if needed"]
 
 secrets:
   logRedaction: ["email", "phone", "jwt"]
   approvedTestUsers: []
+
+serviceCatalog:
+  seedScript: "backend/seeds/seed_s1.sql"
+  expectedActiveMin: 10
+  currentActiveApprox: 22
+  inactiveExamples: 1
+  smokeTest: "e2e/service-catalog-populated.spec.ts"
+  uiComponents: ["ServiceCatalogModal", "AppointmentDrawer services tab"]
+  invariants:
+    - "Search requires >=2 chars to trigger backend filtering"
+    - "Empty result list after non-empty seed indicates possible auth or filtering bug"
+
+invariants:
+  - "/api/admin/service-operations must return >0 active rows in non-test envs"
+  - "All admin endpoints require Authorization header"
+  - "Docker init warns if service_operations empty"
+  - "Invoice domain tests must stay <100ms aggregate runtime"
+
+monitoring (planned):
+  counters:
+    - name: service_catalog.search.requests
+    - name: service_catalog.search.empty_results
+    - name: appointment.create.requests
+  alerts:
+    - condition: "service_catalog.search.empty_results / service_catalog.search.requests > 0.5 for 10m"
+      action: "Investigate seed / filtering"
 
 commands:
   lint: "cd frontend && npm run lint"
