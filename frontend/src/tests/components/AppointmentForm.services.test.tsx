@@ -42,7 +42,7 @@ describe('AppointmentForm services integration', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (globalThis as any).fetch = vi.fn(async (url: string) => {
       if (url.includes('/admin/service-operations')) {
-        return new Response(JSON.stringify({ service_operations: SERVICES }), { status: 200 });
+        return new Response(JSON.stringify(SERVICES), { status: 200 });
       }
       return new Response('{}', { status: 200 });
     });

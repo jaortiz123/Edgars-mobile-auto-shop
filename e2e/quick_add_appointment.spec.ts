@@ -15,10 +15,10 @@ test.describe('Quick Add Appointment', () => {
   test('user creates appointment selecting two services', async ({ page }) => {
     await stubCustomerProfile(page);
     await page.route(/\/api\/admin\/service-operations.*/, async route => {
-      const json = { service_operations: [
+      const json = [
         { id: 'svc-1', name: 'Oil Change', default_price: 49.99, category: 'Maintenance' },
         { id: 'svc-2', name: 'Brake Inspection', default_price: 89.0, category: 'Safety' }
-      ] };
+      ];
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(json) });
     });
     await page.goto('http://localhost:5173/'); // initial navigation to set storage state

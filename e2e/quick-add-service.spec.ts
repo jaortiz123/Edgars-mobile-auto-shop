@@ -12,12 +12,10 @@ test('quick add modal loads service catalog and selects operation', async ({ pag
   await stubCustomerProfile(page);
   // Stub service operations endpoint to ensure options appear even if auth missing
   await page.route(/\/api\/admin\/service-operations$/, async route => {
-    const json = {
-      service_operations: [
-        { id: 'op-oil', name: 'Oil Change', category: 'Maintenance', default_hours: 1, default_price: 49.99, keywords: ['oil'] },
-        { id: 'op-brake', name: 'Brake Service', category: 'Safety', default_hours: 2, default_price: 199.0, keywords: ['brake'] }
-      ]
-    };
+    const json = [
+      { id: 'op-oil', name: 'Oil Change', category: 'Maintenance', default_hours: 1, default_price: 49.99, keywords: ['oil'] },
+      { id: 'op-brake', name: 'Brake Service', category: 'Safety', default_hours: 2, default_price: 199.0, keywords: ['brake'] }
+    ];
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(json) });
   });
   await page.goto('http://localhost:5173/admin/dashboard', { waitUntil: 'networkidle' });

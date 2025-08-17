@@ -44,13 +44,16 @@ Extension Hooks
 All invariants are enforced in validation helpers; orchestration code should favor constructing
 minimal `InvoiceState` objects from persisted rows then delegating to these pure functions.
 """
+
 from __future__ import annotations
+
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Iterable, List
 
 BILLABLE_APPOINTMENT_STATUSES = {"COMPLETED", "DONE", "FINISHED"}
 INITIAL_INVOICE_STATUS = "DRAFT"
+
 
 @dataclass(frozen=True)
 class ServiceSnapshot:
@@ -58,6 +61,7 @@ class ServiceSnapshot:
     estimated_price: Decimal  # dollars (source input)
     estimated_hours: Decimal | None = None
     service_operation_id: str | None = None
+
 
 @dataclass(frozen=True)
 class LineItem:
@@ -71,6 +75,7 @@ class LineItem:
     total_cents: int
     service_operation_id: str | None = None
 
+
 @dataclass(frozen=True)
 class InvoiceTotals:
     subtotal_cents: int
@@ -79,11 +84,13 @@ class InvoiceTotals:
     amount_paid_cents: int
     amount_due_cents: int
 
+
 @dataclass(frozen=True)
 class InvoiceState:
     status: str
     line_items: List[LineItem]
     totals: InvoiceTotals
+
 
 class DomainError(Exception):
     def __init__(self, code: str, message: str):
@@ -103,7 +110,9 @@ class PaymentValidationError(ValueError):
         self.code = code
         self.message = message
 
+
 # ---------------------------- Generation ----------------------------------
+
 
 def validate_appointment_for_invoicing(status: str, has_existing_invoice: bool) -> None:
     status_u = (status or "").upper()
@@ -112,13 +121,16 @@ def validate_appointment_for_invoicing(status: str, has_existing_invoice: bool) 
     if has_existing_invoice:
         raise DomainError("ALREADY_EXISTS", "Invoice already exists for appointment")
 
+
 # Price conversion helper (float -> cents) using Decimal for deterministic rounding
 _DEF_QUANT = Decimal("0.01")
+
 
 def _dollars_to_cents(amount: Decimal | float | int) -> int:
     if not isinstance(amount, Decimal):
         amount = Decimal(str(amount))
     return int((amount.quantize(_DEF_QUANT, rounding=ROUND_HALF_UP) * 100).to_integral_value())
+
 
 def create_line_item_from_service(idx: int, service: dict) -> LineItem:
     raw_price = service.get("estimated_price") or 0
@@ -135,8 +147,10 @@ def create_line_item_from_service(idx: int, service: dict) -> LineItem:
         service_operation_id=service.get("service_operation_id"),
     )
 
+
 def build_line_items(services: Iterable[dict]) -> List[LineItem]:
     return [create_line_item_from_service(i, s) for i, s in enumerate(services)]
+
 
 def calculate_invoice_totals(line_items: Iterable[LineItem]) -> InvoiceTotals:
     subtotal = sum(li.line_subtotal_cents for li in line_items)
@@ -152,11 +166,14 @@ def calculate_invoice_totals(line_items: Iterable[LineItem]) -> InvoiceTotals:
         amount_due_cents=amount_due,
     )
 
+
 def create_initial_invoice_state(line_items: List[LineItem]) -> InvoiceState:
     totals = calculate_invoice_totals(line_items)
     return InvoiceState(status=INITIAL_INVOICE_STATUS, line_items=line_items, totals=totals)
 
+
 # ---------------------------- Payments ------------------------------------
+
 
 @dataclass(frozen=True)
 class PaymentResult:
@@ -196,7 +213,9 @@ def apply_payment_to_invoice(invoice_state: InvoiceState, amount_cents: int) -> 
         amount_paid_cents=new_paid,
         amount_due_cents=new_due,
     )
-    new_state = InvoiceState(status=new_status, line_items=invoice_state.line_items, totals=new_totals)
+    new_state = InvoiceState(
+        status=new_status, line_items=invoice_state.line_items, totals=new_totals
+    )
     payment_meta = {
         "amount_cents": amount_cents,
         "previous_amount_paid_cents": prev_paid,
@@ -206,6 +225,7 @@ def apply_payment_to_invoice(invoice_state: InvoiceState, amount_cents: int) -> 
         "new_status": new_status,
     }
     return PaymentResult(new_state=new_state, payment=payment_meta)
+
 
 __all__ = [
     "ServiceSnapshot",
@@ -227,6 +247,7 @@ __all__ = [
 ]
 
 # ---------------------------- Void ---------------------------------------
+
 
 def validate_void(invoice_state: InvoiceState) -> None:
     """Validate that an invoice can be voided.
@@ -252,4 +273,6 @@ def void_invoice(invoice_state: InvoiceState) -> InvoiceState:
     """
     validate_void(invoice_state)
     # Preserve totals exactly; only status changes.
-    return InvoiceState(status="VOID", line_items=invoice_state.line_items, totals=invoice_state.totals)
+    return InvoiceState(
+        status="VOID", line_items=invoice_state.line_items, totals=invoice_state.totals
+    )

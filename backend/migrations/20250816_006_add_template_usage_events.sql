@@ -1,5 +1,6 @@
 -- Template Usage Events table (logs each successful template send)
 -- Simplified per guidance: no slug sync trigger; historical rows retain original slug.
+-- Depends on message_templates table & message_channel enum (created earlier).
 
 BEGIN;
 

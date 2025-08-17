@@ -20,7 +20,8 @@ Verification:
 
 ```bash
 psql $DATABASE_URL -c "SELECT count(*) AS total, count(*) FILTER (WHERE is_active) AS active FROM service_operations;"
-curl -s http://localhost:3001/api/admin/service-operations | jq '.service_operations | length'
+# Phase 2: endpoint now returns a flat array. Use length directly. (Add ?legacy=1 for temporary wrapped shape.)
+curl -s http://localhost:3001/api/admin/service-operations | jq 'length'
 ```
 
 Expected: > 0 total and active rows. If zero, re-run the seed.
@@ -61,7 +62,7 @@ Our design system features:
 <p className="text-fs-2">Body text content</p>           {/* 16px */}
 <span className="text-fs-0 text-gray-500">Caption</span> {/* 12px */}
 
-// Spacing - Consistent 8px grid system  
+// Spacing - Consistent 8px grid system
 <div className="p-sp-3 space-y-sp-2">     {/* 24px padding, 16px vertical spacing */}
   <button className="px-sp-4 py-sp-2">    {/* 32px horizontal, 16px vertical padding */}
     Action Button
@@ -82,7 +83,7 @@ Our design system features:
 ### Development Benefits
 
 - ✅ **Consistent Visual Hierarchy** across all components
-- ✅ **Maintainable Codebase** with centralized design tokens  
+- ✅ **Maintainable Codebase** with centralized design tokens
 - ✅ **Developer Productivity** with clear guidelines and examples
 - ✅ **Automated Quality Control** via linting and testing
 - ✅ **Future-Proof** system for easy theme updates and scaling
@@ -174,7 +175,7 @@ npm test
 
 # Specific test suites
 npm run test:backend     # Backend unit tests
-npm run test:frontend    # Frontend unit tests  
+npm run test:frontend    # Frontend unit tests
 npm run test:e2e         # End-to-end tests
 npm run test:browsers    # Cross-browser tests
 npm run test:perf        # Performance smoke tests
@@ -189,7 +190,7 @@ All tests run automatically on pull requests and main branch pushes. Performance
 The CI pipeline enforces strict coverage thresholds to prevent regressions:
 
 - **Lines**: 80% minimum
-- **Branches**: 80% minimum  
+- **Branches**: 80% minimum
 - **Functions**: 80% minimum
 - **Statements**: 80% minimum
 

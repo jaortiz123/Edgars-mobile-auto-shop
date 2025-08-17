@@ -1,0 +1,51 @@
+internal_code,category,name,default_price_cents,default_hours,skill_level,keywords,is_active
+OIL_SYNTH,MAINTENANCE,Full Synthetic Oil Change,12000,0.5,1,"oil, synthetic, filter",true
+OIL_CONV,MAINTENANCE,Conventional Oil Change,10000,0.4,1,"oil, conventional, filter",true
+OIL_HIGH_MILE,MAINTENANCE,High‑Mileage Oil Change,13000,0.5,1,"oil, high‑mileage, seal",true
+TIRE_ROTATION,MAINTENANCE,Tire Rotation (FWD/RWD),3500,0.5,1,"tire, rotation",true
+TIRE_ROTATION_AWD,MAINTENANCE,Tire Rotation (AWD),5000,0.75,2,"tire, rotation, awd",true
+MULTI_POINT_INSPECTION,MAINTENANCE,Multi‑Point Inspection,0,0.25,1,"inspection, checkup",true
+AIR_FILTER_REPLACE,MAINTENANCE,Engine Air Filter Replacement,2500,0.2,1,"filter, engine",true
+CABIN_FILTER_REPLACE,MAINTENANCE,Cabin Air Filter Replacement,3000,0.3,1,"filter, cabin",true
+WIPER_BLADE_REPLACE,MAINTENANCE,Wiper Blade Replacement (Pair),1500,0.2,1,"wiper, visibility",true
+BATTERY_TEST_INSTALL,ELECTRICAL_BATTERY,Battery Test & Install,3500,0.3,1,"battery, test, install",true
+BRAKE_INSPECTION,BRAKES,Brake Inspection (Comprehensive),0,0.5,2,"brake, safety, inspection",true
+PADS_ROTORS_FRONT,BRAKES,Front Brake Pads & Rotors,26000,2.0,2,"brake, pads, rotors, front",true
+PADS_ROTORS_REAR,BRAKES,Rear Brake Pads & Rotors,28000,2.2,2,"brake, pads, rotors, rear",true
+BRAKE_FLUID_FLUSH,BRAKES,Brake Fluid Flush,13000,1.0,2,"brake, fluid, flush",true
+CALIPER_REPLACE_FRONT,BRAKES,Front Caliper Replacement (Single),14000,1.0,3,"caliper, hydraulics",true
+CHECK_ENGINE_DIAG_BASIC,ENGINE_DIAGNOSTICS,Check Engine Light Diagnostic (Basic),11000,1.0,2,"obd2, cel, codes",true
+CHECK_ENGINE_DIAG_ADVANCED,ENGINE_DIAGNOSTICS,Advanced Engine Diagnostics,15000,2.0,4,"scope, compression, advanced",true
+NO_START_DIAG,ENGINE_DIAGNOSTICS,No‑Start Diagnostic,16000,2.0,4,"no‑start, electrical, fuel",true
+ATF_DRAIN_FILL,TRANSMISSION_DRIVETRAIN,Automatic Transmission Drain & Fill,13500,1.0,2,"transmission, atf, service",true
+ATF_FLUSH,TRANSMISSION_DRIVETRAIN,Automatic Transmission Flush,14500,1.5,3,"transmission, flush",true
+CVT_SERVICE,TRANSMISSION_DRIVETRAIN,CVT Transmission Service,18000,2.0,4,"cvt, fluid, service",true
+MANUAL_TRANS_FLUID,TRANSMISSION_DRIVETRAIN,Manual Transmission Fluid Service,12000,0.75,2,"manual, gear oil",true
+FOUR_WHEEL_ALIGNMENT,TIRES_STEERING_SUSPENSION,Four‑Wheel Alignment,15000,1.25,3,"alignment, tire wear, pull",true
+STRUT_ASSEMBLY_FRONT_PAIR,TIRES_STEERING_SUSPENSION,Front Strut Assembly (Pair),14500,2.5,3,"struts, suspension",true
+CONTROL_ARM_REPLACE_FRONT,TIRES_STEERING_SUSPENSION,Front Control Arm Replacement,16000,2.0,3,"control arm, bushings",true
+SWAY_BAR_LINKS_PAIR,TIRES_STEERING_SUSPENSION,Sway Bar Link Replacement (Pair),11000,1.0,2,"sway bar, links",true
+AC_RECHARGE_R1234YF,HVAC,A/C Recharge (R‑1234yf),16000,1.0,3,"ac, recharge, r1234yf",true
+AC_EVAP_CORE_CLEAN,HVAC,Evaporator Core Clean & Deodorize,12000,1.5,2,"ac, evaporator, odor",true
+BATTERY_REPLACE_GRP35,ELECTRICAL_BATTERY,Battery Replacement (Group 35),4000,0.5,2,"battery, install",true
+ALTERNATOR_REPLACE,ELECTRICAL_BATTERY,Alternator Replacement,18000,2.0,3,"alternator, charging",true
+STARTER_REPLACE,ELECTRICAL_BATTERY,Starter Replacement,17000,1.5,3,"starter, cranking",true
+HEADLIGHT_RESTORE,ELECTRICAL_BATTERY,Headlight Lens Restoration (Pair),10000,1.0,1,"headlight, restore",true
+COOLANT_FLUSH,COOLING_SYSTEM,Cooling System Flush & Fill,13000,1.5,2,"coolant, flush, radiator",true
+RADIATOR_REPLACE,COOLING_SYSTEM,Radiator Replacement,14000,2.5,3,"radiator, leak, overheat",true
+WATER_PUMP_REPLACE_I4,COOLING_SYSTEM,Water Pump Replacement (I4),18000,3.0,3,"water pump, coolant",true
+ADAS_CAMERA_CALIB_STATIC,ADAS,Static Front Camera Calibration,19000,1.5,5,"adas, camera, calibration",true
+ADAS_RADAR_CALIB_STATIC,ADAS,Static ACC Radar Calibration,19000,1.0,5,"adas, radar, calibration",true
+ADAS_CAMERA_CALIB_DYNAMIC,ADAS,Dynamic Camera Calibration (LDW),15000,1.0,4,"adas, dynamic, ldw",true
+ECU_TUNE_STAGE1_VAG,INSPECTION_SAFETY,Stage 1 ECU Performance Tune (VW/Audi),25000,2.0,5,"ecu, tune, remap",true
+PRE_PURCHASE_INSPECTION,INSPECTION_SAFETY,Pre‑Purchase Inspection,15000,1.5,3,"ppi, inspection",true
+SMOG_PRECHECK,INSPECTION_SAFETY,Smog Pre‑Check (Non‑cert),6500,0.5,2,"smog, precheck",true
+TIMING_BELT_WP_V6_HONDA,ENGINE_DIAGNOSTICS,Timing Belt & Water Pump (Honda V6),80000,4.5,4,"timing belt, water pump, j‑series",true
+SPARK_PLUGS_I4,ENGINE_DIAGNOSTICS,Spark Plug Replacement (I4),16000,1.5,2,"spark plugs, tune‑up",true
+IGNITION_COILS_I4,ENGINE_DIAGNOSTICS,Ignition Coil Replacement (I4),14000,1.0,2,"ignition coils, misfire",true
+FUEL_SYSTEM_CLEAN,ENGINE_DIAGNOSTICS,Fuel System Cleaning,12000,1.0,2,"fuel, injector, clean",true
+INTAKE_CARBON_CLEAN_GDI,ENGINE_DIAGNOSTICS,Intake Valve Carbon Clean (GDI),22000,2.0,3,"walnut blast, intake, gdi",true
+REAR_DIFF_SERVICE,TRANSMISSION_DRIVETRAIN,Rear Differential Fluid Service,12000,0.75,2,"differential, gear oil",true
+TRANSFER_CASE_SERVICE,TRANSMISSION_DRIVETRAIN,Transfer Case Service,13000,1.0,2,"transfer case, fluid",true
+AXLE_CV_REPLACE_FRONT,TRANSMISSION_DRIVETRAIN,Front CV Axle Replacement (Single),22000,2.0,3,"cv axle, clicking",true
+PCV_VALVE_REPLACE,MAINTENANCE,PCV Valve Replacement,9000,0.6,2,"pcv, valve, emissions",true

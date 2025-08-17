@@ -37,7 +37,7 @@ INSERT INTO appointments (id, customer_id, vehicle_id, status, appointment_date,
 (4, 3, 4, 'IN_PROGRESS', '2024-02-10 00:00:00+00', '2024-02-10 08:00:00+00', '2024-02-10 10:00:00+00', 275.00, 0.00, 'Transmission service', '2024-02-01 08:00:00'),
 (5, 1, 2, 'IN_PROGRESS', '2024-02-12 00:00:00+00', '2024-02-12 13:00:00+00', '2024-02-12 15:00:00+00', 125.00, 0.00, 'Tire rotation and balance', '2024-02-03 13:00:00'),
 
--- READY appointments  
+-- READY appointments
 (6, 4, 5, 'READY', '2024-02-08 00:00:00+00', '2024-02-08 10:00:00+00', '2024-02-08 11:30:00+00', 95.00, 0.00, 'Battery replacement', '2024-01-28 10:00:00'),
 
 -- COMPLETED appointments
@@ -48,51 +48,38 @@ INSERT INTO appointments (id, customer_id, vehicle_id, status, appointment_date,
 -- NO_SHOW appointment
 (10, 5, 6, 'NO_SHOW', '2024-02-07 00:00:00+00', '2024-02-07 15:00:00+00', '2024-02-07 16:00:00+00', 120.00, 0.00, 'Customer did not show up', '2024-01-30 15:00:00');
 
--- Insert test appointment services (let PostgreSQL generate UUIDs)
 INSERT INTO appointment_services (appointment_id, name, notes, estimated_hours, estimated_price, category, created_at) VALUES
--- Services for appointment 1 (SCHEDULED)
 (1, 'Oil Change', 'Full synthetic oil change', 0.5, 75.00, 'Maintenance', '2024-02-01 09:00:00'),
 (1, 'Multi-point Inspection', 'Complete vehicle inspection', 0.75, 75.00, 'Inspection', '2024-02-01 09:01:00'),
 
--- Services for appointment 2 (SCHEDULED)  
 (2, 'Brake Pad Replacement', 'Front brake pads', 2.0, 250.00, 'Repair', '2024-02-02 10:00:00'),
 (2, 'Brake Fluid Flush', 'Replace brake fluid', 0.5, 100.00, 'Maintenance', '2024-02-02 10:01:00'),
 
--- Services for appointment 3 (SCHEDULED)
 (3, 'Engine Diagnostic', 'Check engine light diagnosis', 1.0, 150.00, 'Diagnostic', '2024-02-05 11:00:00'),
 (3, 'Software Update', 'ECU software update', 0.5, 50.00, 'Software', '2024-02-05 11:01:00'),
 
--- Services for appointment 4 (IN_PROGRESS)
 (4, 'Transmission Service', 'Fluid change and filter', 2.5, 275.00, 'Maintenance', '2024-02-01 08:00:00'),
 
--- Services for appointment 5 (IN_PROGRESS)
 (5, 'Tire Rotation', 'Rotate all four tires', 0.5, 50.00, 'Maintenance', '2024-02-03 13:00:00'),
 (5, 'Wheel Balancing', 'Balance all wheels', 0.75, 75.00, 'Maintenance', '2024-02-03 13:01:00'),
 
--- Services for appointment 6 (READY)
 (6, 'Battery Replacement', 'New 12V battery installation', 0.5, 95.00, 'Repair', '2024-01-28 10:00:00'),
 
--- Services for appointment 7 (COMPLETED)
 (7, 'Major Service', 'Complete major service package', 4.0, 350.00, 'Maintenance', '2024-01-25 09:00:00'),
 (7, 'Coolant Flush', 'Complete coolant system flush', 1.0, 100.00, 'Maintenance', '2024-01-25 09:01:00'),
 
--- Services for appointment 8 (COMPLETED)
 (8, 'Express Oil Change', 'Quick oil change service', 0.5, 75.00, 'Maintenance', '2024-01-20 14:00:00'),
 
--- Services for appointment 9 (COMPLETED)
 (9, 'Brake Inspection', 'Comprehensive brake inspection', 1.0, 180.00, 'Inspection', '2024-01-15 11:00:00'),
 
--- Services for appointment 10 (NO_SHOW)
 (10, 'Air Filter Replacement', 'Replace engine air filter', 0.25, 45.00, 'Maintenance', '2024-01-30 15:00:00'),
 (10, 'Cabin Filter Replacement', 'Replace cabin air filter', 0.25, 75.00, 'Maintenance', '2024-01-30 15:01:00');
 
--- Insert test payments for completed appointments (let PostgreSQL generate UUIDs)
 INSERT INTO payments (appointment_id, amount, method, note, created_at) VALUES
 (7, 450.00, 'card', 'Payment processed via credit card', '2024-02-05 11:30:00'),
 (8, 75.00, 'cash', 'Paid in cash upon completion', '2024-02-01 15:30:00'),
 (9, 180.00, 'card', 'Debit card payment', '2024-01-30 12:30:00');
 
--- Insert test messages (let PostgreSQL generate UUIDs)
 INSERT INTO messages (appointment_id, channel, direction, body, status, sent_at) VALUES
 (1, 'sms', 'out', 'Hi John, your oil change appointment is scheduled for tomorrow at 9 AM. Please arrive 10 minutes early.', 'delivered', '2024-02-14 17:00:00'),
 (2, 'email', 'out', 'Dear Jane, your brake service appointment is confirmed for February 16th at 2 PM.', 'delivered', '2024-02-15 10:00:00'),
@@ -100,9 +87,13 @@ INSERT INTO messages (appointment_id, channel, direction, body, status, sent_at)
 (6, 'sms', 'out', 'Hi Alice, your vehicle is ready for pickup. Battery replacement completed successfully.', 'delivered', '2024-02-08 11:45:00'),
 (7, 'sms', 'in', 'Thanks for the great service! Vehicle runs perfectly.', 'delivered', '2024-02-05 12:00:00');
 
--- (Removed DO $$ integrity verification block for cross-dialect compatibility)
 
--- Reset sequences to avoid conflicts in tests
 SELECT setval('customers_id_seq', (SELECT MAX(id) FROM customers) + 1000);
 SELECT setval('vehicles_id_seq', (SELECT MAX(id) FROM vehicles) + 1000);
 SELECT setval('appointments_id_seq', (SELECT MAX(id) FROM appointments) + 1000);
+INSERT INTO service_operations (id, internal_code, name, category, subcategory, display_order, default_hours, default_price, keywords, skill_level, flags, is_active)
+VALUES
+    ('oil-change-basic','oil-change-basic','Basic Oil Change','Maintenance',NULL,10,0.5,39.99,ARRAY['oil','lube'],1,ARRAY[]::TEXT[],TRUE),
+    ('brake-inspection-old','brake-inspection-old','Brake Inspection','Brakes',NULL,20,0.7,59.00,ARRAY['brake','inspection'],1,ARRAY[]::TEXT[],TRUE),
+    ('battery-replacement','battery-replacement','Battery Replacement','Electrical',NULL,30,0.3,129.00,ARRAY['battery'],1,ARRAY[]::TEXT[],TRUE)
+ON CONFLICT (id) DO NOTHING;

@@ -1,0 +1,21 @@
+name: Notify Slack (CI + Releases)
+
+on:
+  workflow_run:
+    workflows: ["Catalog Seed CI", "Release Seed (on tag)"]
+    types: [completed]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post to Slack
+        if: always()
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {
+              "text": ":traffic_light: *${{ github.event.workflow_run.name }}* on `${{ github.event.workflow_run.head_branch }}` by `${{ github.event.workflow_run.actor.login }}` — *${{ github.event.workflow_run.conclusion }}*\n<${{ github.event.workflow_run.html_url }}|Open run>"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

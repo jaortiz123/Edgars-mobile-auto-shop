@@ -17,10 +17,15 @@ export type { Technician } from '../types/models';
 export type { TemplateAnalyticsResponse } from '../types/analytics';
 
 export async function getServiceOperations(): Promise<ServiceOperation[]> {
-  const { data } = await http.get<{ service_operations: ServiceOperation[] }>(
+  // Phase 2: backend now returns a flat array by default; retain fallback to legacy wrapper during transition
+  const { data } = await http.get<ServiceOperation[] | { service_operations: ServiceOperation[] }>(
     '/admin/service-operations'
   );
-  return data.service_operations;
+  if (Array.isArray(data)) return data;
+  // Fallback (remove after legacy wrapper fully deprecated)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const maybe = (data as any)?.service_operations;
+  return Array.isArray(maybe) ? maybe : [];
 }
 
 export async function getTechnicians(): Promise<Technician[]> {
@@ -95,7 +100,7 @@ export interface Envelope<T> {
 export async function getBoard(params: { from?: string; to?: string; techId?: string }) {
   console.log('🔧 api.getBoard: Function entry - START');
   console.log('🔧 api.getBoard: Params:', params);
-  
+
   try {
     console.log('🔧 api.getBoard: Starting HTTP request...');
     const response = await http.get<{ columns: BoardColumn[]; cards: BoardCard[] }>('/admin/appointments/board', { params });
@@ -106,7 +111,7 @@ export async function getBoard(params: { from?: string; to?: string; techId?: st
       columnsLength: response.data?.columns?.length,
       cardsLength: response.data?.cards?.length
     });
-    
+
     const { data } = response;
     console.log('🔧 api.getBoard: Returning data successfully');
     return data;
@@ -301,16 +306,16 @@ export async function getAppointmentServices(appointmentId: string): Promise<App
 }
 
 export async function createAppointmentService(
-  appointmentId: string, 
+  appointmentId: string,
   service: Partial<AppointmentService>
 ): Promise<{ service: AppointmentService; appointment_total: number }> {
   console.log('🔧 API: createAppointmentService called with:', { appointmentId, service });
   console.log('🔧 API: baseURL configured as:', http.defaults.baseURL);
-  
+
   // Create the service - backend returns just {id: serviceId}
   console.log('🔧 API: About to make POST request to /appointments/' + appointmentId + '/services');
   console.log('🔧 API: Full URL will be:', http.defaults.baseURL + '/appointments/' + appointmentId + '/services');
-  
+
   try {
     const resp = await http.post<{ id: string }>(
       `/appointments/${appointmentId}/services`,
@@ -319,29 +324,29 @@ export async function createAppointmentService(
     console.log('🔧 API: POST request completed successfully, response:', resp.data);
     console.log('🔧 API: Response status:', resp.status);
     console.log('🔧 API: Response headers:', resp.headers);
-    
+
     // Refetch all services to get the complete service object and updated total
     console.log('🔧 API: About to refetch all services');
     const allServices = await getAppointmentServices(appointmentId);
     console.log('🔧 API: Refetched services:', allServices);
-    
+
     const newService = allServices.find(s => s.id === resp.data.id);
     console.log('🔧 API: Found new service:', newService);
-    
+
     if (!newService) {
       throw new Error('Created service not found');
     }
-    
+
     // Calculate total from services (since backend doesn't return it)
     const appointment_total = allServices.reduce((sum, s) => sum + (s.estimated_price || 0), 0);
     console.log('🔧 API: Calculated total:', appointment_total);
-    
+
     const result = {
       service: newService,
       appointment_total
     };
     console.log('🔧 API: Returning final result:', result);
-    
+
     return result;
   } catch (error) {
     console.error('🔧 API: Error in createAppointmentService:', error);

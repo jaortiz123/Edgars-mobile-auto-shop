@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "catalog-seed"
+version = "0.1.0"
+description = "Service catalog seed generator"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0",
+  "ruff>=0.5.0",
+  "black>=24.1.0",
+  "pre-commit>=3.5.0",
+]
+
+[project.scripts]
+catalog-seed = "catalog_seed.cli:main"
+
+[tool.ruff]
+# Core formatting preference shared with Black
+line-length = 100
+target-version = "py39"
+# Exclude vendored or legacy code we don't intend to clean right now to keep CI signal focused
+exclude = [
+  "backend/asn1crypto",
+  "backend/alembic",
+  "backend/tests",        # test suite currently exceeds style limits; keep signal focused on seed tool
+  "backend/__pycache__",
+  "backend/lambda_packages",
+  # Vendored / third-party libraries (avoid lint noise; treat as external deps)
+  "backend/dateutil",
+  "backend/pg8000",
+  "backend/libs",
+  "backend/scramp",
+  "backend/six.py",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# Ignore E203 (black compatibility) and E501 (handled by Black; long lines acceptable in excluded/test code)
+ignore = [
+  "E203", "E501",
+  # Temporary debt suppressions (modernize types / annotations & structured raise chaining):
+  "UP035",  # typing.Dict/List deprecations (large refactor pending)
+  "UP006",  # Use of typing List/Dict (same batch as above)
+  "UP007",  # Optional[...] | syntax modernization (defer batch update)
+  "B904",   # Explicit raise-from for exception chaining (will batch-fix later)
+  "B007",   # Loop control variable not used (harmless in current contexts)
+  "B018",   # Useless expression (guard pattern for lazy init)
+]
+
+[tool.black]
+line-length = 100
+
+[tool.setuptools]
+packages = ["catalog_seed"]

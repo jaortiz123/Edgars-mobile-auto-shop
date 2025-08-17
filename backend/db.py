@@ -1,7 +1,11 @@
 import os
-from typing import Optional, Mapping, Any
+from typing import Any, Mapping, Optional
+
 import psycopg2
 import psycopg2.extras
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
+
 
 class _CompatRow(dict):
     """Row object that allows both key and index access.
@@ -12,6 +16,7 @@ class _CompatRow(dict):
     insertion order (matching cursor.description column order) in addition to
     normal dict key lookup.
     """
+
     __slots__ = ("_order",)
 
     def __init__(self, data, order):
@@ -82,8 +87,6 @@ def get_compat_connection():
     conn = psycopg2.connect(dsn, connect_timeout=5, cursor_factory=CompatCursor)
     return conn
 
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
 
 # Build DATABASE_URL from env or POSTGRES_* fallback
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -103,7 +106,10 @@ engine = create_engine(
     future=True,
 )
 
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True, expire_on_commit=False)
+SessionLocal = sessionmaker(
+    bind=engine, autoflush=False, autocommit=False, future=True, expire_on_commit=False
+)
+
 
 def run_query(sql: str, params: Optional[Mapping[str, Any]] = None):
     """Execute a read-only query and return the Result object.
@@ -111,6 +117,7 @@ def run_query(sql: str, params: Optional[Mapping[str, Any]] = None):
     """
     with SessionLocal() as session:
         return session.execute(text(sql), params or {})
+
 
 def run_write(sql: str, params: Optional[Mapping[str, Any]] = None):
     """Execute a write (INSERT/UPDATE/DELETE), commit, and return the Result object."""
