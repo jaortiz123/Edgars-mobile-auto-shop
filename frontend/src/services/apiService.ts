@@ -175,3 +175,159 @@ export async function updateAppointment(id: string, updateData: Partial<AdminApp
   }
   return response.json();
 }
+
+// ---------------------------------------------------------------------------
+// Invoicing API
+// ---------------------------------------------------------------------------
+
+export interface InvoiceSummary {
+  id: string;
+  status: string;
+  total_cents: number;
+  amount_due_cents: number;
+  amount_paid_cents: number;
+  subtotal_cents: number;
+  tax_cents: number;
+  created_at?: string;
+  issued_at?: string;
+  updated_at?: string;
+  customer_id?: number;
+  customer_name?: string;
+}
+
+export interface InvoiceListResponse {
+  items: InvoiceSummary[];
+  page: number;
+  page_size: number;
+  total_items: number;
+  total_pages: number;
+}
+
+// Response shape for generating an invoice from an appointment
+export interface GenerateInvoiceResponse {
+  invoice: InvoiceSummary; // backend returns newly created invoice summary
+}
+
+/** Fetch paginated invoices. Defaults to page 1 size 20. */
+export async function fetchInvoices(params: { page?: number; pageSize?: number; status?: string; customerId?: string } = {}): Promise<InvoiceListResponse> {
+  const query = new URLSearchParams();
+  if (params.page) query.set('page', String(params.page));
+  if (params.pageSize) query.set('pageSize', String(params.pageSize));
+  if (params.status) query.set('status', params.status);
+  if (params.customerId) query.set('customerId', params.customerId);
+  const qs = query.toString();
+  const url = `${API_BASE_URL}/api/admin/invoices${qs ? `?${qs}` : ''}`;
+  const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
+  if (!response.ok) {
+    let errorMessage = 'Failed to fetch invoices.';
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
+    } catch {
+      errorMessage = await response.text();
+    }
+    throw new Error(errorMessage);
+  }
+  const data = await response.json();
+  return data.data as InvoiceListResponse;
+}
+
+// Single invoice detail response shape
+export interface InvoiceDetailResponse {
+  invoice: InvoiceSummary & { notes?: string; appointment_id?: number; currency?: string; voided_at?: string | null; paid_at?: string | null; issued_at?: string | null; };
+  line_items: Array<{
+    id: string; name: string; quantity: number; unit_price_cents: number; line_subtotal_cents: number; tax_cents: number; total_cents: number; description?: string;
+  }>;
+  payments: Array<{ id: string; amount_cents?: number; amount?: number; method?: string; created_at?: string; note?: string }>;
+}
+
+/** Fetch a single invoice with line items and payments */
+export async function fetchInvoice(id: string): Promise<InvoiceDetailResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/admin/invoices/${id}`, { headers: { 'Content-Type': 'application/json' } });
+  if (!response.ok) {
+    let errorMessage = 'Failed to fetch invoice.';
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
+    } catch {
+      errorMessage = await response.text();
+    }
+    throw new Error(errorMessage);
+  }
+  const data = await response.json();
+  return data.data as InvoiceDetailResponse;
+}
+
+// Record payment payload and response types
+export interface RecordPaymentPayload { amountCents: number; method: string; receivedDate?: string; note?: string }
+export interface RecordPaymentResponse { invoice: InvoiceSummary; payment: { id: string; amount_cents: number; method: string; created_at?: string; note?: string } }
+
+/** Record a payment for an invoice */
+export async function recordInvoicePayment(invoiceId: string, payload: RecordPaymentPayload): Promise<RecordPaymentResponse> {
+  const body = {
+    amountCents: payload.amountCents,
+    method: payload.method,
+    receivedAt: payload.receivedDate,
+    note: payload.note,
+  };
+  const response = await fetch(`${API_BASE_URL}/api/admin/invoices/${invoiceId}/payments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    let errorMessage = 'Failed to record payment.';
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
+    } catch {
+      errorMessage = await response.text();
+    }
+    throw new Error(errorMessage);
+  }
+  const data = await response.json();
+  return data.data as RecordPaymentResponse;
+}
+
+// Void invoice response type (reuse InvoiceSummary shape)
+export interface VoidInvoiceResponse { invoice: InvoiceSummary }
+
+/** Void an invoice */
+export async function voidInvoice(invoiceId: string): Promise<VoidInvoiceResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/admin/invoices/${invoiceId}/void`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) {
+    let errorMessage = 'Failed to void invoice.';
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
+    } catch {
+      errorMessage = await response.text();
+    }
+    throw new Error(errorMessage);
+  }
+  const data = await response.json();
+  return data.data as VoidInvoiceResponse;
+}
+
+/** Generate an invoice for a COMPLETED appointment (idempotent server-side) */
+export async function generateInvoice(appointmentId: string): Promise<GenerateInvoiceResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/admin/appointments/${appointmentId}/invoice`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) {
+    let errorMessage = 'Failed to generate invoice.';
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
+    } catch {
+      errorMessage = await response.text();
+    }
+    throw new Error(errorMessage);
+  }
+  const data = await response.json();
+  return data.data as GenerateInvoiceResponse;
+}

@@ -31,6 +31,8 @@ const AnalyticsDashboardPage = lazy(() => import('./pages/admin/AnalyticsDashboa
 import OwnerRoute from './components/OwnerRoute';
 const MessageThreadHarness = lazy(() => import('./pages/e2e/MessageThreadHarness'));
 const BoardHarness = lazy(() => import('./pages/e2e/BoardHarness'));
+const InvoicesPage = lazy(() => import('./pages/admin/InvoicesPage'));
+const InvoiceDetailPage = lazy(() => import('./pages/admin/InvoiceDetailPage'));
 
 // --- React Query Client ---
 export default function App() {
@@ -78,6 +80,8 @@ export default function App() {
               <Route path="customers" element={<CustomersPage />} />
               <Route path="customers/:id" element={<CustomerProfilePage />} />
               <Route path="templates" element={<MessageTemplatesPage />} />
+              <Route path="invoices" element={<InvoicesPage />} />
+              <Route path="invoices/:id" element={<InvoiceDetailPage />} />
               {/* Future admin routes can be added here, e.g., <Route path="users" element={<Users />} /> */}
             </Route>
 

@@ -71,6 +71,7 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
         __boardMoveAttempt?: (id: string, status: string) => Promise<{ ok: boolean; error?: string; status?: string }>;
         __boardMoveLastError?: string | null;
         __boardStatusMap?: () => Record<string,string>;
+  __openAppt?: (id: string) => void;
       }
       const w = window as BoardWindow;
       w.__boardMove = async (id: string, status: string) => {
@@ -95,8 +96,10 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
         for (const c of allCards) { if (c?.id) map[c.id] = String(c.status||''); }
         return map;
       };
+  // E2E helper to open drawer directly bypassing UI click complexity
+  w.__openAppt = (id: string) => { try { onOpen(id); } catch { /* ignore */ } };
     } catch { /* no-op */ }
-  }, [columns.length, allCards.length, allCards, loading, storeError, boardError, moveAppointment]);
+  }, [columns.length, allCards.length, allCards, loading, storeError, boardError, moveAppointment, onOpen]);
 
   // Listen for global board:refresh or appointments:created events to refetch board data
   useEffect(() => {
@@ -295,7 +298,7 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
                       <div className="nb-column-header"><h3 className="font-bold flex items-center justify-center gap-2 w-full text-center">{col.title} <span className="nb-chip" data-variant="primary">{cardList.length}</span></h3></div>
                       <div className="nb-column-scroll" data-testid="status-column-scroll">
                         {cardList.map((c: BoardCard) => (
-                          <div key={c.id} data-appointment-id={c.id} className="nb-card p-2 border mb-2 rounded bg-white shadow-sm">
+                          <div key={c.id} data-appointment-id={c.id} data-testid={`apt-card-${c.id}`} className="nb-card p-2 border mb-2 rounded bg-white shadow-sm">
                             <div className="text-xs font-semibold">{c.headline || c.servicesSummary || c.id}</div>
                             {__debugSimpleCards ? null : <div className="text-[10px] opacity-70">{c.customerName}</div>}
                           </div>
@@ -365,6 +368,14 @@ export default function StatusBoard(props: { onOpen: (id: string) => void; minim
       __debugDisableToast={DISABLE_TOAST}
     />
   );
+
+  // E2E helper: expose a deterministic open function when running in DEV
+  if (import.meta.env.DEV && typeof window !== 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).__openAppt = (id: string) => {
+      try { props.onOpen(id); } catch (e) { console.warn('window.__openAppt failed', e); }
+    };
+  }
 
   return <BoardFilterProvider debugShim={DISABLE_FILTER}>{Inner}</BoardFilterProvider>;
 }

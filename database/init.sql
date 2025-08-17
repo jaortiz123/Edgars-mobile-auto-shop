@@ -56,3 +56,58 @@ INSERT INTO services (name, description, duration_minutes, base_price) VALUES
 -- Performance indexes
 CREATE INDEX idx_customers_email ON customers(email);
 CREATE INDEX idx_appointments_schedule ON appointments(scheduled_date, scheduled_time);
+
+-- Invoices & related (added for E2E invoice lifecycle)
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'invoice_status_enum') THEN
+    CREATE TYPE invoice_status_enum AS ENUM ('DRAFT','SENT','PARTIALLY_PAID','PAID','VOID');
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS invoices (
+    id TEXT PRIMARY KEY,
+    appointment_id INTEGER UNIQUE REFERENCES appointments(id) ON DELETE SET NULL,
+    customer_id INTEGER,
+    vehicle_id INTEGER,
+    status invoice_status_enum NOT NULL DEFAULT 'DRAFT',
+    currency CHAR(3) NOT NULL DEFAULT 'USD',
+    subtotal_cents INTEGER NOT NULL DEFAULT 0,
+    tax_cents INTEGER NOT NULL DEFAULT 0,
+    total_cents INTEGER NOT NULL DEFAULT 0,
+    amount_paid_cents INTEGER NOT NULL DEFAULT 0,
+    amount_due_cents INTEGER NOT NULL DEFAULT 0,
+    issued_at TIMESTAMPTZ,
+    paid_at TIMESTAMPTZ,
+    voided_at TIMESTAMPTZ,
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CHECK (subtotal_cents >= 0),
+    CHECK (tax_cents >= 0),
+    CHECK (total_cents = subtotal_cents + tax_cents),
+    CHECK (amount_paid_cents >= 0),
+    CHECK (amount_paid_cents <= total_cents),
+    CHECK (amount_due_cents = total_cents - amount_paid_cents)
+);
+
+CREATE TABLE IF NOT EXISTS invoice_line_items (
+    id TEXT PRIMARY KEY,
+    invoice_id TEXT NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL DEFAULT 0,
+    service_operation_id TEXT,
+    name TEXT NOT NULL,
+    description TEXT,
+    quantity NUMERIC(10,2) NOT NULL DEFAULT 1,
+    unit_price_cents INTEGER NOT NULL DEFAULT 0,
+    line_subtotal_cents INTEGER NOT NULL DEFAULT 0,
+    tax_rate_basis_points INTEGER NOT NULL DEFAULT 0,
+    tax_cents INTEGER NOT NULL DEFAULT 0,
+    total_cents INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CHECK (quantity > 0),
+    CHECK (unit_price_cents >= 0),
+    CHECK (line_subtotal_cents = unit_price_cents * quantity),
+    CHECK (tax_cents >= 0),
+    CHECK (total_cents = line_subtotal_cents + tax_cents)
+);
+CREATE INDEX IF NOT EXISTS idx_invoice_line_items_invoice ON invoice_line_items(invoice_id, position);

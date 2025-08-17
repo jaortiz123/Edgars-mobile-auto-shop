@@ -8,6 +8,16 @@ import App from './App';
 import { BookingDrawerProvider } from './contexts/BookingDrawerContext';
 import './index.css';
 
+// Start MSW in development if enabled via env flag
+declare global { interface Window { ENABLE_MSW?: boolean } }
+if (import.meta.env.DEV && window.ENABLE_MSW !== false) {
+  // Dynamic import to avoid bundling for production
+  import('./mocks/browser').then(({ worker }) => {
+    worker.start({ onUnhandledRequest: 'bypass' });
+    console.log('[MSW] Service Worker started (dev)');
+  }).catch(err => console.warn('MSW startup failed', err));
+}
+
 const queryClient = new QueryClient();
 
 createRoot(document.getElementById('root')!).render(

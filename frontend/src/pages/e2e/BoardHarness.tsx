@@ -21,9 +21,10 @@ const SlimStatusBoard: React.FC = () => {
             <div className="nb-column-header"><h3 className="font-bold text-center">{col.title} <span className="text-xs">({colCards.length})</span></h3></div>
             <div className="nb-column-scroll">
               {colCards.map(c => (
-                <div key={c.id} data-appointment-id={c.id} className="nb-card p-2 border mb-2 rounded bg-white shadow-sm">
+                <div key={c.id} data-appointment-id={c.id} data-testid={`apt-card-${c.id}`} className="nb-card p-2 border mb-2 rounded bg-white shadow-sm">
                   <div className="text-xs font-semibold">{c.headline || c.servicesSummary || c.id}</div>
                   <div className="text-[10px] opacity-70">{c.customerName}</div>
+                  <div className="text-[10px] font-mono mt-1" data-status-label>{c.status}</div>
                 </div>
               ))}
               {colCards.length === 0 && <div className="text-[10px] opacity-50">None</div>}
@@ -53,14 +54,31 @@ class HarnessErrorBoundary extends React.Component<{children: React.ReactNode}, 
 
 const FullBoardLazy: React.FC = () => {
   const [Comp, setComp] = React.useState<React.ComponentType | null>(null);
+  const [drawerId, setDrawerId] = React.useState<string | null>(null);
   React.useEffect(() => {
     let mounted = true;
-    import('../../components/admin/StatusBoard').then(m => { if (mounted) setComp(() => (m.default as unknown as React.ComponentType<any>)); });
+  import('../../components/admin/StatusBoard').then(m => {
+      if (mounted) setComp(() => (m.default as unknown as React.ComponentType<unknown>));
+    });
     return () => { mounted = false; };
   }, []);
   if (!Comp) return <div data-full-loading className="text-xs opacity-60">Loading full board…</div>;
-  const C: any = Comp;
-  return <C onOpen={() => { /* noop */ }} minimalHero />;
+  // Dynamically imported StatusBoard component (expects onOpen(id: string))
+  const C = Comp as React.ComponentType<{ onOpen?: (id: string) => void; minimalHero?: boolean }>;
+  // Lazy load AppointmentDrawer component
+  const AppointmentDrawer = React.lazy(() => import('../../components/admin/AppointmentDrawer'));
+  return (
+    <React.Suspense fallback={<div data-ad-loading className="text-xs opacity-50">Loading drawer…</div>}>
+      <C onOpen={(id: string) => setDrawerId(id)} minimalHero />
+      <AppointmentDrawer
+        open={!!drawerId}
+        id={drawerId || ''}
+        onClose={() => setDrawerId(null)}
+        // Provide a no-op for optional callbacks to satisfy prop types
+        onRescheduled={() => {}}
+      />
+    </React.Suspense>
+  );
 };
 
 /**
