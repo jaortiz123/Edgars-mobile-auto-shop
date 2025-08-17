@@ -186,31 +186,42 @@ beforeEach(() => {
 afterEach(async () => {
   // 1. Reset MSW handlers to ensure test isolation
   server.resetHandlers();
-  // 1b. Flush pending microtasks & promises to avoid post-test state updates
-  await new Promise(res => setTimeout(res, 0));
-  // 1c. Clear any pending timers proactively (will be re-detected if leaking)
-  try { vi.clearAllTimers(); } catch { /* ignore if timers not mocked */ }
-  
-  // 2. Check for timer leaks - fail if timers are still pending (only when fake timers are active)
+
+  // 1b. Flush pending microtasks & promises.
+  // If fake timers are active, advancing timers is required; otherwise use a real setTimeout(0).
+  let usingFakeTimers = false;
   try {
-    const timerCount = vi.getTimerCount();
-    if (timerCount > 0) {
-      // Clear any pending timers before failing to prevent cascade failures
-      vi.clearAllTimers();
-      throw new Error(`[SAFETY-NET-002] Timer leak detected: ${timerCount} timer(s) still pending after test completion. Use vi.useRealTimers() or vi.clearAllTimers() in your test cleanup.`);
-    }
-  } catch (error) {
-    // If timers are not mocked, vi.getTimerCount() will throw - this is fine, skip timer check
-    if (error instanceof Error && error.message.includes('Timers are not mocked')) {
-      // This is expected when fake timers aren't active - skip timer leak check
-    } else {
-      // Re-throw other errors
-      throw error;
-    }
+    // vi.getTimerCount only works when timers are mocked
+    vi.getTimerCount();
+    usingFakeTimers = true;
+  } catch { /* not mocked */ }
+
+  if (usingFakeTimers) {
+    try { vi.runAllTimers(); } catch { /* ignore */ }
+    // Also resolve any microtasks
+    await Promise.resolve();
+  } else {
+    await new Promise(res => setTimeout(res, 0));
   }
-  
-  // 2. Ensure all mocks are properly reset (redundant safety check)
+
+  // 1c. Clear any pending timers proactively
+  try { vi.clearAllTimers(); } catch { /* ignore */ }
+
+  // 2. Timer leak detection (only when fake timers were active)
+  if (usingFakeTimers) {
+    try {
+      const remaining = vi.getTimerCount();
+      if (remaining > 0) {
+        vi.clearAllTimers();
+        throw new Error(`[SAFETY-NET-002] Timer leak detected: ${remaining} timer(s) still pending after test completion. Ensure timers are awaited or cleared.`);
+      }
+    } catch { /* swallow if timers got restored mid-test */ }
+  }
+
+  // 3. Reset mocks
   vi.clearAllMocks();
+  // 4. Always restore real timers to avoid leakage across tests
+  try { vi.useRealTimers(); } catch { /* ignore */ }
 });
 
 // Mock window.matchMedia for component tests

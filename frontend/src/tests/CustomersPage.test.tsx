@@ -1,8 +1,8 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Mock } from 'vitest';
-import { render, screen, within, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, within, waitFor } from '@testing-library/react';
+import { setupUser } from '@/tests/testUtils/userEventHelper';
 import CustomersPage from '@/pages/admin/CustomersPage';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import * as api from '@/lib/api';
@@ -26,17 +26,22 @@ describe('CustomersPage (Phase 1)', () => {
       }
     ]);
   });
-  const user = userEvent.setup();
+  const user = setupUser();
 
   // Per-test cleanup removed; global afterEach handles timers & mocks.
 
   it('Initial State: shows prompt and recent customers section', async () => {
+  // Use real timers for initial mount sequence to allow any internal setTimeout to flush naturally
+  vi.useRealTimers();
   renderWithRouter(<CustomersPage />);
-    expect(screen.getByTestId('customers-initial')).toBeInTheDocument();
-    // Await async recent customers load
-    const recentSection = await screen.findByTestId('recent-customers-section');
-    expect(recentSection).toBeInTheDocument();
-    expect(await screen.findByTestId('customer-card-rc1')).toBeInTheDocument();
+  expect(screen.getByTestId('customers-initial')).toBeInTheDocument();
+  // Await async recent customers load and settle
+  const recentSection = await screen.findByTestId('recent-customers-section');
+  expect(recentSection).toBeInTheDocument();
+  await screen.findByTestId('customer-card-rc1');
+  await waitFor(() => expect(screen.queryByTestId('customers-loading')).toBeNull());
+  // Also confirm generic progress indicator role (if present) is gone
+  expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
   });
 
   it('Loading State: shows loading indicator during fetch', async () => {
@@ -46,15 +51,13 @@ describe('CustomersPage (Phase 1)', () => {
     global.fetch.mockReturnValue(new Promise(res => { resolveFetch = res; }));
   renderWithRouter(<CustomersPage />);
   const input = screen.getByTestId('customers-search') as HTMLInputElement;
-  await act(async () => { await user.type(input, 'alice'); vi.advanceTimersByTime(400); });
+  await user.type(input, 'alice');
     // Await loading indicator (ensures debounce elapsed and fetch started)
-    await screen.findByTestId('customers-loading');
-    // Loading indicator should appear before we resolve
-    expect(screen.getByTestId('customers-loading')).toBeInTheDocument();
+  await screen.findByTestId('customers-loading');
+  expect(screen.getByTestId('customers-loading')).toBeInTheDocument();
     // Resolve fetch with empty result shape
-    resolveFetch!({ json: async () => ({ data: { items: [] } }) });
-  // Flush microtasks
-  await Promise.resolve();
+  resolveFetch!({ json: async () => ({ data: { items: [] } }) });
+  await waitFor(() => expect(screen.queryByTestId('customers-loading')).toBeNull());
   });
 
   it('Recent Customers: hides section once user searches', async () => {
@@ -63,16 +66,20 @@ describe('CustomersPage (Phase 1)', () => {
   renderWithRouter(<CustomersPage />);
     await screen.findByTestId('recent-customers-section');
   const input = screen.getByTestId('customers-search') as HTMLInputElement;
-  await act(async () => { await user.type(input, 'abc'); });
-  // This search returns zero results; expect empty state (grid not rendered)
-  expect(await screen.findByTestId('customers-empty')).toBeInTheDocument();
-    expect(screen.queryByTestId('recent-customers-section')).not.toBeInTheDocument();
+  await user.type(input, 'abc');
+  const empty = await screen.findByTestId('customers-empty');
+  expect(empty).toBeInTheDocument();
+  expect(screen.queryByTestId('recent-customers-section')).not.toBeInTheDocument();
   });
 
   it('Recent Customers: empty state shows when API returns none', async () => {
     (api.fetchRecentCustomers as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce([]);
+  // Use real timers to avoid act warnings tied to delayed state updates in empty recent customers path
+  vi.useRealTimers();
   renderWithRouter(<CustomersPage />);
-    expect(await screen.findByTestId('recent-customers-empty')).toBeInTheDocument();
+  expect(await screen.findByTestId('recent-customers-empty')).toBeInTheDocument();
+  await waitFor(() => expect(screen.queryByTestId('customers-loading')).toBeNull());
+  expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
   });
 
   it('Results State: renders customer cards with correct data', async () => {
@@ -85,7 +92,7 @@ describe('CustomersPage (Phase 1)', () => {
     global.fetch.mockResolvedValue({ json: async () => ({ data: { items } }) });
   renderWithRouter(<CustomersPage />);
   const input = screen.getByTestId('customers-search') as HTMLInputElement;
-  await act(async () => { await user.type(input, 'ab'); vi.advanceTimersByTime(400); });
+  await user.type(input, 'ab');
     const grid = await screen.findByTestId('customers-results-grid');
     const cards = within(grid).getAllByTestId(/customer-card-/);
     expect(cards.length).toBe(2);
@@ -98,7 +105,7 @@ describe('CustomersPage (Phase 1)', () => {
     global.fetch.mockResolvedValue({ json: async () => ({ data: { items: [] } }) });
   renderWithRouter(<CustomersPage />);
   const input = screen.getByTestId('customers-search') as HTMLInputElement;
-  await act(async () => { await user.type(input, 'zzz'); vi.advanceTimersByTime(400); });
+  await user.type(input, 'zzz');
     expect(await screen.findByTestId('customers-empty')).toBeInTheDocument();
   });
 
@@ -107,7 +114,7 @@ describe('CustomersPage (Phase 1)', () => {
     global.fetch.mockRejectedValue(new Error('Network fail'));
   renderWithRouter(<CustomersPage />);
   const input = screen.getByTestId('customers-search') as HTMLInputElement;
-  await act(async () => { await user.type(input, 'err'); vi.advanceTimersByTime(400); });
+  await user.type(input, 'err');
     expect(await screen.findByTestId('customers-error')).toHaveTextContent(/Network fail|Search failed/);
   });
 
@@ -118,9 +125,9 @@ describe('CustomersPage (Phase 1)', () => {
     ];
     // @ts-expect-error test shim
     global.fetch.mockResolvedValue({ json: async () => ({ data: { items } }) });
-        renderWithRouter(<CustomersPage />);
+  renderWithRouter(<CustomersPage />);
   const input = screen.getByTestId('customers-search') as HTMLInputElement;
-  await act(async () => { await user.type(input, 'alice'); vi.advanceTimersByTime(400); });
+  await user.type(input, 'alice');
     await screen.findByTestId('customers-results-grid');
     const grid = await screen.findByTestId('customers-results-grid');
     const cards = within(grid).getAllByTestId(/customer-card-/);
@@ -148,7 +155,7 @@ describe('CustomersPage (Phase 1)', () => {
       </MemoryRouter>
     );
     const input = screen.getByTestId('customers-search') as HTMLInputElement;
-  await act(async () => { await user.type(input, 'nav'); vi.advanceTimersByTime(400); });
+  await user.type(input, 'nav');
   await screen.findByTestId('customer-card-c9');
     const card = await screen.findByTestId('customer-card-c9');
     const viewBtn = within(card).getByTestId('customer-view-history');
@@ -163,9 +170,9 @@ describe('CustomersPage (Phase 1)', () => {
     ];
     // @ts-expect-error test shim
     global.fetch.mockResolvedValue({ json: async () => ({ data: { items } }) });
-        renderWithRouter(<CustomersPage />);
+  renderWithRouter(<CustomersPage />);
     const input = screen.getByTestId('customers-search') as HTMLInputElement;
-  await act(async () => { await user.type(input, 'vip'); vi.advanceTimersByTime(400); });
+    await user.type(input, 'vip');
   await screen.findByTestId('customers-results-grid');
     // Ensure baseline call happened
   const fetchMock = global.fetch as unknown as Mock;
@@ -182,9 +189,9 @@ describe('CustomersPage (Phase 1)', () => {
     // First search baseline
     // @ts-expect-error test shim
     global.fetch.mockResolvedValue({ json: async () => ({ data: { items: [] } }) });
-        renderWithRouter(<CustomersPage />);
+  renderWithRouter(<CustomersPage />);
     const input = screen.getByTestId('customers-search') as HTMLInputElement;
-  await act(async () => { await user.type(input, 'plate'); vi.advanceTimersByTime(400); });
+    await user.type(input, 'plate');
     // Empty result possible; wait on either grid or empty; prefer empty state assertion
     const empty = await screen.findByTestId('customers-empty');
     expect(empty).toBeInTheDocument();

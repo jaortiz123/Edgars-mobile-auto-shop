@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { setupUserEvent } from '@/tests/testUtils/userEventHelper';
 import { ServiceCatalogModal } from '@/components/appointments/ServiceCatalogModal';
 
 // Helper to mock fetch
@@ -15,16 +15,19 @@ const SERVICES = [
 ];
 
 describe('ServiceCatalogModal', () => {
+  let user: ReturnType<typeof setupUserEvent>;
   beforeEach(() => {
-    // Use real timers to avoid debounce + MSW + safety-net timer leak conflicts
-    vi.useRealTimers();
+    // Use fake timers so userEvent's advanceTimers hook can drive debounce deterministically.
+    vi.useFakeTimers();
+    user = setupUserEvent();
   });
 
   async function typeSearch(val: string) {
     const input = screen.getByPlaceholderText(/search services/i) as HTMLInputElement;
-    await userEvent.clear(input);
-    await userEvent.type(input, val);
-    // Wait for debounce (300ms) + fetch microtask; using findBy ensures proper act wrapping
+    await user.clear(input);
+    await user.type(input, val);
+    // Manually advance just beyond debounce threshold (300ms)
+    vi.advanceTimersByTime(350);
   }
 
   it('searches and renders results', async () => {
@@ -40,9 +43,9 @@ describe('ServiceCatalogModal', () => {
   render(<ServiceCatalogModal open initialSelected={[]} onConfirm={() => {}} onClose={() => {}} />);
   await typeSearch('brake');
   expect(await screen.findByText('Brake Inspection')).toBeInTheDocument();
-  await userEvent.click(screen.getByText('Brake Inspection'));
+  await user.click(screen.getByText('Brake Inspection'));
     expect(screen.getByText(/1 selected/i)).toBeInTheDocument();
-  await userEvent.click(screen.getByText('Brake Inspection'));
+  await user.click(screen.getByText('Brake Inspection'));
     expect(screen.queryByText(/1 selected/i)).not.toBeInTheDocument();
   });
 
@@ -52,8 +55,8 @@ describe('ServiceCatalogModal', () => {
   render(<ServiceCatalogModal open initialSelected={[]} onConfirm={onConfirm} onClose={() => {}} />);
   await typeSearch('oil');
   expect(await screen.findByText('Oil Change')).toBeInTheDocument();
-  await userEvent.click(screen.getByText('Oil Change'));
-  await userEvent.click(screen.getByRole('button', { name: /add 1 service/i }));
+  await user.click(screen.getByText('Oil Change'));
+  await user.click(screen.getByRole('button', { name: /add 1 service/i }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
     const arg = onConfirm.mock.calls[0][0];
     expect(arg).toHaveLength(1);
@@ -68,8 +71,8 @@ describe('ServiceCatalogModal', () => {
     });
   render(<ServiceCatalogModal open initialSelected={[]} onConfirm={() => {}} onClose={() => {}} />);
   await typeSearch('oil');
-  expect(await screen.findByText(/error loading services/i)).toBeInTheDocument();
-  await userEvent.click(screen.getByText(/retry/i));
+  expect(await screen.findByText(/Error:\s*HTTP 500/i)).toBeInTheDocument();
+  await user.click(screen.getByText(/retry/i));
   expect(await screen.findByText('Oil Change')).toBeInTheDocument();
   });
 });

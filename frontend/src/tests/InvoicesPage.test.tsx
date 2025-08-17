@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within, waitFor } from '@testing-library/react';
 import InvoicesPage from '@/pages/admin/InvoicesPage';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
@@ -14,7 +14,6 @@ function renderInvoices() {
   );
 }
 
-const flush = () => new Promise(res => setTimeout(res, 0));
 
 describe('InvoicesPage', () => {
   const originalFetch = global.fetch;
@@ -34,8 +33,9 @@ describe('InvoicesPage', () => {
     global.fetch.mockReturnValue(new Promise(res => { resolveFn = res; }));
     renderInvoices();
     expect(screen.getByText(/Loading invoices/i)).toBeInTheDocument();
-    resolveFn!({ ok: true, json: async () => ({ data: { items: [], page:1, page_size:20, total_items:0, total_pages:0 } }) });
-    await flush();
+  resolveFn!({ ok: true, json: async () => ({ data: { items: [], page:1, page_size:20, total_items:0, total_pages:0 } }) });
+  // Wait for loading state to clear to avoid act() warning from late state updates
+  await waitFor(() => expect(screen.queryByText(/Loading invoices/i)).not.toBeInTheDocument());
   });
 
   it('Success State: renders rows for returned invoices', async () => {
@@ -46,19 +46,29 @@ describe('InvoicesPage', () => {
     // @ts-expect-error test mock
     global.fetch.mockResolvedValue({ ok: true, json: async () => ({ data: { items: invoices, page:1, page_size:20, total_items:2, total_pages:1 } }) });
     renderInvoices();
-    expect(await screen.findByText('inv1')).toBeInTheDocument();
-    expect(screen.getByText('inv2')).toBeInTheDocument();
-    expect(screen.getByText('Alice')).toBeInTheDocument();
-    expect(screen.getByText('Bob')).toBeInTheDocument();
+  // Await at least one invoice row to ensure initial async fetch resolved
+  expect(await screen.findByText('inv1')).toBeInTheDocument();
+  expect(screen.getByText('inv2')).toBeInTheDocument();
+  expect(screen.getByText('Alice')).toBeInTheDocument();
+  expect(screen.getByText('Bob')).toBeInTheDocument();
     expect(screen.getByText('$100.00')).toBeInTheDocument();
-    expect(screen.getByText('$25.00')).toBeInTheDocument();
+    // More specific: iterate table rows and find one containing inv2 then assert amount
+    const rows = screen.getAllByRole('row');
+    const draftRow = rows.find(r => within(r).queryByText('inv2'));
+    expect(draftRow, 'expected to find a table row for invoice inv2').toBeTruthy();
+    if (draftRow) {
+      const matches = within(draftRow).getAllByText('$25.00');
+      // Expect exactly 2 occurrences in the draft invoice row: total and amount due
+      expect(matches.length).toBe(2);
+    }
   });
 
   it('Empty State: shows message when no invoices', async () => {
     // @ts-expect-error test mock
     global.fetch.mockResolvedValue({ ok: true, json: async () => ({ data: { items: [], page:1, page_size:20, total_items:0, total_pages:0 } }) });
     renderInvoices();
-    expect(await screen.findByText(/No invoices found/i)).toBeInTheDocument();
+  expect(await screen.findByText(/No invoices found/i)).toBeInTheDocument();
+  await waitFor(() => expect(screen.queryByText(/Loading invoices/i)).not.toBeInTheDocument());
   });
 
   it('Error State: displays error when fetch fails', async () => {
@@ -67,5 +77,6 @@ describe('InvoicesPage', () => {
     renderInvoices();
   const alert = await screen.findByRole('alert');
   expect(alert).toHaveTextContent(/Network down|Failed to load invoices/);
+  await waitFor(() => expect(screen.queryByText(/Loading invoices/i)).not.toBeInTheDocument());
   });
 });

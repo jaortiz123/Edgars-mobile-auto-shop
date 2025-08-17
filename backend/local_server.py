@@ -385,29 +385,51 @@ _DB_CONN_TLS = threading.local()
 
 def _raw_db_connect():
     """Actual psycopg2 connect wrapped so test monkeypatch logic can short‑circuit earlier."""
-    database_url = os.getenv("DATABASE_URL")
-    if database_url:
-        result = urlparse(database_url)
-        cfg = {
-            'user': result.username,
-            'password': result.password,
-            'host': result.hostname,
-            'port': result.port,
-            'dbname': result.path[1:]
-        }
-    else:
-        cfg = dict(
-            host=os.getenv("POSTGRES_HOST", "db"),
-            port=int(os.getenv("POSTGRES_PORT", 5432)),
-            dbname=os.getenv("POSTGRES_DB", "autoshop"),
-            user=os.getenv("POSTGRES_USER", "user"),
-            password=os.getenv("POSTGRES_PASSWORD", "password"),
-        )
-    cfg.update(
-        connect_timeout=int(os.getenv("POSTGRES_CONNECT_TIMEOUT", "2")),
-        cursor_factory=RealDictCursor,
-    )
-    return psycopg2.connect(**cfg)
+    # NOTE: Repeated testcontainer launches in the same Python process were
+    # mutating POSTGRES_PORT / related env vars mid‑suite causing later calls
+    # to point at a stopped container port and flake with ECONNREFUSED.
+    # To stabilize, we freeze the first successful connection parameters in a
+    # module‑level cache unless explicitly disabled.
+    global _DB_CONN_CONFIG_CACHE  # type: ignore
+    try:
+        cache_disabled = os.getenv("DISABLE_DB_CONFIG_CACHE", "false").lower() == "true"
+        if not cache_disabled and '_DB_CONN_CONFIG_CACHE' in globals() and _DB_CONN_CONFIG_CACHE:  # type: ignore
+            cfg = dict(_DB_CONN_CONFIG_CACHE)  # type: ignore
+        else:
+            database_url = os.getenv("DATABASE_URL")
+            if database_url:
+                result = urlparse(database_url)
+                cfg = {
+                    'user': result.username,
+                    'password': result.password,
+                    'host': result.hostname,
+                    'port': result.port,
+                    'dbname': result.path[1:]
+                }
+            else:
+                cfg = dict(
+                    host=os.getenv("POSTGRES_HOST", "db"),
+                    port=int(os.getenv("POSTGRES_PORT", 5432)),
+                    dbname=os.getenv("POSTGRES_DB", "autoshop"),
+                    user=os.getenv("POSTGRES_USER", "user"),
+                    password=os.getenv("POSTGRES_PASSWORD", "password"),
+                )
+            cfg.update(
+                connect_timeout=int(os.getenv("POSTGRES_CONNECT_TIMEOUT", "2")),
+                cursor_factory=RealDictCursor,
+            )
+            # Store immutable reference for later stability
+            if not cache_disabled:
+                _DB_CONN_CONFIG_CACHE = dict(cfg)  # type: ignore
+        return psycopg2.connect(**cfg)
+    except Exception:
+        # On any failure, clear cache so recovery attempts can rebuild with new env
+        if '_DB_CONN_CONFIG_CACHE' in globals():
+            try:
+                _DB_CONN_CONFIG_CACHE = None  # type: ignore
+            except Exception:
+                pass
+        raise
 
 def db_conn():
     """Monkeypatch‑aware DB connection helper.
@@ -1072,17 +1094,38 @@ def appointment_message_detail(appt_id: str, message_id: str):
 def list_service_operations():
     maybe_auth()
     conn = db_conn()
+    q = request.args.get("q", "").strip()
+    limit_raw = request.args.get("limit", "")
+    try:
+        limit = int(limit_raw) if limit_raw else None
+    except ValueError:
+        limit = None
+    # Default limits: 50 when searching, 500 when listing all
+    if not limit:
+        limit = 50 if len(q) >= 2 else 500
+    limit = max(1, min(limit, 500))
+
+    sql = [
+        "SELECT id, name, category, default_hours, default_price, keywords, skill_level, flags",
+        "FROM service_operations",
+        "WHERE is_active IS TRUE"
+    ]
+    params = []
+    if len(q) >= 2:
+        # Case-insensitive search across name, category, and keywords (ANY match)
+        # Use ILIKE for name/category, and an EXISTS on unnest(keywords) for keyword match
+        sql.append("AND (name ILIKE %s OR category ILIKE %s OR EXISTS (SELECT 1 FROM unnest(keywords) kw WHERE kw ILIKE %s))")
+        like = f"%{q}%"
+        params.extend([like, like, like])
+    sql.append("ORDER BY category NULLS LAST, name ASC")
+    sql.append("LIMIT %s")
+    params.append(limit)
+
+    final_sql = "\n".join(sql)
+
     with conn:
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, name, category, default_hours, default_price, keywords, skill_level, flags
-                FROM service_operations
-                WHERE is_active IS TRUE
-                ORDER BY category NULLS LAST, name ASC
-                LIMIT 500
-                """
-            )
+            cur.execute(final_sql, params)
             rows = cur.fetchall()
     # Raw shape (to avoid wrapping overhead for now)
     return jsonify({

@@ -119,7 +119,7 @@ export default function CardCustomizationModal({ open, onClose }: Props) {
               <section>
                 <h3 className="text-sm font-extrabold mb-2">Visible Elements</h3>
                 <DndProvider backend={HTML5Backend}>
-                  <ul className="space-y-1" aria-label="Card element order" aria-describedby="card-order-help">
+                  <ul className="space-y-1" aria-label="Card element order" aria-describedby="card-order-help" data-testid="card-pref-order-list">
                     {order.map((k, idx) => (
                       <Row key={k} index={idx} id={k} label={FIELD_LABELS[k]} checked={enabled[k]} onToggle={() => setEnabled(k, !enabled[k])} move={moveField} total={order.length} />
                     ))}

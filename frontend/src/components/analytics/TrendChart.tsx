@@ -61,9 +61,10 @@ const TrendChart: React.FC<TrendChartProps> = ({ data, height = 260, className }
           <Tooltip
             formatter={(value) => tooltipFormatter(value as number | string)}
             labelFormatter={labelFormatter}
-            contentStyle={{ fontSize: '12px' }}
+            // Use typography scale variable (fs-0) rather than hard-coded px
+            contentStyle={{ fontSize: 'var(--fs-0, 0.75rem)' }}
           />
-          <Legend wrapperStyle={{ fontSize: '12px' }} />
+          <Legend wrapperStyle={{ fontSize: 'var(--fs-0, 0.75rem)' }} />
           <Line
             type="monotone"
             dataKey="count"

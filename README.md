@@ -6,6 +6,28 @@
 
 This repository contains the serverless backend for "Edgar's Mobile Auto Repair Hub," a conversational AI system for generating service quotes. The project is built entirely on AWS and managed via Terraform, demonstrating modern cloud architecture and DevOps practices.
 
+## ⚠️ Critical Setup Step (Local Dev & Fresh Environments)
+
+After the database is created and raw SQL/Alembic migrations have run, you MUST seed the service catalog or appointment service selection will be EMPTY (P0 outage condition for scheduling).
+
+Seed now:
+
+```bash
+psql $DATABASE_URL -f backend/seeds/seed_s1.sql
+```
+
+Verification:
+
+```bash
+psql $DATABASE_URL -c "SELECT count(*) AS total, count(*) FILTER (WHERE is_active) AS active FROM service_operations;"
+curl -s http://localhost:3001/api/admin/service-operations | jq '.service_operations | length'
+```
+
+Expected: > 0 total and active rows. If zero, re-run the seed.
+
+The docker initialization now emits a WARNING if the `service_operations` table exists but is empty. Treat that as a blocking issue before using the app.
+
+
 ## Core Technologies
 
 - **Cloud Provider:** AWS

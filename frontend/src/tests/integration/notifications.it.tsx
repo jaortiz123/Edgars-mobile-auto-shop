@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, waitFor } from '@testing-library/react';
+import { setupUserEvent } from '@/tests/testUtils/userEventHelper';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/server/mswServer';
 import { TestAppWrapper } from '../../test/TestAppWrapper';
@@ -25,7 +25,8 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  // Reset time before each test
+  // Re-enable fake timers each test (global afterEach in setup.ts restores real timers)
+  try { vi.useFakeTimers(); } catch { /* ignore */ }
   vi.setSystemTime(new Date('2024-01-15T14:00:00Z'));
 });
 
@@ -166,8 +167,7 @@ const MockNotificationComponent = ({ appointment }: { appointment: MockAppointme
       <div data-testid="debug-info">
         <span data-testid="notification-count">{notifications.length}</span>
         <span data-testid="error-state">{error || 'no-error'}</span>
-        <span data-testid="retry-count">{retryCount}</span>
-        <span data-testid="retry-count">{retryCount}</span>
+  <span data-testid="retry-count">{retryCount}</span>
       </div>
     </div>
   );
@@ -189,9 +189,7 @@ describe('P2-T-007: Notification System Integration Tests', () => {
       expect(screen.getByText(`Service: ${appointment.service}`)).toBeInTheDocument();
 
       // Wait for the reminder timer to trigger and notification to be sent
-      await act(async () => {
-        vi.advanceTimersByTime(200); // Advance past the 100ms delay
-      });
+  vi.advanceTimersByTime(200); // Advance past the 100ms delay
 
       // Wait for the notification to appear
       await waitFor(() => {
@@ -223,9 +221,7 @@ describe('P2-T-007: Notification System Integration Tests', () => {
       );
 
       // Advance time by exactly 15 minutes (900,000ms)
-      await act(async () => {
-        vi.advanceTimersByTime(15 * 60 * 1000);
-      });
+  vi.advanceTimersByTime(15 * 60 * 1000);
 
       // Wait for notification processing
       await waitFor(() => {
@@ -289,7 +285,8 @@ describe('P2-T-007: Notification System Integration Tests', () => {
       
       // Use a custom handler that fails first time, succeeds second time
       server.use(
-        http.post('http://localhost:3001/notifications', async ({ request }) => {
+        // Align endpoint with production handler which logs as (localhost:3000)
+        http.post('http://localhost:3000/notifications', async ({ request }) => {
           const body = await request.json() as Record<string, unknown>;
           errorCallCount++;
           
@@ -332,9 +329,7 @@ describe('P2-T-007: Notification System Integration Tests', () => {
       );
 
       // Wait for initial failure
-      await act(async () => {
-        vi.advanceTimersByTime(200);
-      });
+  vi.advanceTimersByTime(200);
 
       await waitFor(() => {
         expect(screen.getByTestId('error-toast')).toBeInTheDocument();
@@ -342,7 +337,8 @@ describe('P2-T-007: Notification System Integration Tests', () => {
 
       // Click retry button
       const retryButton = screen.getByTestId('retry-button');
-      await userEvent.click(retryButton);
+  const user = setupUserEvent();
+  await user.click(retryButton);
 
       // Wait for retry to succeed
       await waitFor(() => {
@@ -373,30 +369,30 @@ describe('P2-T-007: Notification System Integration Tests', () => {
         );
 
         // Wait for initial failure
-        await act(async () => {
-          vi.advanceTimersByTime(200);
-        });
+  vi.advanceTimersByTime(200);
 
         await waitFor(() => {
           expect(screen.getByTestId('error-toast')).toBeInTheDocument();
         });
 
-        const retryButton = screen.getByTestId('retry-button');
-
-        // Attempt retry 3 times
+  // Attempt retry 3 times
+        // We start at 0 attempts shown in text, each click increments
         for (let i = 1; i <= 3; i++) {
-          expect(retryButton).toBeEnabled();
-          await userEvent.click(retryButton);
-          
+          // Wait for button to be present (after each error render)
+          const btn = await screen.findByTestId('retry-button');
+          expect(btn).toBeEnabled();
+          const user = setupUserEvent();
+          await user.click(btn);
+          // Wait for retry-count to reflect the attempt number
           await waitFor(() => {
-            const retryCount = screen.getByTestId('retry-count');
-            expect(retryCount).toHaveTextContent(i.toString());
+            expect(screen.getByTestId('retry-count')).toHaveTextContent(String(i));
           });
         }
 
-        // Verify button is disabled after 3 retries
-        expect(retryButton).toBeDisabled();
-        expect(retryButton).toHaveTextContent('Retry (3/3)');
+        // After 3 failed attempts button should be disabled with (3/3)
+        const finalBtn = await screen.findByTestId('retry-button');
+        expect(finalBtn).toBeDisabled();
+        expect(finalBtn).toHaveTextContent('Retry (3/3)');
       });
     });
   });
@@ -413,26 +409,27 @@ describe('P2-T-007: Notification System Integration Tests', () => {
         </TestAppWrapper>
       );
 
-      await act(async () => {
-        vi.advanceTimersByTime(200);
-      });
+  vi.advanceTimersByTime(200);
 
       await waitFor(() => {
         expect(screen.getByTestId('notification-toast')).toBeInTheDocument();
       });
 
       // Verify MSW logged the notification call
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('📨 MSW: Notification endpoint called with body:')
+      // Relax assertion: ensure at least one call includes the substring (logs now have body as second arg)
+      const hasEndpointLog = consoleSpy.mock.calls.some(call =>
+        call.some(arg => typeof arg === 'string' && arg.includes('📨 MSW: Notification endpoint (localhost:3000) called with body:'))
       );
+      expect(hasEndpointLog).toBe(true);
       
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('✅ MSW: Notification sent successfully:')
+      const hasSuccessLog = consoleSpy.mock.calls.some(call =>
+        call.some(arg => typeof arg === 'string' && arg.includes('✅ MSW: Notification (localhost:3000) sent successfully:'))
       );
+      expect(hasSuccessLog).toBe(true);
 
       // Count the number of MSW notification endpoint calls
       const notificationCalls = consoleSpy.mock.calls.filter(call => 
-        call[0]?.includes('📨 MSW: Notification endpoint called')
+        call[0]?.includes('📨 MSW: Notification endpoint (localhost:3000) called')
       );
       
       expect(notificationCalls).toHaveLength(1);
@@ -451,9 +448,7 @@ describe('P2-T-007: Notification System Integration Tests', () => {
         </TestAppWrapper>
       );
 
-      await act(async () => {
-        vi.advanceTimersByTime(200);
-      });
+  vi.advanceTimersByTime(200);
 
       await waitFor(() => {
         expect(screen.getByTestId('notification-toast')).toBeInTheDocument();
@@ -461,14 +456,14 @@ describe('P2-T-007: Notification System Integration Tests', () => {
 
       // Find the MSW log call with the request body
       const bodyLog = consoleSpy.mock.calls.find(call => 
-        call[0]?.includes('📨 MSW: Notification endpoint called with body:')
+        call[0]?.includes('📨 MSW: Notification endpoint (localhost:3000) called with body:')
       );
 
       expect(bodyLog).toBeDefined();
       
       // Extract and parse the JSON payload from the log
-      const bodyLogString = bodyLog?.[1] || '';
-      const payload = JSON.parse(bodyLogString);
+  const rawPayload = bodyLog?.[1];
+  const payload = rawPayload ? JSON.parse(rawPayload as string) : {};
       
       // Verify payload structure
       expect(payload).toMatchObject({
