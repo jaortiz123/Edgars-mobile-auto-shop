@@ -53,12 +53,12 @@ describe('AppointmentForm services integration', () => {
     return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
   }
 
-  async function typeAndWait(value: string) {
+  async function typeSearch(value: string, waitForText: string) {
     const input = screen.getByPlaceholderText(/search services/i);
     await userEvent.clear(input);
     await userEvent.type(input, value);
-    // wait > debounce (300ms)
-    await new Promise(r => setTimeout(r, 350));
+    // Rely on findBy* (wrapped in act) instead of manual setTimeout to satisfy debounce + fetch
+    await screen.findByText(waitForText, {}, { timeout: 1500 });
   }
 
   afterEach(() => {
@@ -67,16 +67,18 @@ describe('AppointmentForm services integration', () => {
 
   it('opens modal and lists services after search', async () => {
     renderWithClient(<AppointmentForm mode="create" />);
-    await userEvent.click(screen.getByRole('button', { name: /add service/i }));
-    await typeAndWait('al');
-    expect(await screen.findByText('Alignment')).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: /add service/i }));
+  await typeSearch('al', 'Alignment');
+  // Alignment result awaited above
+  expect(screen.getByText('Alignment')).toBeInTheDocument();
   });
 
   it('selects a service and shows it in the form after confirming', async () => {
     renderWithClient(<AppointmentForm mode="create" />);
-    await userEvent.click(screen.getByRole('button', { name: /add service/i }));
-    await typeAndWait('ro');
-    expect(await screen.findByText('Rotation')).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: /add service/i }));
+  await typeSearch('ro', 'Rotation');
+  // Rotation result awaited above
+  expect(screen.getByText('Rotation')).toBeInTheDocument();
     await userEvent.click(screen.getByText('Rotation'));
     await userEvent.click(screen.getByRole('button', { name: /add 1 service/i }));
     expect(screen.getByText('Rotation')).toBeInTheDocument();
@@ -89,9 +91,9 @@ describe('AppointmentForm services integration', () => {
     const vehicleSelect = screen.getByLabelText(/vehicle/i);
     await userEvent.selectOptions(vehicleSelect, 'veh-2');
     // open modal and select services
-    await userEvent.click(screen.getByRole('button', { name: /add service/i }));
-  await typeAndWait('al');
-    expect(await screen.findByText('Alignment')).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: /add service/i }));
+  await typeSearch('al', 'Alignment');
+  expect(screen.getByText('Alignment')).toBeInTheDocument();
     await userEvent.click(screen.getByText('Alignment'));
     await userEvent.click(screen.getByText('Rotation'));
     await userEvent.click(screen.getByRole('button', { name: /add 2 services/i }));
@@ -115,9 +117,9 @@ describe('AppointmentForm services integration', () => {
     // choose vehicle
     await userEvent.selectOptions(screen.getByLabelText(/vehicle/i), 'veh-1');
     // add two services
-    await userEvent.click(screen.getByRole('button', { name: /add service/i }));
-    await typeAndWait('al');
-    expect(await screen.findByText('Alignment')).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: /add service/i }));
+  await typeSearch('al', 'Alignment');
+  expect(screen.getByText('Alignment')).toBeInTheDocument();
     await userEvent.click(screen.getByText('Alignment'));
     await userEvent.click(screen.getByText('Rotation'));
     await userEvent.click(screen.getByRole('button', { name: /add 2 services/i }));

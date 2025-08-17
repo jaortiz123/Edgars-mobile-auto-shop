@@ -38,7 +38,7 @@ run_test() {
 }
 
 # Test 1: Normal Coverage Generation
-run_test "Normal coverage generation" "npm test -- --coverage --run --reporter=basic > /dev/null 2>&1"
+run_test "Normal coverage generation" "npm test -- --coverage --run > /dev/null 2>&1"
 
 # Test 2: Coverage File Validation
 run_test "Coverage files exist and are valid" "
@@ -68,7 +68,7 @@ run_test "Threshold comparison logic works" "
 run_test "Handle missing coverage directory gracefully" "
     rm -rf coverage_backup && cp -r coverage coverage_backup
     rm -rf coverage
-    if npm test -- --coverage --run --reporter=basic > /dev/null 2>&1; then
+    if npm test -- --coverage --run > /dev/null 2>&1; then
         [ -d coverage ]
     else
         # Restore backup
@@ -117,7 +117,7 @@ run_test "Test results directory and files created" "
 # Test 10: Coverage Thresholds Aligned Between CI and Vitest
 run_test "Coverage thresholds are achievable" "
     # Current coverage should pass vitest local thresholds
-    npm test -- --coverage --run --reporter=basic > /dev/null 2>&1
+    npm test -- --coverage --run > /dev/null 2>&1
 "
 
 # Test 11: Artifact Structure Validation
@@ -132,7 +132,7 @@ run_test "Coverage artifacts have expected structure" "
 # Test 12: Performance Test (Coverage Generation Speed)
 run_test "Coverage generation completes within reasonable time" "
     start_time=\$(date +%s)
-    npm test -- --coverage --run --reporter=basic > /dev/null 2>&1
+    npm test -- --coverage --run > /dev/null 2>&1
     end_time=\$(date +%s)
     duration=\$((end_time - start_time))
     

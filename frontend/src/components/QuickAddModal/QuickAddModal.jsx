@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 // Import component only (TS interfaces are type-only and not emitted; avoid named import in .jsx)
-import ServiceOperationSelect from '@/components/admin/ServiceOperationSelect';
+// Legacy single ServiceOperationSelect removed; using ServiceCatalogModal for multi-select
+import { ServiceCatalogModal } from '@/components/appointments/ServiceCatalogModal';
 import { X, Calendar, User, Car, Wrench, MapPin, Phone, Mail, Clock, Zap, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import TemplateSelector from '../admin/TemplateSelector';
@@ -35,21 +36,28 @@ const QuickAddModal = ({
   className = '' 
 }) => {
   // ============ STATE MANAGEMENT ============
-  const [formData, setFormData] = useState({
+  const emptyFormData = useCallback(() => ({
+    // Customer
     customerName: '',
     customerPhone: '',
+    // Services (serviceType mirrors first selected service for legacy compatibility)
     serviceType: '',
+    // Scheduling
     appointmentDate: '',
     appointmentTime: '',
+    // Location / meta
     serviceAddress: '',
-  notes: '',
-  // Vehicle fields (plate is the source of truth)
-  licensePlate: '',
-  vehicleYear: '',
-  vehicleMake: '',
-  vehicleModel: '',
+    notes: '',
+    // Vehicle
+    licensePlate: '',
+    vehicleYear: '',
+    vehicleMake: '',
+    vehicleModel: '',
+    // Flags
     quickAppointment: true
-  });
+  }), []);
+
+  const [formData, setFormData] = useState(emptyFormData());
 
   const [errors, setErrors] = useState({});
   const [templates, setTemplates] = useState([]);
@@ -80,19 +88,21 @@ const QuickAddModal = ({
     '4:00 PM', '5:00 PM'
   ], []);
 
-  // Selected catalog operation (replaces legacy static serviceTypes list)
-  const [selectedOp, setSelectedOp] = useState(null); // holds selected service operation object { id, name, category, ... }
+  // Modern multi-service selection (replaces legacy single serviceType select)
+  const [selectedServices, setSelectedServices] = useState([]); // array of { id, name, defaultPrice?, category? }
+  const [showServiceModal, setShowServiceModal] = useState(false);
 
-  // Keep selectedOp and formData.serviceType in sync (templates may mutate serviceType)
+  // Bridge: keep formData.serviceType as first selected service name for backward compatibility
   useEffect(() => {
-    // Only clear if formData.serviceType was manually wiped; avoid oscillation
-    if (selectedOp && !formData.serviceType) {
-      setSelectedOp(null);
+    const first = selectedServices[0];
+    if (first && formData.serviceType !== first.name) {
+      setFormData(prev => ({ ...prev, serviceType: first.name }));
+    } else if (!first && formData.serviceType) {
+      setFormData(prev => ({ ...prev, serviceType: '' }));
     }
-  }, [formData.serviceType, selectedOp]);
+  }, [selectedServices, formData.serviceType]);
 
-  // Operation change handler (defined after handleInputChange to avoid temporal dead zone)
-  let handleOperationChange = () => {};
+  // Legacy single operation change handler removed (multi-service modal now authoritative)
 
   // Vehicle make/model catalog with year-aware filtering (shared dataset)
   const fullCatalog = useMemo(() => {
@@ -139,23 +149,30 @@ const QuickAddModal = ({
         setSmartDefaults(lastSettings || {});
 
         // Apply smart defaults to form
-        const defaultFormData = {
+        const today = new Date().toISOString().split('T')[0];
+        // Merge into a full baseline object to keep every field controlled
+        setFormData(prev => ({
+          ...emptyFormData(),
           customerName: lastSettings.customerName || '',
           customerPhone: lastSettings.customerPhone || '',
-          serviceType: lastSettings.serviceType || 'Oil Change',
-          appointmentDate: new Date().toISOString().split('T')[0],
+          serviceType: lastSettings.serviceType || '',
+          appointmentDate: lastSettings.appointmentDate || today,
           appointmentTime: lastSettings.appointmentTime || '10:00 AM',
           serviceAddress: lastSettings.serviceAddress || '',
-          notes: '',
+          // notes intentionally blank on each quick add
+          licensePlate: lastSettings.licensePlate || '',
+          vehicleYear: lastSettings.vehicleYear || '',
+          vehicleMake: lastSettings.vehicleMake || '',
+          vehicleModel: lastSettings.vehicleModel || '',
           quickAppointment: true
-        };
-
-        setFormData(defaultFormData);
+        }));
 
         // Focus management for accessibility
         setTimeout(() => {
-          if (firstInputRef.current && isMounted) {
-            firstInputRef.current.focus();
+          // Initial focus: license plate (first required field)
+          if (dialogRef.current && isMounted) {
+            const plate = dialogRef.current.querySelector('#license-plate');
+            if (plate) plate.focus();
           }
         }, 100);
 
@@ -283,18 +300,16 @@ const QuickAddModal = ({
   }, [errors]);
 
   // Now that handleInputChange exists, finalize handleOperationChange
-  handleOperationChange = useCallback((op) => {
-    setSelectedOp(op);
-    handleInputChange('serviceType', op ? op.name : '');
-  }, [handleInputChange]);
+  // (Removed) handleOperationChange – no longer needed
 
   const handleTemplateSelect = useCallback(async (templateId) => {
     try {
       setSelectedTemplateId(templateId);
       
       if (templateId) {
-        const updatedFormData = await applyTemplateToFormData(templateId, formData);
-        setFormData(updatedFormData);
+  const updatedFormData = await applyTemplateToFormData(templateId, formData) || {};
+  // Merge to preserve controlled fields (avoid undefined -> value warnings)
+  setFormData(prev => ({ ...prev, ...updatedFormData }));
       }
     } catch (error) {
       console.error('Error applying template:', error);
@@ -302,26 +317,7 @@ const QuickAddModal = ({
     }
   }, [formData]);
 
-  const handleOneClickSchedule = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const oneClickData = createOneClickAppointment(formData);
-      
-      // Validate the generated data
-      if (validateForm(oneClickData)) {
-        await saveLastAppointmentSettings(oneClickData);
-        onSubmit(oneClickData);
-      } else {
-        setErrors({ general: 'Unable to create quick appointment. Please fill required fields.' });
-      }
-    } catch (error) {
-      console.error('Error creating one-click appointment:', error);
-      setErrors({ general: 'Failed to create quick appointment' });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [formData, onSubmit]);
-
+  // Define validateForm before any callbacks that depend on it to avoid TDZ issues
   const validateForm = useCallback((dataToValidate = formData) => {
     const newErrors = {};
 
@@ -332,8 +328,8 @@ const QuickAddModal = ({
     if (!dataToValidate.customerPhone?.trim()) {
       newErrors.customerPhone = 'Phone number is required';
     }
-    if (!dataToValidate.serviceType) {
-      newErrors.serviceType = 'Service type is required';
+    if (!selectedServices.length) {
+      newErrors.serviceType = 'At least one service is required';
     }
     if (!dataToValidate.appointmentDate) {
       newErrors.appointmentDate = 'Appointment date is required';
@@ -373,7 +369,26 @@ const QuickAddModal = ({
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData]);
+  }, [formData, selectedServices]);
+
+  const handleOneClickSchedule = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const base = createOneClickAppointment(formData);
+      const oneClickData = { ...base, service_operation_ids: selectedServices.map(s => s.id) };
+      if (validateForm(oneClickData)) {
+        await saveLastAppointmentSettings(oneClickData);
+        onSubmit(oneClickData);
+      } else {
+        setErrors({ general: 'Unable to create quick appointment. Please fill required fields.' });
+      }
+    } catch (error) {
+      console.error('Error creating one-click appointment:', error);
+      setErrors({ general: 'Failed to create quick appointment' });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [formData, onSubmit, selectedServices, validateForm]);
 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
@@ -401,8 +416,9 @@ const QuickAddModal = ({
 
     try {
       setIsLoading(true);
-      await saveLastAppointmentSettings(formData);
-  onSubmit(formData);
+  const payload = { ...formData, service_operation_ids: selectedServices.map(s => s.id) };
+  await saveLastAppointmentSettings(payload);
+	onSubmit(payload);
     } catch (error) {
       console.error('Error submitting form:', error);
       setErrors({ general: 'Failed to submit appointment. Please try again.' });
@@ -412,22 +428,42 @@ const QuickAddModal = ({
   }, [formData, validateForm, conflict, onSubmit, errors]);
 
   const handleClose = useCallback(() => {
-    // Reset form data
-  setFormData({
-      customerName: '',
-      customerPhone: '',
-      serviceType: '',
-      appointmentDate: '',
-      appointmentTime: '',
-      serviceAddress: '',
-      notes: '',
-      quickAppointment: true
-    });
+    // Reset full form (keep structure intact)
+    setFormData(emptyFormData());
+    setSelectedServices([]);
     setErrors({});
     setConflict(null);
     setSelectedTemplateId(null);
     onClose();
-  }, [onClose]);
+  }, [onClose, emptyFormData]);
+
+  // Focus trap to keep keyboard navigation within modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key !== 'Tab') return;
+      const focusable = dialogRef.current?.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusable || focusable.length === 0) return;
+      const list = Array.from(focusable).filter(el => !el.hasAttribute('disabled'));
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    dialogRef.current?.addEventListener('keydown', handleKeyDown);
+    return () => dialogRef.current?.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
 
   // Sprint 3B T1: Handle slot selection from suggested slots
   const handleSlotSelect = useCallback((slot) => {
@@ -636,22 +672,39 @@ const QuickAddModal = ({
               )}
             </div>
 
-            {/* Service Operation Catalog Selection */}
+            {/* Services Multi-Select (ServiceCatalogModal integration) */}
             <div className="quick-add-field">
-              <div className="flex items-center gap-1 mb-1">
+              <div className="flex items-center gap-1 mb-2">
                 <Wrench className="h-4 w-4" aria-hidden="true" />
-                <span className="quick-add-label">Service * </span>
+                <span className="quick-add-label">Services *</span>
               </div>
-              <ServiceOperationSelect
-                value={selectedOp}
-                onChange={handleOperationChange}
-                required
-                allowCustom={false}
-                placeholder="Search services…"
+              {selectedServices.length > 0 && (
+                <ul className="mb-3 flex flex-wrap gap-2" data-testid="quickadd-selected-services">
+                  {selectedServices.map(s => (
+                    <li key={s.id} className="flex items-center gap-1 bg-blue-50 border border-blue-200 rounded px-2 py-1 text-xs">
+                      <span className="font-medium">{s.name}</span>
+                      {s.defaultPrice != null && <span className="text-gray-500">${s.defaultPrice.toFixed(2)}</span>}
+                      <button
+                        type="button"
+                        aria-label={`Remove ${s.name}`}
+                        className="text-red-500 hover:text-red-700"
+                        onClick={() => setSelectedServices(prev => prev.filter(p => p.id !== s.id))}
+                      >×</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowServiceModal(true)}
                 disabled={isLoading || isSubmitting}
-              />
+                data-testid="quickadd-add-service-btn"
+              >
+                {selectedServices.length ? 'Add / Edit Services' : 'Add Services'}
+              </Button>
               {errors.serviceType && (
-                <div id="service-type-error" className="quick-add-error" role="alert">
+                <div id="service-type-error" className="quick-add-error mt-2" role="alert">
                   {errors.serviceType}
                 </div>
               )}
@@ -747,7 +800,7 @@ const QuickAddModal = ({
           </div>
 
           {/* Available Time Slots - Sprint 3B T1 */}
-          {formData.serviceType && (
+          {selectedServices.length > 0 && (
             <div className="quick-add-section">
               <h3 className="quick-add-section-title">
                 <Clock className="h-5 w-5" aria-hidden="true" />
@@ -755,14 +808,14 @@ const QuickAddModal = ({
                 {isSlotLoading && <div className="quick-add-spinner-small" aria-hidden="true"></div>}
               </h3>
               
-              {isSlotLoading ? (
+      {isSlotLoading ? (
                 <div className="quick-add-slots-loading">
                   <span>Finding available slots...</span>
                 </div>
               ) : availableSlots.length > 0 ? (
                 <div className="quick-add-slots-container">
                   <p className="quick-add-slots-description">
-                    Select from available time slots for {formData.serviceType}:
+        Select from available time slots for {formData.serviceType || selectedServices[0]?.name}:
                   </p>
                   <div className="quick-add-slots-grid">
                     {availableSlots.map((slot, index) => (
@@ -786,9 +839,9 @@ const QuickAddModal = ({
                     ))}
                   </div>
                 </div>
-              ) : formData.serviceType ? (
+        ) : selectedServices.length ? (
                 <div className="quick-add-slots-empty">
-                  <p>No available slots found for {formData.serviceType}</p>
+          <p>No available slots found for {formData.serviceType || selectedServices[0]?.name}</p>
                   <p className="quick-add-slots-empty-hint">
                     Try selecting a different date or service type
                   </p>
@@ -845,7 +898,7 @@ const QuickAddModal = ({
             <Button
               type="button"
               onClick={handleOneClickSchedule}
-              disabled={isSubmitting || isLoading || !formData.customerName || !formData.serviceType}
+              disabled={isSubmitting || isLoading || !formData.customerName || !selectedServices.length}
               className="quick-add-button-one-click"
             >
               <Zap className="h-4 w-4" aria-hidden="true" />
@@ -871,6 +924,13 @@ const QuickAddModal = ({
             </Button>
           </div>
         </form>
+        {/* Service Catalog Modal */}
+        <ServiceCatalogModal
+          open={showServiceModal}
+          initialSelected={selectedServices}
+          onConfirm={(list) => setSelectedServices(list)}
+          onClose={() => setShowServiceModal(false)}
+        />
       </div>
     </div>
   );
