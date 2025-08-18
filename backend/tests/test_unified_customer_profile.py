@@ -194,20 +194,25 @@ def test_etag_round_trip_change(client, db_connection):
 def test_etag_no_change_stability(client, db_connection):
     with db_connection:
         with db_connection.cursor() as cur:
-            cur.execute("INSERT INTO customers(id,name) VALUES(2001,'Stable User')")
-            cur.execute("INSERT INTO vehicles(id,customer_id) VALUES(3001,2001)")
+            # Use high, likely-unique IDs to avoid collisions across test re-runs in same DB session
             cur.execute(
-                "INSERT INTO appointments(id,customer_id,vehicle_id,status,total_amount,paid_amount,start_ts) VALUES(4001,2001,3001,'COMPLETED',5.00,5.00,NOW())"
+                "INSERT INTO customers(id,name) VALUES(92001,'Stable User') ON CONFLICT (id) DO NOTHING"
             )
-    r1 = client.get("/api/admin/customers/2001/profile", headers=auth_headers())
+            cur.execute(
+                "INSERT INTO vehicles(id,customer_id) VALUES(93001,92001) ON CONFLICT (id) DO NOTHING"
+            )
+            cur.execute(
+                "INSERT INTO appointments(id,customer_id,vehicle_id,status,total_amount,paid_amount,start_ts) VALUES(94001,92001,93001,'COMPLETED',5.00,5.00,NOW()) ON CONFLICT (id) DO NOTHING"
+            )
+    r1 = client.get("/api/admin/customers/92001/profile", headers=auth_headers())
     assert r1.status_code == 200
     etag_a = r1.headers.get("ETag")
     r2 = client.get(
-        "/api/admin/customers/2001/profile", headers={**auth_headers(), "If-None-Match": etag_a}
+        "/api/admin/customers/92001/profile", headers={**auth_headers(), "If-None-Match": etag_a}
     )
     assert r2.status_code == 304
     r3 = client.get(
-        "/api/admin/customers/2001/profile", headers={**auth_headers(), "If-None-Match": etag_a}
+        "/api/admin/customers/92001/profile", headers={**auth_headers(), "If-None-Match": etag_a}
     )
     assert r3.status_code == 304
     assert r2.headers.get("ETag") == etag_a

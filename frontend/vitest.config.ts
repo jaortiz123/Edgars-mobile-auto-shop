@@ -7,7 +7,7 @@ export default defineConfig({
   define: {
     'globalThis.IS_REACT_ACT_ENVIRONMENT': 'true'
   },
-  
+
   // ✅ A SINGLE, CORRECT ALIAS CONFIGURATION
   resolve: {
     alias: {
@@ -32,17 +32,17 @@ export default defineConfig({
     testTimeout: 10000,
     hookTimeout: 10000,
     // Pre-setup ensures act flag is set before React loads.
-    setupFiles: ['src/tests/preActEnv.ts','src/tests/setup.ts'],
-    
+  setupFiles: ['src/tests/preActEnv.ts','src/tests/jest.setup.ts'],
+
     // ✅ Globals are needed for libraries like testing-library
     globals: true,
-    
+
   // Include all standard test naming patterns
   include: ['**/*.{test,spec,it}.?(c|m)[jt]s?(x)'],
-    
+
     // P2-T-009: Retry configuration for flaky test detection
     retry: 2, // Retry flaky tests up to 2 times
-    
+
     // 🔧 Worker management to prevent runaway processes
     pool: 'threads',
     poolOptions: {
@@ -52,10 +52,10 @@ export default defineConfig({
         useAtomics: true
       }
     },
-    
+
     // 🔧 Force-close workers that don't exit properly
     teardownTimeout: 1000,
-    
+
     // ✅ Exclude archived tests from execution
     exclude: [
       '**/node_modules/**',
@@ -71,7 +71,7 @@ export default defineConfig({
       '**/src/tests/coverageBackfill/dateUtils.*.test.*',
       '**/src/tests/coverageBackfill/dateUtils.*.edge.*',
     ],
-    
+
     // 🎯 Coverage thresholds to prevent regression
     coverage: {
       reporter: ['text', 'lcov', 'json', 'json-summary'],
@@ -83,7 +83,7 @@ export default defineConfig({
         statements: 80
       }
     },
-    
+
     // Optional: Keep CSS processing if your components import CSS files
     css: true,
   },
