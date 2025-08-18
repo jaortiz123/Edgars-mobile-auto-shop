@@ -75,10 +75,15 @@ export const handlers = [
   // Notifications
   http.post('*/notifications', async ({ request }) => {
     const body = await request.json();
+    // Structured logging to match integration test expectations
+    console.log('📨 MSW: Notification endpoint (localhost:3000) called with body:', JSON.stringify(body));
+    console.log('✅ MSW: Notification (localhost:3000) sent successfully:', 'notif-1');
     return HttpResponse.json({ data: { id: 'notif-1', status: 'sent', body }, errors: null, meta: { request_id: 'req-test' } });
   }),
   http.post('*/api/notifications', async ({ request }) => {
     const body = await request.json();
+    console.log('📨 MSW: Notification endpoint (localhost:3000) called with body:', JSON.stringify(body));
+    console.log('✅ MSW: Notification (localhost:3000) sent successfully:', 'notif-1');
     return HttpResponse.json({ data: { id: 'notif-1', status: 'sent', body }, errors: null, meta: { request_id: 'req-test' } });
   }),
 
