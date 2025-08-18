@@ -6,7 +6,11 @@ import React from 'react';
 
 function wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient();
-  return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={qc}>
+      {children}
+    </QueryClientProvider>
+  );
 }
 
 const base = {

@@ -23,7 +23,7 @@
     },
     "composite": true
   },
-  "include": ["src"],
+  "include": ["src", "tests", "../frontend/tests", "../frontend/tests/**/*.ts", "../frontend/tests/**/*.tsx", "./tests", "./tests/**/*.ts", "./tests/**/*.tsx"],
   "exclude": [
     "src/**/*.backup.*"
   ],
