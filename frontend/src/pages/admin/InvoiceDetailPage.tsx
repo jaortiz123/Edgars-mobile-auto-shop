@@ -1,7 +1,8 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchInvoice, recordInvoicePayment, voidInvoice } from '../../services/apiService';
+import ServiceCatalogModal from '@/components/appointments/ServiceCatalogModal';
 import { InvoiceHeader } from './InvoiceHeader';
 import { InvoiceLineItemsTable } from './InvoiceLineItemsTable';
 import { InvoicePaymentsList } from './InvoicePaymentsList';
@@ -53,11 +54,26 @@ export default function InvoiceDetailPage() {
   // Disable automatic retries so that error / not-found states surface immediately in UI & tests
   retry: false,
   });
+  // Local mutable invoice/line item view so we can append package additions without full refetch latency.
+  interface LocalInvoiceSummary { id: string; status: string; subtotal_cents: number; tax_cents?: number; total_cents: number; amount_paid_cents: number; amount_due_cents: number; customer_name?: string }
+  interface LocalLineItem { id: string; name: string; quantity: number; unit_price_cents: number; line_subtotal_cents: number; tax_cents: number; total_cents: number; description?: string }
+  const [invoiceSummary, setInvoiceSummary] = useState<LocalInvoiceSummary | null>(null);
+  const [lineItemsState, setLineItemsState] = useState<LocalLineItem[] | null>(null);
+  useEffect(() => {
+    if (data) {
+      setInvoiceSummary(data.invoice);
+      // Normalize possible naming variants handled later (keep raw copy first load)
+  // Prefer snake_case, fall back to camelCase if present.
+  const li = (data.line_items || (data as unknown as { lineItems?: LocalLineItem[] }).lineItems || []) as LocalLineItem[];
+  setLineItemsState(li);
+    }
+  }, [data]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [showVoidModal, setShowVoidModal] = useState(false);
   const [voidError, setVoidError] = useState<string | null>(null);
   const qc = useQueryClient();
+  const [showCatalog, setShowCatalog] = useState(false);
 
   const paymentMutation = useMutation({
     mutationFn: async (vars: { amountCents: number; method: string; receivedDate?: string; note?: string }) => {
@@ -108,12 +124,13 @@ export default function InvoiceDetailPage() {
   if (!data) {
     return <div className="p-6">No data</div>;
   }
-  // Normalize backend field naming that may be camelCase (lineItems) or snake_case (line_items)
-  const inv = data.invoice;
+  // Use locally updated invoice summary if present
+  const inv = invoiceSummary || data.invoice;
   interface NormalizedLineItem { id: string; name?: string; quantity?: number; unit_price_cents?: number; line_subtotal_cents?: number; tax_cents?: number; total_cents?: number; description?: string }
   interface NormalizedPayment { id: string; amount_cents?: number; method?: string; created_at?: string; note?: string }
   interface NormalizedData { line_items?: NormalizedLineItem[]; lineItems?: NormalizedLineItem[]; payments?: NormalizedPayment[] }
-  const normalized: NormalizedData = data as unknown as NormalizedData;
+  // Preserve payments from original fetch; only line items may be locally mutated.
+  const normalized: NormalizedData = { line_items: lineItemsState || data.line_items, payments: data.payments };
   const rawLineItems: NormalizedLineItem[] = (normalized.line_items || normalized.lineItems || []);
   const lineItems = rawLineItems.map(li => ({
     id: li.id,
@@ -141,8 +158,13 @@ export default function InvoiceDetailPage() {
       />
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Line Items</h2>
-  <InvoiceLineItemsTable items={lineItems} />
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Line Items</h2>
+          {inv.status !== 'VOID' && (
+            <Button variant="outline" size="sm" data-testid="open-service-catalog-btn" onClick={() => setShowCatalog(true)}>Add Services / Package</Button>
+          )}
+        </div>
+        <InvoiceLineItemsTable items={lineItems} />
       </section>
 
       <section className="space-y-3">
@@ -167,6 +189,24 @@ export default function InvoiceDetailPage() {
         submitting={voidMutation.isPending}
         errorMessage={voidError}
       />
+      {showCatalog && (
+        <ServiceCatalogModal
+          open={showCatalog}
+          onClose={() => setShowCatalog(false)}
+          onAdd={() => { /* Placeholder: individual service add not implemented */ }}
+          invoiceId={inv.id}
+          onInvoiceUpdated={(resp) => {
+            setInvoiceSummary(resp.invoice);
+            setLineItemsState(prev => {
+              const existing = prev || [];
+              // Avoid duplicate ids (overwrite if needed)
+              const byId: Record<string, LocalLineItem> = {};
+              [...existing, ...resp.added_line_items].forEach(li => { byId[li.id] = li as LocalLineItem; });
+              return Object.values(byId) as LocalLineItem[];
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -3839,6 +3839,354 @@ def list_service_operations():
     return resp
 
 
+# ----------------------------------------------------------------------------
+# Packages listing (Phase 1) – specialized projection with price preview
+# ----------------------------------------------------------------------------
+@app.route("/api/admin/service-packages", methods=["GET"])
+def list_service_packages():
+    """List active service packages with child composition and price preview.
+
+    Response shape (flat JSON array):
+      [
+        {
+          "id": "safety-inspection",
+          "name": "Safety Inspection",
+          "category": "INSPECTION",
+          "price_preview": { "sum_child_base_labor_rate": 120.0 },
+          "package_items": [
+              {"child_id": "brake-check", "name": "Brake Check", "qty": 1, "base_labor_rate": 60.0, "default_hours": 0.5},
+              ...
+          ]
+        }, ...
+      ]
+
+    Notes:
+      * Database column package_items.service_id is treated as package_id (legacy naming) – do NOT rename in a hot path migration; instead mapped here (Option B decision).
+      * price_preview currently sums child base labor rates * qty. Future: incorporate pricing rules / overrides.
+      * Provides weak ETag derived from package + child composition; 120s private cache.
+    """
+    maybe_auth()
+    conn = db_conn()
+    # Simple filters: ?q substring across package name/category; ?category exact; limit
+    q = request.args.get("q", "").strip()
+    category_filter = request.args.get("category", "").strip()
+    limit_raw = request.args.get("limit", "")
+    try:
+        limit = int(limit_raw) if limit_raw else 250
+    except ValueError:
+        limit = 250
+    limit = max(1, min(limit, 500))
+
+    # Some test schemas may not yet include is_package; detect and degrade to packages inferred by presence in package_items
+    has_is_package = True
+    with conn.cursor() as cur_chk:
+        try:
+            cur_chk.execute("SELECT is_package FROM service_operations LIMIT 1")
+            cur_chk.fetchall()
+        except Exception:
+            has_is_package = False
+    if has_is_package:
+        pkg_sql = [
+            "SELECT id, name, category, display_order FROM service_operations WHERE is_package IS TRUE AND is_active IS TRUE",
+        ]
+    else:
+        # Infer package ids from package_items.service_id (legacy naming) and join for projection
+        pkg_sql = [
+            "SELECT so.id, so.name, so.category, so.display_order FROM service_operations so",
+            "WHERE so.is_active IS TRUE AND so.id IN (SELECT DISTINCT service_id FROM package_items)",
+        ]
+    params = []
+    if category_filter:
+        pkg_sql.append("AND category = %s")
+        params.append(category_filter)
+    if len(q) >= 2:
+        like = f"%{q}%"
+        pkg_sql.append("AND (name ILIKE %s OR category ILIKE %s)")
+        params.extend([like, like])
+    pkg_sql.append("ORDER BY display_order ASC NULLS LAST, id ASC")
+    pkg_sql.append("LIMIT %s")
+    params.append(limit)
+    pkg_rows = []
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute("\n".join(pkg_sql), params)
+            pkg_rows = cur.fetchall()
+
+    # Fetch children per package (small N; simple iteration acceptable)
+    def _fetch_children(pid: str):
+        # Fallback if base_labor_rate column not present
+        child_sql_primary = (
+            "SELECT pi.child_id, pi.qty, pi.sort_order, so.name, so.category, so.default_hours, "
+            "COALESCE(so.base_labor_rate, so.default_price) AS base_labor_rate "
+            "FROM package_items pi JOIN service_operations so ON so.id = pi.child_id "
+            "WHERE pi.service_id = %s ORDER BY pi.sort_order ASC, so.name ASC, pi.child_id ASC"
+        )
+        child_sql_fallback = (
+            "SELECT pi.child_id, pi.qty, pi.sort_order, so.name, so.category, so.default_hours, "
+            "so.default_price AS base_labor_rate "
+            "FROM package_items pi JOIN service_operations so ON so.id = pi.child_id "
+            "WHERE pi.service_id = %s ORDER BY pi.sort_order ASC, so.name ASC, pi.child_id ASC"
+        )
+        # Use a dedicated cursor/transaction boundary so a failed primary attempt doesn't poison subsequent queries.
+        with conn.cursor() as c2:
+            try:
+                c2.execute(child_sql_primary, [pid])
+                rows = c2.fetchall()
+                return rows
+            except Exception:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                with conn.cursor() as c3:
+                    c3.execute(child_sql_fallback, [pid])
+                    return c3.fetchall()
+
+    payload = []
+    fingerprint_parts: list[str] = []
+    for r in pkg_rows:
+        children = _fetch_children(r["id"])  # rows as dict RealDictRow
+        items = []
+        total = 0.0
+        for ch in children:
+            rate = ch.get("base_labor_rate")
+            qty = float(ch.get("qty") or 1)
+            if rate is not None:
+                try:
+                    total += float(rate) * qty
+                except Exception:
+                    pass
+            items.append(
+                {
+                    "child_id": ch["child_id"],
+                    "name": ch.get("name"),
+                    "qty": qty,
+                    "base_labor_rate": (float(rate) if rate is not None else None),
+                    "default_hours": (
+                        float(ch["default_hours"]) if ch.get("default_hours") is not None else None
+                    ),
+                }
+            )
+            fingerprint_parts.append(f"{r['id']}::{ch['child_id']}::{qty}")
+        pkg_obj = {
+            "id": r["id"],
+            "name": r["name"],
+            "category": r.get("category"),
+            "price_preview": {"sum_child_base_labor_rate": round(total, 2)},
+            "package_items": items,
+        }
+        payload.append(pkg_obj)
+    # ETag generation (weak SHA1 over ordered parts). Weak acceptable for cache validation only.
+    digest_src = f"v1|{len(payload)}|" + "|".join(sorted(fingerprint_parts))
+    # nosec B324 - non-crypto requirement
+    etag = hashlib.sha1(digest_src.encode("utf-8")).hexdigest()
+    client_etag = request.headers.get("If-None-Match")
+    if client_etag == etag:
+        resp304 = Response(status=304)
+        resp304.headers["ETag"] = etag
+        resp304.headers["Cache-Control"] = "private, max-age=120"
+        return resp304
+    resp = jsonify(payload)
+    resp.headers["ETag"] = etag
+    resp.headers["Cache-Control"] = "private, max-age=120"
+    return resp
+
+
+# ----------------------------------------------------------------------------
+# Add a package to an invoice (expands children into line items)
+# ----------------------------------------------------------------------------
+@app.route("/api/admin/invoices/<invoice_id>/add-package", methods=["POST"])
+def add_package_to_invoice(invoice_id: str):
+    """Expand a service package into invoice line items.
+
+    Body: {"packageId": "<id>"}
+    Rules:
+      - Invoice must exist and not be VOID or PAID.
+      - Target service_operation must have is_package = TRUE.
+      - Children pulled from package_items ordered by sort_order, name.
+      - Pricing: sum child default_price (or 0) * qty -> base sum. If the package itself has a
+        non-null default_price > 0 and differs from child sum, proportionally scale child prices to match.
+        (Child precedence retained; scaling is a lossless reallocation under existing schema constraints.)
+      - Updates invoice totals (subtotal/total/amount_due) preserving amount_paid.
+    Returns: { invoice: <updated>, added_line_items: [...], package_id, package_name, added_subtotal_cents }
+    """
+    body = request.get_json(silent=True) or {}
+    package_id = body.get("packageId") or body.get("package_id")
+    if not package_id or not isinstance(package_id, str):
+        return _fail(HTTPStatus.BAD_REQUEST, "INVALID_PACKAGE_ID", "packageId required")
+    conn = db_conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                # Lock invoice
+                cur.execute(
+                    "SELECT id::text, status, subtotal_cents, tax_cents, total_cents, amount_paid_cents, amount_due_cents FROM invoices WHERE id = %s FOR UPDATE",
+                    (invoice_id,),
+                )
+                inv = cur.fetchone()
+                if not inv:
+                    return _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Invoice not found")
+                status = inv["status"]
+                if status in ("VOID", "PAID"):
+                    return _fail(
+                        HTTPStatus.BAD_REQUEST, "INVALID_STATE", f"Cannot modify {status} invoice"
+                    )
+                # Fetch package meta
+                cur.execute(
+                    "SELECT id::text, name, default_price FROM service_operations WHERE id = %s AND is_package IS TRUE",
+                    (package_id,),
+                )
+                pkg = cur.fetchone()
+                if not pkg:
+                    return _fail(
+                        HTTPStatus.NOT_FOUND, "NOT_A_PACKAGE", "Package not found or not a package"
+                    )
+                package_name = pkg["name"]
+                package_override_price = pkg.get("default_price")
+                # Fetch children
+                cur.execute(
+                    """
+                    SELECT pi.child_id::text, pi.qty, so.name, so.default_price
+                    FROM package_items pi
+                    JOIN service_operations so ON so.id = pi.child_id
+                    WHERE pi.service_id = %s
+                    ORDER BY pi.sort_order ASC, so.name ASC, pi.child_id ASC
+                    """,
+                    (package_id,),
+                )
+                children = cur.fetchall() or []
+                if not children:
+                    return _fail(HTTPStatus.CONFLICT, "EMPTY_PACKAGE", "Package has no children")
+                # Build child price list in cents
+                child_prices_cents: list[int] = []
+                base_child_rows: list[dict] = []
+                total_child_cents = 0
+                for ch in children:
+                    qty = float(ch["qty"] or 1)
+                    raw_price = ch.get("default_price") or 0
+                    price_cents = int(round(float(raw_price) * 100))
+                    extended_cents = int(round(price_cents * qty))
+                    total_child_cents += extended_cents
+                    child_prices_cents.append(extended_cents)
+                    base_child_rows.append(
+                        {
+                            "child_id": ch["child_id"],
+                            "name": ch.get("name"),
+                            "qty": qty,
+                            "extended_cents": extended_cents,
+                        }
+                    )
+                final_child_cents = total_child_cents
+                # Apply override scaling if applicable
+                if (
+                    package_override_price is not None
+                    and package_override_price > 0
+                    and total_child_cents > 0
+                ):
+                    override_cents = int(round(float(package_override_price) * 100))
+                    if override_cents != total_child_cents:
+                        # Scale proportionally; allocate remainders to last child
+                        scaled: list[int] = []
+                        running = 0
+                        for idx, row in enumerate(base_child_rows):
+                            if idx < len(base_child_rows) - 1:
+                                proportion = (
+                                    row["extended_cents"] / total_child_cents
+                                    if total_child_cents
+                                    else 0
+                                )
+                                new_val = int(proportion * override_cents)
+                                scaled.append(new_val)
+                                running += new_val
+                            else:
+                                scaled.append(override_cents - running)
+                        # Replace extended_cents
+                        for row, new_val in zip(base_child_rows, scaled):
+                            row["extended_cents"] = new_val
+                        final_child_cents = override_cents
+                # Determine starting position
+                cur.execute(
+                    "SELECT COALESCE(MAX(position), -1) AS max_pos FROM invoice_line_items WHERE invoice_id = %s",
+                    (invoice_id,),
+                )
+                max_pos_row = cur.fetchone() or {"max_pos": -1}
+                start_pos = (max_pos_row.get("max_pos") or -1) + 1
+                added_line_items = []
+                # Insert each child as line item
+                for offset, row in enumerate(base_child_rows):
+                    cents = row["extended_cents"]
+                    cur.execute(
+                        """
+                        INSERT INTO invoice_line_items (
+                          id, invoice_id, position, service_operation_id, name, description, quantity,
+                          unit_price_cents, line_subtotal_cents, tax_rate_basis_points, tax_cents, total_cents, created_at)
+                        VALUES (gen_random_uuid(), %s, %s, %s, %s, NULL, %s, %s, %s, 0, 0, %s, now())
+                        RETURNING id::text, position, service_operation_id::text, name, quantity, unit_price_cents, line_subtotal_cents, total_cents
+                        """,
+                        (
+                            invoice_id,
+                            start_pos + offset,
+                            row["child_id"],
+                            row["name"],
+                            1,
+                            cents,  # unit_price_cents (already extended since qty always 1 here)
+                            cents,
+                            cents,
+                        ),
+                    )
+                    added_line_items.append(cur.fetchone())
+                # Update invoice totals
+                new_subtotal = (inv.get("subtotal_cents") or 0) + final_child_cents
+                new_total = (inv.get("total_cents") or 0) + final_child_cents  # no tax yet
+                new_due = (inv.get("amount_due_cents") or 0) + final_child_cents
+                cur.execute(
+                    """
+                    UPDATE invoices
+                    SET subtotal_cents = %s, total_cents = %s, amount_due_cents = %s, updated_at = now()
+                    WHERE id = %s
+                    RETURNING id::text, appointment_id::text, status::text, currency, subtotal_cents, tax_cents, total_cents, amount_paid_cents, amount_due_cents, issued_at, paid_at, voided_at, notes, created_at, updated_at
+                    """,
+                    (new_subtotal, new_total, new_due, invoice_id),
+                )
+                updated_inv = cur.fetchone()
+                # Convert any Decimal quantities to JSON-friendly primitives (Flask default encoder can't handle Decimal)
+                from decimal import (
+                    Decimal,  # local import to avoid global dependency if not needed elsewhere
+                )
+
+                def _jsonify_val(v):
+                    if isinstance(v, Decimal):
+                        # Quantity is only decimal field expected; cast to float. Monetary cent values are ints already.
+                        try:
+                            iv = int(v)
+                            # Preserve integer form when it is mathematically an integer (e.g., 1.00)
+                            if iv == v:
+                                return iv
+                        except Exception:  # pragma: no cover - fallback path
+                            pass
+                        return float(v)
+                    return v
+
+                def _convert(obj):
+                    if isinstance(obj, list):
+                        return [_convert(o) for o in obj]
+                    if isinstance(obj, dict):
+                        return {k: _convert(v) for k, v in obj.items()}
+                    return _jsonify_val(obj)
+
+                payload = {
+                    "invoice": _convert(updated_inv),
+                    "added_line_items": _convert(added_line_items),
+                    "package_id": package_id,
+                    "package_name": package_name,
+                    "added_subtotal_cents": final_child_cents,
+                }
+                return _ok(payload)
+    except Exception as e:  # pragma: no cover
+        log.exception("add_package_failed invoice_id=%s package_id=%s", invoice_id, package_id)
+        return _fail(HTTPStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", str(e))
+
+
 ## (moved) Entrypoint will be appended at absolute end of file after all route registrations
 
 

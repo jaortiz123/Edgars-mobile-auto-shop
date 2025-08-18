@@ -1,5 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useContext } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { addPackageToInvoice } from '@/services/apiService';
+import { ToastContext } from '@/contexts/ToastContext';
 
 export type ServiceOperation = {
   id: string;
@@ -23,8 +25,14 @@ function formatPrice(p: number | null) { return p == null ? '—' : `$${p.toFixe
 function compareByDisplayOrder(a: ServiceOperation, b: ServiceOperation) { const ao = a.display_order ?? Number.POSITIVE_INFINITY; const bo = b.display_order ?? Number.POSITIVE_INFINITY; return ao !== bo ? ao - bo : a.name.localeCompare(b.name); }
 function matchesQuery(s: ServiceOperation, q: string) { if (!q) return true; const hay = `${s.name} ${(s.keywords || []).join(' ')}`.toLowerCase(); return hay.includes(q.toLowerCase()); }
 
+// Access VITE api base without widening to any
+interface ViteEnvLike { VITE_API_ENDPOINT_URL?: string }
+const envObj: ViteEnvLike | undefined = (import.meta as unknown as { env?: ViteEnvLike }).env;
+const API_BASE_URL: string = envObj?.VITE_API_ENDPOINT_URL || '';
 async function fetchServices() {
-  const resp = await fetch('/api/admin/service-operations');
+  const base = API_BASE_URL || '';
+  const url = `${base}/api/admin/service-operations`;
+  const resp = await fetch(url);
   // (debug log removed after resolving test hang root cause)
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   const data = await resp.json();
@@ -33,9 +41,12 @@ async function fetchServices() {
   return list as ServiceOperation[];
 }
 
-interface Props { open: boolean; onClose(): void; onAdd(op: ServiceOperation): void; onConfirm?(selected: ServiceOperation[]): void; }
+type InvoiceLineItem = { id: string; name: string; quantity: number; unit_price_cents: number; line_subtotal_cents: number; tax_cents: number; total_cents: number; description?: string };
+// Minimal invoice shape extended loosely (index signature) to satisfy differing backend additions
+type InvoiceLike = { id: string; status: string; subtotal_cents: number; total_cents: number; amount_due_cents: number; amount_paid_cents: number; tax_cents: number; [k: string]: unknown };
+interface Props { open: boolean; onClose(): void; onAdd(op: ServiceOperation): void; onConfirm?(selected: ServiceOperation[]): void; invoiceId?: string; onInvoiceUpdated?(r: { invoice: InvoiceLike; added_line_items: InvoiceLineItem[] }): void; }
 
-export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onConfirm }) => {
+export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onConfirm, invoiceId, onInvoiceUpdated }) => {
   const [services, setServices] = useState<ServiceOperation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -185,10 +196,31 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
   const toggleSelect = (op: ServiceOperation) => {
     setSelected(prev => prev.find(s => s.id === op.id) ? prev.filter(s => s.id !== op.id) : [...prev, op]);
   };
-  const handleAdd = (op: ServiceOperation) => {
-    // Keep existing immediate add behavior for backwards compatibility
+  const toastCtx = useContext(ToastContext);
+  const [addingPackageId, setAddingPackageId] = useState<string | null>(null);
+  const handleAdd = async (op: ServiceOperation) => {
+    if (op.is_package && invoiceId) {
+      try {
+        setAddingPackageId(op.id);
+        const resp = await addPackageToInvoice(invoiceId, op.id);
+  onInvoiceUpdated?.({ invoice: resp.invoice as unknown as InvoiceLike, added_line_items: resp.added_line_items });
+        const count = resp.added_line_items.length;
+        const dollars = (resp.added_subtotal_cents / 100).toFixed(2);
+        if (toastCtx) {
+          toastCtx.showToast({ type: 'success', title: `Added ${count} item${count!==1?'s':''} from "${resp.package_name}"`, message: `Total $${dollars}` });
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Failed to add package';
+        if (toastCtx) {
+          toastCtx.showToast({ type: 'error', title: 'Add package failed', message: msg });
+        }
+      } finally {
+        setAddingPackageId(null);
+      }
+      return;
+    }
+    // Non-package fallback behavior
     onAdd(op);
-    // Track for batch confirm button
     toggleSelect(op);
   };
   const handleConfirm = () => {
@@ -293,7 +325,7 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
                               </div>
                               <div className="flex items-center gap-3 self-start">
                                 <span className="text-xs text-gray-400">{s.display_order ?? ''}</span>
-                                <button onClick={(e)=>{ e.stopPropagation(); handleAdd(s); }} className="text-xs px-2 py-1 border rounded hover:bg-blue-100">{selected.find(sel=>sel.id===s.id)?'Selected':'Add'}</button>
+                                <button onClick={async (e)=>{ e.stopPropagation(); await handleAdd(s); }} disabled={addingPackageId===s.id} className="text-xs px-2 py-1 border rounded hover:bg-blue-100 disabled:opacity-50">{s.is_package && invoiceId ? (addingPackageId===s.id ? 'Adding…' : 'Add package') : (selected.find(sel=>sel.id===s.id)?'Selected':'Add')}</button>
                               </div>
                             </div>
                             {isPkg && s.package_items && s.package_items.length > 0 && (
@@ -351,7 +383,7 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
                                     </div>
                                     <div className="flex items-center gap-3 self-start">
                                       <span className="text-xs text-gray-400">{s.display_order ?? ''}</span>
-                                      <button onClick={(e)=>{ e.stopPropagation(); handleAdd(s); }} className="text-xs px-2 py-1 border rounded hover:bg-blue-100">{selected.find(sel=>sel.id===s.id)?'Selected':'Add'}</button>
+                                      <button onClick={async (e)=>{ e.stopPropagation(); await handleAdd(s); }} disabled={addingPackageId===s.id} className="text-xs px-2 py-1 border rounded hover:bg-blue-100 disabled:opacity-50">{s.is_package && invoiceId ? (addingPackageId===s.id ? 'Adding…' : 'Add package') : (selected.find(sel=>sel.id===s.id)?'Selected':'Add')}</button>
                                     </div>
                                   </div>
                                   {isPkg && s.package_items && s.package_items.length > 0 && (

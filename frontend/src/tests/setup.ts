@@ -1,7 +1,9 @@
 // Ensure React 19 test act environment flag (belt & suspenders in addition to preActEnv)
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 import '@testing-library/jest-dom/vitest'
-import 'whatwg-fetch'
+// Removed unconditional whatwg-fetch polyfill to let MSW intercept native fetch in Node.
+// If a polyfill is ever needed (older Node), reintroduce conditionally.
+// import 'whatwg-fetch'
 import './testEnv'
 
 import { expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest'
@@ -66,8 +68,8 @@ if (typeof globalThis.localStorage !== 'object' || !globalThis.localStorage) {
 }
 import { toHaveNoViolations } from 'jest-axe'
 import { cleanup } from '@testing-library/react'
-import { server } from '../test/server/mswServer'
-import { http, HttpResponse } from 'msw'
+// (legacy mswServer import removed; centralized server lifecycle handled in jest.setup.ts)
+// Removed unused msw imports (http, HttpResponse)
 import { createMocks } from '../test/mocks'
 // import failOnConsole from 'vitest-fail-on-console' // Disabled due to conflicts
 
@@ -99,14 +101,14 @@ export async function withConsoleErrorSpy<T>(testFn: () => T | Promise<T>): Prom
   // Create mocks that capture calls but don't actually log or throw
   const errorSpy = vi.fn();
   const warnSpy = vi.fn();
-  
+
   // Temporarily replace console methods with our silent spies
   const originalError = console.error;
   const originalWarn = console.warn;
-  
+
   console.error = errorSpy;
   console.warn = warnSpy;
-  
+
   try {
     const result = await Promise.resolve(testFn());
     return result;
@@ -119,7 +121,7 @@ export async function withConsoleErrorSpy<T>(testFn: () => T | Promise<T>): Prom
 
 /**
  * Get current console spy references for test assertions
- * Note: With vitest-fail-on-console, spies work differently, so this provides 
+ * Note: With vitest-fail-on-console, spies work differently, so this provides
  * compatibility for existing tests
  */
 export function getConsoleSpies() {
@@ -156,13 +158,7 @@ export async function withFakeTimers<T>(testFn: () => T | Promise<T>): Promise<T
 expect.extend(toHaveNoViolations)
 
 // MSW setup for unit tests
-beforeAll(() => {
-  console.log('🚀 Starting MSW server for unit tests...')
-  server.listen({
-    onUnhandledRequest: 'warn', // Warn about unhandled requests instead of erroring
-  })
-  console.log('🌐 MSW enabled for unit tests')
-})
+// (server.listen moved to jest.setup.ts)
 
 // Auto cleanup and reset localStorage before each test
 beforeEach(() => {
@@ -184,8 +180,7 @@ beforeEach(() => {
 
 // SAFETY-NET-002: Global afterEach safety-nets for test stability
 afterEach(async () => {
-  // 1. Reset MSW handlers to ensure test isolation
-  server.resetHandlers();
+  // (MSW handlers reset in jest.setup.ts)
 
   // 1b. Flush pending microtasks & promises.
   // If fake timers are active, advancing timers is required; otherwise use a real setTimeout(0).
@@ -301,16 +296,9 @@ if (!document.createRange) {
 
 // Fallback handlers for common endpoints used across many tests.
 // These return safe defaults and reduce noisy 'unmatched request' warnings.
-server.use(
-  http.get('http://localhost:3000/api/appointments', () => HttpResponse.json({ data: [], meta: {} })),
-  http.get('http://localhost:3001/api/appointments', () => HttpResponse.json({ data: [], meta: {} })),
-  http.get('http://localhost:3000/api/appointments/', () => HttpResponse.json({ data: [], meta: {} })),
-);
+// Removed fallback appointment handlers (handled by host-agnostic handlers now)
 
 // MSW cleanup after all tests
-afterAll(() => {
-  console.log('🛑 Stopping MSW server...')
-  server.close()
-})
+// (server.close moved to jest.setup.ts)
 
 // console.log('✅ Enhanced CI console detection loaded with vitest-fail-on-console');

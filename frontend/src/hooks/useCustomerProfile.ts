@@ -24,8 +24,11 @@ export function useCustomerProfile(id: string, opts: { vehicleId?: string; from?
     queryFn: async ({ signal, queryKey }) => {
       const cacheKey = keyStr(queryKey);
       const url = buildUrl(id, opts);
+      // DEBUG: trace execution in tests
+  // (debug logging removed)
       const et = etagCache.get(cacheKey);
       const r = await fetch(url, { signal, headers: et ? { 'If-None-Match': et } : {} });
+  // (debug logging removed)
       if (r.status === 304) {
         const cached = dataCache.get(cacheKey);
         if (cached) return cached;
