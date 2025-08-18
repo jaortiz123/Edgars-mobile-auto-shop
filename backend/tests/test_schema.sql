@@ -288,9 +288,17 @@ CREATE TABLE template_usage_events (
     appointment_id INTEGER NULL REFERENCES appointments(id) ON DELETE SET NULL,
     user_id UUID NULL,
     sent_at TIMESTAMP NOT NULL DEFAULT now(),
-    was_automated BOOLEAN NOT NULL DEFAULT FALSE
+    delivery_ms INTEGER NULL CHECK (delivery_ms IS NULL OR delivery_ms >= 0),
+    was_automated BOOLEAN NOT NULL DEFAULT FALSE,
+    hash TEXT NULL,
+    CONSTRAINT template_usage_events_slug_nonempty CHECK (length(template_slug) > 0)
 );
-CREATE INDEX idx_template_usage_sent_at ON template_usage_events(sent_at);
+-- Indexes aligned with production migration
+CREATE UNIQUE INDEX idx_template_usage_hash ON template_usage_events(hash) WHERE hash IS NOT NULL;
+CREATE INDEX idx_template_usage_sent_at ON template_usage_events(sent_at DESC);
 CREATE INDEX idx_template_usage_template ON template_usage_events(template_id, sent_at DESC);
+CREATE INDEX idx_template_usage_slug ON template_usage_events(template_slug);
+CREATE INDEX idx_template_usage_appointment ON template_usage_events(appointment_id) WHERE appointment_id IS NOT NULL;
+CREATE INDEX idx_template_usage_user ON template_usage_events(user_id) WHERE user_id IS NOT NULL;
 
 COMMIT;

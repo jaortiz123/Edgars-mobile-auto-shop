@@ -14,6 +14,8 @@ Seed now:
 
 ```bash
 psql $DATABASE_URL -f backend/seeds/seed_s1.sql
+# (Optional) Seed messaging analytics sample events
+psql $DATABASE_URL -f backend/seeds/seed_analytics_events.sql
 ```
 
 Verification:
@@ -54,6 +56,64 @@ Look for `X-Catalog-Handler: v2-flat` in healthy steady state.
 Expected: > 0 total and active rows. If zero, re-run the seed.
 
 The docker initialization now emits a WARNING if the `service_operations` table exists but is empty. Treat that as a blocking issue before using the app.
+
+## 📊 CSV Export Endpoints
+
+Two secured CSV report endpoints enable offline analysis and accounting workflows. Rate limited (5/hour per user) and audit logged.
+
+### Appointments Export
+
+`GET /api/admin/reports/appointments.csv`
+
+Purpose: Download appointment lifecycle, customer, vehicle, and services summary data.
+
+Query Parameters (all optional):
+
+* `from` — Start date (YYYY-MM-DD)
+* `to` — End date (YYYY-MM-DD)
+* `status` — One of `SCHEDULED, IN_PROGRESS, READY, COMPLETED, NO_SHOW, CANCELED`
+
+Response:
+
+* Content-Type: `text/csv; charset=utf-8`
+* Content-Disposition: `attachment; filename=appointments_export.csv`
+
+Columns (14):
+`ID,Status,Start,End,Total Amount,Paid Amount,Customer Name,Customer Email,Customer Phone,Vehicle Year,Vehicle Make,Vehicle Model,Vehicle VIN,Services`
+
+### Payments Export
+
+`GET /api/admin/reports/payments.csv`
+
+Purpose: Download payment transactions for reconciliation.
+
+Response columns (7):
+`ID,Appointment ID,Amount,Payment Method,Transaction ID,Payment Date,Status`
+
+### Auth & RBAC
+
+* Allowed roles: Owner, Advisor, Accountant
+* Technician (and others) receive `403 RBAC_FORBIDDEN`
+* Unauthenticated requests receive `403 AUTH_REQUIRED`
+
+### Errors
+
+`400 INVALID_DATE_FORMAT` (bad date) / `400 INVALID_STATUS` (bad status)
+
+`429 RATE_LIMITED` (quota exceeded) / `503 DB_UNAVAILABLE` (database issue)
+
+### Example
+
+```bash
+curl -H "Authorization: Bearer <token>" \
+  "http://localhost:3001/api/admin/reports/appointments.csv?from=2024-01-01&to=2024-01-31&status=COMPLETED" -o appts.csv
+```
+
+### Implementation Notes
+
+* Endpoint implementation in `backend/local_server.py` (see `export_appointments_csv` & `export_payments_csv`).
+* Tests: `backend/tests/test_csv_exports.py` (RBAC, rate limit, headers, formatting, RFC4180 compliance).
+
 
 
 ## Core Technologies
