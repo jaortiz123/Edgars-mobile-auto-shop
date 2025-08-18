@@ -1,6 +1,6 @@
 /**
  * P2-T-006: Isolated Error Handlers for MSW
- * 
+ *
  * This file contains individual error handlers for each error scenario.
  * Each handler is designed to be used with server.use() for true test isolation.
  */
@@ -25,7 +25,7 @@ async function simulateNetworkDelay(delayMs: number) {
 export const appointmentPatch500Handler = http.patch('http://localhost:3001/appointments/:id', async () => {
   console.log('🚨 MSW: Simulating 500 error for appointment PATCH');
   return HttpResponse.json(
-    { 
+    {
       data: null,
       errors: [{ status: '500', code: 'PROVIDER_ERROR', detail: 'Internal server error updating appointment' }],
       meta: { request_id: generateRequestId() }
@@ -40,7 +40,7 @@ export const appointmentPatch500Handler = http.patch('http://localhost:3001/appo
 export const appointmentPatchApi500Handler = http.patch('http://localhost:3001/api/appointments/:id', async () => {
   console.log('🚨 MSW: Simulating 500 error for API appointment PATCH');
   return HttpResponse.json(
-    { 
+    {
       data: null,
       errors: [{ status: '500', code: 'PROVIDER_ERROR', detail: 'Internal server error updating appointment' }],
       meta: { request_id: generateRequestId() }
@@ -55,7 +55,7 @@ export const appointmentPatchApi500Handler = http.patch('http://localhost:3001/a
 export const appointmentMove500Handler = http.patch('http://localhost:3001/admin/appointments/:id/move', async () => {
   console.log('🚨 MSW: Simulating 500 error for appointment move');
   return HttpResponse.json(
-    { 
+    {
       data: null,
       errors: [{ status: '500', code: 'PROVIDER_ERROR', detail: 'Internal server error updating appointment' }],
       meta: { request_id: generateRequestId() }
@@ -70,7 +70,7 @@ export const appointmentMove500Handler = http.patch('http://localhost:3001/admin
 export const unauthorizedAccessHandler = http.patch('http://localhost:3001/admin/appointments/:id/status', async () => {
   console.log('🚨 MSW: Simulating 401 unauthorized error');
   return HttpResponse.json(
-    { 
+    {
       data: null,
       errors: [{ status: '401', code: 'AUTH_REQUIRED', detail: 'Authentication required' }],
       meta: { request_id: generateRequestId() }
@@ -85,7 +85,7 @@ export const unauthorizedAccessHandler = http.patch('http://localhost:3001/admin
 export const dashboardStats401Handler = http.get('http://localhost:3001/admin/dashboard/stats', async () => {
   console.log('🚨 MSW: Simulating 401 error for protected admin endpoint: dashboard stats');
   return HttpResponse.json(
-    { 
+    {
       data: null,
       errors: [{ status: '401', code: 'AUTH_REQUIRED', detail: 'Authentication required for admin endpoints' }],
       meta: { request_id: generateRequestId() }
@@ -146,7 +146,7 @@ export const dashboardStatsTimeoutHandler = http.get('http://localhost:3001/admi
 export const notificationPost500Handler = http.post('http://localhost:3001/notifications', async () => {
   console.log('🚨 MSW: Simulating 500 error for POST /notifications');
   return HttpResponse.json(
-    { 
+    {
       data: null,
       errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
       meta: { request_id: generateRequestId() }
@@ -161,7 +161,7 @@ export const notificationPost500Handler = http.post('http://localhost:3001/notif
 export const notificationPostApi500Handler = http.post('http://localhost:3001/api/notifications', async () => {
   console.log('🚨 MSW: Simulating 500 error for POST /api/notifications');
   return HttpResponse.json(
-    { 
+    {
       data: null,
       errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
       meta: { request_id: generateRequestId() }
@@ -176,7 +176,7 @@ export const notificationPostApi500Handler = http.post('http://localhost:3001/ap
 export const notificationPost500HandlerLocal = http.post('http://localhost:3000/notifications', async () => {
   console.log('🚨 MSW: Simulating 500 error for POST localhost:3000/notifications');
   return HttpResponse.json(
-    { 
+    {
       data: null,
       errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
       meta: { request_id: generateRequestId() }
@@ -191,7 +191,7 @@ export const notificationPost500HandlerLocal = http.post('http://localhost:3000/
 export const notificationPostApi500HandlerLocal = http.post('http://localhost:3000/api/notifications', async () => {
   console.log('🚨 MSW: Simulating 500 error for POST localhost:3000/api/notifications');
   return HttpResponse.json(
-    { 
+    {
       data: null,
       errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
       meta: { request_id: generateRequestId() }
@@ -227,6 +227,17 @@ export const notification500Handlers = [
   notificationPostApi500Handler,
   notificationPost500HandlerLocal,
   notificationPostApi500HandlerLocal,
+  http.post('*/notifications', async () => {
+    console.log('🚨 MSW: (wildcard) Simulating 500 error for POST */notifications');
+    return HttpResponse.json(
+      {
+        data: null,
+        errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
+        meta: { request_id: generateRequestId() }
+      },
+      { status: 500 }
+    );
+  }),
 ];
 
 /**
