@@ -149,6 +149,72 @@ def test_etag_flow(client, db_connection):
         "/api/admin/customers/1301/profile", headers={**auth_headers(), "If-None-Match": etag}
     )
     assert r2.status_code == 304
+    assert r2.headers.get("ETag") == etag
+    assert r1.headers.get("Cache-Control") == "private, max-age=30"
+    assert r2.headers.get("Cache-Control") == "private, max-age=30"
+
+
+@pytest.mark.usefixtures("db_connection")
+def test_etag_round_trip_change(client, db_connection):
+    with db_connection:
+        with db_connection.cursor() as cur:
+            cur.execute("INSERT INTO customers(id,name) VALUES(1901,'Round Trip User')")
+            cur.execute("INSERT INTO vehicles(id,customer_id) VALUES(2901,1901)")
+            cur.execute(
+                "INSERT INTO appointments(id,customer_id,vehicle_id,status,total_amount,paid_amount,start_ts) VALUES(3901,1901,2901,'COMPLETED',10.00,10.00,NOW())"
+            )
+    # Initial fetch
+    r1 = client.get("/api/admin/customers/1901/profile", headers=auth_headers())
+    assert r1.status_code == 200
+    etag_a = r1.headers.get("ETag")
+    # 304 reuse
+    r2 = client.get(
+        "/api/admin/customers/1901/profile", headers={**auth_headers(), "If-None-Match": etag_a}
+    )
+    assert r2.status_code == 304
+    assert r2.headers.get("ETag") == etag_a
+    # Change customer
+    with db_connection:
+        with db_connection.cursor() as cur:
+            cur.execute("UPDATE customers SET name='Changed Name' WHERE id=1901")
+            cur.execute("UPDATE customers SET updated_at = NOW() WHERE id=1901")
+    # Expect new 200 + new ETag
+    r3 = client.get(
+        "/api/admin/customers/1901/profile", headers={**auth_headers(), "If-None-Match": etag_a}
+    )
+    assert r3.status_code == 200
+    etag_b = r3.headers.get("ETag")
+    assert etag_b and etag_b != etag_a
+    body3 = r3.get_json()
+    assert body3["customer"]["full_name"] == "Changed Name"
+    assert r3.headers.get("Cache-Control") == "private, max-age=30"
+
+
+@pytest.mark.usefixtures("db_connection")
+def test_etag_no_change_stability(client, db_connection):
+    with db_connection:
+        with db_connection.cursor() as cur:
+            cur.execute("INSERT INTO customers(id,name) VALUES(2001,'Stable User')")
+            cur.execute("INSERT INTO vehicles(id,customer_id) VALUES(3001,2001)")
+            cur.execute(
+                "INSERT INTO appointments(id,customer_id,vehicle_id,status,total_amount,paid_amount,start_ts) VALUES(4001,2001,3001,'COMPLETED',5.00,5.00,NOW())"
+            )
+    r1 = client.get("/api/admin/customers/2001/profile", headers=auth_headers())
+    assert r1.status_code == 200
+    etag_a = r1.headers.get("ETag")
+    r2 = client.get(
+        "/api/admin/customers/2001/profile", headers={**auth_headers(), "If-None-Match": etag_a}
+    )
+    assert r2.status_code == 304
+    r3 = client.get(
+        "/api/admin/customers/2001/profile", headers={**auth_headers(), "If-None-Match": etag_a}
+    )
+    assert r3.status_code == 304
+    assert r2.headers.get("ETag") == etag_a
+    assert r3.headers.get("ETag") == etag_a
+    assert r1.headers.get("Cache-Control") == "private, max-age=30"
+    assert r2.headers.get("Cache-Control") == "private, max-age=30"
+    assert r3.headers.get("Cache-Control") == "private, max-age=30"
 
 
 @pytest.mark.usefixtures("db_connection")

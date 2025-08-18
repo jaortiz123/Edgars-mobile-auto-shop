@@ -5144,22 +5144,26 @@ def unified_customer_profile(cust_id: str):
                 encoded = f"{ts.isoformat() if ts else ''}|{last.get('id')}".encode()
                 next_cursor = base64.b64encode(encoded).decode("utf-8")
 
-                # ETag hash (max updated_at among related tables + customer created/updated)
+            # Compute ETag from max updated_at (or created_at) across customer/invoices/appointments/line_items
             cur.execute(
                 """
-                                WITH a AS (
-                                    SELECT MAX(updated_at) AS max_a FROM appointments WHERE customer_id::text = %s
-                                ), i AS (
-                                    SELECT MAX(updated_at) AS max_i FROM invoices WHERE customer_id::text = %s
-                                                ), li AS (
-                                                    SELECT MAX(li.created_at) AS max_li
-                                                        FROM invoice_line_items li
-                                                        JOIN invoices inv ON inv.id = li.invoice_id AND inv.customer_id::text = %s
-                                ), c AS (
-                                    SELECT created_at AS cust_created, created_at AS cust_updated FROM customers WHERE id::text = %s
-                                )
-                                SELECT encode(digest(COALESCE(a.max_a::text,'') || '|' || COALESCE(i.max_i::text,'') || '|' || COALESCE(li.max_li::text,'') || '|' || COALESCE(c.cust_updated::text,c.cust_created::text,''),'sha1'),'hex') AS etag
-                                    FROM a,i,li,c
+                WITH piv AS (
+                    SELECT MAX(updated_at) AS inv_u FROM invoices WHERE customer_id::text = %s
+                ), pav AS (
+                    SELECT MAX(updated_at) AS appt_u FROM appointments WHERE customer_id::text = %s
+                ), pli AS (
+                    SELECT MAX(li.created_at) AS li_u
+                        FROM invoice_line_items li
+                        JOIN invoices inv ON inv.id = li.invoice_id AND inv.customer_id::text = %s
+                ), pc AS (
+                    SELECT COALESCE(updated_at, created_at) AS cust_u FROM customers WHERE id::text = %s
+                )
+                SELECT encode(digest(
+                    COALESCE((SELECT cust_u FROM pc)::text,'') || '|' ||
+                    COALESCE((SELECT inv_u  FROM piv)::text,'') || '|' ||
+                    COALESCE((SELECT appt_u FROM pav)::text,'') || '|' ||
+                    COALESCE((SELECT li_u   FROM pli)::text,'')
+                , 'sha1'),'hex') AS etag;
                 """,
                 (cust_id, cust_id, cust_id, cust_id),
             )
@@ -5230,12 +5234,12 @@ def unified_customer_profile(cust_id: str):
     if etag and incoming and incoming == etag:
         resp = make_response("", HTTPStatus.NOT_MODIFIED)
         resp.headers["ETag"] = f'W/"{etag}"'
-        resp.headers["Cache-Control"] = "public, max-age=30"
+        resp.headers["Cache-Control"] = "private, max-age=30"
         return resp
     resp = make_response(jsonify(response), HTTPStatus.OK)
     if etag:
         resp.headers["ETag"] = f'W/"{etag}"'
-    resp.headers["Cache-Control"] = "public, max-age=30"
+    resp.headers["Cache-Control"] = "private, max-age=30"
     return resp
 
 

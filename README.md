@@ -183,10 +183,10 @@ If `vehicle_id` does not belong to the specified `customer_id`, the endpoint ret
 
 The endpoint sets:
 
-* `ETag: W/"<hash>"` (hash of latest update timestamps across customer, appointments, invoices, line items)
-* `Cache-Control: public, max-age=30`
+* `ETag: W/"<hash>"` (SHA1 of concatenated latest `updated_at` (or `created_at` fallback) across: customer row, any appointment for the customer, any invoice for the customer, any invoice line item for those invoices)
+* `Cache-Control: private, max-age=30`
 
-Clients SHOULD issue conditional requests with `If-None-Match` to leverage 304 responses and reduce payload cost.
+Clients SHOULD issue conditional requests with `If-None-Match` to leverage 304 responses and reduce payload cost. On a 304 the body is empty and the same `ETag` and `Cache-Control` headers are returned.
 
 ### Roles & Auth
 
