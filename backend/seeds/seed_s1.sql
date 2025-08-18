@@ -61,7 +61,9 @@ WITH cust_data(k,name,email,phone,address) AS (
     ('C2','Mia Lee','mia.lee@example.com','+1-555-0101','456 Oak St'),
     ('C3','Ezra Kim','ezra.kim@example.com','+1-555-0102','789 Pine Ave'),
     ('C4','Ava Patel','ava.patel@example.com','+1-555-0103','321 Elm Dr'),
-    ('C5','Liam Torres','liam.torres@example.com','+1-555-0104','654 Maple Ln')
+  ('C5','Liam Torres','liam.torres@example.com','+1-555-0104','654 Maple Ln'),
+  -- Test lookup customer with multiple vehicles for /api/customers/lookup endpoint
+  ('LOOK','Lookup Test','lookup.test@example.com','5305555555','777 Lookup Blvd')
 ), ins AS (
   INSERT INTO customers (name,email,phone,address,created_at)
   SELECT name,email,phone,address, now() FROM cust_data
@@ -84,7 +86,10 @@ WITH veh_data(k, customer_key, make, model, year, vin, license_plate) AS (
     ('V2','C2','Toyota','Corolla',2020,'COR-2020-0001','8DEF456'),
     ('V3','C3','Ford','F-150',2021,'F15-2021-0001','9GHI789'),
     ('V4','C4','Nissan','Altima',2018,'ALT-2018-0001','1JKL012'),
-    ('V5','C5','BMW','328i',2020,'B32-2020-0001','2MNO345')
+  ('V5','C5','BMW','328i',2020,'B32-2020-0001','2MNO345'),
+  -- Two vehicles for lookup test customer
+  ('LV1','LOOK','Lamborghini','Revuelto',2026,'LREV-2026-0001','LOOKUP1'),
+  ('LV2','LOOK','Honda','Civic',2024,'CIV-2024-0002','LOOKUP2')
 ), ins AS (
   INSERT INTO vehicles (customer_id, make, model, year, vin, license_plate)
   SELECT c.id, vd.make, vd.model, vd.year, vd.vin, vd.license_plate
@@ -104,7 +109,7 @@ CREATE TEMP TABLE appt_anchors (
 ) ON COMMIT DROP;
 
 CREATE TEMP TABLE slots AS
-SELECT 
+SELECT
   date_trunc('day', now()) + interval '9 hour'  AS s1_start,
   date_trunc('day', now()) + interval '10 hour' AS s1_end,
   date_trunc('day', now()) + interval '11 hour' AS s2_start,

@@ -1,14 +1,14 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AppointmentForm from '@/components/appointments/AppointmentForm';
 import type { CustomerSearchResult } from '@/components/appointments/CustomerSearchInput';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-// NOTE: These tests cover the service selection integration path.
-// Full submit with service_operation_ids depends on selecting a real customer.
-// A future refactor might expose a test hook or allow injecting initial customer state.
+// Updated to reflect new single-add-per-row ServiceCatalogModal workflow.
+// The modal allows inline Add which immediately invokes AppointmentForm's onConfirm path only
+// when we click the confirm button (batch button). We simulate selecting via row Add buttons.
 
 vi.mock('@/lib/api', async () => {
   const actual = (await vi.importActual('@/lib/api')) as Record<string, unknown>;
@@ -20,9 +20,34 @@ vi.mock('@/lib/api', async () => {
 });
 import * as api from '@/lib/api';
 
+// Provide full-ish shape so ServiceCatalogModal filters (which require is_active) don't drop them.
 const SERVICES = [
-  { id: 'svc-a', name: 'Alignment', default_price: 120, category: 'Chassis' },
-  { id: 'svc-b', name: 'Rotation', default_price: 40, category: 'Tires' }
+  {
+    id: 'svc-a',
+    internal_code: 'ALIGN',
+    name: 'Alignment',
+    category: 'CHASSIS',
+    subcategory: null,
+    skill_level: 1,
+    default_hours: 1,
+    base_labor_rate: 120,
+    keywords: ['alignment','wheel'],
+    is_active: true,
+    display_order: 1
+  },
+  {
+    id: 'svc-b',
+    internal_code: 'ROT',
+    name: 'Rotation',
+    category: 'TIRES',
+    subcategory: null,
+    skill_level: 1,
+    default_hours: 0.5,
+    base_labor_rate: 40,
+    keywords: ['rotation','tire'],
+    is_active: true,
+    display_order: 2
+  }
 ];
 
 const PRESET_CUSTOMER: CustomerSearchResult = {
@@ -54,7 +79,7 @@ describe('AppointmentForm services integration', () => {
   }
 
   async function typeSearch(value: string, waitForText: string) {
-    const input = screen.getByPlaceholderText(/search services/i);
+    const input = screen.getByPlaceholderText(/search within category/i);
     await userEvent.clear(input);
     await userEvent.type(input, value);
     // Rely on findBy* (wrapped in act) instead of manual setTimeout to satisfy debounce + fetch
@@ -65,42 +90,42 @@ describe('AppointmentForm services integration', () => {
     vi.clearAllMocks();
   });
 
-  it('opens modal and lists services after search', async () => {
+  it('opens modal and lists services after search (single-add flow)', async () => {
     renderWithClient(<AppointmentForm mode="create" />);
-  await userEvent.click(screen.getByRole('button', { name: /add service/i }));
-  await typeSearch('al', 'Alignment');
-  // Alignment result awaited above
-  expect(screen.getByText('Alignment')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /add service/i }));
+    await typeSearch('al', 'Alignment');
+    expect(screen.getByText('Alignment')).toBeInTheDocument();
   });
 
-  it('selects a service and shows it in the form after confirming', async () => {
+  it('adds a single service via inline Add button', async () => {
     renderWithClient(<AppointmentForm mode="create" />);
-  await userEvent.click(screen.getByRole('button', { name: /add service/i }));
-  await typeSearch('ro', 'Rotation');
-  // Rotation result awaited above
-  expect(screen.getByText('Rotation')).toBeInTheDocument();
-    await userEvent.click(screen.getByText('Rotation'));
-    await userEvent.click(screen.getByRole('button', { name: /add 1 service/i }));
+    await userEvent.click(screen.getByRole('button', { name: /add service/i }));
+    await typeSearch('ro', 'Rotation');
+    expect(screen.getByText('Rotation')).toBeInTheDocument();
+    const row = screen.getByTestId('service-row-svc-b');
+    const addBtn = within(row).getByRole('button', { name: /add/i });
+    await userEvent.click(addBtn);
+    const confirmBtn = screen.getByRole('button', { name: /add 1 service/i });
+    await userEvent.click(confirmBtn);
     expect(screen.getByText('Rotation')).toBeInTheDocument();
   });
 
-  it('submits with preset customer, selected vehicle and services', async () => {
+  it('submits with preset customer, vehicle and two services (inline adds)', async () => {
     const createSpy = vi.spyOn(api, 'createAppointment');
     renderWithClient(<AppointmentForm mode="create" presetCustomer={PRESET_CUSTOMER} />);
-    // choose a vehicle
-    const vehicleSelect = screen.getByLabelText(/vehicle/i);
-    await userEvent.selectOptions(vehicleSelect, 'veh-2');
-    // open modal and select services
-  await userEvent.click(screen.getByRole('button', { name: /add service/i }));
-  await typeSearch('al', 'Alignment');
-  expect(screen.getByText('Alignment')).toBeInTheDocument();
-    await userEvent.click(screen.getByText('Alignment'));
-    await userEvent.click(screen.getByText('Rotation'));
-    await userEvent.click(screen.getByRole('button', { name: /add 2 services/i }));
-    // fill required start time
-    const startInput = screen.getByLabelText(/start time/i);
-    await userEvent.type(startInput, '2025-08-16T10:30');
-    // submit
+    await userEvent.selectOptions(screen.getByLabelText(/vehicle/i), 'veh-2');
+    await userEvent.click(screen.getByRole('button', { name: /add service/i }));
+    await typeSearch('al', 'Alignment');
+    const rowA = screen.getByTestId('service-row-svc-a');
+    await userEvent.click(within(rowA).getByRole('button', { name: /add/i }));
+    await userEvent.clear(screen.getByTestId('service-search'));
+    await userEvent.type(screen.getByTestId('service-search'), 'ro');
+    await screen.findByText('Rotation');
+    const rowB = screen.getByTestId('service-row-svc-b');
+    await userEvent.click(within(rowB).getByRole('button', { name: /add/i }));
+    const confirmBtn = screen.getByRole('button', { name: /add 2 services/i });
+    await userEvent.click(confirmBtn);
+    await userEvent.type(screen.getByLabelText(/start time/i), '2025-08-16T10:30');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
     expect(createSpy).toHaveBeenCalledTimes(1);
     const payload = createSpy.mock.calls[0][0];
@@ -111,27 +136,27 @@ describe('AppointmentForm services integration', () => {
     });
   });
 
-  it('removes a selected service before submit and payload reflects reduced list', async () => {
+  it('removes a previously added service before submit (single-add path)', async () => {
     const createSpy = vi.spyOn(api, 'createAppointment');
     renderWithClient(<AppointmentForm mode="create" presetCustomer={PRESET_CUSTOMER} />);
-    // choose vehicle
     await userEvent.selectOptions(screen.getByLabelText(/vehicle/i), 'veh-1');
-    // add two services
-  await userEvent.click(screen.getByRole('button', { name: /add service/i }));
-  await typeSearch('al', 'Alignment');
-  expect(screen.getByText('Alignment')).toBeInTheDocument();
-    await userEvent.click(screen.getByText('Alignment'));
-    await userEvent.click(screen.getByText('Rotation'));
-    await userEvent.click(screen.getByRole('button', { name: /add 2 services/i }));
-    // remove one
+    await userEvent.click(screen.getByRole('button', { name: /add service/i }));
+    await typeSearch('al', 'Alignment');
+    await userEvent.click(within(screen.getByTestId('service-row-svc-a')).getByRole('button', { name: /add/i }));
+    const confirm1 = screen.getByRole('button', { name: /add 1 service/i });
+    await userEvent.click(confirm1);
+    await userEvent.click(screen.getByRole('button', { name: /add service/i }));
+    await userEvent.clear(screen.getByTestId('service-search'));
+    await userEvent.type(screen.getByTestId('service-search'), 'ro');
+    await screen.findByText('Rotation');
+    await userEvent.click(within(screen.getByTestId('service-row-svc-b')).getByRole('button', { name: /add/i }));
+    const confirm2 = screen.getByRole('button', { name: /add 1 service/i });
+    await userEvent.click(confirm2);
     const removeAlignmentBtn = screen.getByRole('button', { name: /remove alignment/i });
     await userEvent.click(removeAlignmentBtn);
-    // ensure only Rotation remains
     expect(screen.queryByText('Alignment')).not.toBeInTheDocument();
     expect(screen.getByText('Rotation')).toBeInTheDocument();
-    // fill start time
     await userEvent.type(screen.getByLabelText(/start time/i), '2025-08-16T09:15');
-    // submit
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
     expect(createSpy).toHaveBeenCalledTimes(1);
     const payload = createSpy.mock.calls[0][0];

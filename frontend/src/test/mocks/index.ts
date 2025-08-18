@@ -1,9 +1,9 @@
 /**
  * Centralized Mock Factory (P1-T-012)
- * 
+ *
  * This factory provides a single source of truth for all test mocks,
  * preventing circular dependencies and undefined mock issues.
- * 
+ *
  * All vi.mock() calls should use the outputs from this factory.
  */
 
@@ -20,7 +20,7 @@ export function createMocks() {
         const now = new Date();
         return new Date(now.getTime() + minutes * 60000);
       }),
-      
+
       formatDuration: vi.fn((minutes: number) => {
         const hours = Math.floor(minutes / 60);
         const mins = minutes % 60;
@@ -29,19 +29,19 @@ export function createMocks() {
         }
         return `${mins}m`;
       }),
-      
+
       getCurrentTime: vi.fn(() => new Date()),
-      
+
       isBusinessHours: vi.fn(() => true),
-      
+
       addBusinessDays: vi.fn((date: Date, days: number) => {
         const result = new Date(date);
         result.setDate(result.getDate() + days);
         return result;
       }),
-      
+
       formatTime: vi.fn((date: Date) => date.toLocaleTimeString()),
-      
+
       formatDate: vi.fn((date: Date) => date.toLocaleDateString()),
       // expose getMinutesUntil used by tests
       getMinutesUntil: vi.fn((date: Date | string) => {
@@ -61,7 +61,7 @@ export function createMocks() {
         ],
         cards: []
       }),
-      
+
       getStats: vi.fn().mockResolvedValue({
         totalAppointments: 0,
         pendingCount: 0,
@@ -69,23 +69,23 @@ export function createMocks() {
         completedCount: 0,
         revenue: 0
       }),
-      
+
       moveAppointment: vi.fn().mockResolvedValue({}),
-      
+
       createAppointment: vi.fn().mockResolvedValue({ id: 'new-appointment' }),
-      
+
       updateAppointment: vi.fn().mockResolvedValue({}),
-      
+
       deleteAppointment: vi.fn().mockResolvedValue({}),
-      
+
       getServices: vi.fn().mockResolvedValue([]),
-      
+
       createService: vi.fn().mockResolvedValue({ id: 'new-service' }),
-      
+
       updateService: vi.fn().mockResolvedValue({}),
-      
+
       deleteService: vi.fn().mockResolvedValue({}),
-      
+
       getAppointmentServices: vi.fn().mockImplementation((appointmentId: string) => {
         // Return an empty service list by default; tests can override via vi.mocked
         return Promise.resolve([]);
@@ -94,6 +94,7 @@ export function createMocks() {
         // Return an empty message list by default; tests can override via vi.mocked
         return Promise.resolve([]);
       }),
+  checkConflict: vi.fn().mockResolvedValue({ conflict: false }),
       // Drawer fetch used by AppointmentDrawer component
       getDrawer: vi.fn().mockImplementation((id: string) => {
         return Promise.resolve({
@@ -119,17 +120,17 @@ export function createMocks() {
       getCustomerHistory: vi.fn().mockImplementation((customerId: string) => {
         return Promise.resolve({ success: true, data: { pastAppointments: [], payments: [] }, errors: null });
       }),
-      
+
       // Simulation controls
       simulateFailureRate: vi.fn((rate: number) => {
         // Mock implementation that can be configured per test
         console.log(`🔧 API Mock: Setting failure rate to ${rate * 100}%`);
       }),
-      
+
       simulateLatency: vi.fn((ms: number) => {
         console.log(`🔧 API Mock: Setting latency to ${ms}ms`);
       }),
-      
+
       // Error handling utilities
       handleApiError: vi.fn((error: unknown, defaultMessage: string) => {
         if (error instanceof Error) {

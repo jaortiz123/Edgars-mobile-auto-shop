@@ -22,6 +22,7 @@ function matchesQuery(s: ServiceOperation, q: string) { if (!q) return true; con
 
 async function fetchServices() {
   const resp = await fetch('/api/admin/service-operations');
+  // (debug log removed after resolving test hang root cause)
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   const data = await resp.json();
   const list = Array.isArray(data) ? data : data?.service_operations;
@@ -29,9 +30,9 @@ async function fetchServices() {
   return list as ServiceOperation[];
 }
 
-interface Props { open: boolean; onClose(): void; onAdd(op: ServiceOperation): void; }
+interface Props { open: boolean; onClose(): void; onAdd(op: ServiceOperation): void; onConfirm?(selected: ServiceOperation[]): void; }
 
-export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd }) => {
+export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onConfirm }) => {
   const [services, setServices] = useState<ServiceOperation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +63,14 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd }) =
 
 
   useEffect(() => { if (open) { const t = setTimeout(() => searchRef.current?.focus(), 0); return () => clearTimeout(t); } }, [open]);
+
+  // When user types a query, broaden search to all categories for convenience
+  useEffect(() => {
+    if (query) {
+      setSelectedCategory(null);
+    }
+  }, [query]);
+
 
   const categories = useMemo(() => {
     const m = new Map<string, number>();
@@ -99,7 +108,18 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd }) =
     return enriched.map(g => [g.name, g.items] as [string, ServiceOperation[]]);
   }, [filtered]);
 
-  const visibleItems = useMemo(() => { const out: ServiceOperation[] = []; grouped.forEach(([g,items]) => { if (expandedGroups.has(g)) out.push(...items); }); return out; }, [grouped, expandedGroups]);
+  // If there is only one group and it's 'Other', we flatten it (no accordion UI) for clarity.
+  const flattenSingleOther = grouped.length === 1 && grouped[0][0] === 'Other';
+
+  const visibleItems = useMemo(() => {
+    if (flattenSingleOther) {
+      // All items are visible implicitly.
+      return grouped[0][1];
+    }
+    const out: ServiceOperation[] = [];
+    grouped.forEach(([g,items]) => { if (expandedGroups.has(g)) out.push(...items); });
+    return out;
+  }, [grouped, expandedGroups, flattenSingleOther]);
 
   // When category or query changes, reset keyboard focus index but preserve expanded groups.
   useEffect(() => { setFocusedIndex(-1); }, [selectedCategory, query]);
@@ -137,11 +157,47 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd }) =
     }
   }, [visibleItems, focusedIndex]);
 
+  // Expand all groups automatically while searching so results are visible (after grouped definition)
+  useEffect(() => {
+    if (query && grouped.length > 0) {
+      setExpandedGroups(new Set(grouped.map(g => g[0])));
+    }
+  }, [query, grouped]);
+
+  // Auto-expand when there's exactly one group to reduce extra click friction
+  useEffect(() => {
+    if (open && grouped.length === 1 && !flattenSingleOther && expandedGroups.size === 0) {
+      setExpandedGroups(new Set([grouped[0][0]]));
+    }
+  }, [open, grouped, flattenSingleOther, expandedGroups]);
+
+  const [selected, setSelected] = useState<ServiceOperation[]>([]);
+  const toggleSelect = (op: ServiceOperation) => {
+    setSelected(prev => prev.find(s => s.id === op.id) ? prev.filter(s => s.id !== op.id) : [...prev, op]);
+  };
+  const handleAdd = (op: ServiceOperation) => {
+    // Keep existing immediate add behavior for backwards compatibility
+    onAdd(op);
+    // Track for batch confirm button
+    toggleSelect(op);
+  };
+  const handleConfirm = () => {
+    if (onConfirm) onConfirm(selected);
+    onClose();
+  };
+
+  // Reset selection whenever modal is closed so each new open starts clean
+  useEffect(() => {
+    if (!open && selected.length) {
+      setSelected([]);
+    }
+  }, [open, selected.length]);
+
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-6" role="dialog" aria-modal="true">
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-5xl h-[72vh] flex flex-col">
+  <div className="bg-white text-gray-900 rounded-2xl shadow-lg w-full max-w-5xl h-[72vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-3 border-b">
           <h2 className="text-lg font-semibold">Service Catalog</h2>
           <button onClick={onClose} className="text-sm px-2 py-1 border rounded hover:bg-gray-100">Close</button>
@@ -158,7 +214,7 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd }) =
                 <ul className="space-y-1 px-2">
                   {categories.map(([cat,count]) => { const active = cat===selectedCategory; return (
                     <li key={cat}>
-                      <button onClick={()=>setSelectedCategory(cat)} className={`w-full text-left px-3 py-2 rounded text-sm border hover:bg-gray-50 ${active?'bg-gray-100 border-gray-400':'border-transparent'}`}>
+                      <button onClick={()=>setSelectedCategory(cat)} className={`w-full text-left px-3 py-2 rounded text-sm border hover:bg-gray-50 ${active?'bg-gray-100 border-gray-400':'border-transparent'} text-gray-800`}>
                         <span className="font-medium mr-2">{cat.replace(/_/g,' ')}</span>
                         <span className="text-xs text-gray-500">{count}</span>
                       </button>
@@ -171,10 +227,12 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd }) =
           <div className="flex-1 flex flex-col">
             <div className="px-5 py-2 border-b bg-gray-50 text-sm text-gray-600 flex items-center justify-between">
               <div>{selectedCategory || 'All'} • {filtered.length} item{filtered.length!==1 && 's'}</div>
-              <div className="flex gap-2">
-                <button onClick={expandAll} className="text-xs px-2 py-1 border rounded hover:bg-gray-100">Expand all</button>
-                <button onClick={collapseAll} className="text-xs px-2 py-1 border rounded hover:bg-gray-100">Collapse all</button>
-              </div>
+              {!flattenSingleOther && (
+                <div className="flex gap-2">
+                  <button onClick={expandAll} className="text-xs px-2 py-1 border rounded hover:bg-gray-100">Expand all</button>
+                  <button onClick={collapseAll} className="text-xs px-2 py-1 border rounded hover:bg-gray-100">Collapse all</button>
+                </div>
+              )}
             </div>
             <div className="flex-1 overflow-auto">
               {loading && <div className="p-5 text-sm text-gray-500">Loading services…</div>}
@@ -188,11 +246,46 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd }) =
                   onKeyDown={onKeyDownList}
                   // Do NOT auto-focus first row on container focus; ArrowDown should move focus to first row per test expectation.
                 >
-                  {grouped.map(([groupName, items]) => {
+                  {!flattenSingleOther && expandedGroups.size === 0 && (
+                    <div className="p-6 text-sm text-gray-500 select-none">
+                      No subcategory expanded yet. Click a subcategory name on the left, a chevron on the right, or use the "Expand all" button to view services.
+                    </div>
+                  )}
+                  {flattenSingleOther && grouped.length === 1 && (
+                    <ul className="divide-y ml-0">
+                      {grouped[0][1].map(s => { const idx = visibleItems.findIndex(v=>v.id===s.id); const focused = idx===focusedIndex; return (
+                        <li key={s.id} className={`py-3 rounded-lg ${focused ? 'ring-2 ring-blue-300 bg-blue-50' : ''}`}>
+                          <div
+                            ref={el => { if (el) rowRefs.current.set(s.id, el); else rowRefs.current.delete(s.id); }}
+                            data-testid={`service-row-${s.id}`}
+                            tabIndex={focused ? 0 : -1}
+                            className="flex items-center justify-between gap-4 focus:outline-none cursor-pointer px-2"
+                            onClick={()=> { setFocusedIndex(idx); handleAdd(s); }}
+                          >
+                            <div className="min-w-0">
+                              <div className="font-medium text-sm truncate">{s.name}</div>
+                              <div className="text-xs text-gray-500 mt-0.5 flex gap-2 flex-wrap">
+                                <span>{s.category.replace(/_/g,' ')}</span>
+                                <span>•</span>
+                                <span>Hours: {formatHours(s.default_hours)}</span>
+                                <span>•</span>
+                                <span>Rate: {formatPrice(s.base_labor_rate)}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-gray-400">{s.display_order ?? ''}</span>
+                              <button onClick={(e)=>{ e.stopPropagation(); handleAdd(s); }} className="text-xs px-2 py-1 border rounded hover:bg-blue-100">{selected.find(sel=>sel.id===s.id)?'Selected':'Add'}</button>
+                            </div>
+                          </div>
+                        </li>
+                      );})}
+                    </ul>
+                  )}
+                  {!flattenSingleOther && grouped.map(([groupName, items]) => {
                     const open = expandedGroups.has(groupName);
                     return (
                       <div key={groupName} className="mb-2">
-                        <button type="button" className="w-full flex items-center justify-between py-2 px-2 rounded-xl hover:bg-gray-50" onClick={()=>toggleGroup(groupName)} data-testid={`group-toggle-${groupName}`}>
+                        <button type="button" className="w-full flex items-center justify-between py-2 px-2 rounded-xl hover:bg-gray-50 text-gray-800" onClick={()=>toggleGroup(groupName)} data-testid={`group-toggle-${groupName}`}>
                           <span className="flex items-center gap-2"><span className="text-gray-500">{open? <ChevronDown className="h-4 w-4"/>:<ChevronRight className="h-4 w-4"/>}</span><span className="font-medium truncate">{groupName}</span></span>
                           <span className="text-xs text-gray-500">{items.length}</span>
                         </button>
@@ -205,7 +298,7 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd }) =
                   data-testid={`service-row-${s.id}`}
                   tabIndex={focused ? 0 : -1}
                                   className="flex items-center justify-between gap-4 focus:outline-none cursor-pointer px-2"
-                                  onClick={()=> { setFocusedIndex(idx); onAdd(s); }}
+                                  onClick={()=> { setFocusedIndex(idx); handleAdd(s); }}
                                 >
                                   <div className="min-w-0">
                                     <div className="font-medium text-sm truncate">{s.name}</div>
@@ -219,7 +312,7 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd }) =
                                   </div>
                                   <div className="flex items-center gap-3">
                                     <span className="text-xs text-gray-400">{s.display_order ?? ''}</span>
-                                    <button onClick={(e)=>{ e.stopPropagation(); onAdd(s); }} className="text-xs px-2 py-1 border rounded hover:bg-blue-100">Add</button>
+                                    <button onClick={(e)=>{ e.stopPropagation(); handleAdd(s); }} className="text-xs px-2 py-1 border rounded hover:bg-blue-100">{selected.find(sel=>sel.id===s.id)?'Selected':'Add'}</button>
                                   </div>
                                 </div>
                               </li>
@@ -232,8 +325,16 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd }) =
                 </div>
               )}
             </div>
-            <div className="px-5 py-2 border-t flex justify-end">
-              <button onClick={onClose} className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50">Close</button>
+            <div className="px-5 py-2 border-t flex justify-between items-center">
+              <div className="text-xs text-gray-500" data-testid="selected-count">{selected.length} selected</div>
+              <div className="flex gap-2">
+                <button onClick={onClose} className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50">Close</button>
+                {onConfirm && (
+                  <button onClick={handleConfirm} disabled={!selected.length} className="px-3 py-1.5 text-sm border rounded bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700">
+                    Add {selected.length || ''} {selected.length === 1 ? 'service' : 'services'}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

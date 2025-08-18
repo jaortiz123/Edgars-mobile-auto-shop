@@ -1,7 +1,7 @@
 /**
  * Phase 2 Task 1: MSW Integration Test Server
  * Phase 2 Task 2: Happy Path Integration Workflow - Enhanced with Fixture Data
- * 
+ *
  * Mock Service Worker server setup for integration testing.
  * Provides realistic HTTP handlers that mirror real API endpoints.
  */
@@ -146,6 +146,25 @@ const mockServices: MockService[] = [
 
 // Request handlers
 const handlers = [
+  // Service operations endpoint (added for multi-service QuickAddModal tests)
+  http.get('http://localhost:3000/api/admin/service-operations', () => {
+    return HttpResponse.json([
+      { id: 'svc-oil', internal_code: 'OIL', name: 'Oil Change', category: 'MAINTENANCE', subcategory: null, skill_level: 1, default_hours: 1, base_labor_rate: 80, keywords: ['oil','change'], is_active: true, display_order: 1 },
+      { id: 'svc-tire', internal_code: 'TIRE_ROT', name: 'Tire Rotation', category: 'MAINTENANCE', subcategory: null, skill_level: 1, default_hours: 0.5, base_labor_rate: 60, keywords: ['tire','rotation'], is_active: true, display_order: 2 }
+    ]);
+  }),
+  http.get('http://localhost/api/admin/service-operations', () => {
+    return HttpResponse.json([
+      { id: 'svc-oil', internal_code: 'OIL', name: 'Oil Change', category: 'MAINTENANCE', subcategory: null, skill_level: 1, default_hours: 1, base_labor_rate: 80, keywords: ['oil','change'], is_active: true, display_order: 1 },
+      { id: 'svc-tire', internal_code: 'TIRE_ROT', name: 'Tire Rotation', category: 'MAINTENANCE', subcategory: null, skill_level: 1, default_hours: 0.5, base_labor_rate: 60, keywords: ['tire','rotation'], is_active: true, display_order: 2 }
+    ]);
+  }),
+  http.get('http://localhost:3001/admin/service-operations', () => {
+    return HttpResponse.json({ service_operations: [
+      { id: 'svc-oil', internal_code: 'OIL', name: 'Oil Change', category: 'MAINTENANCE', subcategory: null, skill_level: 1, default_hours: 1, base_labor_rate: 80, keywords: ['oil','change'], is_active: true, display_order: 1 },
+      { id: 'svc-tire', internal_code: 'TIRE_ROT', name: 'Tire Rotation', category: 'MAINTENANCE', subcategory: null, skill_level: 1, default_hours: 0.5, base_labor_rate: 60, keywords: ['tire','rotation'], is_active: true, display_order: 2 }
+    ]});
+  }),
   // Invoice detail endpoint mock
   http.get('http://localhost:3000/api/admin/invoices/:id', ({ params }) => {
     const { id } = params as { id: string };
@@ -225,21 +244,21 @@ const handlers = [
 
     // Filter appointments based on query params
     let filteredAppointments = mockAppointments;
-    
+
     if (from) {
-      filteredAppointments = filteredAppointments.filter(apt => 
+      filteredAppointments = filteredAppointments.filter(apt =>
         new Date(apt.start_ts) >= new Date(from)
       );
     }
-    
+
     if (to) {
-      filteredAppointments = filteredAppointments.filter(apt => 
+      filteredAppointments = filteredAppointments.filter(apt =>
         new Date(apt.end_ts || apt.start_ts) <= new Date(to)
       );
     }
-    
+
     if (techId) {
-      filteredAppointments = filteredAppointments.filter(apt => 
+      filteredAppointments = filteredAppointments.filter(apt =>
         apt.tech_id === techId
       );
     }
@@ -282,21 +301,21 @@ const handlers = [
 
     // Filter appointments based on query params
     let filteredAppointments = mockAppointments;
-    
+
     if (from) {
-      filteredAppointments = filteredAppointments.filter(apt => 
+      filteredAppointments = filteredAppointments.filter(apt =>
         new Date(apt.start_ts) >= new Date(from)
       );
     }
-    
+
     if (to) {
-      filteredAppointments = filteredAppointments.filter(apt => 
+      filteredAppointments = filteredAppointments.filter(apt =>
         new Date(apt.end_ts || apt.start_ts) <= new Date(to)
       );
     }
-    
+
     if (techId) {
-      filteredAppointments = filteredAppointments.filter(apt => 
+      filteredAppointments = filteredAppointments.filter(apt =>
         apt.tech_id === techId
       );
     }
@@ -339,21 +358,21 @@ const handlers = [
 
     // Filter appointments based on query params
     let filteredAppointments = mockAppointments;
-    
+
     if (from) {
-      filteredAppointments = filteredAppointments.filter(apt => 
+      filteredAppointments = filteredAppointments.filter(apt =>
         new Date(apt.start_ts) >= new Date(from)
       );
     }
-    
+
     if (to) {
-      filteredAppointments = filteredAppointments.filter(apt => 
+      filteredAppointments = filteredAppointments.filter(apt =>
         new Date(apt.end_ts || apt.start_ts) <= new Date(to)
       );
     }
-    
+
     if (techId) {
-      filteredAppointments = filteredAppointments.filter(apt => 
+      filteredAppointments = filteredAppointments.filter(apt =>
         apt.tech_id === techId
       );
     }
@@ -382,7 +401,7 @@ const handlers = [
 
     const responseData = { columns, cards };
     console.log('✅ MSW: Returning board data (with /api):', JSON.stringify(responseData, null, 2));
-    
+
     return HttpResponse.json(responseData);
   }),
 
@@ -394,9 +413,9 @@ const handlers = [
     const offset = parseInt(url.searchParams.get('offset') || '0');
 
     let filteredAppointments = mockAppointments;
-    
+
     if (status) {
-      filteredAppointments = filteredAppointments.filter(apt => 
+      filteredAppointments = filteredAppointments.filter(apt =>
         apt.status.toUpperCase() === status.toUpperCase()
       );
     }
@@ -418,9 +437,9 @@ const handlers = [
   http.get('http://localhost:3000/api/appointments/:id', ({ params }) => {
     const id = params.id as string;
     console.log('🔧 MSW: getDrawer handler (unit test) called for id:', id);
-    
+
     const appointment = mockAppointments.find(apt => apt.id === id);
-    
+
     if (!appointment) {
       console.log('🔧 MSW: Appointment not found for id:', id);
       return HttpResponse.json(
@@ -463,9 +482,9 @@ const handlers = [
     const offset = parseInt(url.searchParams.get('offset') || '0');
 
     let filteredAppointments = mockAppointments;
-    
+
     if (status) {
-      filteredAppointments = filteredAppointments.filter(apt => 
+      filteredAppointments = filteredAppointments.filter(apt =>
         apt.status.toUpperCase() === status.toUpperCase()
       );
     }
@@ -487,9 +506,9 @@ const handlers = [
   http.get('http://localhost:3001/appointments/:id', ({ params }) => {
     const id = params.id as string;
     console.log('🔧 MSW: getDrawer handler called for id:', id);
-    
+
     const appointment = mockAppointments.find(apt => apt.id === id);
-    
+
     if (!appointment) {
       console.log('🔧 MSW: Appointment not found for id:', id);
       return HttpResponse.json(
@@ -527,7 +546,7 @@ const handlers = [
   // Create appointment
   http.post('http://localhost:3001/admin/appointments', async ({ request }) => {
     const body = await request.json() as Record<string, unknown>;
-    
+
     const newAppointment: MockAppointment = {
       id: `apt-${Date.now()}`,
       status: (body.status as string) || 'SCHEDULED',
@@ -556,7 +575,7 @@ const handlers = [
   http.patch('http://localhost:3000/api/admin/appointments/:id/move', async ({ params, request }) => {
     const id = params.id as string;
     const body = await request.json() as Record<string, unknown>;
-    
+
     const appointmentIndex = mockAppointments.findIndex(apt => apt.id === id);
     if (appointmentIndex === -1) {
       return HttpResponse.json(
@@ -582,7 +601,7 @@ const handlers = [
   http.patch('http://localhost:3000/api/admin/appointments/:id/status', async ({ params, request }) => {
     const id = params.id as string;
     const body = await request.json() as Record<string, unknown>;
-    
+
     const appointmentIndex = mockAppointments.findIndex(apt => apt.id === id);
     if (appointmentIndex === -1) {
       return HttpResponse.json(
@@ -606,7 +625,7 @@ const handlers = [
   http.patch('http://localhost:3000/api/appointments/:id', async ({ params, request }) => {
     const id = params.id as string;
     const body = await request.json() as Record<string, unknown>;
-    
+
     const appointmentIndex = mockAppointments.findIndex(apt => apt.id === id);
     if (appointmentIndex === -1) {
       return HttpResponse.json(
@@ -657,7 +676,7 @@ const handlers = [
   http.patch('http://localhost:3001/admin/appointments/:id/move', async ({ params, request }) => {
     const id = params.id as string;
     const body = await request.json() as Record<string, unknown>;
-    
+
     const appointmentIndex = mockAppointments.findIndex(apt => apt.id === id);
     if (appointmentIndex === -1) {
       return HttpResponse.json(
@@ -684,7 +703,7 @@ const handlers = [
   http.patch('http://localhost:3001/admin/appointments/:id/status', async ({ params, request }) => {
     const id = params.id as string;
     const body = await request.json() as Record<string, unknown>;
-    
+
     const appointmentIndex = mockAppointments.findIndex(apt => apt.id === id);
     if (appointmentIndex === -1) {
       return HttpResponse.json(
@@ -709,7 +728,7 @@ const handlers = [
   http.patch('http://localhost:3001/appointments/:id', async ({ params, request }) => {
     const id = params.id as string;
     const body = await request.json() as Record<string, unknown>;
-    
+
     const appointmentIndex = mockAppointments.findIndex(apt => apt.id === id);
     if (appointmentIndex === -1) {
       return HttpResponse.json(
@@ -730,11 +749,11 @@ const handlers = [
     });
   }),
 
-  // PATCH /api/appointments/:id - API version  
+  // PATCH /api/appointments/:id - API version
   http.patch('http://localhost:3001/api/appointments/:id', async ({ params, request }) => {
     const id = params.id as string;
     const body = await request.json() as Record<string, unknown>;
-    
+
     const appointmentIndex = mockAppointments.findIndex(apt => apt.id === id);
     if (appointmentIndex === -1) {
       return HttpResponse.json(
@@ -757,7 +776,7 @@ const handlers = [
   http.get('http://localhost:3001/appointments/:id/services', ({ params }) => {
     const appointmentId = params.id as string;
     const services = mockServices.filter(s => s.appointment_id === appointmentId);
-    
+
     return HttpResponse.json({
       services
     });
@@ -766,7 +785,7 @@ const handlers = [
   http.post('http://localhost:3001/appointments/:id/services', async ({ params, request }) => {
     const appointmentId = params.id as string;
     const body = await request.json() as Record<string, unknown>;
-    
+
     const newService: MockService = {
       id: `svc-${Date.now()}`,
       appointment_id: appointmentId,
@@ -800,7 +819,7 @@ const handlers = [
     const appointmentId = params.id as string;
     console.log('🔍 MSW: Services GET endpoint (unit test) hit!', `http://localhost:3000/api/appointments/${appointmentId}/services`);
     const services = mockServices.filter(s => s.appointment_id === appointmentId);
-    
+
     return HttpResponse.json({
       services
     });
@@ -809,11 +828,11 @@ const handlers = [
   http.post('http://localhost:3000/api/appointments/:id/services', async ({ params, request }) => {
     const appointmentId = params.id as string;
     const body = await request.json() as Record<string, unknown>;
-    
+
     console.log('🔍 MSW: Service creation endpoint (unit test) hit!', `http://localhost:3000/api/appointments/${appointmentId}/services`);
     console.log('📝 MSW: Service creation payload:', body);
     console.log('🔧 MSW: About to create service for appointment:', appointmentId);
-    
+
     const newService: MockService = {
       id: `svc-${Date.now()}`,
       appointment_id: appointmentId,
@@ -851,7 +870,7 @@ const handlers = [
     const appointmentId = params.id as string;
     console.log('🔍 MSW: Services GET endpoint (with /api) hit!', `http://localhost:3001/api/appointments/${appointmentId}/services`);
     const services = mockServices.filter(s => s.appointment_id === appointmentId);
-    
+
     return HttpResponse.json({
       services
     });
@@ -862,7 +881,7 @@ const handlers = [
     const appointmentId = params.id as string;
     console.log('🔍 MSW: Services GET endpoint (relative /api) hit!', `/api/appointments/${appointmentId}/services`);
     const services = mockServices.filter(s => s.appointment_id === appointmentId);
-    
+
     return HttpResponse.json({
       services
     });
@@ -871,11 +890,11 @@ const handlers = [
   http.post('http://localhost:3001/api/appointments/:id/services', async ({ params, request }) => {
     const appointmentId = params.id as string;
     const body = await request.json() as Record<string, unknown>;
-    
+
     console.log('🔍 MSW: Service creation endpoint (with /api) hit!', `http://localhost:3001/api/appointments/${appointmentId}/services`);
     console.log('📝 MSW: Service creation payload:', body);
     console.log('🔧 MSW: About to create service for appointment:', appointmentId);
-    
+
     const newService: MockService = {
       id: `svc-${Date.now()}`,
       appointment_id: appointmentId,
@@ -912,11 +931,11 @@ const handlers = [
   http.post('/api/appointments/:id/services', async ({ params, request }) => {
     const appointmentId = params.id as string;
     const body = await request.json() as Record<string, unknown>;
-    
+
     console.log('🔍 MSW: Service creation endpoint (relative /api) hit!', `/api/appointments/${appointmentId}/services`);
     console.log('📝 MSW: Service creation payload:', body);
     console.log('🔧 MSW: About to create service for appointment:', appointmentId);
-    
+
     const newService: MockService = {
       id: `svc-${Date.now()}`,
       appointment_id: appointmentId,
@@ -997,7 +1016,7 @@ const handlers = [
 
   http.post('http://localhost:3001/appointments/:id/messages', async ({ request }) => {
     await request.json(); // Read body but don't use it
-    
+
     return HttpResponse.json({
       id: `msg-${Date.now()}`,
       status: 'sent',
@@ -1080,7 +1099,7 @@ const handlers = [
     if (shouldTriggerErrorScenario('notificationPost500')) {
       console.log('🚨 MSW: Triggering 500 error for POST /notifications');
       return HttpResponse.json(
-        { 
+        {
           data: null,
           errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
           meta: { request_id: generateRequestId() }
@@ -1096,7 +1115,7 @@ const handlers = [
 
     if (!notificationType || !appointmentId || !message) {
       return HttpResponse.json(
-        { 
+        {
           data: null,
           errors: [{ status: '400', code: 'INVALID_PAYLOAD', detail: 'Missing required notification fields' }],
           meta: { request_id: generateRequestId() }
@@ -1132,7 +1151,7 @@ const handlers = [
     if (shouldTriggerErrorScenario('notificationPost500')) {
       console.log('🚨 MSW: Triggering 500 error for POST /api/notifications');
       return HttpResponse.json(
-        { 
+        {
           data: null,
           errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
           meta: { request_id: generateRequestId() }
@@ -1148,7 +1167,7 @@ const handlers = [
 
     if (!notificationType || !appointmentId || !message) {
       return HttpResponse.json(
-        { 
+        {
           data: null,
           errors: [{ status: '400', code: 'INVALID_PAYLOAD', detail: 'Missing required notification fields' }],
           meta: { request_id: generateRequestId() }
@@ -1184,7 +1203,7 @@ const handlers = [
     if (shouldTriggerErrorScenario('notificationPost500')) {
       console.log('🚨 MSW: Triggering 500 error for POST localhost:3000/notifications');
       return HttpResponse.json(
-        { 
+        {
           data: null,
           errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
           meta: { request_id: generateRequestId() }
@@ -1200,7 +1219,7 @@ const handlers = [
 
     if (!notificationType || !appointmentId || !message) {
       return HttpResponse.json(
-        { 
+        {
           data: null,
           errors: [{ status: '400', code: 'INVALID_PAYLOAD', detail: 'Missing required notification fields' }],
           meta: { request_id: generateRequestId() }
@@ -1236,7 +1255,7 @@ const handlers = [
     if (shouldTriggerErrorScenario('notificationPost500')) {
       console.log('🚨 MSW: Triggering 500 error for POST localhost:3000/api/notifications');
       return HttpResponse.json(
-        { 
+        {
           data: null,
           errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
           meta: { request_id: generateRequestId() }
@@ -1252,7 +1271,7 @@ const handlers = [
 
     if (!notificationType || !appointmentId || !message) {
       return HttpResponse.json(
-        { 
+        {
           data: null,
           errors: [{ status: '400', code: 'INVALID_PAYLOAD', detail: 'Missing required notification fields' }],
           meta: { request_id: generateRequestId() }
@@ -1284,7 +1303,7 @@ const handlers = [
   // Catch-all handler to log unmatched requests
   http.all('*', ({ request }) => {
     console.log('🚨 MSW: Unmatched request:', request.method, request.url);
-    
+
     // If it's a board-related request, provide more details
     if (request.url.includes('board')) {
       console.log('🔍 MSW: Board request details:', {
@@ -1293,7 +1312,7 @@ const handlers = [
         headers: Object.fromEntries(request.headers.entries())
       });
     }
-    
+
     return new HttpResponse(null, { status: 404 });
   })
 ];
@@ -1455,16 +1474,16 @@ const enhancedHandlers = [
   ...handlers,
 
   // ========== RELATIVE PATH HANDLERS FOR ERROR SCENARIOS ==========
-  
+
   // Enhanced PATCH /api/appointments/:id with 500 error scenario (relative path)
   http.patch('/api/appointments/:id', async ({ params, request }) => {
     const id = params.id as string;
-    
+
     // Check for 500 error scenario
     if (shouldTriggerErrorScenario('appointmentPatch500')) {
       console.log('🚨 MSW: Triggering 500 error for relative API appointment PATCH');
       return HttpResponse.json(
-        { 
+        {
           data: null,
           errors: [{ status: '500', code: 'PROVIDER_ERROR', detail: 'Internal server error updating appointment' }],
           meta: { request_id: generateRequestId() }
@@ -1476,7 +1495,7 @@ const enhancedHandlers = [
     // Normal handler logic
     const body = await request.json() as Record<string, unknown>;
     const appointmentIndex = mockAppointments.findIndex(apt => apt.id === id);
-    
+
     if (appointmentIndex === -1) {
       return HttpResponse.json(
         { error: 'Appointment not found' },
@@ -1497,11 +1516,11 @@ const enhancedHandlers = [
   // Enhanced dashboard stats with delay and 401 scenarios (relative path)
   http.get('/api/admin/dashboard/stats', async () => {
     // Check for 401 unauthorized scenario
-    if (shouldTriggerErrorScenario('unauthorizedAccess') || 
+    if (shouldTriggerErrorScenario('unauthorizedAccess') ||
         shouldTriggerErrorScenario('protectedEndpoints401')) {
       console.log('🚨 MSW: Triggering 401 error for relative dashboard stats');
       return HttpResponse.json(
-        { 
+        {
           data: null,
           errors: [{ status: '401', code: 'AUTH_REQUIRED', detail: 'Authentication required for admin endpoints' }],
           meta: { request_id: generateRequestId() }
@@ -1566,11 +1585,11 @@ const enhancedHandlers = [
     }
 
     // Check for 401 unauthorized scenario
-    if (shouldTriggerErrorScenario('unauthorizedAccess') || 
+    if (shouldTriggerErrorScenario('unauthorizedAccess') ||
         shouldTriggerErrorScenario('protectedEndpoints401')) {
       console.log('🚨 MSW: Triggering 401 error for relative appointment board');
       return HttpResponse.json(
-        { 
+        {
           data: null,
           errors: [{ status: '401', code: 'AUTH_REQUIRED', detail: 'Authentication required for admin endpoints' }],
           meta: { request_id: generateRequestId() }
@@ -1590,21 +1609,21 @@ const enhancedHandlers = [
 
     // Filter appointments based on query params
     let filteredAppointments = mockAppointments;
-    
+
     if (from) {
-      filteredAppointments = filteredAppointments.filter(apt => 
+      filteredAppointments = filteredAppointments.filter(apt =>
         new Date(apt.start_ts) >= new Date(from)
       );
     }
-    
+
     if (to) {
-      filteredAppointments = filteredAppointments.filter(apt => 
+      filteredAppointments = filteredAppointments.filter(apt =>
         new Date(apt.end_ts || apt.start_ts) <= new Date(to)
       );
     }
-    
+
     if (techId) {
-      filteredAppointments = filteredAppointments.filter(apt => 
+      filteredAppointments = filteredAppointments.filter(apt =>
         apt.tech_id === techId
       );
     }
@@ -1633,7 +1652,7 @@ const enhancedHandlers = [
 
     const responseData = { columns, cards };
     console.log('✅ MSW: Returning board data (relative /api):', JSON.stringify(responseData, null, 2));
-    
+
     return HttpResponse.json(responseData);
   }),
 
@@ -1648,11 +1667,11 @@ const enhancedHandlers = [
     }
 
     // Check for 401 unauthorized scenario
-    if (shouldTriggerErrorScenario('unauthorizedAccess') || 
+    if (shouldTriggerErrorScenario('unauthorizedAccess') ||
         shouldTriggerErrorScenario('protectedEndpoints401')) {
       console.log('🚨 MSW: Triggering 401 error for appointment board');
       return HttpResponse.json(
-        { 
+        {
           data: null,
           errors: [{ status: '401', code: 'AUTH_REQUIRED', detail: 'Authentication required for admin endpoints' }],
           meta: { request_id: generateRequestId() }
@@ -1672,12 +1691,12 @@ const enhancedHandlers = [
   // Enhanced PATCH /appointments/:id with 500 error scenario
   http.patch('http://localhost:3001/appointments/:id', async ({ params, request }) => {
     const id = params.id as string;
-    
+
     // Check for 500 error scenario
     if (shouldTriggerErrorScenario('appointmentPatch500')) {
       console.log('🚨 MSW: Triggering 500 error for appointment PATCH');
       return HttpResponse.json(
-        { 
+        {
           data: null,
           errors: [{ status: '500', code: 'PROVIDER_ERROR', detail: 'Internal server error updating appointment' }],
           meta: { request_id: generateRequestId() }
@@ -1689,7 +1708,7 @@ const enhancedHandlers = [
     // Normal handler logic
     const body = await request.json() as Record<string, unknown>;
     const appointmentIndex = mockAppointments.findIndex(apt => apt.id === id);
-    
+
     if (appointmentIndex === -1) {
       return HttpResponse.json(
         { error: 'Appointment not found' },
@@ -1709,15 +1728,15 @@ const enhancedHandlers = [
     });
   }),
 
-  // Enhanced PATCH /api/appointments/:id with 500 error scenario  
+  // Enhanced PATCH /api/appointments/:id with 500 error scenario
   http.patch('http://localhost:3001/api/appointments/:id', async ({ params, request }) => {
     const id = params.id as string;
-    
+
     // Check for 500 error scenario
     if (shouldTriggerErrorScenario('appointmentPatch500')) {
       console.log('🚨 MSW: Triggering 500 error for API appointment PATCH');
       return HttpResponse.json(
-        { 
+        {
           data: null,
           errors: [{ status: '500', code: 'PROVIDER_ERROR', detail: 'Internal server error updating appointment' }],
           meta: { request_id: generateRequestId() }
@@ -1729,7 +1748,7 @@ const enhancedHandlers = [
     // Normal handler logic
     const body = await request.json() as Record<string, unknown>;
     const appointmentIndex = mockAppointments.findIndex(apt => apt.id === id);
-    
+
     if (appointmentIndex === -1) {
       return HttpResponse.json(
         { error: 'Appointment not found' },
@@ -1750,11 +1769,11 @@ const enhancedHandlers = [
   // Enhanced dashboard stats with delay and 401 scenarios
   http.get('http://localhost:3001/admin/dashboard/stats', async () => {
     // Check for 401 unauthorized scenario
-    if (shouldTriggerErrorScenario('unauthorizedAccess') || 
+    if (shouldTriggerErrorScenario('unauthorizedAccess') ||
         shouldTriggerErrorScenario('protectedEndpoints401')) {
       console.log('🚨 MSW: Triggering 401 error for dashboard stats');
       return HttpResponse.json(
-        { 
+        {
           data: null,
           errors: [{ status: '401', code: 'AUTH_REQUIRED', detail: 'Authentication required for admin endpoints' }],
           meta: { request_id: generateRequestId() }
@@ -1808,12 +1827,12 @@ const enhancedHandlers = [
 
   // Enhanced protected admin endpoints with 401 scenarios
   http.get('http://localhost:3001/api/admin/dashboard/stats', async () => {
-    // Check for 401 unauthorized scenario  
-    if (shouldTriggerErrorScenario('unauthorizedAccess') || 
+    // Check for 401 unauthorized scenario
+    if (shouldTriggerErrorScenario('unauthorizedAccess') ||
         shouldTriggerErrorScenario('protectedEndpoints401')) {
       console.log('🚨 MSW: Triggering 401 error for API dashboard stats');
       return HttpResponse.json(
-        { 
+        {
           data: null,
           errors: [{ status: '401', code: 'AUTH_REQUIRED', detail: 'Authentication required for admin endpoints' }],
           meta: { request_id: generateRequestId() }
@@ -1858,11 +1877,11 @@ const enhancedHandlers = [
   // Enhanced appointment board with 401 scenarios
   http.get('http://localhost:3001/api/admin/appointments/board', async ({ request }) => {
     // Check for 401 unauthorized scenario
-    if (shouldTriggerErrorScenario('unauthorizedAccess') || 
+    if (shouldTriggerErrorScenario('unauthorizedAccess') ||
         shouldTriggerErrorScenario('protectedEndpoints401')) {
       console.log('🚨 MSW: Triggering 401 error for appointment board');
       return HttpResponse.json(
-        { 
+        {
           data: null,
           errors: [{ status: '401', code: 'AUTH_REQUIRED', detail: 'Authentication required for admin endpoints' }],
           meta: { request_id: generateRequestId() }
@@ -1882,21 +1901,21 @@ const enhancedHandlers = [
 
     // Filter appointments based on query params
     let filteredAppointments = mockAppointments;
-    
+
     if (from) {
-      filteredAppointments = filteredAppointments.filter(apt => 
+      filteredAppointments = filteredAppointments.filter(apt =>
         new Date(apt.start_ts) >= new Date(from)
       );
     }
-    
+
     if (to) {
-      filteredAppointments = filteredAppointments.filter(apt => 
+      filteredAppointments = filteredAppointments.filter(apt =>
         new Date(apt.end_ts || apt.start_ts) <= new Date(to)
       );
     }
-    
+
     if (techId) {
-      filteredAppointments = filteredAppointments.filter(apt => 
+      filteredAppointments = filteredAppointments.filter(apt =>
         apt.tech_id === techId
       );
     }
@@ -1925,7 +1944,7 @@ const enhancedHandlers = [
 
     const responseData = { columns, cards };
     console.log('✅ MSW: Returning board data (with /api):', JSON.stringify(responseData, null, 2));
-    
+
     return HttpResponse.json(responseData);
   }),
 ];
