@@ -47,3 +47,28 @@ Phase 4 established a lean, fast, and maintainable test stack replacing a brittl
 - Introduce tax/discount domain logic with accompanying domain tests.
 
 This document should be updated whenever a new layer or strategy change is introduced.
+
+## Test-Only Flags
+
+### `window.__DISABLE_IDLE_PREFETCH`
+
+Purpose: Deterministically disables idle-time prefetch behavior in components (currently used in `CustomerProfilePage`) during tests.
+
+Context: The page uses `requestIdleCallback` (or a `setTimeout` fallback) to prefetch the next page of paginated data to improve perceived performance. In unit tests this caused nondeterministic additional fetches, breaking assertions about item counts and keyboard navigation order.
+
+Behavior When Set (truthy):
+
+1. Skips scheduling the idle prefetch effect.
+2. Ensures only explicitly user-triggered pagination (e.g. clicking "Load more") occurs.
+3. Stabilizes count-based and roving tabindex accessibility tests.
+
+Usage Pattern:
+
+```ts
+// Inside a test before rendering the component
+(window as any).__DISABLE_IDLE_PREFETCH = true;
+```
+
+Do NOT set this flag in production code. It is intentionally undocumented outside of the test layer and guarded only by naming convention. If future components adopt similar idle prefetch patterns, reuse this flag or introduce a scoped helper to keep behavior consistent.
+
+Removal Criteria: If/when tests are rewritten to mock or assert prefetch behavior explicitly (e.g. via controlled fake timers and explicit advancement), this flag can be removed along with its guard logic in the component.

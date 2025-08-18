@@ -5,15 +5,19 @@ import userEvent from '@testing-library/user-event';
 import CustomerProfilePage from '@/pages/admin/CustomerProfilePage';
 import * as profileApi from '@/lib/customerProfileApi';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { CustomerProfileResponse } from '@/lib/customerProfileApi';
 
 function renderWithRoute() {
+  const qc = new QueryClient();
   return render(
-    <MemoryRouter initialEntries={["/admin/customers/c1"]}>
-      <Routes>
-        <Route path="/admin/customers/:id" element={<CustomerProfilePage />} />
-      </Routes>
-    </MemoryRouter>
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={["/admin/customers/c1"]}>
+        <Routes>
+          <Route path="/admin/customers/:id" element={<CustomerProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 }
 
@@ -44,7 +48,7 @@ const liteProfile: CustomerProfileResponse = {
 const detailedProfile: CustomerProfileResponse = {
   ...liteProfile,
   appointments: [
-    { 
+    {
       ...liteProfile.appointments[0],
       services: [ { id: 's1', name: 'Oil Change', estimated_price: 50 } ],
       payments: [ { id: 'p1', method: 'card', amount: 100 } ],
