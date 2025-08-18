@@ -7,3 +7,7 @@ export function formatCurrency(amount: number | undefined | null, currency: stri
     return `$${amount.toFixed(2)}`;
   }
 }
+
+// B6 helpers (lightweight wrappers aligned with profile types)
+export const money = (n?: number | null) => (n == null ? '—' : n.toLocaleString(undefined, { style: 'currency', currency: 'USD' }));
+export const dtLocal = (iso?: string | null) => (iso ? new Date(iso).toLocaleString() : '—');
