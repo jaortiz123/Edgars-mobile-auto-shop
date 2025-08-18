@@ -13,6 +13,9 @@ export type ServiceOperation = {
   keywords: string[] | null;
   is_active: boolean;
   display_order: number | null;
+  // Packages (Phase 2 UI)
+  is_package?: boolean;
+  package_items?: { child_id: string; qty: number }[] | null;
 };
 
 function formatHours(h: number | null) { return h == null ? '—' : `${h.toFixed(2)} h`; }
@@ -83,6 +86,13 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
     .filter(s => !selectedCategory || s.category === selectedCategory)
     .filter(s => matchesQuery(s, query))
     .sort(compareByDisplayOrder), [services, selectedCategory, query]);
+
+  // Build lookup for child name resolution (after services load)
+  const byId = useMemo(() => {
+    const m = new Map<string, ServiceOperation>();
+    services.forEach(s => m.set(s.id, s));
+    return m;
+  }, [services]);
 
   const grouped = useMemo(() => {
     // Build groups keyed by subcategory (or 'Other').
@@ -253,29 +263,49 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
                   )}
                   {flattenSingleOther && grouped.length === 1 && (
                     <ul className="divide-y ml-0">
-                      {grouped[0][1].map(s => { const idx = visibleItems.findIndex(v=>v.id===s.id); const focused = idx===focusedIndex; return (
+                            {grouped[0][1].map(s => { const idx = visibleItems.findIndex(v=>v.id===s.id); const focused = idx===focusedIndex; const isPkg = !!s.is_package; return (
                         <li key={s.id} className={`py-3 rounded-lg ${focused ? 'ring-2 ring-blue-300 bg-blue-50' : ''}`}>
                           <div
                             ref={el => { if (el) rowRefs.current.set(s.id, el); else rowRefs.current.delete(s.id); }}
                             data-testid={`service-row-${s.id}`}
                             tabIndex={focused ? 0 : -1}
-                            className="flex items-center justify-between gap-4 focus:outline-none cursor-pointer px-2"
+                            className={`flex flex-col gap-2 focus:outline-none cursor-pointer px-2 rounded-lg ${isPkg ? 'bg-amber-50 border border-amber-300/70 shadow-sm' : ''}`}
                             onClick={()=> { setFocusedIndex(idx); handleAdd(s); }}
                           >
-                            <div className="min-w-0">
-                              <div className="font-medium text-sm truncate">{s.name}</div>
-                              <div className="text-xs text-gray-500 mt-0.5 flex gap-2 flex-wrap">
-                                <span>{s.category.replace(/_/g,' ')}</span>
-                                <span>•</span>
-                                <span>Hours: {formatHours(s.default_hours)}</span>
-                                <span>•</span>
-                                <span>Rate: {formatPrice(s.base_labor_rate)}</span>
+                            <div className="w-full flex items-start justify-between gap-4">
+                              <div className="min-w-0">
+                                <div className="font-medium text-sm truncate flex items-center gap-2">
+                                  {isPkg && (
+                                    <>
+                                      <span data-testid={`package-icon-${s.id}`} aria-hidden="true" className="inline-block w-2.5 h-2.5 rounded-sm bg-amber-500 shadow-[0_0_0_1px_rgba(0,0,0,0.08)]" />
+                                      <span data-testid={`package-badge-${s.id}`} className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 text-[10px] font-semibold tracking-wide uppercase">Package</span>
+                                    </>
+                                  )}
+                                  <span>{s.name}</span>
+                                </div>
+                                <div className="text-xs text-gray-500 mt-0.5 flex gap-2 flex-wrap">
+                                  <span>{s.category.replace(/_/g,' ')}</span>
+                                  <span>•</span>
+                                  <span>Hours: {formatHours(s.default_hours)}</span>
+                                  <span>•</span>
+                                  <span>Rate: {formatPrice(s.base_labor_rate)}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3 self-start">
+                                <span className="text-xs text-gray-400">{s.display_order ?? ''}</span>
+                                <button onClick={(e)=>{ e.stopPropagation(); handleAdd(s); }} className="text-xs px-2 py-1 border rounded hover:bg-blue-100">{selected.find(sel=>sel.id===s.id)?'Selected':'Add'}</button>
                               </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-xs text-gray-400">{s.display_order ?? ''}</span>
-                              <button onClick={(e)=>{ e.stopPropagation(); handleAdd(s); }} className="text-xs px-2 py-1 border rounded hover:bg-blue-100">{selected.find(sel=>sel.id===s.id)?'Selected':'Add'}</button>
-                            </div>
+                            {isPkg && s.package_items && s.package_items.length > 0 && (
+                              <ul className="mt-1 mb-1 ml-1 border-l border-amber-300/60 pl-3 space-y-0.5" data-testid={`package-children-${s.id}`}>
+                                {s.package_items.map(pi => { const child = byId.get(pi.child_id); return (
+                                  <li key={pi.child_id} data-testid={`package-child-${s.id}-${pi.child_id}`} className="text-[11px] text-amber-800 flex items-center justify-between pr-2 select-none" onClick={(e)=>e.stopPropagation()}>
+                                    <span className="truncate">{child ? child.name : pi.child_id}</span>
+                                    <span className="ml-2 font-medium text-amber-700">× {Number(pi.qty)}</span>
+                                  </li>
+                                ); })}
+                              </ul>
+                            )}
                           </div>
                         </li>
                       );})}
@@ -291,29 +321,49 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
                         </button>
                         {open && (
                           <ul className="divide-y ml-6">
-                            {items.map(s => { const idx = visibleItems.findIndex(v=>v.id===s.id); const focused = idx===focusedIndex; return (
+                            {items.map(s => { const idx = visibleItems.findIndex(v=>v.id===s.id); const focused = idx===focusedIndex; const isPkg = !!s.is_package; return (
                 <li key={s.id} className={`py-3 rounded-lg ${focused ? 'ring-2 ring-blue-300 bg-blue-50' : ''}`}>
                                 <div
                                   ref={el => { if (el) rowRefs.current.set(s.id, el); else rowRefs.current.delete(s.id); }}
                   data-testid={`service-row-${s.id}`}
                   tabIndex={focused ? 0 : -1}
-                                  className="flex items-center justify-between gap-4 focus:outline-none cursor-pointer px-2"
+                                  className={`flex flex-col gap-2 focus:outline-none cursor-pointer px-2 rounded-lg ${isPkg ? 'bg-amber-50 border border-amber-300/70 shadow-sm' : ''}`}
                                   onClick={()=> { setFocusedIndex(idx); handleAdd(s); }}
                                 >
-                                  <div className="min-w-0">
-                                    <div className="font-medium text-sm truncate">{s.name}</div>
-                                    <div className="text-xs text-gray-500 mt-0.5 flex gap-2 flex-wrap">
-                                      <span>{s.category.replace(/_/g,' ')}</span>
-                                      <span>•</span>
-                                      <span>Hours: {formatHours(s.default_hours)}</span>
-                                      <span>•</span>
-                                      <span>Rate: {formatPrice(s.base_labor_rate)}</span>
+                                  <div className="w-full flex items-start justify-between gap-4">
+                                    <div className="min-w-0">
+                                      <div className="font-medium text-sm truncate flex items-center gap-2">
+                                        {isPkg && (
+                                          <>
+                                            <span data-testid={`package-icon-${s.id}`} aria-hidden="true" className="inline-block w-2.5 h-2.5 rounded-sm bg-amber-500 shadow-[0_0_0_1px_rgba(0,0,0,0.08)]" />
+                                            <span data-testid={`package-badge-${s.id}`} className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 text-[10px] font-semibold tracking-wide uppercase">Package</span>
+                                          </>
+                                        )}
+                                        <span>{s.name}</span>
+                                      </div>
+                                      <div className="text-xs text-gray-500 mt-0.5 flex gap-2 flex-wrap">
+                                        <span>{s.category.replace(/_/g,' ')}</span>
+                                        <span>•</span>
+                                        <span>Hours: {formatHours(s.default_hours)}</span>
+                                        <span>•</span>
+                                        <span>Rate: {formatPrice(s.base_labor_rate)}</span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 self-start">
+                                      <span className="text-xs text-gray-400">{s.display_order ?? ''}</span>
+                                      <button onClick={(e)=>{ e.stopPropagation(); handleAdd(s); }} className="text-xs px-2 py-1 border rounded hover:bg-blue-100">{selected.find(sel=>sel.id===s.id)?'Selected':'Add'}</button>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-xs text-gray-400">{s.display_order ?? ''}</span>
-                                    <button onClick={(e)=>{ e.stopPropagation(); handleAdd(s); }} className="text-xs px-2 py-1 border rounded hover:bg-blue-100">{selected.find(sel=>sel.id===s.id)?'Selected':'Add'}</button>
-                                  </div>
+                                  {isPkg && s.package_items && s.package_items.length > 0 && (
+                                    <ul className="mt-1 mb-1 ml-1 border-l border-amber-300/60 pl-3 space-y-0.5" data-testid={`package-children-${s.id}`}>
+                                      {s.package_items.map(pi => { const child = byId.get(pi.child_id); return (
+                                        <li key={pi.child_id} data-testid={`package-child-${s.id}-${pi.child_id}`} className="text-[11px] text-amber-800 flex items-center justify-between pr-2 select-none" onClick={(e)=>e.stopPropagation()}>
+                                          <span className="truncate">{child ? child.name : pi.child_id}</span>
+                                          <span className="ml-2 font-medium text-amber-700">× {Number(pi.qty)}</span>
+                                        </li>
+                                      ); })}
+                                    </ul>
+                                  )}
                                 </div>
                               </li>
                             );})}
