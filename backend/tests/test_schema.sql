@@ -98,6 +98,10 @@ CREATE TABLE appointments (
     created_at TIMESTAMP NOT NULL DEFAULT now(),
     updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
+-- Performance indexes for unified profile endpoint
+CREATE INDEX IF NOT EXISTS idx_appointments_customer ON appointments(customer_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_customer_start_ts ON appointments(customer_id, start_ts DESC);
+CREATE INDEX IF NOT EXISTS idx_appointments_vehicle_start_ts ON appointments(vehicle_id, start_ts DESC);
 
 -- audit_logs table (needed for audit() function to avoid failing inserts in tests)
 CREATE TABLE audit_logs (
@@ -246,8 +250,8 @@ CREATE INDEX idx_customers_email ON customers(email);
 CREATE INDEX idx_vehicles_customer ON vehicles(customer_id);
 CREATE INDEX idx_appointments_status ON appointments(status);
 CREATE INDEX idx_appointments_start_ts ON appointments(start_ts);
-CREATE INDEX idx_appointments_customer ON appointments(customer_id);
-CREATE INDEX idx_appointments_vehicle ON appointments(vehicle_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_customer ON appointments(customer_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_vehicle ON appointments(vehicle_id);
 CREATE INDEX idx_services_appt ON appointment_services(appointment_id);
 CREATE INDEX idx_messages_appt ON messages(appointment_id);
 CREATE INDEX idx_messages_sent_at ON messages(sent_at);
