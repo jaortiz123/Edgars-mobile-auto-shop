@@ -1,12 +1,19 @@
 // Ensure React 19 test act environment flag (belt & suspenders in addition to preActEnv)
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 import '@testing-library/jest-dom/vitest'
-// Removed unconditional whatwg-fetch polyfill to let MSW intercept native fetch in Node.
-// If a polyfill is ever needed (older Node), reintroduce conditionally.
-// import 'whatwg-fetch'
+// Use native Node fetch for MSW/node interception; provide wrapper for relative URLs instead of polyfilling with whatwg-fetch (which uses XHR and bypasses msw/node).
+const __originalFetch = global.fetch;
+global.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+  if (typeof input === 'string' && input.startsWith('/')) {
+    // Normalize relative test URLs to an absolute form MSW can intercept
+    const abs = 'http://localhost:3000' + input;
+    return __originalFetch(abs, init);
+  }
+  return __originalFetch(input as RequestInfo, init);
+}) as typeof fetch;
 import './testEnv'
 
-import { expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest'
+import { expect, vi, beforeEach, afterEach } from 'vitest'
 // Enhanced jest shim (legacy compatibility) now includes timer helpers expected by Testing Library
 type JestShim = {
   fn: typeof vi.fn;
