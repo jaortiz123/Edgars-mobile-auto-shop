@@ -28,7 +28,8 @@ CREATE TABLE customers (
     phone TEXT,
     address TEXT,
     is_vip BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMP NOT NULL DEFAULT now()
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 -- vehicles table
