@@ -1,29 +1,21 @@
 /**
  * P2-T-007: Notification System Integration Tests
- * 
+ *
  * Tests notification-reminder and "running late" flows with MSW server integration.
  * Covers success and failure scenarios for POST /notifications endpoint.
  */
 
-import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { setupUserEvent } from '@/tests/testUtils/userEventHelper';
 import { http, HttpResponse } from 'msw';
-import { server } from '../../test/server/mswServer';
+// Centralized MSW server lifecycle handled via jest.setup.ts (tests/server/server)
+import { server } from '@/tests/server/server';
 import { TestAppWrapper } from '../../test/TestAppWrapper';
 import { withErrorScenario } from '../../test/errorTestHelpersCanonical';
 import React from 'react';
 
 // Mock timers for time-based tests
-beforeAll(() => {
-  vi.useFakeTimers();
-  console.log('🚀 Starting MSW server for notification integration tests...');
-  server.listen({
-    onUnhandledRequest: 'warn',
-  });
-  console.log('🌐 MSW enabled for notification integration tests');
-});
-
 beforeEach(() => {
   // Re-enable fake timers each test (global afterEach in setup.ts restores real timers)
   try { vi.useFakeTimers(); } catch { /* ignore */ }
@@ -36,17 +28,11 @@ afterEach(() => {
   vi.clearAllTimers();
 });
 
-afterAll(() => {
-  console.log('🛑 Stopping MSW server...');
-  server.close();
-  vi.useRealTimers();
-});
-
 // Mock appointment data 15 minutes from now
 const createMockAppointment = () => {
   const now = new Date();
   const appointmentTime = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutes from now
-  
+
   return {
     id: 'apt-reminder-test',
     customerName: 'Test Customer',
@@ -105,14 +91,14 @@ const MockNotificationComponent = ({ appointment }: { appointment: MockAppointme
       }
 
       const result = await response.json();
-      
+
       // Add to in-app notifications
       setNotifications(prev => [...prev, {
         id: result.data.id,
         message: `Reminder: ${appointment.customerName}'s appointment is in 15 minutes`,
         type: 'reminder_15min'
       }]);
-      
+
       console.log('Success:', result);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -144,8 +130,8 @@ const MockNotificationComponent = ({ appointment }: { appointment: MockAppointme
       {error && (
         <div data-testid="error-toast" className="error-toast">
           <span data-testid="error-message">{error}</span>
-          <button 
-            data-testid="retry-button" 
+          <button
+            data-testid="retry-button"
             onClick={handleRetry}
             disabled={retryCount >= 3}
           >
@@ -177,7 +163,7 @@ describe('P2-T-007: Notification System Integration Tests', () => {
   describe('Reminder Flow Success Scenarios', () => {
     it('should send 15-minute reminder notification and display in-app toast', async () => {
       const appointment = createMockAppointment();
-      
+
       render(
         <TestAppWrapper>
           <MockNotificationComponent appointment={appointment} />
@@ -199,7 +185,7 @@ describe('P2-T-007: Notification System Integration Tests', () => {
       // Verify notification content
       const notificationMessage = screen.getByTestId('notification-message');
       expect(notificationMessage).toHaveTextContent("Reminder: Test Customer's appointment is in 15 minutes");
-      
+
       const notificationType = screen.getByTestId('notification-type');
       expect(notificationType).toHaveTextContent('reminder_15min');
 
@@ -213,7 +199,7 @@ describe('P2-T-007: Notification System Integration Tests', () => {
 
     it('should advance timers by 15 minutes and verify reminder trigger timing', async () => {
       const mockAppointment = createMockAppointment();
-      
+
       render(
         <TestAppWrapper>
           <MockNotificationComponent appointment={mockAppointment} />
@@ -239,7 +225,7 @@ describe('P2-T-007: Notification System Integration Tests', () => {
     it('should handle 500 error from notification endpoint and show retry button', async () => {
       await withErrorScenario('notificationPost500', async () => {
         const appointment = createMockAppointment();
-        
+
         render(
           <TestAppWrapper>
             <MockNotificationComponent appointment={appointment} />
@@ -274,7 +260,7 @@ describe('P2-T-007: Notification System Integration Tests', () => {
 
         // Verify no successful notifications were created
         expect(screen.queryByTestId('notification-toast')).not.toBeInTheDocument();
-        
+
         const notificationCount = screen.getByTestId('notification-count');
         expect(notificationCount).toHaveTextContent('0');
       });
@@ -282,19 +268,19 @@ describe('P2-T-007: Notification System Integration Tests', () => {
 
     it('should allow retry after error and eventually succeed', async () => {
       let errorCallCount = 0;
-      
+
       // Use a custom handler that fails first time, succeeds second time
       server.use(
         // Align endpoint with production handler which logs as (localhost:3000)
         http.post('http://localhost:3000/notifications', async ({ request }) => {
           const body = await request.json() as Record<string, unknown>;
           errorCallCount++;
-          
+
           if (errorCallCount === 1) {
             // First call fails
             console.log('🚨 MSW: Simulating 500 error for POST /notifications (retry test)');
             return HttpResponse.json(
-              { 
+              {
                 data: null,
                 errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Temporary server error' }],
                 meta: { request_id: 'test-req-id' }
@@ -321,7 +307,7 @@ describe('P2-T-007: Notification System Integration Tests', () => {
       );
 
       const appointment = createMockAppointment();
-      
+
       render(
         <TestAppWrapper>
           <MockNotificationComponent appointment={appointment} />
@@ -361,7 +347,7 @@ describe('P2-T-007: Notification System Integration Tests', () => {
     it('should disable retry button after 3 failed attempts', async () => {
       await withErrorScenario('notificationPost500', async () => {
         const appointment = createMockAppointment();
-        
+
         render(
           <TestAppWrapper>
             <MockNotificationComponent appointment={appointment} />
@@ -400,9 +386,9 @@ describe('P2-T-007: Notification System Integration Tests', () => {
   describe('MSW Handler Verification', () => {
     it('should log exactly one POST /notifications call for successful reminder', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      
+
       const appointment = createMockAppointment();
-      
+
       render(
         <TestAppWrapper>
           <MockNotificationComponent appointment={appointment} />
@@ -421,17 +407,17 @@ describe('P2-T-007: Notification System Integration Tests', () => {
         call.some(arg => typeof arg === 'string' && arg.includes('📨 MSW: Notification endpoint (localhost:3000) called with body:'))
       );
       expect(hasEndpointLog).toBe(true);
-      
+
       const hasSuccessLog = consoleSpy.mock.calls.some(call =>
         call.some(arg => typeof arg === 'string' && arg.includes('✅ MSW: Notification (localhost:3000) sent successfully:'))
       );
       expect(hasSuccessLog).toBe(true);
 
       // Count the number of MSW notification endpoint calls
-      const notificationCalls = consoleSpy.mock.calls.filter(call => 
+      const notificationCalls = consoleSpy.mock.calls.filter(call =>
         call[0]?.includes('📨 MSW: Notification endpoint (localhost:3000) called')
       );
-      
+
       expect(notificationCalls).toHaveLength(1);
 
       consoleSpy.mockRestore();
@@ -439,9 +425,9 @@ describe('P2-T-007: Notification System Integration Tests', () => {
 
     it('should verify notification payload structure sent to MSW', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      
+
       const appointment = createMockAppointment();
-      
+
       render(
         <TestAppWrapper>
           <MockNotificationComponent appointment={appointment} />
@@ -455,16 +441,16 @@ describe('P2-T-007: Notification System Integration Tests', () => {
       });
 
       // Find the MSW log call with the request body
-      const bodyLog = consoleSpy.mock.calls.find(call => 
+      const bodyLog = consoleSpy.mock.calls.find(call =>
         call[0]?.includes('📨 MSW: Notification endpoint (localhost:3000) called with body:')
       );
 
       expect(bodyLog).toBeDefined();
-      
+
       // Extract and parse the JSON payload from the log
   const rawPayload = bodyLog?.[1];
   const payload = rawPayload ? JSON.parse(rawPayload as string) : {};
-      
+
       // Verify payload structure
       expect(payload).toMatchObject({
         type: 'reminder_15min',
