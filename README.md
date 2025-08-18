@@ -24,6 +24,33 @@ psql $DATABASE_URL -c "SELECT count(*) AS total, count(*) FILTER (WHERE is_activ
 curl -s http://localhost:3001/api/admin/service-operations | jq 'length'
 ```
 
+### Service Catalog Response Header: `X-Catalog-Handler`
+
+The `/api/admin/service-operations` endpoint now emits an `X-Catalog-Handler` header to make
+runtime behavior observable during phased schema migrations or partial rollouts.
+
+| Value | Meaning | Typical Scenario | Action Required |
+|-------|---------|------------------|-----------------|
+| `v2-flat` | Normal execution using full, current projection (includes new columns) | Healthy environment with up‑to‑date schema | None |
+| `v2-flat-newcol` | Legacy projection failed due to renamed column; automatic retry using new column set succeeded | Rolling deploy where code with new name hits node missing old compatibility view | Ensure all nodes / DB migrations are up to date; harmless if transient |
+| `v1-fallback` | Both primary projections failed; minimal legacy-safe subset returned (id, name, category, default_hours, default_price/base_labor_rate, is_active) | Drift / partial migration or hotfix scenario | Prioritize completing schema migration; monitor logs |
+| `v2-empty` | Table missing (brand-new DB) so empty array returned gracefully | Fresh environment before seeding | Seed catalog immediately (see seeding steps above) |
+
+Operational Notes:
+
+* Any value other than `v2-flat` should be considered transitional; add a deployment check to alert if sustained > 5 minutes.
+* Fallbacks are defensive; remove once all environments guarantee the new column set.
+* The regression test `backend/tests/test_service_operations_fallback.py` covers the `v2-flat-newcol` retry path.
+
+
+Example curl with headers:
+
+```bash
+curl -i http://localhost:3001/api/admin/service-operations | sed -n '1,15p'
+```
+
+Look for `X-Catalog-Handler: v2-flat` in healthy steady state.
+
 Expected: > 0 total and active rows. If zero, re-run the seed.
 
 The docker initialization now emits a WARNING if the `service_operations` table exists but is empty. Treat that as a blocking issue before using the app.

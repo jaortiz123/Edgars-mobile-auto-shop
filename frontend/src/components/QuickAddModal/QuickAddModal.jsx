@@ -1,4 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+/**
+ * @typedef {Object} QuickAddModalProps
+ * @property {boolean} isOpen
+ * @property {() => void} onClose
+ * @property {(data: any) => void} onSubmit
+ * @property {boolean} [isSubmitting]
+ * @property {string} [className]
+ * @property {boolean} [_test_suppressAsyncEffects] - test-only flag to short-circuit async side effects
+ */
 // Import component only (TS interfaces are type-only and not emitted; avoid named import in .jsx)
 // Legacy single ServiceOperationSelect removed; using ServiceCatalogModal for multi-select
 import { ServiceCatalogModal } from '@/components/appointments/ServiceCatalogModal';
@@ -8,6 +17,7 @@ import TemplateSelector from '../admin/TemplateSelector';
 import ConflictWarning from '../admin/ConflictWarning';
 import { getTemplates, applyTemplateToFormData } from '../../services/templateService';
 import { getLastAppointmentSettings, createOneClickAppointment, saveLastAppointmentSettings } from '../../utils/shortcut';
+import { buildQuickAddPayload } from './buildQuickAddPayload';
 import { checkConflict } from '../../lib/api';
 import { getAvailableSlots, clearAvailabilityCache } from '../../services/availabilityService';
 import { formatDate, getRelativeDate } from '../../utils/dateUtils';
@@ -20,7 +30,7 @@ import buildCatalogFromRaw from '@/data/vehicleCatalogFromRaw';
 /**
  * QuickAddModal Component - Streamlined appointment creation
  * Implements T2 of Sprint 3A with comprehensive robustness framework
- * 
+ *
  * Features:
  * - Smart defaults from last-used settings
  * - Template integration for quick service selection
@@ -28,12 +38,19 @@ import buildCatalogFromRaw from '@/data/vehicleCatalogFromRaw';
  * - Streamlined form with essential fields only
  * - Performance optimizations and accessibility
  */
-const QuickAddModal = ({ 
-  isOpen, 
-  onClose, 
-  onSubmit, 
+/**
+ * QuickAddModal
+ * Test seam: `_test_suppressAsyncEffects` disables conflict + availability async effects
+ * to allow deterministic, fast unit/integration tests without hanging on network/mock races.
+ * This prop MUST NOT be used in production code paths.
+ */
+const QuickAddModal = ({
+  isOpen,
+  onClose,
+  onSubmit,
   isSubmitting = false,
-  className = '' 
+  className = '',
+  _test_suppressAsyncEffects = false,
 }) => {
   // ============ STATE MANAGEMENT ============
   const emptyFormData = useCallback(() => ({
@@ -69,135 +86,45 @@ const QuickAddModal = ({
   const [availableSlots, setAvailableSlots] = useState([]);
   const [isSlotLoading, setIsSlotLoading] = useState(false);
   const [showSlotPicker, setShowSlotPicker] = useState(false);
+  const [selectedServices, setSelectedServices] = useState([]);
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const firstInputRef = useRef(null);
+
+  // ===== Derived data (vehicle catalog & times) =====
+  const vehicleCatalog = useMemo(() => {
+    try { return buildCatalogFromRaw(vehicleCatalogSeed); } catch { return { years: [], makes: {}, models: {} }; }
+  }, []);
+  const vehicleYears = vehicleCatalog.years || [];
+  const makeOptions = useMemo(() => Object.keys(vehicleCatalog.makes || {}), [vehicleCatalog]);
+  const filteredModels = useMemo(() => vehicleCatalog.models?.[formData.vehicleMake] || [], [vehicleCatalog, formData.vehicleMake]);
+  const timeSlots = useMemo(() => [
+    '8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM',
+    '11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM',
+    '2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM'
+  ], []);
+
+  // Compute sanitizedClassName (prevent invalid characters)
+  const sanitizedClassName = useMemo(() => (className || '').replace(/[^a-zA-Z0-9_\-\s]/g, ''), [className]);
+
+  // ============ CUSTOMER LOOKUP (Phase 2) ============
+  const [lookupStatus, setLookupStatus] = useState('idle'); // idle | loading | found | not_found | error
+  const [lookupError, setLookupError] = useState('');
+  const [lookupVehicles, setLookupVehicles] = useState([]); // Vehicles returned from lookup
+  const [selectedVehicleId, setSelectedVehicleId] = useState('');
+  const lastLookupAppliedRef = useRef({ phone: '', name: '' });
+  const userEditedRef = useRef({ name: false, vehicle: false });
+  const activeLookupRef = useRef({ controller: null, requestId: 0 });
+
+  const multiVehicleMode = lookupVehicles.length > 1;
 
   // ============ REFS FOR CLEANUP ============
   const cleanupFunctionsRef = useRef([]);
   const dialogRef = useRef(null);
-  const firstInputRef = useRef(null);
-
-  // ============ MEMOIZED VALUES ============
-  const sanitizedClassName = useMemo(() => {
-    // Security: Sanitize className to prevent XSS
-    if (typeof className !== 'string') return '';
-    return className.replace(/[<>]/g, '').trim();
-  }, [className]);
-
-  const timeSlots = useMemo(() => [
-    '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM',
-    '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM',
-    '4:00 PM', '5:00 PM'
-  ], []);
-
-  // Modern multi-service selection (replaces legacy single serviceType select)
-  const [selectedServices, setSelectedServices] = useState([]); // array of { id, name, defaultPrice?, category? }
-  const [showServiceModal, setShowServiceModal] = useState(false);
-
-  // Bridge: keep formData.serviceType as first selected service name for backward compatibility
-  useEffect(() => {
-    const first = selectedServices[0];
-    if (first && formData.serviceType !== first.name) {
-      setFormData(prev => ({ ...prev, serviceType: first.name }));
-    } else if (!first && formData.serviceType) {
-      setFormData(prev => ({ ...prev, serviceType: '' }));
-    }
-  }, [selectedServices, formData.serviceType]);
-
-  // Legacy single operation change handler removed (multi-service modal now authoritative)
-
-  // Vehicle make/model catalog with year-aware filtering (shared dataset)
-  const fullCatalog = useMemo(() => {
-    try { return buildCatalogFromRaw(); } catch { return vehicleCatalogSeed; }
-  }, []);
-  const vehicleYears = useMemo(() => {
-    const current = new Date().getFullYear() + 1;
-    return Array.from({ length: current - 1980 + 1 }, (_, i) => current - i);
-  }, []);
-  const makeOptions = useMemo(() => fullCatalog.map(m => m.name).sort((a,b)=>a.localeCompare(b)), [fullCatalog]);
-  const selectedMake = useMemo(() => fullCatalog.find(m => m.name.toLowerCase() === (formData.vehicleMake||'').toLowerCase()), [fullCatalog, formData.vehicleMake]);
-  const parsedYear = useMemo(() => { const y = parseInt(formData.vehicleYear || ''); return isNaN(y) ? undefined : y; }, [formData.vehicleYear]);
-  const filteredModels = useMemo(() => {
-    const result = [];
-    if (selectedMake) {
-      for (const mod of selectedMake.models) {
-        if (!parsedYear) { result.push(mod.name); continue; }
-        const start = mod.startYear ?? 1900;
-        const end = mod.endYear ?? (new Date().getFullYear()+1);
-        if (parsedYear >= start && parsedYear <= end) result.push(mod.name);
-      }
-    }
-    return Array.from(new Set(result)).sort((a,b)=>a.localeCompare(b));
-  }, [selectedMake, parsedYear]);
-
-  // ============ INITIALIZATION AND CLEANUP ============
-  useEffect(() => {
-    if (!isOpen) return;
-
-    let isMounted = true;
-
-    const initializeModal = async () => {
-      setIsLoading(true);
-      try {
-        // Load templates and smart defaults in parallel
-        const [fetchedTemplates, lastSettings] = await Promise.all([
-          getTemplates(),
-          Promise.resolve(getLastAppointmentSettings())
-        ]);
-
-        if (!isMounted) return;
-
-        setTemplates(fetchedTemplates || []);
-        setSmartDefaults(lastSettings || {});
-
-        // Apply smart defaults to form
-        const today = new Date().toISOString().split('T')[0];
-        // Merge into a full baseline object to keep every field controlled
-        setFormData(prev => ({
-          ...emptyFormData(),
-          customerName: lastSettings.customerName || '',
-          customerPhone: lastSettings.customerPhone || '',
-          serviceType: lastSettings.serviceType || '',
-          appointmentDate: lastSettings.appointmentDate || today,
-          appointmentTime: lastSettings.appointmentTime || '10:00 AM',
-          serviceAddress: lastSettings.serviceAddress || '',
-          // notes intentionally blank on each quick add
-          licensePlate: lastSettings.licensePlate || '',
-          vehicleYear: lastSettings.vehicleYear || '',
-          vehicleMake: lastSettings.vehicleMake || '',
-          vehicleModel: lastSettings.vehicleModel || '',
-          quickAppointment: true
-        }));
-
-        // Focus management for accessibility
-        setTimeout(() => {
-          // Initial focus: license plate (first required field)
-          if (dialogRef.current && isMounted) {
-            const plate = dialogRef.current.querySelector('#license-plate');
-            if (plate) plate.focus();
-          }
-        }, 100);
-
-      } catch (error) {
-        console.error('Error initializing QuickAddModal:', error);
-        if (isMounted) {
-          setErrors({ general: 'Failed to load modal. Please try again.' });
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    initializeModal();
-
-    // Cleanup function
-    return () => {
-      isMounted = false;
-    };
-  }, [isOpen]);
 
   // ============ CONFLICT DETECTION ============
+  // Conflict detection (skipped when test seam active)
   useEffect(() => {
+    if (_test_suppressAsyncEffects) return; // test seam
     if (!formData.appointmentDate || !formData.appointmentTime) {
       setConflict(null);
       setOverrideConflict(false);
@@ -224,14 +151,16 @@ const QuickAddModal = ({
 
     // Debounce conflict checking
     timeoutId = setTimeout(checkForConflicts, 500);
-    
+
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
   }, [formData.appointmentDate, formData.appointmentTime]);
 
   // ============ AVAILABILITY CHECK (Sprint 3B T1) ============
+  // Availability fetch (skipped when test seam active)
   useEffect(() => {
+    if (_test_suppressAsyncEffects) return; // test seam
     if (!isOpen || !formData.serviceType) return;
 
     let isMounted = true;
@@ -278,7 +207,7 @@ const QuickAddModal = ({
     };
 
     document.addEventListener('keydown', handleKeyDown);
-    
+
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
@@ -287,15 +216,43 @@ const QuickAddModal = ({
   // ============ EVENT HANDLERS ============
   const handleInputChange = useCallback((field, value) => {
     // Security: Sanitize input value
-    const sanitizedValue = typeof value === 'string' 
+    const sanitizedValue = typeof value === 'string'
       ? value.replace(/[<>]/g, '').slice(0, 500) // Limit length
       : value;
 
     setFormData(prev => ({ ...prev, [field]: sanitizedValue }));
-    
+    // Track user overrides after auto population so we don't clobber edits
+    if (field === 'customerName') {
+      if (sanitizedValue && sanitizedValue !== lastLookupAppliedRef.current.name) {
+        userEditedRef.current.name = true;
+      }
+    }
+    if (field === 'vehicleYear' || field === 'vehicleMake' || field === 'vehicleModel') {
+      userEditedRef.current.vehicle = true;
+    }
+
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+
+    // Phone specific: reset lookup states on change
+    if (field === 'customerPhone') {
+      setLookupStatus('idle');
+      setLookupError('');
+      setLookupVehicles([]);
+      setSelectedVehicleId('');
+      if (activeLookupRef.current.controller) {
+        try { activeLookupRef.current.controller.abort(); } catch (_) { /* noop */ }
+      }
+      // Clear auto-populated values ONLY if they came from previous lookup (avoid clearing manual input mid-typing)
+      if (lastLookupAppliedRef.current.phone && !userEditedRef.current.name) {
+        setFormData(prev => ({ ...prev, customerName: '' }));
+      }
+      if (lastLookupAppliedRef.current.phone && !userEditedRef.current.vehicle) {
+        setFormData(prev => ({ ...prev, vehicleYear: '', vehicleMake: '', vehicleModel: '' }));
+      }
+      lastLookupAppliedRef.current = { ...lastLookupAppliedRef.current, phone: '' };
     }
   }, [errors]);
 
@@ -305,7 +262,7 @@ const QuickAddModal = ({
   const handleTemplateSelect = useCallback(async (templateId) => {
     try {
       setSelectedTemplateId(templateId);
-      
+
       if (templateId) {
   const updatedFormData = await applyTemplateToFormData(templateId, formData) || {};
   // Merge to preserve controlled fields (avoid undefined -> value warnings)
@@ -339,9 +296,7 @@ const QuickAddModal = ({
     }
 
     // Basic vehicle validation (optional but recommended)
-    if (!dataToValidate.licensePlate?.trim()) {
-      newErrors.licensePlate = 'License plate is required';
-    }
+  // License plate no longer required (optional)
     if (!dataToValidate.vehicleMake?.trim()) {
       newErrors.vehicleMake = 'Vehicle make is required';
     }
@@ -375,7 +330,7 @@ const QuickAddModal = ({
     try {
       setIsLoading(true);
       const base = createOneClickAppointment(formData);
-      const oneClickData = { ...base, service_operation_ids: selectedServices.map(s => s.id) };
+      const oneClickData = buildQuickAddPayload(base, selectedServices);
       if (validateForm(oneClickData)) {
         await saveLastAppointmentSettings(oneClickData);
         onSubmit(oneClickData);
@@ -392,7 +347,7 @@ const QuickAddModal = ({
 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       // Announce validation errors to screen readers
       const errorMessages = Object.values(errors).join('. ');
@@ -416,9 +371,9 @@ const QuickAddModal = ({
 
     try {
       setIsLoading(true);
-  const payload = { ...formData, service_operation_ids: selectedServices.map(s => s.id) };
-  await saveLastAppointmentSettings(payload);
-	onSubmit(payload);
+      const payload = buildQuickAddPayload(formData, selectedServices);
+      await saveLastAppointmentSettings(payload);
+      onSubmit(payload);
     } catch (error) {
       console.error('Error submitting form:', error);
       setErrors({ general: 'Failed to submit appointment. Please try again.' });
@@ -435,6 +390,13 @@ const QuickAddModal = ({
     setConflict(null);
     setSelectedTemplateId(null);
     onClose();
+  // Reset lookup state
+  setLookupStatus('idle');
+  setLookupError('');
+  setLookupVehicles([]);
+  setSelectedVehicleId('');
+  lastLookupAppliedRef.current = { phone: '', name: '' };
+  userEditedRef.current = { name: false, vehicle: false };
   }, [onClose, emptyFormData]);
 
   // Focus trap to keep keyboard navigation within modal
@@ -472,13 +434,13 @@ const QuickAddModal = ({
       const slotDate = new Date(slot.time);
       const dateString = slotDate.toISOString().split('T')[0];
       const timeString = slot.formatted;
-      
+
       setFormData(prev => ({
         ...prev,
         appointmentDate: dateString,
         appointmentTime: timeString
       }));
-      
+
       // Clear any existing errors
       setErrors(prev => ({
         ...prev,
@@ -486,10 +448,10 @@ const QuickAddModal = ({
         appointmentTime: '',
         slots: ''
       }));
-      
+
       // Hide slot picker after selection
       setShowSlotPicker(false);
-      
+
     } catch (error) {
       console.error('Error selecting slot:', error);
       setErrors(prev => ({ ...prev, slots: 'Failed to select time slot' }));
@@ -497,10 +459,188 @@ const QuickAddModal = ({
   }, []);
 
   // ============ RENDER CONDITIONS ============
+
+  // ============ CUSTOMER LOOKUP EFFECT ============
+  useEffect(() => {
+    const rawPhone = formData.customerPhone || '';
+    const digits = rawPhone.replace(/[^0-9]/g, '');
+    if (!rawPhone || digits.length < 7) { // avoid spamming short or empty inputs
+      return; // status already reset in change handler
+    }
+
+    setLookupStatus('loading');
+    setLookupError('');
+    const controller = new AbortController();
+    const requestId = (activeLookupRef.current.requestId || 0) + 1;
+    activeLookupRef.current = { controller, requestId };
+    const debounceTimer = setTimeout(async () => {
+      try {
+        const resp = await fetch(`/api/customers/lookup?phone=${encodeURIComponent(rawPhone)}`, { signal: controller.signal });
+        if (activeLookupRef.current.requestId !== requestId) {
+          return; // stale
+        }
+        if (resp.status === 404) {
+          setLookupStatus('not_found');
+          setLookupVehicles([]);
+          // Clear auto fields if they were populated by a previous lookup and user hasn't edited
+          if (!userEditedRef.current.name) {
+            setFormData(prev => ({ ...prev, customerName: '' }));
+          }
+          if (!userEditedRef.current.vehicle) {
+            setFormData(prev => ({ ...prev, vehicleYear: '', vehicleMake: '', vehicleModel: '' }));
+          }
+          lastLookupAppliedRef.current = { phone: rawPhone, name: '' };
+          return;
+        }
+        if (!resp.ok) {
+          setLookupStatus('error');
+          setLookupError('Lookup failed');
+          return;
+        }
+        const data = await resp.json();
+        // Shape: { customer: {...}, vehicles: [...] }
+        const { customer, vehicles } = data || {};
+        setLookupVehicles(Array.isArray(vehicles) ? vehicles : []);
+        setLookupStatus('found');
+        // Auto-populate name if blank or previously auto-populated (not user edited)
+        if (customer?.name && (!formData.customerName || !userEditedRef.current.name)) {
+          setFormData(prev => ({ ...prev, customerName: customer.name }));
+          lastLookupAppliedRef.current.name = customer.name;
+        }
+        lastLookupAppliedRef.current.phone = rawPhone;
+
+        if (vehicles?.length === 1 && !userEditedRef.current.vehicle) {
+          const v = vehicles[0];
+          // Two-step to ensure year is present before dependent make/model filtering
+          setFormData(prev => ({ ...prev, vehicleYear: String(v.year || '') }));
+          setFormData(prev => ({
+            ...prev,
+            vehicleMake: v.make || '',
+            vehicleModel: v.model || '',
+            licensePlate: v.license_plate || prev.licensePlate
+          }));
+          userEditedRef.current.vehicle = false; // still auto
+        } else if (vehicles?.length > 1) {
+          // Wait for selection; keep existing until user picks
+        }
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+        setLookupStatus('error');
+        setLookupError('Lookup failed');
+      }
+    }, 450); // debounce ~450ms
+
+    return () => {
+      clearTimeout(debounceTimer);
+      try { controller.abort(); } catch (_) { /* noop */ }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.customerPhone]);
+
+  // ============ VEHICLE SELECTION FROM MULTI ============
+  const handleSelectLookupVehicle = useCallback((vehicleId) => {
+    setSelectedVehicleId(vehicleId);
+    const v = lookupVehicles.find(vv => vv.id === vehicleId);
+    if (v) {
+      setFormData(prev => ({
+        ...prev,
+        vehicleYear: String(v.year || ''),
+        vehicleMake: v.make || '',
+        vehicleModel: v.model || '',
+        licensePlate: v.license_plate || prev.licensePlate
+      }));
+      userEditedRef.current.vehicle = false;
+    }
+  }, [lookupVehicles]);
+
+  const renderVehicleSection = () => {
+    if (multiVehicleMode) {
+      return (
+        <div className="quick-add-field" data-testid="lookup-multi-vehicle">
+          <label htmlFor="lookup-vehicle-select" className="quick-add-label">
+            Vehicle *
+          </label>
+          <select
+            id="lookup-vehicle-select"
+            value={selectedVehicleId}
+            onChange={(e) => handleSelectLookupVehicle(e.target.value)}
+            className="quick-add-input"
+            required
+          >
+            <option value="">Select vehicle</option>
+            {lookupVehicles.map(v => (
+              <option key={v.id} value={v.id}>{`${v.year || ''} ${v.make || ''} ${v.model || ''}${v.license_plate ? ' (' + v.license_plate + ')' : ''}`.trim()}</option>
+            ))}
+          </select>
+          {lookupStatus === 'found' && <div className="quick-add-hint">Multiple vehicles found. Select one.</div>}
+        </div>
+      );
+    }
+    // Fallback to original trio selects
+    return (
+      <div className="quick-add-field-group" data-testid="vehicle-trio">
+        <div className="quick-add-field">
+          <label htmlFor="vehicle-year" className="quick-add-label">Year *</label>
+          <select
+            id="vehicle-year"
+            value={formData.vehicleYear}
+            onChange={(e) => handleInputChange('vehicleYear', e.target.value)}
+            className={`quick-add-input ${errors.vehicleYear ? 'error' : ''}`}
+            required
+          >
+            <option value="">Select year</option>
+            {vehicleYears.map((y) => (<option key={y} value={y}>{y}</option>))}
+            {/* Ensure auto-populated year is selectable even if not in static catalog */}
+            {!vehicleYears.includes(formData.vehicleYear) && formData.vehicleYear && (
+              <option value={formData.vehicleYear}>{formData.vehicleYear}</option>
+            )}
+          </select>
+          {errors.vehicleYear && (<div className="quick-add-error" role="alert">{errors.vehicleYear}</div>)}
+        </div>
+        <div className="quick-add-field">
+          <label htmlFor="vehicle-make" className="quick-add-label">Make *</label>
+          <select
+            id="vehicle-make"
+            value={formData.vehicleMake}
+            onChange={(e) => { handleInputChange('vehicleMake', e.target.value); handleInputChange('vehicleModel', ''); }}
+            className={`quick-add-input ${errors.vehicleMake ? 'error' : ''}`}
+            required
+          >
+            <option value="">Select make</option>
+            {makeOptions.map((m) => (<option key={m} value={m}>{m}</option>))}
+            {/* Fallback option for auto-populated make not present in static catalog */}
+            {formData.vehicleMake && !makeOptions.includes(formData.vehicleMake) && (
+              <option value={formData.vehicleMake}>{formData.vehicleMake}</option>
+            )}
+          </select>
+          {errors.vehicleMake && (<div className="quick-add-error" role="alert">{errors.vehicleMake}</div>)}
+        </div>
+        <div className="quick-add-field">
+          <label htmlFor="vehicle-model" className="quick-add-label">Model *</label>
+          <select
+            id="vehicle-model"
+            value={formData.vehicleModel}
+            onChange={(e) => handleInputChange('vehicleModel', e.target.value)}
+            className={`quick-add-input ${errors.vehicleModel ? 'error' : ''}`}
+            required
+            disabled={!formData.vehicleMake}
+          >
+            <option value="">{formData.vehicleMake ? 'Select model' : 'Select make first'}</option>
+            {filteredModels.map((m) => (<option key={m} value={m}>{m}</option>))}
+            {/* Fallback option for auto-populated model if not in filteredModels */}
+            {formData.vehicleModel && !filteredModels.includes(formData.vehicleModel) && (
+              <option value={formData.vehicleModel}>{formData.vehicleModel}</option>
+            )}
+          </select>
+          {errors.vehicleModel && (<div className="quick-add-error" role="alert">{errors.vehicleModel}</div>)}
+        </div>
+      </div>
+    );
+  };
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       className="quick-add-modal-overlay"
       data-testid="quick-add-modal"
       role="dialog"
@@ -510,7 +650,7 @@ const QuickAddModal = ({
         if (e.target === e.currentTarget) handleClose();
       }}
     >
-      <div 
+      <div
         ref={dialogRef}
         className={`quick-add-modal-content ${sanitizedClassName}`}
         onClick={(e) => e.stopPropagation()}
@@ -557,74 +697,23 @@ const QuickAddModal = ({
 
           {/* Essential Fields */}
           <div className="quick-add-fields">
-            {/* Vehicle - plate first + inventory dropdowns */}
+            {/* Vehicle - dynamic section */}
             <div className="quick-add-field">
               <label htmlFor="license-plate" className="quick-add-label">
                 <Car className="h-4 w-4" aria-hidden="true" />
-                License Plate *
+                License Plate (optional)
               </label>
               <input
                 id="license-plate"
                 type="text"
                 value={formData.licensePlate}
                 onChange={(e) => handleInputChange('licensePlate', e.target.value.toUpperCase())}
-                className={`quick-add-input ${errors.licensePlate ? 'error' : ''}`}
+                className={`quick-add-input`}
                 placeholder="ABC1234"
-                required
-                aria-describedby={errors.licensePlate ? 'license-plate-error' : undefined}
               />
-              {errors.licensePlate && (
-                <div id="license-plate-error" className="quick-add-error" role="alert">
-                  {errors.licensePlate}
-                </div>
-              )}
             </div>
 
-            <div className="quick-add-field-group">
-              <div className="quick-add-field">
-                <label htmlFor="vehicle-year" className="quick-add-label">Year *</label>
-                <select
-                  id="vehicle-year"
-                  value={formData.vehicleYear}
-                  onChange={(e) => handleInputChange('vehicleYear', e.target.value)}
-                  className={`quick-add-input ${errors.vehicleYear ? 'error' : ''}`}
-                  required
-                >
-                  <option value="">Select year</option>
-                  {vehicleYears.map((y) => (<option key={y} value={y}>{y}</option>))}
-                </select>
-                {errors.vehicleYear && (<div className="quick-add-error" role="alert">{errors.vehicleYear}</div>)}
-              </div>
-              <div className="quick-add-field">
-                <label htmlFor="vehicle-make" className="quick-add-label">Make *</label>
-                <select
-                  id="vehicle-make"
-                  value={formData.vehicleMake}
-                  onChange={(e) => { handleInputChange('vehicleMake', e.target.value); handleInputChange('vehicleModel', ''); }}
-                  className={`quick-add-input ${errors.vehicleMake ? 'error' : ''}`}
-                  required
-                >
-                  <option value="">Select make</option>
-                  {makeOptions.map((m) => (<option key={m} value={m}>{m}</option>))}
-                </select>
-                {errors.vehicleMake && (<div className="quick-add-error" role="alert">{errors.vehicleMake}</div>)}
-              </div>
-              <div className="quick-add-field">
-                <label htmlFor="vehicle-model" className="quick-add-label">Model *</label>
-                <select
-                  id="vehicle-model"
-                  value={formData.vehicleModel}
-                  onChange={(e) => handleInputChange('vehicleModel', e.target.value)}
-                  className={`quick-add-input ${errors.vehicleModel ? 'error' : ''}`}
-                  required
-                  disabled={!formData.vehicleMake}
-                >
-                  <option value="">{formData.vehicleMake ? 'Select model' : 'Select make first'}</option>
-                  {filteredModels.map((m) => (<option key={m} value={m}>{m}</option>))}
-                </select>
-                {errors.vehicleModel && (<div className="quick-add-error" role="alert">{errors.vehicleModel}</div>)}
-              </div>
-            </div>
+            {renderVehicleSection()}
             {/* Customer Name */}
             <div className="quick-add-field">
               <label htmlFor="customer-name" className="quick-add-label">
@@ -651,9 +740,12 @@ const QuickAddModal = ({
 
             {/* Customer Phone */}
             <div className="quick-add-field">
-              <label htmlFor="customer-phone" className="quick-add-label">
-                <Phone className="h-4 w-4" aria-hidden="true" />
-                Phone Number *
+              <label htmlFor="customer-phone" className="quick-add-label flex items-center gap-2">
+                <span className="flex items-center gap-1"><Phone className="h-4 w-4" aria-hidden="true" /> Phone Number *</span>
+                {lookupStatus === 'loading' && <Loader2 className="h-4 w-4 animate-spin text-blue-500" aria-label="Looking up" />}
+                {lookupStatus === 'found' && <span className="text-green-600 text-xs" data-testid="lookup-success">Found</span>}
+                {lookupStatus === 'not_found' && <span className="text-amber-600 text-xs" data-testid="lookup-not-found">Not found</span>}
+                {lookupStatus === 'error' && <span className="text-red-600 text-xs" data-testid="lookup-error">Error</span>}
               </label>
               <input
                 id="customer-phone"
@@ -664,12 +756,14 @@ const QuickAddModal = ({
                 placeholder="(555) 123-4567"
                 required
                 aria-describedby={errors.customerPhone ? 'customer-phone-error' : undefined}
+                data-testid="customer-phone-input"
               />
               {errors.customerPhone && (
                 <div id="customer-phone-error" className="quick-add-error" role="alert">
                   {errors.customerPhone}
                 </div>
               )}
+              {lookupError && <div className="quick-add-error" role="alert">{lookupError}</div>}
             </div>
 
             {/* Services Multi-Select (ServiceCatalogModal integration) */}
@@ -807,7 +901,7 @@ const QuickAddModal = ({
                 Available Time Slots
                 {isSlotLoading && <div className="quick-add-spinner-small" aria-hidden="true"></div>}
               </h3>
-              
+
       {isSlotLoading ? (
                 <div className="quick-add-slots-loading">
                   <span>Finding available slots...</span>
@@ -852,7 +946,7 @@ const QuickAddModal = ({
 
           {/* Conflict Warning - Sprint 3B T2 */}
           {conflict && !overrideConflict && (
-            <ConflictWarning 
+            <ConflictWarning
               conflictingAppointment={conflict}
               onOverride={() => setOverrideConflict(true)}
             />
@@ -865,7 +959,7 @@ const QuickAddModal = ({
               <div>
                 <strong>Conflict Override Enabled</strong>
                 <p>This appointment will be scheduled despite the time conflict.</p>
-                <button 
+                <button
                   type="button"
                   onClick={() => setOverrideConflict(false)}
                   className="quick-add-override-cancel"
@@ -894,7 +988,7 @@ const QuickAddModal = ({
             >
               Cancel
             </Button>
-            
+
             <Button
               type="button"
               onClick={handleOneClickSchedule}
@@ -904,7 +998,7 @@ const QuickAddModal = ({
               <Zap className="h-4 w-4" aria-hidden="true" />
               One-Click Schedule
             </Button>
-            
+
             <Button
               type="submit"
               disabled={isSubmitting || isLoading || (conflict && !overrideConflict)}
@@ -927,8 +1021,17 @@ const QuickAddModal = ({
         {/* Service Catalog Modal */}
         <ServiceCatalogModal
           open={showServiceModal}
-          initialSelected={selectedServices}
-          onConfirm={(list) => setSelectedServices(list)}
+          onAdd={(op) => {
+            // immediate chip add for legacy behavior while still allowing batch confirm
+            setSelectedServices(prev => prev.find(s=>s.id===op.id)? prev : [...prev, { id: op.id, name: op.name, defaultPrice: op.base_labor_rate }]);
+          }}
+          onConfirm={(list) => {
+            setSelectedServices(prev => {
+              const map = new Map(prev.map(s=>[s.id,s]));
+              list.forEach(s=>{ if(!map.has(s.id)) map.set(s.id, { id: s.id, name: s.name, defaultPrice: s.base_labor_rate }); });
+              return Array.from(map.values());
+            });
+          }}
           onClose={() => setShowServiceModal(false)}
         />
       </div>

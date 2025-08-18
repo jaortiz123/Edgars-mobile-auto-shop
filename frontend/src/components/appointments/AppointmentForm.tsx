@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import * as api from '@/lib/api';
 import CustomerSearchInput, { CustomerSearchResult } from '@/components/appointments/CustomerSearchInput';
 import { useTechnicians } from '@/hooks/useTechnicians';
-import ServiceCatalogModal, { ServiceLite } from '@/components/appointments/ServiceCatalogModal';
+import ServiceCatalogModal, { ServiceOperation } from '@/components/appointments/ServiceCatalogModal';
 
 export interface AppointmentFormValues {
   title: string;
@@ -20,7 +20,7 @@ export interface AppointmentFormProps {
   /** Appointment id (required in edit mode for PATCH). */
   appointmentId?: string | null;
   /** Initial services (service catalog lite objects) for edit mode. */
-  initialServices?: ServiceLite[];
+  initialServices?: ServiceOperation[];
   onSubmit?: (values: AppointmentFormValues) => void; // optional external hook (called after successful local processing)
   onCancel?: () => void;
   disabled?: boolean;
@@ -57,7 +57,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ mode, initial, appoin
   });
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerSearchResult | null>(presetCustomer || null);
   const { data: technicians = [], isLoading: techLoading } = useTechnicians();
-  const [services, setServices] = useState<ServiceLite[]>(initialServices || []);
+  const [services, setServices] = useState<ServiceOperation[]>(initialServices || []);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -383,7 +383,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ mode, initial, appoin
                   <span className="font-medium">{s.name}</span>
                   <span className="text-xs text-gray-500 flex gap-2">
                     {s.category && <span>{s.category}</span>}
-                    {s.defaultPrice != null && <span>${s.defaultPrice.toFixed(2)}</span>}
+                    {s.base_labor_rate != null && <span>${s.base_labor_rate.toFixed(2)}</span>}
                   </span>
                 </div>
                 <button
@@ -412,10 +412,13 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ mode, initial, appoin
   </form>
   <ServiceCatalogModal
       open={serviceModalOpen}
-      initialSelected={services}
+  onAdd={() => {
+        // Inline add collects in local selection; we only persist on confirm to mimic batch behavior.
+        // No immediate state change here; rely on confirm for deterministic ordering.
+      }}
       onClose={() => setServiceModalOpen(false)}
       onConfirm={(sel) => setServices(prev => {
-        const map = new Map<string, ServiceLite>();
+        const map = new Map<string, ServiceOperation>();
         [...prev, ...sel].forEach(s => map.set(s.id, s));
         return Array.from(map.values());
       })}
