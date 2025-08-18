@@ -3842,6 +3842,160 @@ def list_service_operations():
 ## (moved) Entrypoint will be appended at absolute end of file after all route registrations
 
 
+@app.route("/api/admin/reports/appointments.csv", methods=["GET"])
+def export_appointments_csv():
+    """Export appointments CSV.
+    Tests expect:
+      - Auth required (403 JSON error_code AUTH_REQUIRED)
+      - RBAC: Owner/Advisor/Accountant allowed; Technician forbidden (403 RBAC_FORBIDDEN)
+      - rate_limit key csv_export_<user_id>, 5 per hour (429 RATE_LIMITED)
+      - Query params: from=YYYY-MM-DD, to=YYYY-MM-DD, status=VALID_STATUS
+      - Invalid date => 400 INVALID_DATE_FORMAT; invalid status => 400 INVALID_STATUS
+      - CSV header columns (14): ID, Status, Start, End, Total Amount, Paid Amount,
+        Customer Name, Customer Email, Customer Phone, Vehicle Year, Vehicle Make,
+        Vehicle Model, Vehicle VIN, Services
+      - Content-Disposition attachment; filename=appointments_export.csv
+      - Empty dataset still returns header only (200)
+      - Audit log invoked on success with action CSV_EXPORT and details containing 'appointments'
+    """
+    # Auth / RBAC
+    try:
+        user = require_auth_role("Advisor")
+    except Forbidden:
+        return jsonify({"error_code": "AUTH_REQUIRED", "message": "Authentication required"}), 403
+    role = user.get("role")
+    if role not in ("Owner", "Advisor", "Accountant"):
+        return jsonify({"error_code": "RBAC_FORBIDDEN", "message": "Role not permitted"}), 403
+    user_id = user.get("user_id") or user.get("sub") or "user"
+
+    # Rate limiting
+    try:
+        rate_limit(f"csv_export_{user_id}", 5, 3600)
+    except Exception:
+        return jsonify({"error_code": "RATE_LIMITED", "message": "Rate limit exceeded"}), 429
+
+    # Parse query params
+    from_param = request.args.get("from")
+    to_param = request.args.get("to")
+    status_param = request.args.get("status")
+
+    def _parse_date(val: str):
+        return datetime.strptime(val, "%Y-%m-%d").date()
+
+    start_date = end_date = None
+    if from_param:
+        try:
+            start_date = _parse_date(from_param)
+        except Exception:
+            return (
+                jsonify({"error_code": "INVALID_DATE_FORMAT", "message": "Invalid from date"}),
+                400,
+            )
+    if to_param:
+        try:
+            end_date = _parse_date(to_param)
+        except Exception:
+            return jsonify({"error_code": "INVALID_DATE_FORMAT", "message": "Invalid to date"}), 400
+
+    valid_statuses = {"SCHEDULED", "IN_PROGRESS", "READY", "COMPLETED", "NO_SHOW", "CANCELLED"}
+    status_filter = None
+    if status_param:
+        if status_param not in valid_statuses:
+            return jsonify({"error_code": "INVALID_STATUS", "message": "Invalid status"}), 400
+        status_filter = status_param
+
+    # Build SQL dynamically (only safe literals via parameters)
+    sql = [
+        "SELECT a.id::text AS id, a.status, a.start_ts, a.end_ts, a.total_amount, a.paid_amount,",
+        "       c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone,",
+        "       v.year, v.make, v.model, v.vin,",
+        "       COALESCE(services.services_summary, '') AS services_summary",
+        "FROM appointments a",
+        "LEFT JOIN customers c ON c.id = a.customer_id",
+        "LEFT JOIN vehicles v ON v.id = a.vehicle_id",
+        "LEFT JOIN (",
+        "   SELECT asg.appointment_id, string_agg(op.name, ', ') AS services_summary",
+        "   FROM appointment_services asg JOIN service_operations op ON op.id = asg.service_operation_id",
+        "   GROUP BY asg.appointment_id",
+        ") services ON services.appointment_id = a.id",
+        "WHERE 1=1",
+    ]
+    params: list[Any] = []
+    if start_date:
+        sql.append("AND a.start_ts >= %s")
+        params.append(datetime.combine(start_date, datetime.min.time()))
+    if end_date:
+        sql.append("AND a.end_ts <= %s")
+        params.append(datetime.combine(end_date, datetime.max.time()))
+    if status_filter:
+        sql.append("AND a.status = %s")
+        params.append(status_filter)
+    sql.append("ORDER BY a.start_ts DESC NULLS LAST")
+    final_sql = "\n".join(sql)
+
+    # DB access
+    try:
+        conn = db_conn()
+        if conn is None:
+            raise RuntimeError("conn none")
+    except Exception:
+        return jsonify({"error_code": "DB_UNAVAILABLE", "message": "Database unavailable"}), 503
+
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(final_sql, params)
+            rows = cur.fetchall() or []
+
+    # Render CSV
+    buf = io.StringIO()
+    w = csv.writer(buf, quoting=csv.QUOTE_MINIMAL)
+    header = [
+        "ID",
+        "Status",
+        "Start",
+        "End",
+        "Total Amount",
+        "Paid Amount",
+        "Customer Name",
+        "Customer Email",
+        "Customer Phone",
+        "Vehicle Year",
+        "Vehicle Make",
+        "Vehicle Model",
+        "Vehicle VIN",
+        "Services",
+    ]
+    w.writerow(header)
+    for r in rows:
+        w.writerow(
+            [
+                r.get("id"),
+                r.get("status"),
+                (r.get("start_ts").isoformat() if r.get("start_ts") else ""),
+                (r.get("end_ts").isoformat() if r.get("end_ts") else ""),
+                float(r.get("total_amount") or 0),
+                float(r.get("paid_amount") or 0),
+                r.get("customer_name") or "",
+                r.get("customer_email") or "",
+                r.get("customer_phone") or "",
+                r.get("year"),
+                r.get("make"),
+                r.get("model"),
+                r.get("vin"),
+                r.get("services_summary") or "",
+            ]
+        )
+    try:
+        audit_log(user_id, "CSV_EXPORT", f"appointments rows={len(rows)}")
+    except Exception:
+        pass
+    return Response(
+        buf.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=appointments_export.csv"},
+    )
+
+
 @app.route("/api/admin/reports/payments.csv", methods=["GET"])
 def export_payments_csv():
     """Export payments CSV (tests expect 7 column header)."""

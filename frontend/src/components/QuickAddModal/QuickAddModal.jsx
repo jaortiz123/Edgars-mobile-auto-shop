@@ -775,15 +775,27 @@ const QuickAddModal = ({
               {selectedServices.length > 0 && (
                 <ul className="mb-3 flex flex-wrap gap-2" data-testid="quickadd-selected-services">
                   {selectedServices.map(s => (
-                    <li key={s.id} className="flex items-center gap-1 bg-blue-50 border border-blue-200 rounded px-2 py-1 text-xs">
-                      <span className="font-medium">{s.name}</span>
-                      {s.defaultPrice != null && <span className="text-gray-500">${s.defaultPrice.toFixed(2)}</span>}
+                    <li
+                      key={s.id}
+                      className="flex items-center gap-1 rounded px-2 py-1 text-xs border
+                                 bg-blue-50 border-blue-200 text-slate-800
+                                 dark:bg-slate-600/40 dark:border-slate-500 dark:text-slate-100
+                                 shadow-sm"
+                    >
+                      <span className="font-medium truncate max-w-[12rem]" title={s.name}>{s.name}</span>
+                      {s.defaultPrice != null && (
+                        <span className="text-slate-600 dark:text-slate-300">${s.defaultPrice.toFixed(2)}</span>
+                      )}
                       <button
                         type="button"
                         aria-label={`Remove ${s.name}`}
-                        className="text-red-500 hover:text-red-700"
+                        className="ml-1 inline-flex items-center justify-center h-4 w-4 rounded-full
+                                   text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300
+                                   focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-500 focus:ring-offset-white dark:focus:ring-offset-slate-800"
                         onClick={() => setSelectedServices(prev => prev.filter(p => p.id !== s.id))}
-                      >×</button>
+                      >
+                        <span className="leading-none text-[11px]">×</span>
+                      </button>
                     </li>
                   ))}
                 </ul>
