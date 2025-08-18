@@ -1,59 +1,88 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { fetchCustomerProfile, CustomerProfileResponse } from '@/lib/customerProfileApi';
-import CustomerHeader from '@/components/customer/CustomerHeader';
-import MetricsSummary from '@/components/customer/MetricsSummary';
-import VehicleList from '@/components/customer/VehicleList';
-import AppointmentHistory from '@/components/customer/AppointmentHistory';
+import { useState, useMemo } from 'react';
+import { useCustomerProfileInfinite } from '@/hooks/useCustomerProfileInfinite';
+import { money, dtLocal } from '@/utils/format';
 
 export default function CustomerProfilePage() {
   const { id } = useParams<{ id: string }>();
-  const [data, setData] = useState<CustomerProfileResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
-  const fetchGen = useRef(0);
+  const [vehicleId, setVehicleId] = useState<string | undefined>();
+  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage, error } = useCustomerProfileInfinite(id || '', { vehicleId, includeInvoices: true, pageSize: 25 });
 
-  const load = useCallback(() => {
-    if (!id) return;
-    const myGen = ++fetchGen.current;
-    setLoading(true);
-    setError(null);
-    fetchCustomerProfile(id, { includeDetails: showDetails })
-      .then(d => { if (fetchGen.current === myGen) setData(d); })
-      .catch(e => { if (fetchGen.current === myGen) setError(e.message); })
-      .finally(() => { if (fetchGen.current === myGen) setLoading(false); });
-  }, [id, showDetails]);
+  const first = data?.pages?.[0];
+  const stats = first?.stats;
+  const vehicles = first?.vehicles || [];
+  const appointments = useMemo(() => (data?.pages || []).flatMap(p => p.appointments), [data]);
 
-  useEffect(() => { load(); }, [load]);
-
-  const handleToggleDetails = (next: boolean) => {
-    setShowDetails(next);
-  };
-
-  if (loading) return <div className="p-4" data-testid="customer-profile-loading">Loading profile…</div>;
-  if (error) return <div className="p-4 text-red-600" data-testid="customer-profile-error">{error}</div>;
-  if (!data) return <div className="p-4" data-testid="customer-profile-empty">No data.</div>;
+  if (!id) return <div className="p-4">Missing customer id.</div>;
+  if (error) return <div className="p-4 text-red-600">{String(error)}</div>;
+  if (isLoading && !first) return <div className="p-4">Loading…</div>;
 
   return (
-    <div className="p-6 space-y-8" data-testid="customer-profile-page">
-      <CustomerHeader customer={data.customer} metrics={data.metrics} onEdit={() => { /* TODO */ }} onBook={() => { /* TODO */ }} />
-      <MetricsSummary metrics={data.metrics} />
-      <section data-testid="customer-vehicles-section" className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold" data-testid="vehicles-heading">Vehicles</h2>
-          {/* Placeholder for future add vehicle action */}
-        </div>
-        <VehicleList vehicles={data.vehicles} />
+    <div className="space-y-6 p-4">
+      {/* Stats */}
+      <section className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <StatCard label="Lifetime Spend" value={money(stats?.lifetime_spend)} />
+        <StatCard label="Unpaid Balance" value={money(stats?.unpaid_balance)} />
+        <StatCard label="Total Visits" value={stats?.total_visits ?? 0} />
+        <StatCard label="Last Visit" value={dtLocal(stats?.last_visit_at)} />
       </section>
-      <section data-testid="customer-appointments-section" className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold" data-testid="appointments-heading">Appointment History</h2>
-          {/* Toggle + filters will go here */}
+
+      {/* Vehicles */}
+      <section>
+        <h3 className="text-sm font-semibold mb-2">Vehicles</h3>
+        <div className="flex flex-wrap gap-2">
+          {vehicles.map(v => (
+            <button key={v.id} onClick={() => setVehicleId(v.id)} className={`px-3 py-1 rounded-full border ${vehicleId===v.id? 'bg-primary text-primary-foreground':'bg-background'}`}>
+              {v.year ?? '—'} {v.make ?? ''} {v.model ?? ''}
+            </button>
+          ))}
         </div>
-  <AppointmentHistory appointments={data.appointments} showDetails={showDetails} onToggleDetails={handleToggleDetails} />
       </section>
-      {/* Future sections: detail toggle expansion rows, Messages timeline */}
+
+      {/* Appointment history */}
+      <section>
+        <h3 className="text-sm font-semibold mb-2">Appointment History</h3>
+        <ul className="divide-y rounded-xl border">
+          {appointments.map(a => (
+            <li key={a.id} className="p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">{dtLocal(a.scheduled_at)}</div>
+                  <div className="text-xs opacity-70">{a.status}</div>
+                  <div className="text-xs mt-1">{a.services.map(s => s.name).join(', ')}</div>
+                </div>
+                {a.invoice && (
+                  <div className="text-right text-sm">
+                    <div>Total: {money(a.invoice.total)}</div>
+                    <div className="opacity-70">Paid: {money(a.invoice.paid)} • Unpaid: {money(a.invoice.unpaid)}</div>
+                  </div>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+        {hasNextPage && (
+          <button onClick={() => fetchNextPage()} disabled={isFetchingNextPage} className="mt-3 px-3 py-2 rounded border">
+            {isFetchingNextPage ? 'Loading…' : 'Load more'}
+          </button>
+        )}
+      </section>
+
+      {/* Buttons */}
+      <section className="flex gap-2">
+        <button className="px-3 py-2 rounded border" onClick={() => {/* open EditCustomer modal */}}>Edit Customer</button>
+        <button className="px-3 py-2 rounded border" onClick={() => { location.assign(`/admin/appointments/new?customer_id=${id}`); }}>Book Appointment</button>
+        {vehicleId && <button className="px-3 py-2 rounded border" onClick={() => {/* already filtered by vehicleId */}}>View Vehicle History</button>}
+      </section>
+    </div>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="p-3 rounded-xl border">
+      <div className="text-xs opacity-70">{label}</div>
+      <div className="text-lg font-semibold">{value}</div>
     </div>
   );
 }
