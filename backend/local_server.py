@@ -45,7 +45,7 @@ from zoneinfo import ZoneInfo
 
 import jwt
 import psycopg2
-from flask import Flask, Response, jsonify, request
+from flask import Flask, Response, jsonify, make_response, request
 from flask_cors import CORS
 from psycopg2.extras import RealDictCursor
 from pythonjsonlogger import jsonlogger
@@ -109,7 +109,7 @@ if not log.handlers:
     log.addHandler(handler)
 
 # Configuration constants
-JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-do-not-use-in-prod")
+JWT_SECRET = os.getenv("JWT_SECRET", "dev_secret")
 JWT_ALG = "HS256"
 
 # Dev bypass for local testing
@@ -4889,6 +4889,354 @@ def admin_customer_profile(cust_id: str):
         "includes": sorted(list(include_tokens)),
     }
     return _ok(profile)
+
+
+# ----------------------------------------------------------------------------
+# Unified Customer Profile Endpoint (Phase A1)
+# ----------------------------------------------------------------------------
+@app.route("/api/admin/customers/<cust_id>/profile", methods=["GET"])
+def unified_customer_profile(cust_id: str):
+    """Return unified customer profile with stats, vehicles, and recent appointments.
+
+    Query Parameters:
+      limit_appointments (int, default 25, max 100)
+      vehicle_id (filter appointments to a single vehicle)
+      include_invoices (bool, default false) -> include inline invoice summary
+
+    RBAC: Owner / Advisor / Accountant (Technician forbidden).
+    Monetary values: invoice cents columns converted to float dollars with 2-dec precision.
+    """
+
+    # Local error helper aligning with global envelope expectations
+    def _err(status: int, code: str, message: str):
+        # Reuse global _fail if available for consistent shape (preserve case for tests)
+        # Provide simplified legacy shape {"error": {"code": ..}} in addition
+        try:
+            # build both shapes to maximize compatibility with existing tests
+            resp, sc = _fail(status, code, message)
+            body = resp.get_json() or {}
+            # Inject single error shortcut
+            first_err = (body.get("errors") or [{}])[0]
+            body["error"] = {"code": first_err.get("code"), "detail": first_err.get("detail")}
+            return jsonify(body), sc
+        except Exception:  # fallback minimal
+            return jsonify({"error": {"code": code, "detail": message}}), status
+
+    # Auth soft gate (mirror legacy profile behavior) but enforce RBAC.
+    # If an Authorization header is present and invalid/forbidden, propagate error.
+    # If missing entirely, default to Advisor (legacy behavior) and allow.
+    auth_present = bool(request.headers.get("Authorization"))
+    if auth_present:
+        payload = require_auth_role()
+    else:
+        payload = {"role": "Advisor"}
+    role = payload.get("role")
+    if role not in ("Owner", "Advisor", "Accountant"):
+        return _err(HTTPStatus.FORBIDDEN, "forbidden", "insufficient_role")
+
+    # Params
+    limit_raw = request.args.get("limit_appointments", "25")
+    vehicle_filter = request.args.get("vehicle_id")
+    include_invoices = request.args.get("include_invoices", "false").lower() in {"1", "true", "yes"}
+    cursor_raw = request.args.get("cursor")  # base64 encoded scheduled_at|id cursor
+    from_raw = request.args.get("from")  # YYYY-MM-DD optional (ignored if cursor provided)
+    to_raw = request.args.get("to")
+    try:
+        limit_val = int(limit_raw)
+    except ValueError:
+        return _err(HTTPStatus.BAD_REQUEST, "bad_request", "limit_appointments must be integer")
+    if limit_val > 100:
+        return _err(HTTPStatus.BAD_REQUEST, "bad_request", "limit_appointments must be <= 100")
+    if limit_val <= 0:
+        limit_val = 25
+
+    def parse_date(label, raw):
+        if not raw:
+            return None
+        try:
+            return datetime.strptime(raw, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValueError(f"{label} must be YYYY-MM-DD")
+
+    if cursor_raw:
+        # precedence: ignore from/to if cursor present
+        from_date = to_date = None
+    else:
+        try:
+            from_date = parse_date("from", from_raw)
+            to_date = parse_date("to", to_raw)
+        except ValueError as ve:
+            return _err(HTTPStatus.BAD_REQUEST, "bad_request", str(ve))
+        if from_date and to_date and from_date > to_date:
+            return _err(HTTPStatus.BAD_REQUEST, "bad_request", "from date must be <= to date")
+
+    # decode cursor if provided
+    cursor_ts = None
+    cursor_id = None
+    if cursor_raw:
+        import base64
+
+        try:
+            decoded = base64.b64decode(cursor_raw).decode("utf-8")
+            parts = decoded.split("|")
+            if len(parts) != 2:
+                raise ValueError
+            cursor_ts = datetime.fromisoformat(parts[0]) if parts[0] else None
+            cursor_id = int(parts[1])
+        except Exception:
+            return _err(HTTPStatus.BAD_REQUEST, "bad_request", "invalid cursor")
+
+    conn, use_memory, err = safe_conn()
+    if err and not use_memory:
+        return _err(HTTPStatus.SERVICE_UNAVAILABLE, "unavailable", "database unavailable")
+
+    if not conn and use_memory:
+        empty = {
+            "customer": {
+                "id": cust_id,
+                "full_name": "Memory User",
+                "phone": None,
+                "email": None,
+                "created_at": None,
+                "tags": [],
+            },
+            "stats": {
+                "lifetime_spend": 0.00,
+                "total_visits": 0,
+                "unpaid_balance": 0.00,
+                "last_visit_at": None,
+            },
+            "vehicles": [],
+            "appointments": [],
+        }
+        return jsonify(empty), HTTPStatus.OK
+
+    with conn:
+        with conn.cursor() as cur:
+            # Customer row
+            cur.execute(
+                """
+                SELECT id::text, COALESCE(NULLIF(TRIM(name), ''), 'Unknown Customer') AS name,
+                       phone, email, created_at, is_vip
+                  FROM customers
+                 WHERE id::text = %s
+                """,
+                (cust_id,),
+            )
+            customer = cur.fetchone()
+            if not customer:
+                return _err(HTTPStatus.NOT_FOUND, "not_found", "customer not found")
+
+            # Stats aggregates
+            cur.execute(
+                """
+                WITH inv AS (
+                  SELECT customer_id,
+                         SUM(total_cents)/100.0 AS lifetime_spend,
+                         SUM(GREATEST(amount_due_cents,0))/100.0 AS unpaid_balance
+                    FROM invoices
+                   WHERE customer_id::text = %s
+                   GROUP BY 1
+                ), visits AS (
+                  SELECT customer_id,
+                         COUNT(*) FILTER (WHERE status IN ('COMPLETED','READY')) AS total_visits,
+                         MAX(start_ts) FILTER (WHERE status IN ('COMPLETED','READY')) AS last_visit_at
+                    FROM appointments
+                   WHERE customer_id::text = %s
+                   GROUP BY 1
+                )
+                SELECT COALESCE(inv.lifetime_spend,0) AS lifetime_spend,
+                       COALESCE(inv.unpaid_balance,0) AS unpaid_balance,
+                       COALESCE(visits.total_visits,0) AS total_visits,
+                       visits.last_visit_at
+                  FROM (SELECT 1) x
+             LEFT JOIN inv ON TRUE
+             LEFT JOIN visits ON TRUE
+                """,
+                (cust_id, cust_id),
+            )
+            stats_row = cur.fetchone() or {}
+
+            # Vehicles list
+            cur.execute(
+                """
+                SELECT id::text, year, make, model, license_plate AS plate, vin, NULL::text AS notes
+                  FROM vehicles
+                 WHERE customer_id::text = %s
+                 ORDER BY year DESC NULLS LAST, make, model
+                """,
+                (cust_id,),
+            )
+            vehicle_rows = cur.fetchall() or []
+
+            # vehicle ownership validation if filter used
+            if vehicle_filter:
+                if not any(v.get("id") == vehicle_filter for v in vehicle_rows):
+                    return _err(
+                        HTTPStatus.BAD_REQUEST, "bad_request", "vehicle does not belong to customer"
+                    )
+
+            # Appointments (limited) with optional invoices + date filters / cursor pagination
+            params = [cust_id]
+            where_clauses = ["a.customer_id::text = %s"]
+            if vehicle_filter:
+                where_clauses.append("a.vehicle_id::text = %s")
+                params.append(vehicle_filter)
+            if cursor_ts is not None and cursor_id is not None:
+                # pagination precedence
+                where_clauses.append("(a.start_ts < %s OR (a.start_ts = %s AND a.id < %s))")
+                params.extend([cursor_ts, cursor_ts, cursor_id])
+            else:
+                if from_date:
+                    where_clauses.append("a.start_ts::date >= %s")
+                    params.append(from_date)
+                if to_date:
+                    where_clauses.append("a.start_ts::date <= %s")
+                    params.append(to_date)
+            # fetch limit +1 to know if next page
+            fetch_limit = limit_val + 1
+            params.append(fetch_limit)
+            cur.execute(
+                f"""
+                WITH base AS (
+                  SELECT a.id, a.vehicle_id, a.start_ts, a.status, a.updated_at
+                    FROM appointments a
+                   WHERE {' AND '.join(where_clauses)}
+                   ORDER BY a.start_ts DESC NULLS LAST, a.id DESC
+                   LIMIT %s
+             ), svc AS (
+               SELECT t.appointment_id,
+                    jsonb_agg(t.service ORDER BY (t.service->>'name')) AS services
+                FROM (
+                    SELECT DISTINCT ON (asg.appointment_id, asg.name)
+                         asg.appointment_id,
+                         jsonb_build_object('service_id', asg.service_operation_id, 'name', asg.name) AS service
+                     FROM appointment_services asg
+                    WHERE asg.appointment_id IN (SELECT id FROM base)
+                    ORDER BY asg.appointment_id, asg.name
+                ) t
+                GROUP BY t.appointment_id
+             ), inv AS (
+                  SELECT i.appointment_id,
+                         jsonb_build_object('id', i.id::text, 'total', i.total_cents/100.0, 'paid', i.amount_paid_cents/100.0, 'unpaid', i.amount_due_cents/100.0) AS invoice
+                    FROM invoices i
+                   WHERE i.appointment_id IN (SELECT id FROM base)
+                )
+                SELECT b.id::text, b.vehicle_id::text, b.start_ts, b.status::text, b.updated_at,
+                       COALESCE(svc.services, '[]'::jsonb) AS services,
+                       {"inv.invoice" if include_invoices else 'NULL'} AS invoice
+                  FROM base b
+             LEFT JOIN svc ON svc.appointment_id = b.id
+             {"LEFT JOIN inv ON inv.appointment_id = b.id" if include_invoices else ''}
+                 ORDER BY b.start_ts DESC NULLS LAST, b.id DESC
+                """,
+                params,
+            )
+            fetched = cur.fetchall() or []
+            has_more = len(fetched) == fetch_limit
+            appt_rows = fetched[:limit_val]
+            next_cursor = None
+            if has_more and appt_rows:
+                import base64
+
+                last = appt_rows[-1]
+                ts = last.get("start_ts")
+                encoded = f"{ts.isoformat() if ts else ''}|{last.get('id')}".encode()
+                next_cursor = base64.b64encode(encoded).decode("utf-8")
+
+                # ETag hash (max updated_at among related tables + customer created/updated)
+            cur.execute(
+                """
+                                WITH a AS (
+                                    SELECT MAX(updated_at) AS max_a FROM appointments WHERE customer_id::text = %s
+                                ), i AS (
+                                    SELECT MAX(updated_at) AS max_i FROM invoices WHERE customer_id::text = %s
+                                                ), li AS (
+                                                    SELECT MAX(li.created_at) AS max_li
+                                                        FROM invoice_line_items li
+                                                        JOIN invoices inv ON inv.id = li.invoice_id AND inv.customer_id::text = %s
+                                ), c AS (
+                                    SELECT created_at AS cust_created, created_at AS cust_updated FROM customers WHERE id::text = %s
+                                )
+                                SELECT encode(digest(COALESCE(a.max_a::text,'') || '|' || COALESCE(i.max_i::text,'') || '|' || COALESCE(li.max_li::text,'') || '|' || COALESCE(c.cust_updated::text,c.cust_created::text,''),'sha1'),'hex') AS etag
+                                    FROM a,i,li,c
+                """,
+                (cust_id, cust_id, cust_id, cust_id),
+            )
+            etag_row = cur.fetchone() or {}
+            etag = etag_row.get("etag") or ""
+
+    response = {
+        "customer": {
+            "id": customer.get("id"),
+            "full_name": customer.get("name"),
+            "phone": customer.get("phone"),
+            "email": customer.get("email"),
+            "created_at": (
+                customer.get("created_at").isoformat() if customer.get("created_at") else None
+            ),
+            "tags": ["VIP"] if customer.get("is_vip") else [],
+        },
+        "stats": {
+            "lifetime_spend": round(float(stats_row.get("lifetime_spend") or 0), 2),
+            "total_visits": int(stats_row.get("total_visits") or 0),
+            "unpaid_balance": round(float(stats_row.get("unpaid_balance") or 0), 2),
+            "last_visit_at": (
+                stats_row.get("last_visit_at").isoformat()
+                if stats_row.get("last_visit_at")
+                else None
+            ),
+        },
+        "vehicles": [
+            {
+                "id": v.get("id"),
+                "year": v.get("year"),
+                "make": v.get("make"),
+                "model": v.get("model"),
+                "plate": v.get("plate"),
+                "vin": v.get("vin"),
+                "notes": v.get("notes"),
+            }
+            for v in vehicle_rows
+        ],
+        "appointments": [
+            {
+                "id": a.get("id"),
+                "vehicle_id": a.get("vehicle_id"),
+                "scheduled_at": a.get("start_ts").isoformat() if a.get("start_ts") else None,
+                "status": a.get("status"),
+                "services": a.get("services") or [],
+                "invoice": (
+                    {
+                        "id": a.get("invoice").get("id"),
+                        "total": round(float(a.get("invoice").get("total")), 2),
+                        "paid": round(float(a.get("invoice").get("paid")), 2),
+                        "unpaid": round(float(a.get("invoice").get("unpaid")), 2),
+                    }
+                    if include_invoices and a.get("invoice")
+                    else None
+                ),
+            }
+            for a in appt_rows
+        ],
+        "page": {
+            "limit": limit_val,
+            "next_cursor": next_cursor,
+            "returned": len(appt_rows),
+        },
+    }
+    # Conditional ETag
+    incoming = request.headers.get("If-None-Match", "").replace('W/"', "").replace('"', "")
+    if etag and incoming and incoming == etag:
+        resp = make_response("", HTTPStatus.NOT_MODIFIED)
+        resp.headers["ETag"] = f'W/"{etag}"'
+        resp.headers["Cache-Control"] = "public, max-age=30"
+        return resp
+    resp = make_response(jsonify(response), HTTPStatus.OK)
+    if etag:
+        resp.headers["ETag"] = f'W/"{etag}"'
+    resp.headers["Cache-Control"] = "public, max-age=30"
+    return resp
 
 
 def _visits_rows_to_payload(rows):

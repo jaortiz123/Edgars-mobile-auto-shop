@@ -114,6 +114,110 @@ curl -H "Authorization: Bearer <token>" \
 * Endpoint implementation in `backend/local_server.py` (see `export_appointments_csv` & `export_payments_csv`).
 * Tests: `backend/tests/test_csv_exports.py` (RBAC, rate limit, headers, formatting, RFC4180 compliance).
 
+## 👤 Unified Customer Profile Endpoint
+
+`GET /api/admin/customers/{customer_id}/profile`
+
+Returns a consolidated customer profile including:
+
+* `customer` – identity & contact info
+* `stats` – lifetime_spend, unpaid_balance, total_visits, last_visit_at
+* `vehicles` – customer vehicles (ordered newest year first)
+* `appointments` – recent appointments (optionally inline invoices)
+* `page` – pagination metadata (cursor-based)
+
+### Query Parameters
+
+| Param | Type | Default | Max | Description |
+|-------|------|---------|-----|-------------|
+| `limit_appointments` | int | 25 | 100 | Page size (number of appointments returned). Values <=0 reset to default. |
+| `vehicle_id` | string | – | – | Filter appointments to a single vehicle (validated for ownership). |
+| `include_invoices` | bool | false | – | If true, each appointment includes a lightweight `invoice` object (id, total, paid, unpaid). |
+| `from` | date (YYYY-MM-DD) | – | – | Start date filter (inclusive). Ignored when `cursor` is present. |
+| `to` | date (YYYY-MM-DD) | – | – | End date filter (inclusive). Ignored when `cursor` is present. |
+| `cursor` | base64 string | – | – | Opaque pagination cursor. When provided it takes PRECEDENCE over `from` / `to` filters. |
+
+### Cursor Pagination
+
+The endpoint uses a stable, descending ordering: `(scheduled_at DESC, id DESC)`.
+
+`cursor` encodes the last item of the previous page as: `base64("<ISO8601 start_ts>|<appointment_id>")`.
+
+Requesting the next page:
+
+```http
+GET /api/admin/customers/123/profile?limit_appointments=25&cursor=eyIyMDI1LTA4LTE4VDEwOjA1OjM0LjEyMzQ1NloifDEwMDM=
+```
+
+The response includes:
+
+```json
+{
+  "appointments": [...],
+  "page": {
+    "limit": 25,
+    "returned": 25,
+    "next_cursor": "<base64 or null>"
+  }
+}
+```
+
+If `next_cursor` is `null` there are no further pages.
+
+### Precedence Rules
+
+* When `cursor` is supplied, `from` and `to` are ignored (so a client can safely keep prior filters while paginating).
+* First page MAY include `from` / `to`; subsequent pages should *only* send the evolving `cursor` (omit or keep original filters — they will not affect pagination logic once cursoring begins).
+
+### Vehicle Ownership Validation
+
+If `vehicle_id` does not belong to the specified `customer_id`, the endpoint returns:
+
+```json
+{
+  "errors": [ { "status": "400", "code": "BAD_REQUEST", "detail": "vehicle does not belong to customer" } ]
+}
+```
+
+### Conditional Caching
+
+The endpoint sets:
+
+* `ETag: W/"<hash>"` (hash of latest update timestamps across customer, appointments, invoices, line items)
+* `Cache-Control: public, max-age=30`
+
+Clients SHOULD issue conditional requests with `If-None-Match` to leverage 304 responses and reduce payload cost.
+
+### Roles & Auth
+
+Allowed roles: Owner, Advisor, Accountant. Others receive `403 FORBIDDEN`.
+
+If no Authorization header is present (dev soft gate), the request is treated as Advisor.
+
+### Error Codes (Subset)
+
+| HTTP | Code | Scenario |
+|------|------|----------|
+| 400 | BAD_REQUEST | Invalid limit, invalid cursor, invalid date range, non-owned vehicle |
+| 404 | NOT_FOUND | Customer does not exist |
+| 403 | FORBIDDEN | Role not permitted |
+
+### Example Requests
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:3001/api/admin/customers/1001/profile?limit_appointments=10&include_invoices=true"
+
+# Paginate
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:3001/api/admin/customers/1001/profile?limit_appointments=10&cursor=$NEXT_CURSOR"
+```
+
+### Frontend Usage Hint
+
+Use an infinite scroll pattern: request first page (no cursor), append results, request with returned `next_cursor` until null. Always send `If-None-Match` header with the last received ETag to minimize bandwidth when user revisits the tab.
+
+
 
 
 ## Core Technologies
