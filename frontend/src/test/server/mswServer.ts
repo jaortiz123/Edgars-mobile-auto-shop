@@ -200,6 +200,42 @@ const handlers = [
     return HttpResponse.json({ data: mockInvoice });
   }),
 
+  // IMPORTANT: Missing variant with /api prefix for localhost:3001 used by fetchInvoice in unit tests
+  // Without this, requests may leak to a real backend on port 3001 producing unexpected empty invoices.
+  http.get('http://localhost:3001/api/admin/invoices/:id', ({ params, request }) => {
+    const { id } = params as { id: string };
+    // Provide a deterministic but simple invoice; individual tests override this via server.use.
+    // Logging aids debugging when per-test overrides fail to register.
+    // Use different status so it's obvious if override didn't apply in tests expecting PAID/VOID/etc.
+    const mockInvoice = {
+      invoice: {
+        id,
+        status: 'BASE_API_3001',
+        subtotal_cents: 12345,
+        tax_cents: 0,
+        total_cents: 12345,
+        amount_paid_cents: 0,
+        amount_due_cents: 12345,
+        customer_id: 99,
+        customer_name: 'Base 3001/API Invoice',
+        issued_at: null,
+        paid_at: null,
+        voided_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        notes: 'Base handler (should be overridden in most tests)',
+        appointment_id: 999,
+        currency: 'USD'
+      },
+      line_items: [
+        { id: 'li-base', name: 'Base Item', quantity: 1, unit_price_cents: 12345, line_subtotal_cents: 12345, tax_cents: 0, total_cents: 12345 }
+      ],
+      payments: []
+    };
+    console.log('[MSW] matched 3001/api invoice handler', request.url);
+    return HttpResponse.json({ data: mockInvoice });
+  }),
+
   http.get('http://localhost:3001/admin/invoices/:id', ({ params }) => {
     const { id } = params as { id: string };
     const mockInvoice = {

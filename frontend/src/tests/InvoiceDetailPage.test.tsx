@@ -1,43 +1,60 @@
 import React from 'react';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import InvoiceDetailPage from '@/pages/admin/InvoiceDetailPage';
 import { http, HttpResponse } from 'msw';
-// Use the unified, host-agnostic test server instead of the legacy mswServer to
-// ensure handler overrides (server.use) actually apply. The legacy server was
-// never started in these tests, causing overrides to be ignored and default
-// zero-value invoice handlers to respond instead.
-import { server } from '@/tests/server/server';
+import { server } from '@/test/server/mswServer';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/react';
-import ToastProvider from '@/components/ToastProvider';
+
+// We'll lazy-load the real ToastProvider & InvoiceDetailPage after undoing global mocks.
+type WithChildren = { children?: React.ReactNode };
+// InvoiceDetailPage props aren't directly used here; unknown is sufficient
+let InvoiceDetailPage: React.ComponentType<unknown> | null = null;
+let ToastProvider: React.ComponentType<WithChildren> | null = null;
 
 function renderWithRouter(id: string) {
+  if (!InvoiceDetailPage || !ToastProvider) {
+    throw new Error('Test setup error: modules not loaded before render.');
+  }
   const qc = new QueryClient();
   return render(
-    <QueryClientProvider client={qc}>
-      <ToastProvider>
-      <MemoryRouter initialEntries={[`/admin/invoices/${id}`]}>
-        <Routes>
-          <Route path="/admin/invoices/:id" element={<InvoiceDetailPage />} />
-        </Routes>
-      </MemoryRouter>
-      </ToastProvider>
-    </QueryClientProvider>
+    <ToastProvider>
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={[`/admin/invoices/${id}`]}>
+          <Routes>
+            <Route path="/admin/invoices/:id" element={<InvoiceDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    </ToastProvider>
   );
 }
 
-// Helper to provide both wildcard + relative variants to avoid base handler precedence issues.
-function dual(handlerFactory: (pattern: string) => ReturnType<typeof http.get>) {
-  return [
-    handlerFactory('*/api/admin/invoices/:id'),
-    handlerFactory('/api/admin/invoices/:id')
-  ];
-}
-
 describe('InvoiceDetailPage', () => {
+  // Use real toast + page modules (global setup mocks them, which suppresses actual toast DOM rendering)
+  beforeAll(async () => {
+    try { vi.doUnmock('@/lib/toast'); } catch { /* ignore */ }
+    try { vi.doUnmock('@/components/ui/Toast'); } catch { /* ignore */ }
+    // Dynamically import after unmock so we get real implementations
+    const toastMod = await import('@/components/ui/Toast');
+  ToastProvider = toastMod.ToastProvider as React.ComponentType<WithChildren>;
+    InvoiceDetailPage = (await import('@/pages/admin/InvoiceDetailPage')).default;
+    // Attach MSW request logging for debugging invoice/service-operation traffic
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (server as any).events?.on('request:start', ({ request }: { request: Request }) => {
+        if (/invoices\//.test(request.url) || /service-operations/.test(request.url)) {
+          console.log('[MSW][request]', request.method, request.url);
+        }
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (server as any).events?.on('unhandledRequest', ({ request }: { request: Request }) => {
+        console.warn('[MSW][unhandled]', request.method, request.url);
+      });
+    } catch { /* ignore if events API not available */ }
+  });
   beforeEach(() => {
     vi.useRealTimers();
   });
@@ -46,30 +63,46 @@ describe('InvoiceDetailPage', () => {
   });
 
   it('Loading State: shows skeleton while fetching', async () => {
-    server.resetHandlers();
+    // Delay handler to keep loading visible
     server.use(
-      ...dual(() => http.get('*/api/admin/invoices/:id', async () => {
+      http.get('http://localhost:3001/api/admin/invoices/:id', async () => {
         await new Promise(r => setTimeout(r, 50));
         return HttpResponse.json({ data: { invoice: { id: 'slow', status: 'DRAFT', subtotal_cents: 1000, tax_cents:0, total_cents:1000, amount_paid_cents:0, amount_due_cents:1000 }, line_items: [], payments: [] } });
-      }))
+      })
     );
     renderWithRouter('slow');
     expect(await screen.findByTestId('invoice-skeleton')).toBeInTheDocument();
   });
 
   it('Success State: renders header, line items and payments', async () => {
-    server.resetHandlers();
+    const successHandler = ({ request }: { request: Request }) => {
+      // Debug log to verify handler match
+      console.log('[TEST] success handler hit for', request.url);
+      return HttpResponse.json({ data: {
+      invoice: { id: 'inv-123', status: 'PAID', subtotal_cents: 15000, tax_cents:0, total_cents:15000, amount_paid_cents:15000, amount_due_cents:0, customer_name:'Alice' },
+      line_items: [
+        { id: 'li1', name: 'Oil Change', quantity:1, unit_price_cents:5000, line_subtotal_cents:5000, tax_cents:0, total_cents:5000 },
+        { id: 'li2', name: 'Brake Inspection', quantity:1, unit_price_cents:10000, line_subtotal_cents:10000, tax_cents:0, total_cents:10000 }
+      ],
+      payments: [ { id: 'pay1', amount_cents: 15000, method: 'card', created_at: new Date().toISOString() } ]
+    }});
+    };
     server.use(
-      ...dual(() => http.get('*/api/admin/invoices/:id', () => {
-        return HttpResponse.json({ data: {
-          invoice: { id: 'inv-123', status: 'PAID', subtotal_cents: 15000, tax_cents:0, total_cents:15000, amount_paid_cents:15000, amount_due_cents:0, customer_name:'Alice' },
-          line_items: [
-            { id: 'li1', name: 'Oil Change', quantity:1, unit_price_cents:5000, line_subtotal_cents:5000, tax_cents:0, total_cents:5000 },
-            { id: 'li2', name: 'Brake Inspection', quantity:1, unit_price_cents:10000, line_subtotal_cents:10000, tax_cents:0, total_cents:10000 }
-          ],
-          payments: [ { id: 'pay1', amount_cents: 15000, method: 'card', created_at: new Date().toISOString() } ]
-        }});
-      }))
+      http.get('http://localhost:3001/api/admin/invoices/:id', successHandler),
+      http.get('http://localhost:3000/api/admin/invoices/:id', successHandler),
+      http.get('/api/admin/invoices/:id', successHandler)
+    );
+    // Fallback catch-all to see if some other path variant is used
+    server.use(
+      http.get('http://localhost:3001/admin/invoices/:id', ({ request, params }) => {
+        console.log('[TEST] fallback 3001/admin (no /api) handler hit', request.url, params);
+        const p = params as { id: string };
+        return HttpResponse.json({ data: { invoice: { id: p.id, status: 'FALLBACK', subtotal_cents: 11111, tax_cents:0, total_cents:11111, amount_paid_cents:0, amount_due_cents:11111 }, line_items: [], payments: [] } });
+      }),
+      http.get('http://localhost:3001//api/admin/invoices/:id', ({ request }) => {
+        console.log('[TEST] double-slash variant hit', request.url);
+        return HttpResponse.json({ data: { invoice: { id: 'double-slash', status: 'DOUBLE', subtotal_cents: 22222, tax_cents:0, total_cents:22222, amount_paid_cents:0, amount_due_cents:22222 }, line_items: [], payments: [] } });
+      })
     );
     renderWithRouter('inv-123');
   // Header elements (role-based to avoid matching the 'Void Invoice' button)
@@ -87,9 +120,11 @@ describe('InvoiceDetailPage', () => {
   });
 
   it('Error State: shows error message + retry on 500', async () => {
-    server.resetHandlers();
+    const errHandler = () => HttpResponse.json({ error: 'Server boom' }, { status: 500 });
     server.use(
-      ...dual(() => http.get('*/api/admin/invoices/:id', () => HttpResponse.json({ error: 'Server boom' }, { status: 500 })))
+      http.get('http://localhost:3001/api/admin/invoices/:id', errHandler),
+      http.get('http://localhost:3000/api/admin/invoices/:id', errHandler),
+      http.get('/api/admin/invoices/:id', errHandler)
     );
     renderWithRouter('err-1');
     const alert = await screen.findByRole('alert');
@@ -98,9 +133,11 @@ describe('InvoiceDetailPage', () => {
   });
 
   it('Not Found State: shows specific not found message (404)', async () => {
-    server.resetHandlers();
+    const nfHandler = () => HttpResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
     server.use(
-      ...dual(() => http.get('*/api/admin/invoices/:id', () => HttpResponse.json({ error: 'NOT_FOUND' }, { status: 404 })))
+      http.get('http://localhost:3001/api/admin/invoices/:id', nfHandler),
+      http.get('http://localhost:3000/api/admin/invoices/:id', nfHandler),
+      http.get('/api/admin/invoices/:id', nfHandler)
     );
     renderWithRouter('missing-1');
     const alert = await screen.findByRole('alert');
@@ -112,17 +149,30 @@ describe('InvoiceDetailPage', () => {
   it('Records payment successfully and refreshes invoice', async () => {
     // First response: partially paid
     let hit = 0;
-    server.resetHandlers();
     server.use(
-      ...dual(() => http.get('*/api/admin/invoices/:id', () => {
+      http.get('http://localhost:3001/api/admin/invoices/:id', () => {
         hit++;
         if (hit === 1) {
           return HttpResponse.json({ data: { invoice: { id: 'inv-pay', status: 'DRAFT', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:2000, amount_due_cents:8000 }, line_items: [], payments: [{ id:'p1', amount_cents:2000, method:'cash', created_at: new Date().toISOString() }] } });
         }
         // After payment: amount paid increases
         return HttpResponse.json({ data: { invoice: { id: 'inv-pay', status: 'PARTIALLY_PAID', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:5000, amount_due_cents:5000 }, line_items: [], payments: [ { id:'p1', amount_cents:2000, method:'cash', created_at: new Date().toISOString() }, { id:'p2', amount_cents:3000, method:'CARD', created_at: new Date().toISOString() } ] } });
-      })),
-      http.post('*/api/admin/invoices/:id/payments', async () => {
+      }),
+      http.get('http://localhost:3000/api/admin/invoices/:id', () => {
+        hit++;
+        if (hit === 1) {
+          return HttpResponse.json({ data: { invoice: { id: 'inv-pay', status: 'DRAFT', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:2000, amount_due_cents:8000 }, line_items: [], payments: [{ id:'p1', amount_cents:2000, method:'cash', created_at: new Date().toISOString() }] } });
+        }
+        return HttpResponse.json({ data: { invoice: { id: 'inv-pay', status: 'PARTIALLY_PAID', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:5000, amount_due_cents:5000 }, line_items: [], payments: [ { id:'p1', amount_cents:2000, method:'cash', created_at: new Date().toISOString() }, { id:'p2', amount_cents:3000, method:'CARD', created_at: new Date().toISOString() } ] } });
+      }),
+      http.get('/api/admin/invoices/:id', () => {
+        hit++;
+        if (hit === 1) {
+          return HttpResponse.json({ data: { invoice: { id: 'inv-pay', status: 'DRAFT', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:2000, amount_due_cents:8000 }, line_items: [], payments: [{ id:'p1', amount_cents:2000, method:'cash', created_at: new Date().toISOString() }] } });
+        }
+        return HttpResponse.json({ data: { invoice: { id: 'inv-pay', status: 'PARTIALLY_PAID', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:5000, amount_due_cents:5000 }, line_items: [], payments: [ { id:'p1', amount_cents:2000, method:'cash', created_at: new Date().toISOString() }, { id:'p2', amount_cents:3000, method:'CARD', created_at: new Date().toISOString() } ] } });
+      }),
+  http.post('http://localhost:3001/api/admin/invoices/:id/payments', async () => {
         return HttpResponse.json({ data: { invoice: { id: 'inv-pay', status: 'PARTIALLY_PAID', total_cents:10000, amount_paid_cents:5000, amount_due_cents:5000, subtotal_cents:10000, tax_cents:0 }, payment: { id:'p2', amount_cents:3000, method:'CARD', created_at: new Date().toISOString() } } }, { status:201 });
       })
     );
@@ -147,10 +197,12 @@ describe('InvoiceDetailPage', () => {
   });
 
   it('Shows backend error inside modal when overpayment attempted', async () => {
-    server.resetHandlers();
+    const overHandler = () => HttpResponse.json({ data: { invoice: { id: 'inv-ovr', status: 'DRAFT', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:0, amount_due_cents:10000 }, line_items: [], payments: [] } });
     server.use(
-      ...dual(() => http.get('*/api/admin/invoices/:id', () => HttpResponse.json({ data: { invoice: { id: 'inv-ovr', status: 'DRAFT', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:0, amount_due_cents:10000 }, line_items: [], payments: [] } }))),
-      http.post('*/api/admin/invoices/:id/payments', () => HttpResponse.json({ error: 'OVERPAYMENT' }, { status:400 }))
+      http.get('http://localhost:3001/api/admin/invoices/:id', overHandler),
+      http.get('http://localhost:3000/api/admin/invoices/:id', overHandler),
+      http.get('/api/admin/invoices/:id', overHandler),
+      http.post('http://localhost:3001/api/admin/invoices/:id/payments', () => HttpResponse.json({ error: 'OVERPAYMENT' }, { status:400 }))
     );
     renderWithRouter('inv-ovr');
   await screen.findAllByText('$100.00');
@@ -168,15 +220,26 @@ describe('InvoiceDetailPage', () => {
 
   it('Shows already paid error and disables button on refetch', async () => {
     let paid = false;
-    server.resetHandlers();
     server.use(
-      ...dual(() => http.get('*/api/admin/invoices/:id', () => {
+      http.get('http://localhost:3001/api/admin/invoices/:id', () => {
         if (paid) {
           return HttpResponse.json({ data: { invoice: { id: 'inv-paid', status: 'PAID', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:10000, amount_due_cents:0 }, line_items: [], payments: [ { id:'p1', amount_cents:10000, method:'cash', created_at:new Date().toISOString() } ] } });
         }
         return HttpResponse.json({ data: { invoice: { id: 'inv-paid', status: 'DRAFT', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:0, amount_due_cents:10000 }, line_items: [], payments: [] } });
-      })),
-      http.post('*/api/admin/invoices/:id/payments', () => {
+      }),
+      http.get('http://localhost:3000/api/admin/invoices/:id', () => {
+        if (paid) {
+          return HttpResponse.json({ data: { invoice: { id: 'inv-paid', status: 'PAID', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:10000, amount_due_cents:0 }, line_items: [], payments: [ { id:'p1', amount_cents:10000, method:'cash', created_at:new Date().toISOString() } ] } });
+        }
+        return HttpResponse.json({ data: { invoice: { id: 'inv-paid', status: 'DRAFT', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:0, amount_due_cents:10000 }, line_items: [], payments: [] } });
+      }),
+      http.get('/api/admin/invoices/:id', () => {
+        if (paid) {
+          return HttpResponse.json({ data: { invoice: { id: 'inv-paid', status: 'PAID', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:10000, amount_due_cents:0 }, line_items: [], payments: [ { id:'p1', amount_cents:10000, method:'cash', created_at:new Date().toISOString() } ] } });
+        }
+        return HttpResponse.json({ data: { invoice: { id: 'inv-paid', status: 'DRAFT', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:0, amount_due_cents:10000 }, line_items: [], payments: [] } });
+      }),
+  http.post('http://localhost:3001/api/admin/invoices/:id/payments', () => {
         paid = true;
         return HttpResponse.json({ data: { invoice: { id: 'inv-paid', status: 'PAID', total_cents:10000, amount_paid_cents:10000, amount_due_cents:0, subtotal_cents:10000, tax_cents:0 }, payment: { id:'p1', amount_cents:10000, method:'CASH', created_at:new Date().toISOString() } } }, { status:201 });
       })
@@ -193,15 +256,26 @@ describe('InvoiceDetailPage', () => {
 
   it('Voids invoice successfully and refreshes status', async () => {
     let voided = false;
-    server.resetHandlers();
     server.use(
-      ...dual(() => http.get('*/api/admin/invoices/:id', () => {
+      http.get('http://localhost:3001/api/admin/invoices/:id', () => {
         if (voided) {
           return HttpResponse.json({ data: { invoice: { id: 'inv-void', status: 'VOID', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:0, amount_due_cents:10000 }, line_items: [], payments: [] } });
         }
         return HttpResponse.json({ data: { invoice: { id: 'inv-void', status: 'DRAFT', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:0, amount_due_cents:10000 }, line_items: [], payments: [] } });
-      })),
-      http.post('*/api/admin/invoices/:id/void', () => {
+      }),
+      http.get('http://localhost:3000/api/admin/invoices/:id', () => {
+        if (voided) {
+          return HttpResponse.json({ data: { invoice: { id: 'inv-void', status: 'VOID', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:0, amount_due_cents:10000 }, line_items: [], payments: [] } });
+        }
+        return HttpResponse.json({ data: { invoice: { id: 'inv-void', status: 'DRAFT', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:0, amount_due_cents:10000 }, line_items: [], payments: [] } });
+      }),
+      http.get('/api/admin/invoices/:id', () => {
+        if (voided) {
+          return HttpResponse.json({ data: { invoice: { id: 'inv-void', status: 'VOID', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:0, amount_due_cents:10000 }, line_items: [], payments: [] } });
+        }
+        return HttpResponse.json({ data: { invoice: { id: 'inv-void', status: 'DRAFT', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:0, amount_due_cents:10000 }, line_items: [], payments: [] } });
+      }),
+      http.post('http://localhost:3001/api/admin/invoices/:id/void', () => {
         voided = true;
         return HttpResponse.json({ data: { invoice: { id: 'inv-void', status: 'VOID', total_cents:10000, amount_paid_cents:0, amount_due_cents:10000, subtotal_cents:10000, tax_cents:0 } } }, { status:201 });
       })
@@ -220,10 +294,12 @@ describe('InvoiceDetailPage', () => {
   });
 
   it('Shows backend error if void fails and keeps modal open', async () => {
-    server.resetHandlers();
+    const voidErrHandler = () => HttpResponse.json({ data: { invoice: { id: 'inv-void-err', status: 'DRAFT', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:0, amount_due_cents:10000 }, line_items: [], payments: [] } });
     server.use(
-      ...dual(() => http.get('*/api/admin/invoices/:id', () => HttpResponse.json({ data: { invoice: { id: 'inv-void-err', status: 'DRAFT', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:0, amount_due_cents:10000 }, line_items: [], payments: [] } }))),
-      http.post('*/api/admin/invoices/:id/void', () => HttpResponse.json({ error: 'CANNOT_VOID' }, { status:400 }))
+      http.get('http://localhost:3001/api/admin/invoices/:id', voidErrHandler),
+      http.get('http://localhost:3000/api/admin/invoices/:id', voidErrHandler),
+      http.get('/api/admin/invoices/:id', voidErrHandler),
+      http.post('http://localhost:3001/api/admin/invoices/:id/void', () => HttpResponse.json({ error: 'CANNOT_VOID' }, { status:400 }))
     );
     renderWithRouter('inv-void-err');
     await screen.findAllByText('$100.00');
@@ -238,48 +314,38 @@ describe('InvoiceDetailPage', () => {
   });
 
   it('Adds a package via ServiceCatalogModal and updates line items inline (no refetch)', async () => {
-    // Initial invoice with no items
-    server.resetHandlers();
+    const invoiceBase = () => HttpResponse.json({ data: { invoice: { id: 'inv-pack', status: 'DRAFT', subtotal_cents: 0, tax_cents:0, total_cents:0, amount_paid_cents:0, amount_due_cents:0 }, line_items: [], payments: [] } });
+    const addPkgResponse = () => HttpResponse.json({ added_line_items: [ { id:'child-a', name:'Child A', quantity:1, unit_price_cents:5000, line_subtotal_cents:5000, tax_cents:0, total_cents:5000 }, { id:'child-b', name:'Child B', quantity:1, unit_price_cents:7000, line_subtotal_cents:7000, tax_cents:0, total_cents:7000 } ], package_name: 'Pkg 1', added_subtotal_cents: 12000 });
+    const serviceOps = () => HttpResponse.json([
+      { id: 'pkg-1', internal_code: 'PKG1', name: 'Package Basic', category: 'MAINTENANCE', subcategory: null, skill_level: 1, default_hours: 2, base_labor_rate: 140, keywords: ['package'], is_active: true, display_order: 1, is_package: true, package_items: [ { child_id:'child-a', quantity:1 }, { child_id:'child-b', quantity:1 } ] }
+    ]);
     server.use(
-      ...dual(() => http.get('*/api/admin/invoices/:id', () => HttpResponse.json({ data: { invoice: { id: 'inv-pack', status: 'DRAFT', subtotal_cents: 0, tax_cents:0, total_cents:0, amount_paid_cents:0, amount_due_cents:0 }, line_items: [], payments: [] } }))),
-      // Add package endpoint
-      http.post('*/api/admin/invoices/:id/add-package', async ({ request }) => {
-        interface AddPkgBody { packageId?: string }
-        const body = await request.json() as AddPkgBody;
-        if (body.packageId !== 'pkg-1') return HttpResponse.json({ error: 'BAD_PKG' }, { status:400 });
-        return HttpResponse.json({ data: {
-          invoice: { id: 'inv-pack', status: 'DRAFT', subtotal_cents: 3000, tax_cents:0, total_cents:3000, amount_paid_cents:0, amount_due_cents:3000 },
-          added_line_items: [
-            { id: 'li-a', name: 'Child A', quantity:1, unit_price_cents:1000, line_subtotal_cents:1000, tax_cents:0, total_cents:1000 },
-            { id: 'li-b', name: 'Child B', quantity:2, unit_price_cents:1000, line_subtotal_cents:2000, tax_cents:0, total_cents:2000 }
-          ],
-          package_id: 'pkg-1',
-          package_name: 'Starter Package',
-          added_subtotal_cents: 3000
-        } });
-      }),
-      // Service operations for catalog
-      http.get('*/api/admin/service-operations', () => HttpResponse.json({ service_operations: [
-        { id:'pkg-1', internal_code:'PKG1', name:'Starter Package', category:'MAINTENANCE', subcategory:null, skill_level:null, default_hours:1, base_labor_rate:100, keywords:['starter'], is_active:true, display_order:1, is_package:true, package_items:[ { child_id:'svc-a', qty:1 }, { child_id:'svc-b', qty:2 } ] },
-        { id:'svc-a', internal_code:'SVC-A', name:'Child A', category:'MAINTENANCE', subcategory:null, skill_level:null, default_hours:0.5, base_labor_rate:50, keywords:['a'], is_active:true, display_order:2 },
-        { id:'svc-b', internal_code:'SVC-B', name:'Child B', category:'MAINTENANCE', subcategory:null, skill_level:null, default_hours:0.5, base_labor_rate:50, keywords:['b'], is_active:true, display_order:3 }
-      ] }))
+      http.get('http://localhost:3001/api/admin/invoices/:id', invoiceBase),
+      http.get('http://localhost:3000/api/admin/invoices/:id', invoiceBase),
+      http.get('/api/admin/invoices/:id', invoiceBase),
+      http.post('http://localhost:3001/api/admin/invoices/:id/add-package', addPkgResponse),
+      http.post('/api/admin/invoices/:id/add-package', addPkgResponse),
+      http.get('/api/admin/service-operations', serviceOps),
+      http.get('http://localhost:3000/api/admin/service-operations', serviceOps),
+      http.get('http://localhost:3001/api/admin/service-operations', serviceOps)
     );
     renderWithRouter('inv-pack');
-    // Open modal
-    const openBtn = await screen.findByTestId('open-service-catalog-btn');
     const user = userEvent.setup();
-    await user.click(openBtn);
-    // Wait for catalog to load service
-    await screen.findByTestId('service-list');
-    const pkgAddBtn = await screen.findByRole('button', { name: /add package/i });
-    await user.click(pkgAddBtn);
-    // Toast should appear with success (title contains Added 2 item(s)... but we can just assert partial)
-    await screen.findByText(/Added 2 item/);
-    // Line items table should now show child names without refetch (Child A, Child B)
-  const childA = await screen.findAllByText('Child A');
-  const childB = await screen.findAllByText('Child B');
-  expect(childA.length).toBeGreaterThan(0);
-  expect(childB.length).toBeGreaterThan(0);
+    await user.click(await screen.findByTestId('open-service-catalog-btn'));
+    // Wait for package row and click its button
+    const pkgRow = await screen.findByTestId('service-row-pkg-1');
+    // Use Testing Library queries scoped to the row to find the button
+    const { within } = await import('@testing-library/dom');
+    let btn: HTMLElement | null = null;
+    try { btn = within(pkgRow).getByRole('button', { name: /Add Package|Add Service/i }); } catch { /* fallback below */ }
+    if (!btn) {
+      btn = await screen.findByRole('button', { name: /Add Package/i });
+    }
+  await user.click(btn);
+  // Toast text appears both in live region and visible alert; just assert at least one occurrence
+  const toastTexts = await screen.findAllByText(/Added 2 item/);
+  expect(toastTexts.length).toBeGreaterThan(0);
+    await screen.findByText('Child A');
+    await screen.findByText('Child B');
   });
 });

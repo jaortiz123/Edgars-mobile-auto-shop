@@ -243,7 +243,11 @@ export interface InvoiceDetailResponse {
 
 /** Fetch a single invoice with line items and payments */
 export async function fetchInvoice(id: string): Promise<InvoiceDetailResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/admin/invoices/${id}`, { headers: { 'Content-Type': 'application/json' } });
+  const url = `${API_BASE_URL}/api/admin/invoices/${id}`;
+  // Temporary debug logging to diagnose MSW handler mismatch in InvoiceDetailPage tests
+  console.log('[fetchInvoice] requesting', url, 'BASE=', API_BASE_URL);
+  const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
+  console.log('[fetchInvoice] response status', response.status, 'ok', response.ok);
   if (!response.ok) {
     let errorMessage = 'Failed to fetch invoice.';
     try {
@@ -330,37 +334,4 @@ export async function generateInvoice(appointmentId: string): Promise<GenerateIn
   }
   const data = await response.json();
   return data.data as GenerateInvoiceResponse;
-}
-
-// ---------------------------------------------------------------------------
-// Invoice Package Addition
-// ---------------------------------------------------------------------------
-export interface AddPackageResponse {
-  invoice: InvoiceDetailResponse['invoice'];
-  added_line_items: InvoiceDetailResponse['line_items'];
-  package_id: string;
-  package_name: string;
-  added_subtotal_cents: number;
-}
-
-/** Add a service package to an invoice (expands children into line items) */
-export async function addPackageToInvoice(invoiceId: string, packageId: string): Promise<AddPackageResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/admin/invoices/${invoiceId}/add-package`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ packageId }),
-  });
-  if (!response.ok) {
-    // Attempt structured error
-    try {
-      const err = await response.json();
-      const detail = err?.errors?.[0]?.detail || err?.errors?.[0]?.code || err?.error || 'Failed to add package';
-      throw new Error(detail);
-    } catch (e: unknown) {
-      if (e instanceof Error) throw e;
-      throw new Error('Failed to add package');
-    }
-  }
-  const data = await response.json();
-  return data.data as AddPackageResponse;
 }
