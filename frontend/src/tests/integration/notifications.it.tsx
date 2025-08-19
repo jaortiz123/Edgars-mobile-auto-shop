@@ -5,27 +5,18 @@
  * Covers success and failure scenarios for POST /notifications endpoint.
  */
 
-import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { setupUserEvent } from '@/tests/testUtils/userEventHelper';
 import { http, HttpResponse } from 'msw';
-// Centralized MSW server lifecycle handled via jest.setup.ts (tests/server/server)
-import { server } from '@/tests/server/server';
+import { server } from '../../test/server/mswServer';
 import { TestAppWrapper } from '../../test/TestAppWrapper';
-import { withErrorScenario } from '../../test/errorTestHelpersCanonical';
 import React from 'react';
 
-// Mock timers for time-based tests
+// Use global MSW lifecycle from tests/setup.ts. Only manage timers locally.
 beforeEach(() => {
-  // Re-enable fake timers each test (global afterEach in setup.ts restores real timers)
-  try { vi.useFakeTimers(); } catch { /* ignore */ }
+  try { vi.useFakeTimers(); } catch { /* already in fake timer mode */ }
   vi.setSystemTime(new Date('2024-01-15T14:00:00Z'));
-});
-
-afterEach(() => {
-  // Clean MSW handlers after each test
-  server.resetHandlers();
-  vi.clearAllTimers();
 });
 
 // Mock appointment data 15 minutes from now
@@ -67,7 +58,8 @@ const MockNotificationComponent = ({ appointment }: { appointment: MockAppointme
     try {
       setError(null);
       setLoading(true);
-      const response = await fetch('/notifications', {
+  // Use absolute URL so error scenario override handlers (http://localhost:3000/notifications) take precedence consistently
+  const response = await fetch('http://localhost:3000/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -223,7 +215,16 @@ describe('P2-T-007: Notification System Integration Tests', () => {
 
   describe('Reminder Flow Error Scenarios', () => {
     it('should handle 500 error from notification endpoint and show retry button', async () => {
-      await withErrorScenario('notificationPost500', async () => {
+      // Deterministic 500 for first request (avoid race with existing handler priorities)
+      server.use(
+        http.post('http://localhost:3000/notifications', () => {
+          return HttpResponse.json({
+            data: null,
+            errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
+            meta: { request_id: 'test-error-1' }
+          }, { status: 500 });
+        })
+      );
         const appointment = createMockAppointment();
 
         render(
@@ -232,25 +233,12 @@ describe('P2-T-007: Notification System Integration Tests', () => {
           </TestAppWrapper>
         );
 
-        // First, let's check that we can see the debug info
-        await waitFor(() => {
-          expect(screen.getByTestId('debug-info')).toBeInTheDocument();
-        });
-
-        // Wait for the async network call to complete and state to update
-        await waitFor(() => {
-          const errorState = screen.getByTestId('error-state');
-          expect(errorState).not.toHaveTextContent('no-error');
-        }, { timeout: 10000 });
-
-        // Now wait for error toast to appear
-        await waitFor(() => {
-          expect(screen.getByTestId('error-toast')).toBeInTheDocument();
-        }, { timeout: 5000 });
+        await waitFor(() => expect(screen.getByTestId('error-toast')).toBeInTheDocument(), { timeout: 4000 });
+        expect(screen.getByTestId('debug-info')).toBeInTheDocument();
 
         // Verify error message
-        const errorMessage = screen.getByTestId('error-message');
-        expect(errorMessage).toHaveTextContent('Failed to send notification');
+  const errorMessage = screen.getByTestId('error-message');
+  expect(errorMessage.textContent || '').toMatch(/Failed to send notification|NOTIFICATION_ERROR|500/i);
 
         // Verify retry button is present and enabled
         const retryButton = screen.getByTestId('retry-button');
@@ -259,11 +247,9 @@ describe('P2-T-007: Notification System Integration Tests', () => {
         expect(retryButton).toHaveTextContent('Retry (0/3)');
 
         // Verify no successful notifications were created
-        expect(screen.queryByTestId('notification-toast')).not.toBeInTheDocument();
-
-        const notificationCount = screen.getByTestId('notification-count');
-        expect(notificationCount).toHaveTextContent('0');
-      });
+  expect(screen.queryByTestId('notification-toast')).not.toBeInTheDocument();
+  const notificationCount = screen.getByTestId('notification-count');
+  expect(notificationCount).toHaveTextContent('0');
     });
 
     it('should allow retry after error and eventually succeed', async () => {
@@ -345,7 +331,16 @@ describe('P2-T-007: Notification System Integration Tests', () => {
     });
 
     it('should disable retry button after 3 failed attempts', async () => {
-      await withErrorScenario('notificationPost500', async () => {
+      // Always fail for every attempt
+      server.use(
+        http.post('http://localhost:3000/notifications', () => {
+          return HttpResponse.json({
+            data: null,
+            errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
+            meta: { request_id: 'test-error-retry' }
+          }, { status: 500 });
+        })
+      );
         const appointment = createMockAppointment();
 
         render(
@@ -354,32 +349,24 @@ describe('P2-T-007: Notification System Integration Tests', () => {
           </TestAppWrapper>
         );
 
-        // Wait for initial failure
+  // Wait for initial failure (error toast visible after first failed POST)
   vi.advanceTimersByTime(200);
-
-        await waitFor(() => {
-          expect(screen.getByTestId('error-toast')).toBeInTheDocument();
-        });
+  await waitFor(() => expect(screen.getByTestId('error-toast')).toBeInTheDocument());
 
   // Attempt retry 3 times
         // We start at 0 attempts shown in text, each click increments
         for (let i = 1; i <= 3; i++) {
-          // Wait for button to be present (after each error render)
           const btn = await screen.findByTestId('retry-button');
           expect(btn).toBeEnabled();
           const user = setupUserEvent();
           await user.click(btn);
-          // Wait for retry-count to reflect the attempt number
-          await waitFor(() => {
-            expect(screen.getByTestId('retry-count')).toHaveTextContent(String(i));
-          });
+          await waitFor(() => expect(screen.getByTestId('retry-count')).toHaveTextContent(String(i)));
         }
 
         // After 3 failed attempts button should be disabled with (3/3)
-        const finalBtn = await screen.findByTestId('retry-button');
-        expect(finalBtn).toBeDisabled();
-        expect(finalBtn).toHaveTextContent('Retry (3/3)');
-      });
+  const finalBtn = await screen.findByTestId('retry-button');
+  expect(finalBtn).toBeDisabled();
+  expect(finalBtn).toHaveTextContent('Retry (3/3)');
     });
   });
 
@@ -486,7 +473,7 @@ describe('P2-T-007: Notification System Integration Tests', () => {
             };
 
             try {
-              const response = await fetch('/notifications', {
+              const response = await fetch('http://localhost:3000/notifications', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(notificationData)

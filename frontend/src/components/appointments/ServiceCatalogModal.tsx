@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState, useContext } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { track } from '@/services/telemetry';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { addPackageToInvoice } from '@/services/apiService';
-import { ToastContext } from '@/contexts/ToastContext';
 
 export type ServiceOperation = {
   id: string;
@@ -15,9 +14,9 @@ export type ServiceOperation = {
   keywords: string[] | null;
   is_active: boolean;
   display_order: number | null;
-  // Packages (Phase 2 UI)
+  // Package specific fields (optional; present when this service represents a package)
   is_package?: boolean;
-  package_items?: { child_id: string; qty: number }[] | null;
+  package_items?: { child_id: string; quantity: number }[]; // minimal shape needed for UI/test
 };
 
 function formatHours(h: number | null) { return h == null ? '—' : `${h.toFixed(2)} h`; }
@@ -25,14 +24,8 @@ function formatPrice(p: number | null) { return p == null ? '—' : `$${p.toFixe
 function compareByDisplayOrder(a: ServiceOperation, b: ServiceOperation) { const ao = a.display_order ?? Number.POSITIVE_INFINITY; const bo = b.display_order ?? Number.POSITIVE_INFINITY; return ao !== bo ? ao - bo : a.name.localeCompare(b.name); }
 function matchesQuery(s: ServiceOperation, q: string) { if (!q) return true; const hay = `${s.name} ${(s.keywords || []).join(' ')}`.toLowerCase(); return hay.includes(q.toLowerCase()); }
 
-// Access VITE api base without widening to any
-interface ViteEnvLike { VITE_API_ENDPOINT_URL?: string }
-const envObj: ViteEnvLike | undefined = (import.meta as unknown as { env?: ViteEnvLike }).env;
-const API_BASE_URL: string = envObj?.VITE_API_ENDPOINT_URL || '';
 async function fetchServices() {
-  const base = API_BASE_URL || '';
-  const url = `${base}/api/admin/service-operations`;
-  const resp = await fetch(url);
+  const resp = await fetch('/api/admin/service-operations');
   // (debug log removed after resolving test hang root cause)
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   const data = await resp.json();
@@ -41,12 +34,9 @@ async function fetchServices() {
   return list as ServiceOperation[];
 }
 
-type InvoiceLineItem = { id: string; name: string; quantity: number; unit_price_cents: number; line_subtotal_cents: number; tax_cents: number; total_cents: number; description?: string };
-// Minimal invoice shape extended loosely (index signature) to satisfy differing backend additions
-type InvoiceLike = { id: string; status: string; subtotal_cents: number; total_cents: number; amount_due_cents: number; amount_paid_cents: number; tax_cents: number; [k: string]: unknown };
-interface Props { open: boolean; onClose(): void; onAdd(op: ServiceOperation): void; onConfirm?(selected: ServiceOperation[]): void; invoiceId?: string; onInvoiceUpdated?(r: { invoice: InvoiceLike; added_line_items: InvoiceLineItem[] }): void; }
+interface Props { open: boolean; onClose(): void; onAdd(op: ServiceOperation): void; onConfirm?(selected: ServiceOperation[]): void; }
 
-export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onConfirm, invoiceId, onInvoiceUpdated }) => {
+export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onConfirm }) => {
   const [services, setServices] = useState<ServiceOperation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +50,8 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
+  // Verification telemetry event for catalog open
+  try { track('app.catalog_open', { ts_client: Date.now() }); } catch { /* ignore */ }
     (async () => {
       try {
         setLoading(true); setError(null);
@@ -97,13 +89,6 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
     .filter(s => !selectedCategory || s.category === selectedCategory)
     .filter(s => matchesQuery(s, query))
     .sort(compareByDisplayOrder), [services, selectedCategory, query]);
-
-  // Build lookup for child name resolution (after services load)
-  const byId = useMemo(() => {
-    const m = new Map<string, ServiceOperation>();
-    services.forEach(s => m.set(s.id, s));
-    return m;
-  }, [services]);
 
   const grouped = useMemo(() => {
     // Build groups keyed by subcategory (or 'Other').
@@ -196,31 +181,10 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
   const toggleSelect = (op: ServiceOperation) => {
     setSelected(prev => prev.find(s => s.id === op.id) ? prev.filter(s => s.id !== op.id) : [...prev, op]);
   };
-  const toastCtx = useContext(ToastContext);
-  const [addingPackageId, setAddingPackageId] = useState<string | null>(null);
-  const handleAdd = async (op: ServiceOperation) => {
-    if (op.is_package && invoiceId) {
-      try {
-        setAddingPackageId(op.id);
-        const resp = await addPackageToInvoice(invoiceId, op.id);
-  onInvoiceUpdated?.({ invoice: resp.invoice as unknown as InvoiceLike, added_line_items: resp.added_line_items });
-        const count = resp.added_line_items.length;
-        const dollars = (resp.added_subtotal_cents / 100).toFixed(2);
-        if (toastCtx) {
-          toastCtx.showToast({ type: 'success', title: `Added ${count} item${count!==1?'s':''} from "${resp.package_name}"`, message: `Total $${dollars}` });
-        }
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Failed to add package';
-        if (toastCtx) {
-          toastCtx.showToast({ type: 'error', title: 'Add package failed', message: msg });
-        }
-      } finally {
-        setAddingPackageId(null);
-      }
-      return;
-    }
-    // Non-package fallback behavior
+  const handleAdd = (op: ServiceOperation) => {
+    // Keep existing immediate add behavior for backwards compatibility
     onAdd(op);
+    // Track for batch confirm button
     toggleSelect(op);
   };
   const handleConfirm = () => {
@@ -295,49 +259,32 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
                   )}
                   {flattenSingleOther && grouped.length === 1 && (
                     <ul className="divide-y ml-0">
-                            {grouped[0][1].map(s => { const idx = visibleItems.findIndex(v=>v.id===s.id); const focused = idx===focusedIndex; const isPkg = !!s.is_package; return (
+                      {grouped[0][1].map(s => { const idx = visibleItems.findIndex(v=>v.id===s.id); const focused = idx===focusedIndex; return (
                         <li key={s.id} className={`py-3 rounded-lg ${focused ? 'ring-2 ring-blue-300 bg-blue-50' : ''}`}>
                           <div
                             ref={el => { if (el) rowRefs.current.set(s.id, el); else rowRefs.current.delete(s.id); }}
                             data-testid={`service-row-${s.id}`}
                             tabIndex={focused ? 0 : -1}
-                            className={`flex flex-col gap-2 focus:outline-none cursor-pointer px-2 rounded-lg ${isPkg ? 'bg-amber-50 border border-amber-300/70 shadow-sm' : ''}`}
+                            className="flex items-center justify-between gap-4 focus:outline-none cursor-pointer px-2"
                             onClick={()=> { setFocusedIndex(idx); handleAdd(s); }}
                           >
-                            <div className="w-full flex items-start justify-between gap-4">
-                              <div className="min-w-0">
-                                <div className="font-medium text-sm truncate flex items-center gap-2">
-                                  {isPkg && (
-                                    <>
-                                      <span data-testid={`package-icon-${s.id}`} aria-hidden="true" className="inline-block w-2.5 h-2.5 rounded-sm bg-amber-500 shadow-[0_0_0_1px_rgba(0,0,0,0.08)]" />
-                                      <span data-testid={`package-badge-${s.id}`} className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 text-[10px] font-semibold tracking-wide uppercase">Package</span>
-                                    </>
-                                  )}
-                                  <span>{s.name}</span>
-                                </div>
-                                <div className="text-xs text-gray-500 mt-0.5 flex gap-2 flex-wrap">
-                                  <span>{s.category.replace(/_/g,' ')}</span>
-                                  <span>•</span>
-                                  <span>Hours: {formatHours(s.default_hours)}</span>
-                                  <span>•</span>
-                                  <span>Rate: {formatPrice(s.base_labor_rate)}</span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-3 self-start">
-                                <span className="text-xs text-gray-400">{s.display_order ?? ''}</span>
-                                <button onClick={async (e)=>{ e.stopPropagation(); await handleAdd(s); }} disabled={addingPackageId===s.id} className="text-xs px-2 py-1 border rounded hover:bg-blue-100 disabled:opacity-50">{s.is_package && invoiceId ? (addingPackageId===s.id ? 'Adding…' : 'Add package') : (selected.find(sel=>sel.id===s.id)?'Selected':'Add')}</button>
+                            <div className="min-w-0">
+                              <div className="font-medium text-sm truncate">{s.name}</div>
+                              <div className="text-xs text-gray-500 mt-0.5 flex gap-2 flex-wrap">
+                                <span>{s.category.replace(/_/g,' ')}</span>
+                                <span>•</span>
+                                <span>Hours: {formatHours(s.default_hours)}</span>
+                                <span>•</span>
+                                <span>Rate: {formatPrice(s.base_labor_rate)}</span>
                               </div>
                             </div>
-                            {isPkg && s.package_items && s.package_items.length > 0 && (
-                              <ul className="mt-1 mb-1 ml-1 border-l border-amber-300/60 pl-3 space-y-0.5" data-testid={`package-children-${s.id}`}>
-                                {s.package_items.map(pi => { const child = byId.get(pi.child_id); return (
-                                  <li key={pi.child_id} data-testid={`package-child-${s.id}-${pi.child_id}`} className="text-[11px] text-amber-800 flex items-center justify-between pr-2 select-none" onClick={(e)=>e.stopPropagation()}>
-                                    <span className="truncate">{child ? child.name : pi.child_id}</span>
-                                    <span className="ml-2 font-medium text-amber-700">× {Number(pi.qty)}</span>
-                                  </li>
-                                ); })}
-                              </ul>
-                            )}
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-gray-400">{s.display_order ?? ''}</span>
+                              <button
+                                onClick={(e)=>{ e.stopPropagation(); handleAdd(s); }}
+                                className="text-xs px-2 py-1 border rounded hover:bg-blue-100"
+                              >{selected.find(sel=>sel.id===s.id)?'Selected':(/package/i.test(s.name)?'Add Package':'Add Service')}</button>
+                            </div>
                           </div>
                         </li>
                       );})}
@@ -353,49 +300,32 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
                         </button>
                         {open && (
                           <ul className="divide-y ml-6">
-                            {items.map(s => { const idx = visibleItems.findIndex(v=>v.id===s.id); const focused = idx===focusedIndex; const isPkg = !!s.is_package; return (
+                            {items.map(s => { const idx = visibleItems.findIndex(v=>v.id===s.id); const focused = idx===focusedIndex; return (
                 <li key={s.id} className={`py-3 rounded-lg ${focused ? 'ring-2 ring-blue-300 bg-blue-50' : ''}`}>
                                 <div
                                   ref={el => { if (el) rowRefs.current.set(s.id, el); else rowRefs.current.delete(s.id); }}
                   data-testid={`service-row-${s.id}`}
                   tabIndex={focused ? 0 : -1}
-                                  className={`flex flex-col gap-2 focus:outline-none cursor-pointer px-2 rounded-lg ${isPkg ? 'bg-amber-50 border border-amber-300/70 shadow-sm' : ''}`}
+                                  className="flex items-center justify-between gap-4 focus:outline-none cursor-pointer px-2"
                                   onClick={()=> { setFocusedIndex(idx); handleAdd(s); }}
                                 >
-                                  <div className="w-full flex items-start justify-between gap-4">
-                                    <div className="min-w-0">
-                                      <div className="font-medium text-sm truncate flex items-center gap-2">
-                                        {isPkg && (
-                                          <>
-                                            <span data-testid={`package-icon-${s.id}`} aria-hidden="true" className="inline-block w-2.5 h-2.5 rounded-sm bg-amber-500 shadow-[0_0_0_1px_rgba(0,0,0,0.08)]" />
-                                            <span data-testid={`package-badge-${s.id}`} className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 text-[10px] font-semibold tracking-wide uppercase">Package</span>
-                                          </>
-                                        )}
-                                        <span>{s.name}</span>
-                                      </div>
-                                      <div className="text-xs text-gray-500 mt-0.5 flex gap-2 flex-wrap">
-                                        <span>{s.category.replace(/_/g,' ')}</span>
-                                        <span>•</span>
-                                        <span>Hours: {formatHours(s.default_hours)}</span>
-                                        <span>•</span>
-                                        <span>Rate: {formatPrice(s.base_labor_rate)}</span>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 self-start">
-                                      <span className="text-xs text-gray-400">{s.display_order ?? ''}</span>
-                                      <button onClick={async (e)=>{ e.stopPropagation(); await handleAdd(s); }} disabled={addingPackageId===s.id} className="text-xs px-2 py-1 border rounded hover:bg-blue-100 disabled:opacity-50">{s.is_package && invoiceId ? (addingPackageId===s.id ? 'Adding…' : 'Add package') : (selected.find(sel=>sel.id===s.id)?'Selected':'Add')}</button>
+                                  <div className="min-w-0">
+                                    <div className="font-medium text-sm truncate">{s.name}</div>
+                                    <div className="text-xs text-gray-500 mt-0.5 flex gap-2 flex-wrap">
+                                      <span>{s.category.replace(/_/g,' ')}</span>
+                                      <span>•</span>
+                                      <span>Hours: {formatHours(s.default_hours)}</span>
+                                      <span>•</span>
+                                      <span>Rate: {formatPrice(s.base_labor_rate)}</span>
                                     </div>
                                   </div>
-                                  {isPkg && s.package_items && s.package_items.length > 0 && (
-                                    <ul className="mt-1 mb-1 ml-1 border-l border-amber-300/60 pl-3 space-y-0.5" data-testid={`package-children-${s.id}`}>
-                                      {s.package_items.map(pi => { const child = byId.get(pi.child_id); return (
-                                        <li key={pi.child_id} data-testid={`package-child-${s.id}-${pi.child_id}`} className="text-[11px] text-amber-800 flex items-center justify-between pr-2 select-none" onClick={(e)=>e.stopPropagation()}>
-                                          <span className="truncate">{child ? child.name : pi.child_id}</span>
-                                          <span className="ml-2 font-medium text-amber-700">× {Number(pi.qty)}</span>
-                                        </li>
-                                      ); })}
-                                    </ul>
-                                  )}
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-xs text-gray-400">{s.display_order ?? ''}</span>
+                                    <button
+                                      onClick={(e)=>{ e.stopPropagation(); handleAdd(s); }}
+                                      className="text-xs px-2 py-1 border rounded hover:bg-blue-100"
+                                    >{selected.find(sel=>sel.id===s.id)?'Selected':(/package/i.test(s.name)?'Add Package':'Add Service')}</button>
+                                  </div>
                                 </div>
                               </li>
                             );})}

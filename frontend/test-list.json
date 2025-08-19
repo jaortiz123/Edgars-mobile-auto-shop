@@ -1,0 +1,522 @@
+src/tests/InvoiceDetailPage.test.tsx > InvoiceDetailPage > Loading State: shows skeleton while fetching
+src/tests/InvoiceDetailPage.test.tsx > InvoiceDetailPage > Success State: renders header, line items and payments
+src/tests/InvoiceDetailPage.test.tsx > InvoiceDetailPage > Error State: shows error message + retry on 500
+src/tests/InvoiceDetailPage.test.tsx > InvoiceDetailPage > Not Found State: shows specific not found message (404)
+src/tests/InvoiceDetailPage.test.tsx > InvoiceDetailPage > Records payment successfully and refreshes invoice
+src/tests/InvoiceDetailPage.test.tsx > InvoiceDetailPage > Shows backend error inside modal when overpayment attempted
+src/tests/InvoiceDetailPage.test.tsx > InvoiceDetailPage > Shows already paid error and disables button on refetch
+src/tests/InvoiceDetailPage.test.tsx > InvoiceDetailPage > Voids invoice successfully and refreshes status
+src/tests/InvoiceDetailPage.test.tsx > InvoiceDetailPage > Shows backend error if void fails and keeps modal open
+src/tests/InvoiceDetailPage.test.tsx > InvoiceDetailPage > Adds a package via ServiceCatalogModal and updates line items inline (no refetch)
+tests/spacing-validation.test.ts > Sprint1A-T-004: Spacing System Validation > should have all spacing variables defined in theme.css
+tests/spacing-validation.test.ts > Sprint1A-T-004: Spacing System Validation > should have spacing utilities in spacing.css
+tests/spacing-validation.test.ts > Sprint1A-T-004: Spacing System Validation > should use spacing variables in component CSS files
+tests/spacing-validation.test.ts > Sprint1A-T-004: Spacing System Validation > should have proper fallback values for spacing variables
+tests/spacing-validation.test.ts > Sprint1A-T-004: Spacing System Validation > should use consistent 4px/8px multiples in all spacing values
+tests/spacing-validation.test.ts > Sprint1A-T-004: Spacing System Validation > should validate that RunningRevenue component uses CSS variables
+tests/spacing-validation.test.ts > Sprint1A-T-004: Spacing System Validation > should validate DashboardSidebar uses new spacing system
+tests/spacing-validation.test.ts > Sprint1A-T-004: Spacing System Validation > should validate AdminLayout uses new spacing system
+tests/spacing-validation.test.ts > Sprint1A-T-004: Spacing System Validation > should validate Login components use new spacing system
+tests/spacing-validation.test.ts > Sprint1A-T-004: Spacing System Validation > should not have old Tailwind spacing classes in converted components
+src/__tests__/designSystem.minimal.test.tsx > minimal design system jsx test
+src/__tests__/designSystem.simple.test.tsx > renders design system component with typography and spacing classes
+src/__tests__/designSystem.simple.test.tsx > renders with default design system values
+src/__tests__/designSystem.simple.test.tsx > supports custom children content
+src/__tests__/designSystem.simple.test.tsx > validates jsdom environment has DOM APIs
+src/__tests__/designSystem.simple.test.tsx > supports CSS class manipulation in jsdom
+src/__tests__/designSystem.simple.test.tsx > Design System Typography Scales > renders different typography scales correctly
+src/__tests__/designSystem.simple.test.tsx > Design System Typography Scales > handles edge case scales
+src/__tests__/designSystem.simple.test.tsx > Design System Spacing Scales > renders different spacing scales correctly
+src/__tests__/designSystem.simple.test.tsx > Design System Spacing Scales > handles zero spacing correctly
+src/__tests__/designTokens.test.ts > Design System Token Validation > Design System Type Definitions > should have correct typography scale tokens
+src/__tests__/designTokens.test.ts > Design System Token Validation > Design System Type Definitions > should have correct spacing scale tokens
+src/__tests__/designTokens.test.ts > Design System Token Validation > Design System Type Definitions > should have fallback values for all tokens
+src/__tests__/designTokens.test.ts > Design System Token Validation > Design System Type Definitions > should have CSS variable mappings for all tokens
+src/__tests__/designTokens.test.ts > Design System Token Validation > Performance Thresholds > should have defined performance thresholds
+src/__tests__/designTokens.test.ts > Design System Token Validation > Performance Thresholds > should have accessibility requirements defined
+src/__tests__/designTokens.test.ts > Design System Token Validation > Performance Thresholds > should have focus indicator requirements
+src/__tests__/designTokens.test.ts > Design System Token Validation > Error Handling and Fallbacks > should provide fallback styles when CSS variables fail
+src/__tests__/designTokens.test.ts > Design System Token Validation > Error Handling and Fallbacks > should handle SSR environment gracefully
+src/__tests__/designTokens.test.ts > Design System Token Validation > Error Handling and Fallbacks > should validate design tokens without DOM
+src/__tests__/designTokens.test.ts > Design System Token Validation > CSS Integration Tests > should have consistent modular scale ratios
+src/__tests__/designTokens.test.ts > Design System Token Validation > CSS Integration Tests > should have consistent spacing increments
+src/__tests__/designTokens.test.ts > Design System Token Validation > CSS Integration Tests > should have accessible color contrast ratios
+src/__tests__/designTokens.test.ts > Design System Token Validation > CSS Integration Tests > should have logical typography scale progression
+src/__tests__/designTokens.test.ts > Design System Token Validation > CSS Integration Tests > should have logical spacing scale progression
+src/__tests__/designTokens.test.ts > Design System Token Validation > Utility Functions (Non-DOM) > should measure CSS performance without DOM dependencies
+src/__tests__/designTokens.test.ts > Design System Token Validation > Utility Functions (Non-DOM) > should handle initialization in Node environment
+src/__tests__/designTokens.test.ts > Design System Token Validation > Utility Functions (Non-DOM) > should handle CSS performance monitoring initialization
+src/__tests__/designTokens.test.ts > Design System Token Validation > Utility Functions (Non-DOM) > should handle validation in Node environment gracefully
+src/__tests__/designTokens.test.ts > Design System Token Validation > Token Value Validation > should have valid CSS unit values
+src/__tests__/designTokens.test.ts > Design System Token Validation > Token Value Validation > should have valid fallback unit values
+src/__tests__/designTokens.test.ts > Design System Token Validation > Token Value Validation > should have consistent rem to px conversion ratios
+src/__tests__/designTokens.test.ts > Design System Token Validation > Type Safety Validation > should have proper TypeScript types
+src/__tests__/designTokens.test.ts > Design System Token Validation > Type Safety Validation > should have consistent token naming
+src/__tests__/spacingSystem.test.ts > Spacing System Validation > should have all spacing CSS variables defined in theme.css
+src/__tests__/spacingSystem.test.ts > Spacing System Validation > should not have hard-coded non-8px-multiple padding values in CSS files
+src/__tests__/spacingSystem.test.ts > Spacing System Validation > should not have hard-coded non-8px-multiple margin values in CSS files
+src/__tests__/spacingSystem.test.ts > Spacing System Validation > should not have hard-coded non-8px-multiple gap values in CSS files
+src/__tests__/spacingSystem.test.ts > Spacing System Validation > should have spacing utility classes defined in spacing.css
+src/__tests__/spacingSystem.test.ts > Spacing System Validation > should use spacing variables consistently in component stylesheets
+src/__tests__/spacingSystem.test.ts > Spacing System Validation > should not have inline styles with non-8px-multiple spacing in React components
+src/__tests__/spacingSystem.test.ts > Spacing System Validation > should validate RunningRevenue component uses spacing system correctly
+src/__tests__/typographyScale.test.ts > Typography Scale Migration > should not contain any hard-coded pixel font-sizes in component CSS
+src/__tests__/typographyScale.test.ts > Typography Scale Migration > should not contain hard-coded pixel font-sizes in inline styles
+src/__tests__/typographyScale.test.ts > Typography Scale Migration > should have typography scale CSS variables defined
+src/__tests__/typographyScale.test.ts > Typography Scale Migration > should use typography scale in component stylesheets
+src/__tests__/typographyScale.test.ts > Typography Scale Migration > should have Tailwind configured with typography scale classes
+src/__tests__/typographyScale.test.ts > Typography Scale Usage Validation > should recommend Tailwind classes over legacy text utilities
+src/__tests__/typographyScale.test.ts > Typography Scale Usage Validation > should validate CSS variable fallback pattern
+src/tests/AppointmentHistory.test.tsx > AppointmentHistory > renders rows with correct cells
+src/tests/AppointmentHistory.test.tsx > AppointmentHistory > shows empty state when no appointments
+src/tests/CustomerCard.test.tsx > CustomerCard > renders VIP and Overdue badges when flags true
+src/tests/CustomerCard.test.tsx > CustomerCard > formats total spent as currency
+src/tests/CustomerCard.test.tsx > CustomerCard > invokes Book Appointment handler when clicked
+src/tests/CustomerHeader.test.tsx > CustomerHeader > does not render badges when neither VIP nor Overdue
+src/tests/CustomerHeader.test.tsx > CustomerHeader > renders VIP badge when customer isVip is true
+src/tests/CustomerHeader.test.tsx > CustomerHeader > renders Overdue badge when metrics.isOverdueForService is true
+src/tests/CustomerHeader.test.tsx > CustomerHeader > renders both badges when both flags set
+src/tests/CustomerHistory.test.tsx > CustomerHistory > renders loading state initially
+src/tests/CustomerHistory.test.tsx > CustomerHistory > renders empty state when no appointments
+src/tests/CustomerHistory.test.tsx > CustomerHistory > renders error state and allows retry
+src/tests/CustomerHistory.test.tsx > CustomerHistory > renders appointments grouped by year
+src/tests/CustomerHistory.test.tsx > CustomerHistory > expands and collapses year sections
+src/tests/CustomerHistory.test.tsx > CustomerHistory > calls onAppointmentClick when appointment is clicked
+src/tests/CustomerHistory.test.tsx > CustomerHistory > displays appointment status with correct styling
+src/tests/CustomerHistory.test.tsx > CustomerHistory > shows payment information correctly
+src/tests/CustomerProfileAppointments.test.tsx > CustomerProfilePage Appointment History (details + expansion) > does not expand rows when details not loaded
+src/tests/CustomerProfileAppointments.test.tsx > CustomerProfilePage Appointment History (details + expansion) > re-fetches with include details when toggle enabled
+src/tests/CustomerProfileAppointments.test.tsx > CustomerProfilePage Appointment History (details + expansion) > expands and collapses a row showing loaded services/messages
+src/tests/CustomerProfilePage.test.tsx > CustomerProfilePage > Loading State: shows loading indicator while fetching
+src/tests/CustomerProfilePage.test.tsx > CustomerProfilePage > Success State: renders customer name on success
+src/tests/CustomerProfilePage.test.tsx > CustomerProfilePage > Error State: displays error message when API fails
+src/tests/CustomerProfilePage.test.tsx > CustomerProfilePage > Not Found State: shows specific message when customer missing
+src/tests/CustomersPage.test.tsx > CustomersPage (Phase 1) > Initial State: shows prompt and recent customers section
+src/tests/CustomersPage.test.tsx > CustomersPage (Phase 1) > Loading State: shows loading indicator during fetch
+src/tests/CustomersPage.test.tsx > CustomersPage (Phase 1) > Recent Customers: hides section once user searches
+src/tests/CustomersPage.test.tsx > CustomersPage (Phase 1) > Recent Customers: empty state shows when API returns none
+src/tests/CustomersPage.test.tsx > CustomersPage (Phase 1) > Results State: renders customer cards with correct data
+src/tests/CustomersPage.test.tsx > CustomersPage (Phase 1) > No Results State: shows empty message when no customers
+src/tests/CustomersPage.test.tsx > CustomersPage (Phase 1) > Error State: shows error message when fetch fails
+src/tests/CustomersPage.test.tsx > CustomersPage (Phase 1) > Grouping Logic: multiple vehicles for one customer collapse into one card
+src/tests/CustomersPage.test.tsx > CustomersPage (Phase 1) > Navigation: View Full History navigates to /admin/customers/:id
+src/tests/CustomersPage.test.tsx > CustomersPage (Phase 1) > Filter Chips: selecting VIP appends filter parameter to request
+src/tests/CustomersPage.test.tsx > CustomersPage (Phase 1) > Sorting: changing dropdown triggers refetch with sortBy parameter
+src/tests/InvoicesPage.test.tsx > InvoicesPage > Loading State: shows loading indicator initially
+src/tests/InvoicesPage.test.tsx > InvoicesPage > Success State: renders rows for returned invoices
+src/tests/InvoicesPage.test.tsx > InvoicesPage > Empty State: shows message when no invoices
+src/tests/InvoicesPage.test.tsx > InvoicesPage > Error State: displays error when fetch fails
+src/tests/MessageThread.suggestions.test.tsx > MessageThread suggestions > renders suggested section and badges
+src/tests/MessageThread.test.tsx > MessageThread > renders message thread with messages
+src/tests/MessageThread.test.tsx > MessageThread > renders empty state when no messages
+src/tests/MessageThread.test.tsx > MessageThread > allows sending a new message
+src/tests/MessageThread.test.tsx > MessageThread > validates empty messages
+src/tests/MessageThread.test.tsx > MessageThread > handles API errors when sending messages
+src/tests/MetricsSummary.test.tsx > MetricsSummary > renders all primary metrics with correct formatting
+src/tests/MetricsSummary.test.tsx > MetricsSummary > gracefully renders placeholders for null/undefined values
+src/tests/RecordPaymentModal.test.tsx > RecordPaymentModal > renders defaults and validates amount
+src/tests/RecordPaymentModal.test.tsx > RecordPaymentModal > shows overpay warning when amount exceeds due
+src/tests/RecordPaymentModal.test.tsx > RecordPaymentModal > disables submit when invoice PAID
+src/tests/TemplateFormModal.test.tsx > TemplateFormModal validation > shows error when required fields missing on create
+src/tests/TemplateFormModal.test.tsx > TemplateFormModal validation > submits successfully when fields valid
+src/tests/VehicleList.test.tsx > VehicleList > renders vehicles with label, plate, visits and spend
+src/tests/VehicleList.test.tsx > VehicleList > renders placeholder when empty
+src/tests/VehicleList.test.tsx > VehicleList > fires callback when view history clicked
+src/tests/VehicleProfile.accessibility.test.tsx > VehicleProfile Accessibility > Roving focus: Arrow keys move active row
+src/tests/VehicleProfile.integration.test.tsx > VehicleProfile Integration > Pagination: loads first page then appends next page on Load More
+src/tests/VehicleProfile.integration.test.tsx > VehicleProfile Integration > ETag 304 reuse: second refetch with unchanged etag does not clear data
+src/tests/VehicleProfilePage.test.tsx > VehicleProfilePage > renders header when data loaded
+src/tests/VehicleProfilePage.test.tsx > VehicleProfilePage > shows loading skeleton
+src/tests/VehicleProfilePage.test.tsx > VehicleProfilePage > handles error state
+src/tests/ci-strict-live-test.test.ts > CI-STRICT-001 Live Test > should pass normally
+src/tests/ci-strict.test.ts > CI-STRICT-001: Console error detection > should pass when no console errors are logged
+src/tests/console-guard.test.ts > CI-STRICT-001 Console Guard > should allow whitelisted console errors without failing
+src/tests/console-guard.test.ts > CI-STRICT-001 Console Guard > should allow withConsoleErrorSpy to temporarily disable strict checking
+src/tests/console-guard.test.ts > CI-STRICT-001 Console Guard > should handle nested async operations in withConsoleErrorSpy
+src/tests/dailyAchievementSummary.test.tsx > DailyAchievementSummary > DailyAchievementSummary Modal > renders correctly when open
+src/tests/dailyAchievementSummary.test.tsx > DailyAchievementSummary > DailyAchievementSummary Modal > does not render when closed
+src/tests/dailyAchievementSummary.test.tsx > DailyAchievementSummary > DailyAchievementSummary Modal > calls onClose when close button clicked
+src/tests/dailyAchievementSummary.test.tsx > DailyAchievementSummary > DailyAchievementSummary Modal > calls onClose when backdrop clicked
+src/tests/dailyAchievementSummary.test.tsx > DailyAchievementSummary > DailyAchievementSummary Modal > displays correct message for zero jobs
+src/tests/dailyAchievementSummary.test.tsx > DailyAchievementSummary > DailyAchievementSummary Modal > displays correct message for high productivity
+src/tests/dailyAchievementSummary.test.tsx > DailyAchievementSummary > DailyAchievementSummary Modal > formats currency correctly
+src/tests/dailyAchievementSummary.test.tsx > DailyAchievementSummary > DailyAchievementSummary Modal > formats date correctly (tolerant to TZ)
+src/tests/dailyAchievementSummary.test.tsx > DailyAchievementSummary > DailyAchievementSummaryCard > renders dashboard card correctly
+src/tests/dailyAchievementSummary.test.tsx > DailyAchievementSummary > DailyAchievementSummaryCard > calls onViewDetails when button clicked
+src/tests/dailyAchievementSummary.test.tsx > Summary Service Integration > getDailySummary fetches and returns summary data
+src/tests/dailyAchievementSummary.test.tsx > Summary Service Integration > shouldShowDailySummary returns correct values
+src/tests/dailyAchievementSummary.test.tsx > Summary Service Integration > markSummaryAsSeen updates localStorage
+src/tests/dailyAchievementSummary.test.tsx > Accessibility Tests > modal has proper ARIA attributes
+src/tests/dailyAchievementSummary.test.tsx > Accessibility Tests > close button has proper aria-label
+src/tests/dailyAchievementSummary.test.tsx > Accessibility Tests > view recap button has proper aria-label
+src/tests/dailyAchievementSummary.test.tsx > Error Handling > handles getDailySummary API errors gracefully
+src/tests/dailyAchievementSummary.test.tsx > Error Handling > summary displays gracefully with missing data
+src/tests/dashboardStats.v2.test.tsx > DashboardStats v2 Enhancements > renders loading skeletons when stats are null
+src/tests/dashboardStats.v2.test.tsx > DashboardStats v2 Enhancements > renders legacy stats and new v2 metrics
+src/tests/dashboardStats.v2.test.tsx > DashboardStats v2 Enhancements > displays progress bar for jobs today vs booked
+src/tests/dashboardStats.v2.test.tsx > DashboardStats v2 Enhancements > handles missing totals gracefully
+src/tests/dashboardStats.v2.test.tsx > DashboardStats v2 Enhancements > handles zero booked jobs correctly
+src/tests/dashboardStats.v2.test.tsx > DashboardStats v2 Enhancements > calls refreshStats when refresh button is clicked
+src/tests/dashboardStats.v2.test.tsx > DashboardStats v2 Enhancements > uses responsive grid layout
+src/tests/localStorage-persistence.test.tsx > Add Service Form (no persistence) > allows opening the form, entering valid data and staging a new service
+src/tests/localStorage-persistence.test.tsx > Add Service Form (no persistence) > allows cancelling the form which resets fields and hides it
+src/tests/messageTemplates.filter.test.ts > messageTemplates filtering > returns all when no filters
+src/tests/messageTemplates.filter.test.ts > messageTemplates filtering > filters by channel
+src/tests/messageTemplates.filter.test.ts > messageTemplates filtering > filters by category
+src/tests/messageTemplates.filter.test.ts > messageTemplates filtering > search matches label or body
+src/tests/messageTemplates.insert.test.tsx > Message Templates Insertion > opens template panel and inserts a template into the composer
+src/tests/messageTemplates.variables.test.ts > messageTemplates variable resolution > resolves nested variables
+src/tests/messageTemplates.variables.test.ts > messageTemplates variable resolution > supports escaped literals
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > createTestMocks() factory function > should create isolated mocks without circular dependencies
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > createTestMocks() factory function > should provide working time mocks
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > createTestMocks() factory function > should provide working API mocks
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > createTestMocks() factory function > should provide working notification mocks
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > createTestMocks() factory function > should reset all mocks correctly
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > withMocks() helper > should provide mocks to test function
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > withMocks() helper > should handle async test functions
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > withMocks() helper > should automatically reset mocks after test
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > withMocks() helper > should verify mocks were reset from previous test
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > Integration scenarios > should handle appointment timing workflow
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > Integration scenarios > should handle API error scenarios
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > Integration scenarios > should handle complex notification scenarios
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > No circular dependencies > should not have cross-references between mocks
+src/tests/mock-factory-redesign.test.ts > P1-T-002: Redesigned Mock Factory > No circular dependencies > should work without global vi.mock declarations
+src/tests/notifications.refactored.test.tsx > P2-T-007: Notification System Integration Tests > Reminder Flow Success Scenarios > should send 15-minute reminder notification and display in-app toast
+src/tests/notifications.refactored.test.tsx > P2-T-007: Notification System Integration Tests > Reminder Flow Success Scenarios > should advance timers by 15 minutes and verify reminder trigger timing
+src/tests/notifications.refactored.test.tsx > P2-T-007: Notification System Integration Tests > Reminder Flow Error Scenarios > should handle 500 error from notification endpoint and show retry button
+src/tests/notifications.refactored.test.tsx > P2-T-007: Notification System Integration Tests > Reminder Flow Error Scenarios > should allow retry after error and eventually succeed
+src/tests/notifications.refactored.test.tsx > P2-T-007: Notification System Integration Tests > Reminder Flow Error Scenarios > should disable retry button after 3 failed attempts
+src/tests/notifications.refactored.test.tsx > P2-T-007: Notification System Integration Tests > MSW Handler Verification > should log exactly one POST /notifications call for successful reminder
+src/tests/notifications.refactored.test.tsx > P2-T-007: Notification System Integration Tests > MSW Handler Verification > should verify notification payload structure sent to MSW
+src/tests/notifications.refactored.test.tsx > P2-T-007: Notification System Integration Tests > Running Late Flow > should handle "running late" notification flow
+src/tests/optimisticCustomerEdit.conflict.test.tsx > optimistic customer edit conflict path > shows conflict dialog and supports discard and overwrite flows
+src/tests/optimisticCustomerEdit.test.tsx > Optimistic Customer Edit (happy path) > optimistically updates fields and then finalizes with server response + new ETag
+src/tests/optimisticVehicleEdit.conflict.test.tsx > optimistic vehicle edit conflict path > shows conflict dialog and supports discard then overwrite flows
+src/tests/optimisticVehicleEdit.test.tsx > Optimistic Vehicle Edit (happy path) > optimistically updates basic fields then finalizes with server response + new ETag
+src/tests/sprint3c-simple.test.tsx > Sprint 3C: Time Utilities - Enhanced with Redesigned Mock Factory > can use dependency injection time utilities
+src/tests/sprint3c-simple.test.tsx > Sprint 3C: Time Utilities - Enhanced with Redesigned Mock Factory > appointment timing calculations with dependency injection
+src/tests/sprint3c-simple.test.tsx > Sprint 3C: Time Utilities - Enhanced with Redesigned Mock Factory > appointment status logic with dependency injection
+src/tests/sprint3c-simple.test.tsx > Sprint 3C: Time Utilities - Enhanced with Redesigned Mock Factory > time progression simulation with dependency injection
+src/tests/sprint3c-simple.test.tsx > Sprint 3C: Time Utilities - Enhanced with Redesigned Mock Factory > duration formatting with dependency injection
+src/tests/sprint3c-simple.test.tsx > Sprint 3C: Time Utilities - Enhanced with Redesigned Mock Factory > cache management with dependency injection
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > Path Alias Resolution > resolves @/utils/* aliases correctly
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > Path Alias Resolution > resolves @/services/* aliases correctly
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > Path Alias Resolution > resolves @/components/* aliases correctly
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > Path Alias Resolution > resolves @/tests/* aliases correctly
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > jsdom Environment > provides complete DOM APIs
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > jsdom Environment > supports React component rendering
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > jsdom Environment > mocks unavailable browser APIs
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > Enhanced Mock Support > provides vi mocking utilities
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > Enhanced Mock Support > supports module mocking
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > Enhanced Mock Support > enables spying on existing functions
+src/tests/sprint7-t3-config-validation.test.tsx > Sprint 7 T3: Enhanced Vitest Configuration > Performance and Testing Environment > loads test environment within acceptable time
+src/tests/sprint7-t3-simple.test.tsx > Sprint 7 T3: Vitest Configuration > resolves path aliases correctly
+src/tests/sprint7-t3-simple.test.tsx > Sprint 7 T3: Vitest Configuration > supports React component testing
+src/tests/sprint7-t3-simple.test.tsx > Sprint 7 T3: Vitest Configuration > provides jsdom environment
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Mock Factory Creation > should create a mock factory with all components
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Mock Factory Creation > should create time mocks with expected functions
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Mock Factory Creation > should create API mocks with expected functions
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Mock Factory Creation > should create notification mocks with expected functions
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Time Mock Functionality > should provide time manipulation functions
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Time Mock Functionality > should calculate minutes correctly
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Time Mock Functionality > should format duration correctly
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > API Mock Functionality > should provide realistic appointment data
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > API Mock Functionality > should track request count
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Notification Mock Functionality > should create and manage notifications
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Notification Mock Functionality > should handle appointment notifications
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Mock Factory Integration > should reset all mocks
+src/tests/sprint7-t4-basic-validation.test.tsx > Sprint 7 Task 4: Mock Factory Basic Validation > Mock Factory Integration > should apply global mocks without errors
+src/tests/timer-utils.test.ts > Timer Utilities > should handle flushPromises correctly
+src/tests/timer-utils.test.ts > Timer Utilities > should export timer utilities correctly
+src/tests/useBoardStore.assignTechnician.rollback.test.ts > assignTechnician rollback > restores previous technician on API failure
+src/tests/useBoardStore.assignTechnician.success.test.ts > useBoardStore assignTechnician success > updates technician locally and persists after successful API call
+src/tests/useBoardStore.move.rollback.test.ts > useBoardStore moveAppointment rollback > rolls back state on API failure
+src/tests/useBoardStore.move.success.test.ts > useBoardStore moveAppointment success > updates status & position and keeps new values after successful API call
+src/tests/useBoardStore.test.ts > useBoardStore filtering > filters by searchText across headline, customerName, servicesSummary
+src/tests/useBoardStore.test.ts > useBoardStore filtering > filters by technicianId when present
+src/tests/useBoardStore.test.ts > useBoardStore filtering > combines searchText + technicianId
+src/tests/useBoardStore.test.ts > useBoardStore filtering > filters by statuses array
+src/tests/useBoardStore.test.ts > useBoardStore filtering > filters by date using appointmentDate field
+src/tests/useBoardStore.test.ts > useBoardStore filtering > filters by date using start fallback when appointmentDate absent
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > Allowlist System > should allow whitelisted console errors without failing
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > Allowlist System > should allow MSW-related warnings
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > Allowlist System > should allow AppointmentContext errors
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > Console Error Detection > should fail tests with unexpected console.error after completion
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > Console Error Detection > should fail tests with unexpected console.warn after completion
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > Console Error Detection > should allow console.log normally
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > withConsoleErrorSpy Helper > should allow expected errors when using withConsoleErrorSpy
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > withConsoleErrorSpy Helper > should handle async operations in withConsoleErrorSpy
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > Circular Reference Handling > should handle circular objects safely in allowlist checking
+src/tests/vitest-fail-on-console-integration.test.ts > Enhanced CI Console Detection with vitest-fail-on-console > Complex Arguments > should handle multiple arguments of different types safely
+tests/hooks/useCustomerProfileInfinite.test.tsx > paginates and appends without duplicates
+tests/pages/CustomerProfilePage.accessibility.test.tsx > CustomerProfilePage a11y/UX > focus lands on heading initially
+tests/pages/CustomerProfilePage.accessibility.test.tsx > CustomerProfilePage a11y/UX > roving keyboard navigation moves selection
+tests/pages/CustomerProfilePage.accessibility.test.tsx > CustomerProfilePage a11y/UX > live region updates count text
+tests/pages/CustomerProfilePage.accessibility.test.tsx > CustomerProfilePage a11y/UX > Enter key on focused appointment triggers activation
+src/components/__tests__/ActWarning.test.tsx > Act Warning Detection > unwrapped fireEvent should trigger act() warning
+src/components/__tests__/Button.test.tsx > renders button with text
+src/components/__tests__/ServiceCard.test.tsx > shows service name and description
+src/components/__tests__/ServiceList.test.tsx > renders a list of services
+src/services/__tests__/api.integration.test.ts > serviceAPI > getAll retries on failure
+src/tests/analytics/AnalyticsDashboardPage.test.tsx > AnalyticsDashboardPage > renders summary, chart and table after load
+src/tests/analytics/AnalyticsDashboardPage.test.tsx > AnalyticsDashboardPage > refetches when filters change
+src/tests/analytics/TemplatesTable.test.tsx > TemplatesTable > renders rows and sorts by Total Sent then Unique Users
+src/tests/analytics/TrendChart.test.tsx > TrendChart > renders with data
+src/tests/analytics/TrendChart.test.tsx > TrendChart > handles empty data
+src/tests/board/cardPreferences.order.test.tsx > Card field order persistence > loads default order when none stored
+src/tests/board/cardPreferences.order.test.tsx > Card field order persistence > restores stored order
+src/tests/board/cardPreferences.order.test.tsx > Card field order persistence > persists new order after keyboard move
+src/tests/board/quickAssignTech.optimistic.test.tsx > QuickAssignTech optimistic workflow (zustand store) > applies optimistic update then confirms success path
+src/tests/board/quickAssignTech.optimistic.test.tsx > QuickAssignTech optimistic workflow (zustand store) > rolls back on failure
+src/tests/components/AppointmentForm.edit.test.tsx > AppointmentForm edit mode > populates form fields from initial data
+src/tests/components/AppointmentForm.edit.test.tsx > AppointmentForm edit mode > submits PATCH with updated fields
+src/tests/components/AppointmentForm.edit.test.tsx > AppointmentForm edit mode > shows field-level validation errors on failed PATCH
+src/tests/components/AppointmentForm.services.test.tsx > AppointmentForm services integration > opens modal and lists services after search (single-add flow)
+src/tests/components/AppointmentForm.services.test.tsx > AppointmentForm services integration > adds a single service via inline Add button
+src/tests/components/AppointmentForm.services.test.tsx > AppointmentForm services integration > submits with preset customer, vehicle and two services (inline adds)
+src/tests/components/AppointmentForm.services.test.tsx > AppointmentForm services integration > removes a previously added service before submit (single-add path)
+src/tests/components/QuickAddModal.lookup.test.tsx > QuickAddModal customer lookup > auto-populates name and single vehicle
+src/tests/components/QuickAddModal.lookup.test.tsx > QuickAddModal customer lookup > switches to multi-vehicle selector
+src/tests/components/QuickAddModal.lookup.test.tsx > QuickAddModal customer lookup > shows not found indicator and clears auto fields
+src/tests/components/QuickAddModal.lookup.test.tsx > QuickAddModal customer lookup > debounces and aborts stale lookups
+src/tests/components/QuickAddModal.multiServices.test.tsx > QuickAddModal multi-service smoke > opens service catalog and lists services
+src/tests/components/ServiceCatalogModal.test.tsx > ServiceCatalogModal (keyboard nav + accordion) > renders categories and defaults to MAINTENANCE (no groups expanded yet)
+src/tests/components/ServiceCatalogModal.test.tsx > ServiceCatalogModal (keyboard nav + accordion) > filters when clicking another category (requires expanding group in that category)
+src/tests/components/ServiceCatalogModal.test.tsx > ServiceCatalogModal (keyboard nav + accordion) > invokes onAdd when clicking a service row
+src/tests/components/ServiceCatalogModal.test.tsx > ServiceCatalogModal (keyboard nav + accordion) > focuses the search input on mount
+src/tests/components/ServiceCatalogModal.test.tsx > ServiceCatalogModal (keyboard nav + accordion) > ArrowDown from list container focuses first visible service item after expanding groups
+src/tests/components/ServiceCatalogModal.test.tsx > ServiceCatalogModal (keyboard nav + accordion) > Enter on focused row triggers onAdd with correct service (after expanding groups)
+src/tests/components/ServiceCatalogModal.test.tsx > ServiceCatalogModal (keyboard nav + accordion) > keyboard navigation skips services in collapsed groups
+src/tests/coverageBackfill/apiService.minimal.test.ts > ApiService Minimal Test > should pass a basic test
+src/tests/coverageBackfill/apiService.minimal.test.ts > ApiService Minimal Test > should import apiService module
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > createAppointment > should create appointment successfully
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > createAppointment > should handle creation failure with JSON error
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > createAppointment > should handle network failures
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > getAdminAppointments > should fetch admin appointments successfully
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > getAdminAppointments > should return empty array when no data.appointments
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > getAdminAppointments > should handle admin fetch failure
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > getAdminAppointmentsToday > should fetch today's appointments successfully
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > getAdminAppointmentsToday > should return empty array when no appointments today
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > updateAppointment > should update appointment successfully
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > updateAppointment > should handle update failure
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > Error Handling Edge Cases > should handle createAppointment with message field error
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > Error Handling Edge Cases > should handle createAppointment with JSON stringify fallback
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > Error Handling Edge Cases > should handle createAppointment with text fallback when JSON fails
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > Error Handling Edge Cases > should handle getAdminAppointments with JSON stringify fallback
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > Error Handling Edge Cases > should handle getAdminAppointments with text fallback
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > Error Handling Edge Cases > should handle getAdminAppointmentsToday with text fallback
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > Error Handling Edge Cases > should handle updateAppointment with text fallback
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > Error Handling Edge Cases > should handle createAppointment with empty error response
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > Error Handling Edge Cases > should handle network failures for admin endpoints
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > Type Definitions > should validate AppointmentPayload interface
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > Type Definitions > should validate AdminAppointment interface
+src/tests/coverageBackfill/apiService.test.ts > ApiService Coverage Tests > Environment Variable Testing > should use the configured API base URL
+src/tests/coverageBackfill/authService.basic.test.ts > AuthService Basic Test > should run a basic test
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Error Classes > should create AuthError with message and status
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Error Classes > should create NetworkError with default message
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Error Classes > should create ValidationError with message
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Token Management > should get token from localStorage
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Token Management > should return null when no token exists
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Token Management > should handle localStorage access errors gracefully
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Token Management > should set valid token successfully
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Token Management > should reject expired token
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Token Management > should clear token from localStorage
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Token Parsing and Validation > should parse valid token successfully
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Token Parsing and Validation > should return null when no token exists
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Token Parsing and Validation > should check if user is logged in with valid token
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Token Parsing and Validation > should return false for expired token
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Login Functionality > should login successfully with valid credentials
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Login Functionality > should throw ValidationError for empty email
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Login Functionality > should throw ValidationError for empty password
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Login Functionality > should handle login failure with error message
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Registration Functionality > should register successfully with valid data
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Registration Functionality > should throw ValidationError for empty email
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Registration Functionality > should throw ValidationError for short password
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Profile Management > should get profile successfully
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Profile Management > should throw AuthError when no token exists
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Profile Management > should handle 401 response and clear token
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Network Error Handling > should handle fetch rejection
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Additional Coverage Tests > should handle malformed token in parseToken
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Additional Coverage Tests > should return null for token without required fields
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Additional Coverage Tests > should check token refresh requirement
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Additional Coverage Tests > should not require refresh for fresh token
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Additional Coverage Tests > should return false for shouldRefreshToken when no token
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Additional Coverage Tests > should handle isLoggedIn with expired token (with buffer)
+src/tests/coverageBackfill/authService.test.ts > AuthService Coverage Tests > Additional Coverage Tests > should handle isLoggedIn with token expiring within buffer
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getAvailableSlots > should return available slots for a valid service and date
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getAvailableSlots > should handle invalid date gracefully
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getAvailableSlots > should handle past dates gracefully
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getAvailableSlots > should limit results based on maxSlots option
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getAvailableSlots > should handle different service durations
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getAvailableSlots > should handle empty string service ID
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getAvailableSlots > should handle null service ID
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getAvailableSlots > should handle unknown service types
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getNextAvailableSlot > should return next available slot or null
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getNextAvailableSlot > should handle custom days ahead parameter
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getNextAvailableSlot > should handle invalid service ID
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getNextAvailableSlot > should handle very limited days ahead
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > clearAvailabilityCache > should clear all cache when no serviceId provided
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > clearAvailabilityCache > should clear cache for specific service
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > clearAvailabilityCache > should clear cache for empty service ID
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > clearAvailabilityCache > should handle special characters in service ID
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > refreshAvailabilityCache > should handle valid date range
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > refreshAvailabilityCache > should handle invalid dates gracefully
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > refreshAvailabilityCache > should handle invalid service ID
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > refreshAvailabilityCache > should handle same start and end date
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > refreshAvailabilityCache > should handle past dates
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getAvailabilityStats > should return availability statistics
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getAvailabilityStats > should handle single day analysis
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getAvailabilityStats > should handle different service types
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getAvailabilityStats > should handle zero days ahead
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getAvailabilityStats > should handle longer analysis periods
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getAvailabilityStats > should return valid occupancy rate format
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > getAvailabilityStats > should handle invalid service ID
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > Edge Cases > should handle future dates correctly
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > Edge Cases > should handle weekend dates
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > Edge Cases > should handle all defined service types
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > Edge Cases > should maintain consistent data types in responses
+src/tests/coverageBackfill/availabilityService.test.ts > AvailabilityService Coverage Tests > Edge Cases > should handle stats for very short periods
+src/tests/coverageBackfill/dateUtils.test.js > coverageBackfill/dateUtils > getMinutesDifference returns correct minutes
+src/tests/coverageBackfill/dateUtils.test.js > coverageBackfill/dateUtils > roundToNearestInterval rounds correctly
+src/tests/coverageBackfill/dateUtils.test.js > coverageBackfill/dateUtils > isWeekend identifies weekend dates
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Date Validation > should validate dates correctly
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Date Validation > should check if date is today
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Date Validation > should check if date is tomorrow
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Date Validation > should check if date is in the past
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Business Hours > should check if date is in business hours
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Date Formatting > should format dates correctly
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Date Formatting > should get relative date strings
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Date Arithmetic > should add days correctly
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Date Arithmetic > should add minutes correctly
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Date Arithmetic > should calculate minutes difference
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Day Boundaries > should get start of day
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Day Boundaries > should get end of day
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Date Ranges > should get date range
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Time Parsing > should parse time strings
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Time Parsing > should parse appointment time strings
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Time Parsing > should combine date and time
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Business Days > should calculate business days between dates
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Business Days > should check if date is weekend
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Business Days > should check if date is holiday
+src/tests/coverageBackfill/dateUtils.test.ts > DateUtils Coverage Tests > Time Rounding > should round to nearest interval
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Core Notification Functions > should add a basic notification
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Core Notification Functions > should add notification with all options
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Core Notification Functions > should handle rate limiting
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Core Notification Functions > should sanitize message input
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Notification Retrieval > should get all notifications
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Notification Retrieval > should get notifications by type
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Notification Retrieval > should get unread notifications
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Notification State Management > should mark notification as read
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Notification State Management > should mark notification as read using alias method
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Notification State Management > should mark all notifications as read
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Notification State Management > should remove notification by ID
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Notification State Management > should clear all notifications
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Specialized Notification Functions > should notify customer is late
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Specialized Notification Functions > should notify appointment is overdue
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Specialized Notification Functions > should notify customer arrival
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Specialized Notification Functions > should create reminder notification
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Specialized Notification Functions > should schedule a reminder
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Observer Pattern > should subscribe to notification changes
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Observer Pattern > should unsubscribe from notification changes
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Configuration Management > should update configuration
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Configuration Management > should get current configuration
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Analytics and Statistics > should track notification statistics
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Analytics and Statistics > should get analytics data
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Analytics and Statistics > should clear analytics data
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Persistence and Storage > should save notifications to localStorage when persistence enabled
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Persistence and Storage > should load notifications from localStorage on initialization
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Persistence and Storage > should handle localStorage errors gracefully
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Cleanup and Maintenance > should cleanup expired notifications
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Cleanup and Maintenance > should enforce maximum notification limit
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Cleanup and Maintenance > should cleanup service resources
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Error Handling > should handle errors in addNotification gracefully
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Error Handling > should handle malformed observer gracefully
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Error Handling > should handle undefined notification ID in markAsRead
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Error Handling > should handle empty notification list operations
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Accessibility Features > should announce notifications to screen readers when enabled
+src/tests/coverageBackfill/notificationService.test.ts > NotificationService Coverage Tests > Accessibility Features > should not announce when accessibility is disabled
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Labor Cost Calculation > should calculate basic labor cost correctly
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Labor Cost Calculation > should handle zero hours and rate
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Labor Cost Calculation > should throw error for negative values
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Labor Cost Calculation > should round to 2 decimal places
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Parts Cost Calculation > should calculate parts cost with default markup
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Parts Cost Calculation > should calculate parts cost with custom markup
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Parts Cost Calculation > should handle empty parts array
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Parts Cost Calculation > should handle multiple quantities correctly
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Tax Calculation > should calculate tax correctly
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Tax Calculation > should handle zero tax rate
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Tax Calculation > should handle negative subtotal
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Tax Calculation > should round to 2 decimal places
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Discount Calculation > should calculate percentage discount correctly
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Discount Calculation > should calculate fixed discount correctly
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Discount Calculation > should limit percentage discount to maximum
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Discount Calculation > should not allow fixed discount to exceed subtotal
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Discount Calculation > should handle edge cases
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Total Calculation > should calculate total correctly
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Total Calculation > should never return negative total
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Total Calculation > should handle zero values
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Business Rules Application > should apply correct modifiers for service types
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Business Rules Application > should handle unknown service types
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Business Rules Application > should round results properly
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Complete Service Price Calculation > should calculate complete service price correctly
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Complete Service Price Calculation > should handle service without parts
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Complete Service Price Calculation > should apply business rules to complete calculation
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Price Validation > should validate correct calculation
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Price Validation > should detect calculation errors
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Price Validation > should detect negative values
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Price Validation > should generate warnings for high amounts
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Price Validation > should warn about high discounts
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Edge Cases and Error Handling > should handle very small amounts
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Edge Cases and Error Handling > should handle very large amounts
+src/tests/coverageBackfill/priceCalc.test.ts > Price Calculator - Critical Coverage Tests > Edge Cases and Error Handling > should maintain precision with complex calculations
+src/tests/coverageBackfill/simple.test.ts > Simple DateUtils Test > should call validateDate function
+src/tests/coverageBackfill/simple.test.ts > Simple DateUtils Test > should call formatDate function
+src/tests/designSystem/components.test.tsx > Design System Components (JSdom) > renders design system component with typography and spacing classes
+src/tests/designSystem/components.test.tsx > Design System Components (JSdom) > renders with default design system values
+src/tests/designSystem/components.test.tsx > Design System Components (JSdom) > supports custom children content
+src/tests/designSystem/components.test.tsx > Design System Components (JSdom) > validates jsdom environment has DOM APIs
+src/tests/designSystem/components.test.tsx > Design System Components (JSdom) > can query DOM elements for class validation
+src/tests/designSystem/components.test.tsx > Design System Components (JSdom) > validates accessibility attributes on components
+src/tests/designSystem/components.test.tsx > Design System Components (JSdom) > validates responsive design system classes
+src/tests/designSystem/utils.test.ts > Design System Utils (Node) > validates typography scale tokens
+src/tests/designSystem/utils.test.ts > Design System Utils (Node) > validates spacing scale tokens
+src/tests/designSystem/utils.test.ts > Design System Utils (Node) > retrieves correct typography values
+src/tests/designSystem/utils.test.ts > Design System Utils (Node) > retrieves correct spacing values
+src/tests/designSystem/utils.test.ts > Design System Utils (Node) > generates correct CSS class names
+src/tests/designSystem/utils.test.ts > Design System Utils (Node) > validates design token consistency
+src/tests/designSystem/utils.test.ts > Design System Utils (Node) > validates token value format
+src/tests/designSystem/utils.test.ts > Design System Utils (Node) > design system validator handles environment gracefully
+src/tests/designSystem/utils.test.ts > Design System Utils (Node) > validates scale progression logic
+src/tests/designSystem/utils.test.ts > Design System Utils (Node) > calculates relative scale ratios
+src/tests/hooks/useCustomerProfile.directWithQuery.test.tsx > useCustomerProfile direct-with-query ETag reuse > loads then invalidates triggering conditional request
+src/tests/hooks/useCustomerProfile.noQueryThenQuery.test.tsx > useCustomerProfile no-query then query ETag reuse > initial fetch, rerender with options, then invalidate (304 path)
+src/tests/hooks/useCustomerProfile.test.tsx > useCustomerProfile basic load > loads profile data successfully (happy path)
+src/tests/services/telemetry.redaction-size.test.ts > telemetry redaction & size guard edge cases > redacts nested PII keys and value patterns inside arrays
+src/tests/services/telemetry.redaction-size.test.ts > telemetry redaction & size guard edge cases > truncates long string fields and marks payload as truncated
+src/tests/services/telemetry.redaction-size.test.ts > telemetry redaction & size guard edge cases > reduces oversized payload by shrinking arrays then pruning keys
+src/tests/services/telemetry.redaction-size.test.ts > telemetry redaction & size guard edge cases > batches within byte limit and applies exponential backoff scheduling on failure
+src/tests/services/telemetry.test.ts > telemetry client > enqueues redacted event with versions and session correlation
+src/tests/services/telemetry.test.ts > telemetry client > flushes (beacon or fetch fallback) and trims queue
+src/tests/services/telemetry.test.ts > telemetry client > drops oldest when maxQueue exceeded
+src/tests/services/telemetry.test.ts > telemetry client > persists and restores queue across new instance
+src/tests/unit/useServiceCatalogSearch.test.ts > buildServiceCatalogIndex / search > returns all items when query empty
+src/tests/unit/useServiceCatalogSearch.test.ts > buildServiceCatalogIndex / search > finds by partial name
+src/tests/unit/useServiceCatalogSearch.test.ts > buildServiceCatalogIndex / search > finds by synonym
+src/tests/unit/useServiceCatalogSearch.test.ts > buildServiceCatalogIndex / search > is case insensitive
+src/components/QuickAddModal/__tests__/buildQuickAddPayload.test.ts > buildQuickAddPayload > assembles payload with selected service ids preserving order
+src/components/QuickAddModal/__tests__/buildQuickAddPayload.test.ts > validateQuickAdd > returns valid=true for complete form & at least one service
+src/components/QuickAddModal/__tests__/buildQuickAddPayload.test.ts > validateQuickAdd > flags missing required fields
+src/components/QuickAddModal/__tests__/buildQuickAddPayload.test.ts > validateQuickAdd > validates phone format
+src/components/QuickAddModal/__tests__/buildQuickAddPayload.test.ts > validateQuickAdd > rejects past dates
+src/components/profile/__tests__/TimelineRow.invoiceActions.test.tsx > TimelineRow invoice actions > shows menu button when invoice present
+src/components/profile/__tests__/TimelineRow.invoiceActions.test.tsx > TimelineRow invoice actions > toggles menu on click
+src/components/profile/__tests__/TimelineRow.invoiceActions.test.tsx > TimelineRow invoice actions > opens receipt in new window
+src/components/profile/__tests__/TimelineRow.invoiceActions.test.tsx > TimelineRow invoice actions > triggers pdf download link
+src/components/profile/__tests__/TimelineRow.invoiceActions.test.tsx > TimelineRow invoice actions > opens email modal and sends email (202)
+src/components/profile/__tests__/TimelineRow.invoiceActions.test.tsx > TimelineRow invoice actions > shows error toast on non-202
+src/components/profile/__tests__/TimelineRow.invoiceActions.test.tsx > TimelineRow invoice actions > supports keyboard navigation in menu
+src/tests/unit/board/boardFiltering.test.tsx > Board filter logic > filters by status list
+src/tests/unit/board/boardFiltering.test.tsx > Board filter logic > filters by technician single-select
+src/tests/unit/board/boardFiltering.test.tsx > Board filter logic > filters by search tokens (AND match)
+src/tests/unit/board/boardFiltering.test.tsx > Board filter logic > combines filters (status + tech + search)
+src/tests/unit/board/boardFiltering.test.tsx > Board filter logic > returns all when no filters active (no implicit tech filter)

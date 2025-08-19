@@ -1,19 +1,20 @@
 // Ensure React 19 test act environment flag (belt & suspenders in addition to preActEnv)
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 import '@testing-library/jest-dom/vitest'
-// Use native Node fetch for MSW/node interception; provide wrapper for relative URLs instead of polyfilling with whatwg-fetch (which uses XHR and bypasses msw/node).
-const __originalFetch = global.fetch;
-global.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
-  if (typeof input === 'string' && input.startsWith('/')) {
-    // Normalize relative test URLs to an absolute form MSW can intercept
-    const abs = 'http://localhost:3000' + input;
-    return __originalFetch(abs, init);
-  }
-  return __originalFetch(input as RequestInfo, init);
-}) as typeof fetch;
+// NOTE: Removing unconditional 'whatwg-fetch' polyfill import.
+// It was overriding the native Node 18+ fetch with a XHR-based polyfill that
+// msw/node cannot intercept. This caused MSW handlers for invoice endpoints
+// to never match (no [MSW] logs) and real network calls to localhost:3001
+// returned minimal invoices (all $0.00). Guard the polyfill so we only load
+// it if fetch is truly absent (older Node versions), restoring MSW interception.
+// (See failing InvoiceDetailPage tests with empty invoice data for context.)
+if (!(globalThis as unknown as { fetch?: unknown }).fetch) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require('whatwg-fetch');
+}
 import './testEnv'
 
-import { expect, vi, beforeEach, afterEach } from 'vitest'
+import { expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest'
 // Enhanced jest shim (legacy compatibility) now includes timer helpers expected by Testing Library
 type JestShim = {
   fn: typeof vi.fn;
@@ -75,8 +76,8 @@ if (typeof globalThis.localStorage !== 'object' || !globalThis.localStorage) {
 }
 import { toHaveNoViolations } from 'jest-axe'
 import { cleanup } from '@testing-library/react'
-// (legacy mswServer import removed; centralized server lifecycle handled in jest.setup.ts)
-// Removed unused msw imports (http, HttpResponse)
+import { server } from '../test/server/mswServer'
+import { http, HttpResponse } from 'msw'
 import { createMocks } from '../test/mocks'
 // import failOnConsole from 'vitest-fail-on-console' // Disabled due to conflicts
 
@@ -165,7 +166,13 @@ export async function withFakeTimers<T>(testFn: () => T | Promise<T>): Promise<T
 expect.extend(toHaveNoViolations)
 
 // MSW setup for unit tests
-// (server.listen moved to jest.setup.ts)
+beforeAll(() => {
+  console.log('🚀 Starting MSW server for unit tests...')
+  server.listen({
+    onUnhandledRequest: 'warn', // Warn about unhandled requests instead of erroring
+  })
+  console.log('🌐 MSW enabled for unit tests')
+})
 
 // Auto cleanup and reset localStorage before each test
 beforeEach(() => {
@@ -187,7 +194,8 @@ beforeEach(() => {
 
 // SAFETY-NET-002: Global afterEach safety-nets for test stability
 afterEach(async () => {
-  // (MSW handlers reset in jest.setup.ts)
+  // 1. Reset MSW handlers to ensure test isolation
+  server.resetHandlers();
 
   // 1b. Flush pending microtasks & promises.
   // If fake timers are active, advancing timers is required; otherwise use a real setTimeout(0).
@@ -303,9 +311,16 @@ if (!document.createRange) {
 
 // Fallback handlers for common endpoints used across many tests.
 // These return safe defaults and reduce noisy 'unmatched request' warnings.
-// Removed fallback appointment handlers (handled by host-agnostic handlers now)
+server.use(
+  http.get('http://localhost:3000/api/appointments', () => HttpResponse.json({ data: [], meta: {} })),
+  http.get('http://localhost:3001/api/appointments', () => HttpResponse.json({ data: [], meta: {} })),
+  http.get('http://localhost:3000/api/appointments/', () => HttpResponse.json({ data: [], meta: {} })),
+);
 
 // MSW cleanup after all tests
-// (server.close moved to jest.setup.ts)
+afterAll(() => {
+  console.log('🛑 Stopping MSW server...')
+  server.close()
+})
 
 // console.log('✅ Enhanced CI console detection loaded with vitest-fail-on-console');

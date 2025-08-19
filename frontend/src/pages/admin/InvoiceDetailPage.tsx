@@ -1,11 +1,12 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchInvoice, recordInvoicePayment, voidInvoice } from '../../services/apiService';
-import ServiceCatalogModal from '@/components/appointments/ServiceCatalogModal';
 import { InvoiceHeader } from './InvoiceHeader';
 import { InvoiceLineItemsTable } from './InvoiceLineItemsTable';
 import { InvoicePaymentsList } from './InvoicePaymentsList';
+import ServiceCatalogModal, { ServiceOperation } from '@/components/appointments/ServiceCatalogModal';
+import { toast } from '@/lib/toast';
 import { Button } from '../../components/ui/Button';
 import { RecordPaymentModal } from './RecordPaymentModal';
 import { VoidInvoiceConfirmModal } from './VoidInvoiceConfirmModal';
@@ -54,26 +55,14 @@ export default function InvoiceDetailPage() {
   // Disable automatic retries so that error / not-found states surface immediately in UI & tests
   retry: false,
   });
-  // Local mutable invoice/line item view so we can append package additions without full refetch latency.
-  interface LocalInvoiceSummary { id: string; status: string; subtotal_cents: number; tax_cents?: number; total_cents: number; amount_paid_cents: number; amount_due_cents: number; customer_name?: string }
-  interface LocalLineItem { id: string; name: string; quantity: number; unit_price_cents: number; line_subtotal_cents: number; tax_cents: number; total_cents: number; description?: string }
-  const [invoiceSummary, setInvoiceSummary] = useState<LocalInvoiceSummary | null>(null);
-  const [lineItemsState, setLineItemsState] = useState<LocalLineItem[] | null>(null);
-  useEffect(() => {
-    if (data) {
-      setInvoiceSummary(data.invoice);
-      // Normalize possible naming variants handled later (keep raw copy first load)
-  // Prefer snake_case, fall back to camelCase if present.
-  const li = (data.line_items || (data as unknown as { lineItems?: LocalLineItem[] }).lineItems || []) as LocalLineItem[];
-  setLineItemsState(li);
-    }
-  }, [data]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [showVoidModal, setShowVoidModal] = useState(false);
   const [voidError, setVoidError] = useState<string | null>(null);
   const qc = useQueryClient();
   const [showCatalog, setShowCatalog] = useState(false);
+  // Local optimistic line items state (undefined means not overridden)
+  const [optimisticLineItems, setOptimisticLineItems] = useState<NormalizedLineItem[] | null>(null);
 
   const paymentMutation = useMutation({
     mutationFn: async (vars: { amountCents: number; method: string; receivedDate?: string; note?: string }) => {
@@ -124,15 +113,15 @@ export default function InvoiceDetailPage() {
   if (!data) {
     return <div className="p-6">No data</div>;
   }
-  // Use locally updated invoice summary if present
-  const inv = invoiceSummary || data.invoice;
-  interface NormalizedLineItem { id: string; name?: string; quantity?: number; unit_price_cents?: number; line_subtotal_cents?: number; tax_cents?: number; total_cents?: number; description?: string }
+  // Normalize backend field naming that may be camelCase (lineItems) or snake_case (line_items)
+  const inv = data.invoice;
+  interface NormalizedLineItem { id: string; name: string; quantity: number; unit_price_cents: number; line_subtotal_cents: number; tax_cents: number; total_cents: number; description?: string }
   interface NormalizedPayment { id: string; amount_cents?: number; method?: string; created_at?: string; note?: string }
   interface NormalizedData { line_items?: NormalizedLineItem[]; lineItems?: NormalizedLineItem[]; payments?: NormalizedPayment[] }
-  // Preserve payments from original fetch; only line items may be locally mutated.
-  const normalized: NormalizedData = { line_items: lineItemsState || data.line_items, payments: data.payments };
-  const rawLineItems: NormalizedLineItem[] = (normalized.line_items || normalized.lineItems || []);
-  const lineItems = rawLineItems.map(li => ({
+  const normalized: NormalizedData = data as unknown as NormalizedData;
+  type RawLineItem = Partial<NormalizedLineItem> & { id: string };
+  const rawLineItems: RawLineItem[] = (normalized.line_items || normalized.lineItems || []) as RawLineItem[];
+  const baseLineItems: NormalizedLineItem[] = rawLineItems.map(li => ({
     id: li.id,
     name: li.name || 'Item',
     quantity: li.quantity ?? 1,
@@ -142,6 +131,7 @@ export default function InvoiceDetailPage() {
     total_cents: li.total_cents ?? li.unit_price_cents ?? 0,
     description: li.description,
   }));
+  const lineItems = optimisticLineItems || baseLineItems;
   const payments: NormalizedPayment[] = (normalized.payments || []);
   return (
     <div className="p-6 space-y-8 max-w-5xl">
@@ -160,9 +150,13 @@ export default function InvoiceDetailPage() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Line Items</h2>
-          {inv.status !== 'VOID' && (
-            <Button variant="outline" size="sm" data-testid="open-service-catalog-btn" onClick={() => setShowCatalog(true)}>Add Services / Package</Button>
-          )}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              data-testid="open-service-catalog-btn"
+              onClick={() => setShowCatalog(true)}
+            >Add Service / Package</Button>
+          </div>
         </div>
         <InvoiceLineItemsTable items={lineItems} />
       </section>
@@ -189,24 +183,59 @@ export default function InvoiceDetailPage() {
         submitting={voidMutation.isPending}
         errorMessage={voidError}
       />
-      {showCatalog && (
-        <ServiceCatalogModal
-          open={showCatalog}
-          onClose={() => setShowCatalog(false)}
-          onAdd={() => { /* Placeholder: individual service add not implemented */ }}
-          invoiceId={inv.id}
-          onInvoiceUpdated={(resp) => {
-            setInvoiceSummary(resp.invoice);
-            setLineItemsState(prev => {
-              const existing = prev || [];
-              // Avoid duplicate ids (overwrite if needed)
-              const byId: Record<string, LocalLineItem> = {};
-              [...existing, ...resp.added_line_items].forEach(li => { byId[li.id] = li as LocalLineItem; });
-              return Object.values(byId) as LocalLineItem[];
-            });
-          }}
-        />
-      )}
+      <ServiceCatalogModal
+        open={showCatalog}
+        onClose={() => setShowCatalog(false)}
+        onAdd={(op: ServiceOperation) => {
+          // If it's a package call add-package endpoint, else (future) single service add placeholder
+          if (op.is_package) {
+            (async () => {
+              try {
+                const resp = await fetch(`/api/admin/invoices/${id}/add-package`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ package_id: op.id })
+                });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const json = await resp.json();
+                // Shape expected: { added_line_items: [...], package_name, added_subtotal_cents }
+                const added = (json.added_line_items || json.data?.added_line_items || []) as NormalizedLineItem[];
+                if (added.length) {
+                  // Merge optimistically (append). Keep prior baseLineItems to avoid duplication on refetch.
+                  setOptimisticLineItems(prev => {
+                    const current = prev || baseLineItems;
+                    // Filter out any duplicates by id
+                    const existingIds = new Set(current.map(i => i.id));
+                    const mapped: NormalizedLineItem[] = added.filter(li => !existingIds.has(li.id)).map(li => {
+                      const name = (li as RawLineItem).name || (li as RawLineItem).description || 'Item';
+                      return {
+                        id: (li as RawLineItem).id,
+                        name,
+                        quantity: (li as RawLineItem).quantity ?? 1,
+                        unit_price_cents: (li as RawLineItem).unit_price_cents ?? 0,
+                        line_subtotal_cents: (li as RawLineItem).line_subtotal_cents ?? (li as RawLineItem).unit_price_cents ?? 0,
+                        tax_cents: (li as RawLineItem).tax_cents ?? 0,
+                        total_cents: (li as RawLineItem).total_cents ?? (li as RawLineItem).unit_price_cents ?? 0,
+                        description: (li as RawLineItem).description,
+                      };
+                    });
+                    return [...current, ...mapped];
+                  });
+                  // Toast message contains count for test regex /Added 2 item/
+                  const count = added.length;
+                  toast.success(`Added ${count} item${count === 1 ? '' : 's'}`);
+                }
+                setShowCatalog(false);
+              } catch {
+                toast.error('Failed to add package');
+              }
+            })();
+          } else {
+            // Non-package: future enhancement; close modal for now.
+            setShowCatalog(false);
+          }
+        }}
+      />
     </div>
   );
 }
