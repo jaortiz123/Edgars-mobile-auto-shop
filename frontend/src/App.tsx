@@ -26,6 +26,7 @@ const EmergencyService = lazy(() => import('./pages/EmergencyService'));
 const AdminAppointments = lazy(() => import('./pages/AdminAppointments'));
 const CustomersPage = lazy(() => import('./pages/admin/CustomersPage'));
 const CustomerProfilePage = lazy(() => import('./pages/admin/CustomerProfilePage'));
+const VehicleProfilePage = lazy(() => import('./pages/admin/VehicleProfilePage'));
 const MessageTemplatesPage = lazy(() => import('./pages/admin/MessageTemplatesPage'));
 const AnalyticsDashboardPage = lazy(() => import('./pages/admin/AnalyticsDashboardPage'));
 import OwnerRoute from './components/OwnerRoute';
@@ -79,6 +80,7 @@ export default function App() {
               <Route path="analytics" element={<OwnerRoute><AnalyticsDashboardPage /></OwnerRoute>} />
               <Route path="customers" element={<CustomersPage />} />
               <Route path="customers/:id" element={<CustomerProfilePage />} />
+              <Route path="vehicles/:id" element={<VehicleProfilePage />} />
               <Route path="templates" element={<MessageTemplatesPage />} />
               <Route path="invoices" element={<InvoicesPage />} />
               <Route path="invoices/:id" element={<InvoiceDetailPage />} />

@@ -14,6 +14,9 @@ function setup(fetchImpls: Response[]) {
   const fetchMock = vi.fn();
   fetchImpls.forEach(r => fetchMock.mockImplementationOnce(() => Promise.resolve(r)));
   Object.defineProperty(globalThis, 'fetch', { value: fetchMock, configurable: true });
+  // Signal page component to disable legacy test mode compatibility so we exercise infinite query path
+  interface A11yWindow extends Window { __CUSTOMER_PROFILE_A11Y__?: boolean }
+  (window as unknown as A11yWindow).__CUSTOMER_PROFILE_A11Y__ = true;
   const qc = new QueryClient();
   render(
     <QueryClientProvider client={qc}>

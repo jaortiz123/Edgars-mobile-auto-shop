@@ -63,9 +63,11 @@ describe('CustomerProfilePage', () => {
   });
 
   it('Success State: renders customer name on success', async () => {
-  vi.useRealTimers();
-  vi.spyOn(profileApi, 'fetchCustomerProfile').mockResolvedValue(baseProfile);
-    renderWithRoute();
+    vi.useRealTimers();
+    vi.spyOn(profileApi, 'fetchCustomerProfile').mockResolvedValue(baseProfile);
+  renderWithRoute();
+  // Force a tick to allow React state queue to flush (resolves act warning)
+  await waitFor(() => {});
     const heading = await screen.findByTestId('customer-profile-name');
     expect(heading).toHaveTextContent('Alice Cooper');
   });
