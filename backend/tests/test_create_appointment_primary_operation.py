@@ -52,7 +52,7 @@ class _FakeConn:
 
 @pytest.fixture
 def client():
-    srv.app.config['TESTING'] = True
+    srv.app.config["TESTING"] = True
     with srv.app.test_client() as c:
         yield c
 
@@ -66,17 +66,17 @@ def test_create_appointment_rejects_invalid_primary_operation_id(client, monkeyp
         "requested_time": "2025-08-14T15:00:00Z",
         "primary_operation_id": "non-existent-op-id",
     }
-    resp = client.post('/api/admin/appointments', json=payload)
+    resp = client.post("/api/admin/appointments", json=payload)
     assert resp.status_code == HTTPStatus.BAD_REQUEST, resp.data
     j = resp.get_json()
     assert j
     # Accept generic envelope
     msg = None
-    if 'error' in j:
-        msg = j['error']
-    elif 'errors' in j and j['errors']:
-        msg = j['errors'][0].get('detail') or j['errors'][0].get('code')
-    assert msg and 'primary_operation_id' in msg.lower()
+    if "error" in j:
+        msg = j["error"]
+    elif "errors" in j and j["errors"]:
+        msg = j["errors"][0].get("detail") or j["errors"][0].get("code")
+    assert msg and "primary_operation_id" in msg.lower()
 
 
 def test_create_appointment_allows_absent_primary_operation_id(client, monkeypatch):
@@ -87,9 +87,9 @@ def test_create_appointment_allows_absent_primary_operation_id(client, monkeypat
         "service": "Oil Change",
         "requested_time": "2025-08-14T16:00:00Z",
     }
-    resp = client.post('/api/admin/appointments', json=payload)
+    resp = client.post("/api/admin/appointments", json=payload)
     assert resp.status_code in (HTTPStatus.CREATED, 201), resp.data
     j = resp.get_json()
     assert j
-    new_id = j.get('id') or (j.get('data') or {}).get('id')
-    assert new_id == 'apt-1'
+    new_id = j.get("id") or (j.get("data") or {}).get("id")
+    assert new_id == "apt-1"

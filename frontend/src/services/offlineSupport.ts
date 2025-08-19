@@ -133,7 +133,7 @@ class OfflineSupportService {
 
   private sortActionsByPriority() {
     const priorityOrder = { high: 3, normal: 2, low: 1 };
-    this.state.pendingActions.sort((a, b) => 
+    this.state.pendingActions.sort((a, b) =>
       priorityOrder[b.priority] - priorityOrder[a.priority]
     );
   }
@@ -155,23 +155,23 @@ class OfflineSupportService {
     try {
       // Process actions in priority order
       const actionsToProcess = [...this.state.pendingActions];
-      
+
       for (const action of actionsToProcess) {
         try {
           await this.syncAction(action);
-          
+
           // Remove successful action
           this.state.pendingActions = this.state.pendingActions.filter(
             a => a.id !== action.id
           );
         } catch (error) {
           console.warn(`Failed to sync action ${action.id}:`, error);
-          
+
           // Increment retry count
           const actionIndex = this.state.pendingActions.findIndex(a => a.id === action.id);
           if (actionIndex >= 0) {
             this.state.pendingActions[actionIndex].retryCount++;
-            
+
             // Remove action if too many retries
             if (this.state.pendingActions[actionIndex].retryCount >= 3) {
               this.state.pendingActions.splice(actionIndex, 1);
@@ -193,15 +193,15 @@ class OfflineSupportService {
       case 'mark_arrived':
         await this.syncMarkArrived(action.payload as { appointmentId: string });
         break;
-      
+
       case 'notification_read':
         await this.syncNotificationRead(action.payload as { notificationId: string });
         break;
-      
+
       case 'reschedule':
         await this.syncReschedule(action.payload as { appointmentId: string; newTime: string });
         break;
-      
+
       default:
         console.warn(`Unknown action type: ${action.type}`);
     }
@@ -224,7 +224,7 @@ class OfflineSupportService {
 
   public subscribe(listener: (state: OfflineState) => void): () => void {
     this.listeners.add(listener);
-    
+
     // Return unsubscribe function
     return () => {
       this.listeners.delete(listener);
@@ -240,10 +240,10 @@ class OfflineSupportService {
       clearInterval(this.syncTimer);
       this.syncTimer = null;
     }
-    
+
     window.removeEventListener('online', this.handleOnline);
     window.removeEventListener('offline', this.handleOffline);
-    
+
     this.listeners.clear();
   }
 }
@@ -276,7 +276,7 @@ export async function markArrivedWithOfflineSupport(appointmentId: string): Prom
   } else {
     // Queue action for when back online
     offlineService.addAction('mark_arrived', { appointmentId }, 'high');
-    
+
     // Show offline notification
     const { addNotification } = await import('@/services/notificationService');
     addNotification(
@@ -302,7 +302,7 @@ export async function rescheduleWithOfflineSupport(
   } else {
     // Queue action for when back online
     offlineService.addAction('reschedule', { appointmentId, newTime }, 'normal');
-    
+
     // Show offline notification
     const { addNotification } = await import('@/services/notificationService');
     addNotification(

@@ -148,7 +148,7 @@ const REMINDER_CONFIGS = {
 
 ### Planned Features
 1. **Sound notifications** for urgent appointments
-2. **Email/SMS integration** for external notifications  
+2. **Email/SMS integration** for external notifications
 3. **Smart scheduling** with traffic/weather considerations
 4. **Analytics dashboard** for appointment timing patterns
 5. **Mobile app notifications** via push notifications
@@ -177,7 +177,7 @@ const REMINDER_CONFIGS = {
 
 All tasks successfully implemented with:
 - ✅ Live countdown timers on appointment cards
-- ✅ Configurable starting soon notifications  
+- ✅ Configurable starting soon notifications
 - ✅ Customer arrived check-in functionality
 - ✅ Running behind notification system
 - ✅ Comprehensive documentation and tests

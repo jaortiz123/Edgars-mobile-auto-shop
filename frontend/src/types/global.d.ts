@@ -43,5 +43,3 @@ declare module "@lib/utils" {
 declare module "@lib/quickAddUtils" {
   export function saveLastQuickAdd(payload: any): void;
 }
-
-

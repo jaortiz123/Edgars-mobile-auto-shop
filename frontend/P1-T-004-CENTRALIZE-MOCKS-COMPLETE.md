@@ -22,7 +22,7 @@
 
 **Test Files Updated**:
 1. `src/tests/CustomerHistory.test.tsx` - ✅ Uses centralized mock
-2. `src/tests/services.crud.test.tsx` - ✅ Uses centralized mock  
+2. `src/tests/services.crud.test.tsx` - ✅ Uses centralized mock
 3. `src/tests/MessageThread.test.tsx` - ✅ Uses centralized mock
 
 ### ✅ Mock Declaration Count Goal Met

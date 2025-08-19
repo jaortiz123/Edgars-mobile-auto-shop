@@ -45,7 +45,7 @@ export function createMultipleAppointmentScenarios(count: number = 3): Appointme
 
   for (let i = 0; i < count; i++) {
     const scheduledTime = new Date(baseTime.getTime() + i * 90 * 60 * 1000); // 90 minutes apart
-    
+
     scenarios.push(createAppointmentScenario({
       id: `apt-${i + 1}`,
       customerName: `Customer ${i + 1}`,
@@ -123,7 +123,7 @@ export class TimeTestController {
         time: this.getCurrentTime(),
         minute: (step + 1) * intervalMinutes
       });
-      
+
       // Allow React updates to process
       await new Promise(resolve => setTimeout(resolve, 10));
     }
@@ -227,7 +227,7 @@ export class NotificationTestController {
     const matching = notifications.filter((n: MockNotification) => {
       const typeMatches = n.type === type;
       if (!messagePattern) return typeMatches;
-      
+
       if (typeof messagePattern === 'string') {
         return typeMatches && n.message.includes(messagePattern);
       } else {
@@ -275,7 +275,7 @@ export class TestEnvironment {
   constructor(config: TestMockFactoryConfig = {}) {
     // Initialize mock factory with config
     mockFactory.resetAll();
-    
+
     // Create controllers
     this.time = new TimeTestController();
     this.api = new ApiTestController(config.api);
@@ -332,15 +332,15 @@ export function withTestEnvironment<T>(
   config?: TestMockFactoryConfig
 ): T | Promise<T> {
   const env = new TestEnvironment(config);
-  
+
   try {
     const result = testFn(env);
-    
+
     // If it's a promise, handle cleanup after resolution
     if (result && typeof result === 'object' && 'then' in result) {
       return result.finally(() => env.cleanup()) as T;
     }
-    
+
     // Synchronous result
     env.cleanup();
     return result;
@@ -353,7 +353,7 @@ export function withTestEnvironment<T>(
 export function createTimeBasedTest(testFn: (timeController: TimeTestController) => void | Promise<void>) {
   return async () => {
     const timeController = new TimeTestController();
-    
+
     try {
       await testFn(timeController);
     } finally {

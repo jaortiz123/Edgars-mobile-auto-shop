@@ -92,14 +92,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const value = useMemo(
-    () => ({ 
-      user, 
-      token, 
-      loading, 
+    () => ({
+      user,
+      token,
+      loading,
       isLoading: loading, // Alias for loading
       error,
-      login, 
-      logout, 
+      login,
+      logout,
       setToken,
       register,
       updateProfile

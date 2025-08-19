@@ -8,7 +8,7 @@ T1 // @workspace P1-T-001-Integrate-CI-Coverage
 Context: Finish Sprint 7 T-006 – CI should fail on coverage regressions.
 
 Field	Detail
-Issue #11 – Incomplete CI Coverage Enforcement	
+Issue #11 – Incomplete CI Coverage Enforcement
 Root Cause	Initial workflow only ran unit tests; --coverage & thresholds omitted, artefacts not uploaded.
 Impact	Coverage can silently fall; engineers have no visibility; regressions ship.
 Resolution	Add coverage step, fail-fast threshold, artifact upload, and status badge.
@@ -43,7 +43,7 @@ T2 // @workspace P1-T-002-Redesign-Mock-Factory
 Context: Break circular mocks that crash the runner.
 
 Field	Detail
-Issue #3 – Circular Dependencies in Mock Factory	
+Issue #3 – Circular Dependencies in Mock Factory
 Root Cause	time.mock ➜ notification.mock ➜ api.mock ➜ time.mock loop created via re-exports.
 Impact	undefined functions at runtime ⇢ intermittent test failures.
 Resolution	Introduce dependency-injection factory returning plain mocks; tests compose what they need.
@@ -72,7 +72,7 @@ T3 // @workspace P1-T-003-Split-Design-System-Tests
 Context: Resolve environment mismatch in design-system tests.
 
 Field	Detail
-Issue #2 – Design System Test Conflicts	
+Issue #2 – Design System Test Conflicts
 Root Cause	Single .test.ts file mixes jsdom-only JSX checks with Node-only token checks.
 Impact	Test crashes (DOM APIs undefined) & TypeScript JSX errors.
 Resolution	Separate component & utility suites; map env in vitest.config.ts.
@@ -105,7 +105,7 @@ T4 // @workspace P1-T-004-Centralize-Mocks
 Context: Kill redundant API mocks.
 
 Field	Detail
-Issue #9 – Duplicate Mock Implementations	
+Issue #9 – Duplicate Mock Implementations
 Root Cause	Early tests created ad-hoc mocks; mock-factory refactor left stragglers.
 Impact	Divergent response shapes; debugging nightmares.
 Resolution	One canonical api mock exported, all tests import it.
@@ -128,7 +128,7 @@ T5 // @workspace P1-T-005-Fix-React-Act-Warnings
 Context: Remove noisy act() warnings.
 
 Field	Detail
-Issue #1 – React act() Warnings	
+Issue #1 – React act() Warnings
 Root Cause	Async updates not wrapped with await act() across component tests.
 Impact	Console noise; potential flakiness.
 Resolution	Wrap interactions; add ESLint rule to catch regressions.
@@ -150,7 +150,7 @@ T6 // @workspace P1-T-006-Strict-Type-Safety-In-Tests
 Context: Remove any from mocks & utils.
 
 Field	Detail
-Issue #8 – Excessive any Types	
+Issue #8 – Excessive any Types
 Root Cause	Quick prototyping; no interfaces around mocks.
 Impact	IntelliSense useless; silent shape drift.
 Resolution	Introduce proper TypeScript interfaces & enable noImplicitAny.
@@ -175,7 +175,7 @@ T7 // @workspace P1-T-007-Standardize-Test-Filetypes
 Context: Eliminate .js stragglers.
 
 Field	Detail
-Issue #7 – Mixed TS/JS Test Files	
+Issue #7 – Mixed TS/JS Test Files
 Root Cause	Legacy Jest files never migrated.
 Impact	Inconsistent linting; harder to enforce TS rules.
 Resolution	Rename & convert to .ts / .tsx; update imports.
@@ -226,7 +226,7 @@ T1 // @workspace P2-T-001-Bootstrap-Integration-Test-Harness
 Context: Stand-up a dedicated integration-testing layer that exercises real HTTP calls against an in-process server (MSW) instead of unit-level mocks.
 
 Field	Detail
-Issue #5 – Missing Integration Tests	
+Issue #5 – Missing Integration Tests
 Root Cause	Test pyramid is upside-down: heavy on units, no middle layer.
 Impact	High risk that features break across module boundaries; bugs appear only in prod.
 Resolution	Introduce MSW-powered integration harness that spins up handlers once per suite and hits the real React app via @testing-library/react <App />.
@@ -257,7 +257,7 @@ T2 // @workspace P2-T-002-Happy-Path-Integration-Workflow
 Context: Cover the core user journey end-to-end with the new harness.
 
 Field	Detail
-Issue #5 continued / #10 linkage	
+Issue #5 continued / #10 linkage
 Root Cause	No single test proves that Calendar → Board → Drawer → Add Service → Status Change sequence works.
 Impact	Regression fear; product team lacks confidence.
 Resolution	Write one high-value test that simulates the happy path using MSW & seeded DB (P2-T-003).
@@ -286,7 +286,7 @@ T3 // @workspace P2-T-003-Containerised-Test-Database
 Context: Provide realistic SQL behaviour for backend integration tests.
 
 Field	Detail
-Issue #10 – Missing Test Database Isolation	
+Issue #10 – Missing Test Database Isolation
 Root Cause	Unit tests stub queries; integration needs true constraints/ joins.
 Impact	Data-level bugs (foreign-key, NULL handling) slip through.
 Resolution	Dockerised Postgres spun up via testcontainers, seeded before each suite.
@@ -314,7 +314,7 @@ T4 // @workspace P2-T-004-Coverage-Gap-Analysis-&-Backfill
 Context: Use coverage reports to target untested critical paths.
 
 Field	Detail
-Issue #4 – Inconsistent Coverage Patterns	
+Issue #4 – Inconsistent Coverage Patterns
 Root Cause	Historical tests focused on UI hot-spots, ignored utility edge-cases.
 Impact	False sense of security; dead code undetected.
 Resolution	Fail build if any critical module < 70 % lines; add targeted tests.
@@ -341,7 +341,7 @@ T5 // @workspace P2-T-005-Cross-Browser-Smoke-Tests
 Context: Guard against browser-specific regressions (Chrome / Firefox / Safari Tech Preview).
 
 Field	Detail
-Issue #15 – Limited Browser Compatibility Testing	
+Issue #15 – Limited Browser Compatibility Testing
 Root Cause	jsdom ≠ real rendering engine; CSS flex & drag-and-drop differ.
 Impact	Production issues on Safari mobile; brand reputation risk.
 Resolution	Add minimal Playwright suite executed on CI matrix.
@@ -386,5 +386,3 @@ Seed data spec	QA & Backend	QA verifies fixture realism
 Real API contract for MSW handlers	Front-end team	Keep mocks in sync
 
 Exit criteria: npm run test, npm run test:integration, pytest, and npx playwright test all pass under CI; coverage report shows critical-module gate green for two consecutive merges.
-
-

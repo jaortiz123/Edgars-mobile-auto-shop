@@ -21,8 +21,8 @@ export function OfflineStatusIndicator() {
 
   return (
     <div className={`fixed top-4 right-4 z-50 px-3 py-2 rounded-lg text-sm font-medium ${
-      !isOnline 
-        ? 'bg-red-100 text-red-800 border border-red-200' 
+      !isOnline
+        ? 'bg-red-100 text-red-800 border border-red-200'
         : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
     }`}>
       <div className="flex items-center space-x-2">

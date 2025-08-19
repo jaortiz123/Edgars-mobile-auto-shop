@@ -156,7 +156,7 @@ resource "aws_cloudwatch_log_metric_filter" "sms_consent_rate" {
     name      = "SMSConsentRate"
     namespace = "EdgarsAutoShop/SMS"
     value     = "1"
-    
+
     default_value = "0"
   }
 }

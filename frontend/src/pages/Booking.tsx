@@ -46,20 +46,20 @@ type FormValues = z.infer<typeof schema>;
 
 export default function Booking() {
   const navigate = useNavigate();
-  
+
   // --- PURGED: useQuery hook and isLoading state from old API ---
   const services = MOCK_SERVICES; // Use mock data directly
   // const _isLoading = false; // Always false as services are hardcoded
 
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({ 
+  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       smsConsent: false
     }
   });
-  
+
   // States for API interaction
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -71,21 +71,21 @@ export default function Booking() {
   }, []);
 
   const goBack = useCallback(() => setStep(1), []);
-  
+
   // --- RE-FORGED: The onSubmit function now connects to the live API ---
   const onSubmit = useCallback(async (values: FormValues) => {
     if (!selectedService) return;
-    
+
     setIsSubmitting(true);
     setApiError(null); // Clear any previous API errors
 
     try {
       // 1. Data Transformation: Create the correct payload for the API.
       const requested_time = new Date(`${values.date}T${values.time}`).toISOString();
-      
+
       // Get client IP for audit trail (simplified for demo)
       const clientIP = '0.0.0.0'; // In production, this would come from server
-      
+
       const appointmentPayload: AppointmentPayload = {
         customer_id: values.name, // Using customer name as a temporary ID for the backend
         service: selectedService.name,
@@ -102,16 +102,16 @@ export default function Booking() {
       await createAppointment(appointmentPayload);
 
       // 3. Success: Navigate to the confirmation page.
-      navigate('/confirmation', { 
-        state: { 
-          appointment: { 
-            ...values, 
+      navigate('/confirmation', {
+        state: {
+          appointment: {
+            ...values,
             service_name: selectedService.name,
             customer_id: values.name, // Ensure customer_id is passed to confirmation if needed
             service: selectedService.name, // Ensure service name is passed to confirmation if needed
             requested_time: requested_time // Ensure exact time is passed if needed
-          } 
-        } 
+          }
+        }
       });
 
     } catch (err) {
@@ -195,7 +195,7 @@ export default function Booking() {
                     </div>
                     <h2 className="text-3xl font-bold text-primary">Enter Your Details</h2>
                 </div>
-                
+
                 <Card className="max-w-3xl mx-auto">
                     <CardHeader>
                         <button onClick={goBack} className="flex items-center text-sm font-semibold text-muted-foreground hover:text-primary mb-4">
@@ -253,7 +253,7 @@ export default function Booking() {
                                 </label>
                                 <textarea {...register('notes')} rows={4} className="w-full px-3 py-2 border rounded-md" />
                             </div>
-                            
+
                             {/* SMS Consent Checkbox */}
                             <div className="border rounded-md p-4 bg-gray-50">
                                 <div className="flex items-start space-x-3">
@@ -268,7 +268,7 @@ export default function Booking() {
                                             📱 Receive SMS notifications and reminders
                                         </label>
                                         <p className="text-xs text-gray-600 mt-1">
-                                            We'll send you appointment confirmations and reminders via text message. 
+                                            We'll send you appointment confirmations and reminders via text message.
                                             Message and data rates may apply. Reply STOP to opt out at any time.
                                         </p>
                                         <p className="text-xs text-gray-500 mt-1">

@@ -61,16 +61,16 @@ export function PerformanceWidget() {
       >
         Performance: {report.overall.grade} ({report.overall.score})
       </button>
-      
+
       {showDetails && (
         <div className="absolute bottom-full right-0 mb-2 w-80 bg-white border rounded-lg shadow-lg p-4">
           <h3 className="font-semibold mb-2">Sprint 3C Performance</h3>
-          
+
           <div className="space-y-2 text-sm">
             <div>Memory: {report.memory.pressure} pressure</div>
             <div>Network: {report.network.online ? 'Online' : 'Offline'} ({report.network.rtt}ms)</div>
             <div>Notifications: {report.notifications.sent} sent, {report.notifications.failed} failed</div>
-            
+
             {report.overall.recommendations.length > 0 && (
               <div>
                 <div className="font-medium mt-3 mb-1">Recommendations:</div>

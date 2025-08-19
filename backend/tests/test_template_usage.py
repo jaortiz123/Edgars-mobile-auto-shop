@@ -23,7 +23,7 @@ JWT_ALG = local_server.JWT_ALG
 
 @pytest.fixture
 def client():
-    app.config['TESTING'] = True
+    app.config["TESTING"] = True
     with app.test_client() as c:
         yield c
 
@@ -33,6 +33,7 @@ def auth_headers():
     def make(role="Owner", sub="telemetry-tester"):
         token = jwt.encode({"sub": sub, "role": role}, JWT_SECRET, algorithm=JWT_ALG)
         return {"Authorization": f"Bearer {token}"}
+
     return make
 
 
@@ -42,13 +43,17 @@ def mock_db(mocker):
     mock_cursor = mocker.MagicMock()
     mock_connection.__enter__.return_value = mock_connection
     mock_connection.cursor.return_value.__enter__.return_value = mock_cursor
-    mocker.patch('backend.local_server.db_conn', return_value=mock_connection)
+    mocker.patch("backend.local_server.db_conn", return_value=mock_connection)
     return mock_cursor
 
 
 def test_template_usage_idempotent(client, auth_headers, mock_db):
     """First POST creates event; second POST with same key returns idempotent=true."""
-    template_row = {"id": "11111111-1111-1111-1111-111111111111", "slug": "reminder", "channel": "sms"}
+    template_row = {
+        "id": "11111111-1111-1111-1111-111111111111",
+        "slug": "reminder",
+        "channel": "sms",
+    }
     payload = {
         "template_id": template_row["id"],
         "channel": "sms",
@@ -56,7 +61,9 @@ def test_template_usage_idempotent(client, auth_headers, mock_db):
         "delivery_ms": 450,
         "idempotency_key": "same-key",
     }
-    expected_hash = hashlib.sha256((template_row["id"] + "|same-key|sms").encode("utf-8")).hexdigest()
+    expected_hash = hashlib.sha256(
+        (template_row["id"] + "|same-key|sms").encode("utf-8")
+    ).hexdigest()
     inserted_row = {
         "id": "22222222-2222-2222-2222-222222222222",
         "template_id": template_row["id"],
@@ -74,7 +81,7 @@ def test_template_usage_idempotent(client, auth_headers, mock_db):
     mock_db.fetchone.side_effect = [template_row, None, inserted_row, template_row, existing_row]
 
     # First request -> create
-    r1 = client.post('/api/admin/template-usage', headers=auth_headers(), json=payload)
+    r1 = client.post("/api/admin/template-usage", headers=auth_headers(), json=payload)
     assert r1.status_code == 201, r1.data
     evt1 = json.loads(r1.data)["data"]["template_usage_event"]
     assert evt1["idempotent"] is False
@@ -82,7 +89,7 @@ def test_template_usage_idempotent(client, auth_headers, mock_db):
     assert evt1["hash"] == expected_hash
 
     # Second request -> idempotent
-    r2 = client.post('/api/admin/template-usage', headers=auth_headers(), json=payload)
+    r2 = client.post("/api/admin/template-usage", headers=auth_headers(), json=payload)
     assert r2.status_code == 200, r2.data
     evt2 = json.loads(r2.data)["data"]["template_usage_event"]
     assert evt2["idempotent"] is True

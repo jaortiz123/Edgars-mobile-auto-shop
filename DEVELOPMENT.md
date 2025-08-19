@@ -98,7 +98,7 @@ docker-compose down -v
 
 1. **Start Development**: `./quick-start.sh`
 2. **Make Changes**: Edit files in `frontend/` or `backend/`
-3. **See Changes**: 
+3. **See Changes**:
    - Frontend: Auto-reloads at http://localhost:5173
    - Backend: Auto-reloads when you save Python files
 4. **Test APIs**: Use the endpoints at http://localhost:3001/api/

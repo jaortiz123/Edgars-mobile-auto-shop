@@ -41,12 +41,12 @@ export default defineConfig({
     restoreMocks: true,
     clearMocks: true,
     mockReset: true,
-    
+
     // Enhanced test execution configuration
     testTimeout: 10000,
     hookTimeout: 10000,
     teardownTimeout: 5000,
-    
+
     // Better file inclusion patterns
     include: [
       'src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
@@ -59,7 +59,7 @@ export default defineConfig({
       '**/.{idea,git,cache,output,temp}/**',
       '**/e2e/**'
     ],
-    
+
     // Enhanced coverage configuration
     coverage: {
       provider: 'v8',

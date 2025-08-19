@@ -117,7 +117,7 @@ export const testUtils = {
 #### Component Testing ✅
 ```bash
 ✓ src/components/__tests__/Button.test.tsx (1 test) 42ms
-✓ src/components/__tests__/ServiceCard.test.tsx (1 test) 16ms  
+✓ src/components/__tests__/ServiceCard.test.tsx (1 test) 16ms
 ✓ src/components/__tests__/ServiceList.test.tsx (1 test) 19ms
 ```
 

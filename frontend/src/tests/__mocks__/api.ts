@@ -6,12 +6,12 @@ import type { MockMoveAppointmentRequest, MockMoveAppointmentResponse } from '@/
 import type { TemplateAnalyticsResponse } from '../../types/analytics';
 
 export async function getBoard(): Promise<{ columns: BoardColumn[]; cards: BoardCard[] }> {
-  return { 
+  return {
     columns: [
       { key: 'SCHEDULED', title: 'Scheduled', count: 1, sum: 500 },
       { key: 'IN_PROGRESS', title: 'In Progress', count: 1, sum: 750 },
       { key: 'COMPLETED', title: 'Completed', count: 1, sum: 300 }
-    ], 
+    ],
     cards: [
       {
         id: 'test-1',
@@ -25,7 +25,7 @@ export async function getBoard(): Promise<{ columns: BoardColumn[]; cards: Board
         end: new Date(Date.now() + 90 * 60 * 1000).toISOString()
       },
       {
-        id: 'test-2', 
+        id: 'test-2',
         customerName: 'Jane Smith',
         vehicle: '2019 Honda Civic',
         servicesSummary: 'Tire Rotation, Engine Diagnostic',
@@ -37,7 +37,7 @@ export async function getBoard(): Promise<{ columns: BoardColumn[]; cards: Board
       },
       {
         id: 'test-3',
-        customerName: 'Bob Johnson', 
+        customerName: 'Bob Johnson',
         vehicle: '2021 Ford F-150',
         servicesSummary: 'Air Filter Replacement',
         status: 'COMPLETED',
@@ -88,7 +88,7 @@ export async function createAppointment(): Promise<string> {
 }
 
 export async function moveAppointment(
-  id: string, 
+  id: string,
   body: MockMoveAppointmentRequest
 ): Promise<MockMoveAppointmentResponse> {
   return { id, status: body.status, position: body.position };
@@ -100,23 +100,23 @@ export async function updateAppointmentStatus(): Promise<{ id: string; status: s
 
 export async function getDrawer(id: string): Promise<DrawerPayload> {
   return Promise.resolve({
-    appointment: { 
+    appointment: {
       id,
       status: 'SCHEDULED' as AppointmentStatus,
-      total_amount: 0, 
-      paid_amount: 0, 
-      check_in_at: null 
+      total_amount: 0,
+      paid_amount: 0,
+      check_in_at: null
     },
-    customer: { 
+    customer: {
       id: `cust-${id}`,
       name: `Test Customer ${id}`,
       email: 'test@example.com',
       phone: '555-0123'
     },
-    vehicle: { 
+    vehicle: {
       id: `veh-${id}`,
-      year: 2020, 
-      make: 'Toyota', 
+      year: 2020,
+      make: 'Toyota',
       model: 'Camry',
       vin: 'TEST123456789'
     },

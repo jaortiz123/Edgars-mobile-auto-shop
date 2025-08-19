@@ -1,13 +1,13 @@
 /**
  * P2-T-006: Error Path Integration Tests - "Third Way" Implementation
- * 
+ *
  * Comprehensive error scenario testing using the robust withErrorScenario wrapper
  * with guaranteed cleanup and timeout protection. This approach ensures:
  * - No hanging tests due to infinite promises or network timeouts
  * - Proper isolation between test scenarios
  * - Guaranteed cleanup even if tests throw exceptions
  * - True integration testing without full app rendering overhead
- * 
+ *
  * Test Categories:
  * - API 500 errors with proper error handling and user feedback
  * - Network timeouts and delays with loading states
@@ -21,7 +21,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi, beforeEach } from 'vitest';
 import { screen, waitFor, render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { 
+import {
   withErrorScenario,
   withErrorScenarioAct,
   withErrorScenarios,
@@ -53,12 +53,12 @@ import { AppointmentList } from '@/components/appointments/AppointmentList';
 describe('P2-T-006: Error Path Integration Tests - Third Way', () => {
   beforeAll(() => {
     console.log('🚀 Starting MSW server for Error Path integration tests...');
-    
+
     // Start MSW server
     server.listen({
       onUnhandledRequest: 'warn',
     });
-    
+
     console.log('🌐 MSW enabled for error scenario testing');
   });
 
@@ -100,7 +100,7 @@ describe('P2-T-006: Error Path Integration Tests - Third Way', () => {
         // User interaction that will trigger the 500 error
         const user = userEvent.setup();
         const saveButton = screen.getByRole('button', { name: /save|update/i });
-        
+
         await user.click(saveButton);
 
         // Assert that error feedback is shown to user
@@ -134,7 +134,7 @@ describe('P2-T-006: Error Path Integration Tests - Third Way', () => {
         await waitFor(() => {
           const errorElement = screen.queryByText(/error|failed|unable to load/i);
           const fallbackElement = screen.queryByText(/dashboard temporarily unavailable/i);
-          
+
           expect(errorElement || fallbackElement).toBeInTheDocument();
         }, { timeout: 6000 }); // Allow time for the 3.5s delay plus processing
       });
@@ -158,7 +158,7 @@ describe('P2-T-006: Error Path Integration Tests - Third Way', () => {
         await waitFor(() => {
           const loginRedirect = screen.queryByText(/login|sign in/i);
           const unauthorizedMessage = screen.queryByText(/unauthorized|access denied/i);
-          
+
           expect(loginRedirect || unauthorizedMessage).toBeInTheDocument();
         });
       });
@@ -182,7 +182,7 @@ describe('P2-T-006: Error Path Integration Tests - Third Way', () => {
           // Either redirect to login or show error message
           const hasRedirect = window.location.pathname.includes('/login');
           const hasErrorMessage = screen.queryByText(/session expired|please log in again/i);
-          
+
           expect(hasRedirect || hasErrorMessage).toBeTruthy();
         });
       });
@@ -207,7 +207,7 @@ describe('P2-T-006: Error Path Integration Tests - Third Way', () => {
         await waitFor(() => {
           const timeoutError = screen.queryByText(/timeout|network error|try again/i);
           const retryButton = screen.queryByRole('button', { name: /retry|refresh/i });
-          
+
           expect(timeoutError || retryButton).toBeInTheDocument();
         }, { timeout: 3000 });
       }, { timeout: 5000 }); // Shorter timeout for network timeout test
@@ -236,7 +236,7 @@ describe('P2-T-006: Error Path Integration Tests - Third Way', () => {
           const hasData = screen.queryByText(/appointments|statistics/i);
           const hasError = screen.queryByText(/error|failed/i);
           const hasLoading = screen.queryByText(/loading|fetching/i);
-          
+
           // Should either have data, error, or still be loading (all valid states)
           expect(hasData || hasError || hasLoading).toBeInTheDocument();
         }, { timeout: 8000 });
@@ -248,7 +248,7 @@ describe('P2-T-006: Error Path Integration Tests - Third Way', () => {
     it.error('should handle multiple error types without interference', async () => {
       // Test multiple scenarios in sequence to ensure proper isolation
       const scenarios = ['appointmentPatch500', 'unauthorizedAccess', 'networkTimeout'] as const;
-      
+
       const results = await withErrorScenarios(scenarios, async (scenario) => {
         mockAuthentication();
 
@@ -314,7 +314,7 @@ describe('P2-T-006: Error Path Integration Tests - Third Way', () => {
 
         // Look for retry mechanism
         const retryButton = screen.queryByRole('button', { name: /retry|refresh|try again/i });
-        
+
         if (retryButton) {
           // Test retry functionality
           const user = userEvent.setup();

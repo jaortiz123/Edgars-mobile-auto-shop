@@ -41,7 +41,7 @@ export default function DailyFocusHero({ nextAppointment, appointments }: DailyF
   useEffect(() => {
     // Set initial greeting
     setGreeting(getGreeting());
-    
+
     // Update time every minute to keep greeting fresh
     const interval = setInterval(() => {
       setCurrentTime(new Date());
@@ -71,7 +71,7 @@ export default function DailyFocusHero({ nextAppointment, appointments }: DailyF
   // Calculate total revenue including estimates
   const getTotalRevenue = () => {
     if (!stats) return 0;
-    
+
     // Sum up confirmed revenue + estimated revenue from scheduled appointments
     const confirmedRevenue = stats.unpaidTotal || 0;
     const estimatedRevenue = appointments.reduce((total, apt) => {
@@ -79,7 +79,7 @@ export default function DailyFocusHero({ nextAppointment, appointments }: DailyF
       const estimatedAmount = 150; // Default estimate - could be pulled from service data
       return total + (apt.status === 'scheduled' ? estimatedAmount : 0);
     }, 0);
-    
+
     return confirmedRevenue + estimatedRevenue;
   };
 
@@ -93,7 +93,7 @@ export default function DailyFocusHero({ nextAppointment, appointments }: DailyF
             {formatTodaysDate()}
           </span>
         </div>
-        
+
         {/* Enhanced Good Morning Anchor */}
         <div className="bg-white rounded-lg p-sp-3 border border-neutral-200 shadow-sm">
           {greeting ? (
@@ -123,7 +123,7 @@ export default function DailyFocusHero({ nextAppointment, appointments }: DailyF
                     <Skeleton className="h-6 w-32" />
                   )}
                 </div>
-                
+
                 {/* Quick Stats */}
                 <div className="text-right">
                   <p className="text-fs-1 text-gray-500 mb-sp-1">Today's Schedule</p>
@@ -151,7 +151,7 @@ export default function DailyFocusHero({ nextAppointment, appointments }: DailyF
           />
         </div>
       )}
-      
+
       {/* Today's Schedule Section - T4 */}
       <TodaysSchedule appointments={appointments} />
     </div>

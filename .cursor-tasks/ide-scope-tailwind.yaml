@@ -39,4 +39,3 @@ steps:
 notes: |
   - If extension still errors, reload the window.
   - Keep tailwind.config.js CommonJS imports consistent.
-

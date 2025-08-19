@@ -9,8 +9,8 @@ were applied via an earlier legacy migration path. Keeping it empty avoids
 duplicate column errors when stamping the current state.
 """
 
-revision = 'abcdef123456'
-down_revision = '1b2c3d4e5f6a'
+revision = "abcdef123456"
+down_revision = "1b2c3d4e5f6a"
 branch_labels = None
 depends_on = None
 

@@ -16,7 +16,7 @@ Successfully implemented a comprehensive MSW-powered integration testing layer f
   - Console logging with "🌐 MSW enabled for integration tests" message
 
 ### 2. Integration Test Configuration
-- **File:** `vitest.config.ts` 
+- **File:** `vitest.config.ts`
 - **Updates:**
   - `environmentMatchGlobs` pattern for `**/*.it.{ts,tsx}` files
   - JSdom environment for integration tests
@@ -112,11 +112,11 @@ import { renderWithProviders } from '../../test/integrationUtils';
 describe('My Feature Integration', () => {
   it('should work end-to-end', async () => {
     renderWithProviders();
-    
+
     // Make real HTTP calls that MSW intercepts
     const response = await fetch('http://localhost:3001/api/admin/appointments/board');
     expect(response.ok).toBe(true);
-    
+
     const data = await response.json();
     expect(data).toHaveProperty('columns');
     expect(data).toHaveProperty('cards');

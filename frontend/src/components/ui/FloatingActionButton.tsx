@@ -11,7 +11,7 @@ interface FABProps {
 
 /**
  * Enhanced Floating Action Button with robustness improvements
- * 
+ *
  * Features:
  * - Accessibility: ARIA labels, keyboard navigation, focus management
  * - Performance: Memoized callbacks, optimized re-renders
@@ -20,8 +20,8 @@ interface FABProps {
  * - Security: Input sanitization for className
  * - Maintainability: Comprehensive documentation and prop validation
  */
-export default function FloatingActionButton({ 
-  onClick, 
+export default function FloatingActionButton({
+  onClick,
   disabled = false,
   loading = false,
   ariaLabel = "Add new appointment",
@@ -37,7 +37,7 @@ export default function FloatingActionButton({
       event.preventDefault();
       return;
     }
-    
+
     try {
       onClick();
     } catch (error) {
@@ -53,7 +53,7 @@ export default function FloatingActionButton({
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       setIsPressed(true);
-      
+
       try {
         onClick();
       } catch (error) {
@@ -87,9 +87,9 @@ export default function FloatingActionButton({
       disabled={disabled || loading}
   data-testid="fab-quick-add"
       className={`
-        fixed bottom-4 right-4 
-        bg-primary text-white rounded-full 
-        w-14 h-14 flex items-center justify-center 
+        fixed bottom-4 right-4
+        bg-primary text-white rounded-full
+        w-14 h-14 flex items-center justify-center
         shadow-lg transition-all duration-200
         hover:scale-105 hover:shadow-xl
         focus:scale-105 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2

@@ -1,9 +1,9 @@
 /**
  * Availability Service for Scheduling Intelligence
- * 
+ *
  * Provides intelligent time slot suggestions and availability checking
  * with robust error handling and performance optimization.
- * 
+ *
  * Features:
  * - Memory Management: Cached availability data with smart invalidation
  * - Error Handling: Graceful fallbacks, comprehensive error logging
@@ -47,7 +47,7 @@ function validateAndSanitizeServiceId(serviceId) {
     console.warn('Invalid serviceId provided to availability service');
     return 'default';
   }
-  
+
   // Sanitize input
   const sanitized = serviceId.trim().replace(/[<>]/g, '');
   return sanitized || 'default';
@@ -63,11 +63,11 @@ function validateDate(date) {
     const targetDate = date instanceof Date ? date : new Date(date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     if (isNaN(targetDate.getTime()) || targetDate < today) {
       return null;
     }
-    
+
     return targetDate;
   } catch (error) {
     console.error('Error validating date:', error);
@@ -85,22 +85,22 @@ function generateTimeSlots(date, duration = 60) {
   const slots = [];
   const startHour = BUSINESS_HOURS.start;
   const endHour = BUSINESS_HOURS.end;
-  
+
   for (let hour = startHour; hour < endHour; hour++) {
     for (let minute = 0; minute < 60; minute += BUSINESS_HOURS.slotDuration) {
       const slotTime = new Date(date);
       slotTime.setHours(hour, minute, 0, 0);
-      
+
       // Check if slot plus duration fits within business hours
       const slotEnd = new Date(slotTime.getTime() + duration * 60000);
       if (slotEnd.getHours() < endHour || (slotEnd.getHours() === endHour && slotEnd.getMinutes() === 0)) {
         slots.push({
           id: `${hour}:${minute.toString().padStart(2, '0')}`,
           time: slotTime,
-          formatted: slotTime.toLocaleTimeString('en-US', { 
-            hour: 'numeric', 
-            minute: '2-digit', 
-            hour12: true 
+          formatted: slotTime.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
           }),
           duration: duration,
           available: true // Will be updated by conflict checking
@@ -108,7 +108,7 @@ function generateTimeSlots(date, duration = 60) {
       }
     }
   }
-  
+
   return slots;
 }
 
@@ -123,25 +123,25 @@ function checkSlotAvailability(slots, existingAppointments = [], bufferTime = BU
   return slots.map(slot => {
     let available = true;
     let conflictReason = null;
-    
+
     for (const appointment of existingAppointments) {
       const appointmentStart = new Date(appointment.date + 'T' + appointment.time);
       const appointmentEnd = new Date(appointmentStart.getTime() + (appointment.duration || 60) * 60000);
-      
+
       const slotStart = slot.time;
       const slotEnd = new Date(slotStart.getTime() + slot.duration * 60000);
-      
+
       // Check for overlap with buffer
       const bufferStart = new Date(slotStart.getTime() - bufferTime * 60000);
       const bufferEnd = new Date(slotEnd.getTime() + bufferTime * 60000);
-      
+
       if (!(bufferEnd <= appointmentStart || bufferStart >= appointmentEnd)) {
         available = false;
         conflictReason = `Conflicts with ${appointment.customerName || 'appointment'} at ${appointment.time}`;
         break;
       }
     }
-    
+
     return {
       ...slot,
       available,
@@ -168,7 +168,7 @@ function getCacheKey(serviceId, date) {
 function isCacheValid(key) {
   const timestamp = cacheTimestamp.get(key);
   if (!timestamp) return false;
-  
+
   return Date.now() - timestamp < CACHE_DURATION;
 }
 
@@ -184,26 +184,26 @@ export async function getAvailableSlots(serviceId, targetDate = new Date(), opti
     // Validate and sanitize inputs
     const sanitizedServiceId = validateAndSanitizeServiceId(serviceId);
     const validDate = validateDate(targetDate);
-    
+
     if (!validDate) {
       console.warn('Invalid date provided to getAvailableSlots');
       return [];
     }
-    
+
     const dateString = validDate.toISOString().split('T')[0];
     const cacheKey = getCacheKey(sanitizedServiceId, dateString);
-    
+
     // Check cache first
     if (isCacheValid(cacheKey) && availabilityCache.has(cacheKey)) {
       return availabilityCache.get(cacheKey);
     }
-    
+
     // Get service duration
     const duration = SERVICE_DURATIONS[sanitizedServiceId] || SERVICE_DURATIONS.default;
-    
+
     // Generate time slots
     const timeSlots = generateTimeSlots(validDate, duration);
-    
+
     // Fetch existing appointments for the date (updated to use admin endpoint; legacy /api/appointments removed)
     let existingAppointments = [];
     try {
@@ -221,16 +221,16 @@ export async function getAvailableSlots(serviceId, targetDate = new Date(), opti
     } catch (error) {
       // Swallow network or parsing errors silently to avoid log spam; availability degrades gracefully.
     }
-    
+
     // Check availability
     const availableSlots = checkSlotAvailability(timeSlots, existingAppointments);
-    
+
     // Filter to only available slots and limit results
     const maxSlots = options.maxSlots || 5;
     const filteredSlots = availableSlots
       .filter(slot => slot.available)
       .slice(0, maxSlots);
-    
+
     // If no slots (edge case some environments) generate graceful fallback slots
     if (filteredSlots.length === 0) {
       const fallback = generateFallbackSlots(validDate, duration).slice(0, maxSlots);
@@ -242,12 +242,12 @@ export async function getAvailableSlots(serviceId, targetDate = new Date(), opti
     // Cache the results
     availabilityCache.set(cacheKey, filteredSlots);
     cacheTimestamp.set(cacheKey, Date.now());
-    
+
     return filteredSlots;
-    
+
   } catch (error) {
     console.error('Error in getAvailableSlots:', error);
-    
+
   // Return fallback slots preserving intended duration
   return generateFallbackSlots(targetDate, SERVICE_DURATIONS[serviceId] || 60);
   }
@@ -280,13 +280,13 @@ function generateFallbackSlots(date, duration = 60) {
 export async function getNextAvailableSlot(serviceId, daysAhead = 7) {
   try {
     const sanitizedServiceId = validateAndSanitizeServiceId(serviceId);
-    
+
     for (let i = 0; i < daysAhead; i++) {
       const date = new Date();
       date.setDate(date.getDate() + i);
-      
+
       const slots = await getAvailableSlots(sanitizedServiceId, date, { maxSlots: 1 });
-      
+
       if (slots.length > 0) {
         return {
           ...slots[0],
@@ -294,9 +294,9 @@ export async function getNextAvailableSlot(serviceId, daysAhead = 7) {
         };
       }
     }
-    
+
     return null;
-    
+
   } catch (error) {
     console.error('Error in getNextAvailableSlot:', error);
     return null;
@@ -317,7 +317,7 @@ export function clearAvailabilityCache(serviceId = null) {
           keysToDelete.push(key);
         }
       }
-      
+
       keysToDelete.forEach(key => {
         availabilityCache.delete(key);
         cacheTimestamp.delete(key);
@@ -343,22 +343,22 @@ export async function refreshAvailabilityCache(serviceId, startDate, endDate) {
     const sanitizedServiceId = validateAndSanitizeServiceId(serviceId);
     const start = validateDate(startDate);
     const end = validateDate(endDate);
-    
+
     if (!start || !end) {
       console.warn('Invalid dates provided to refreshAvailabilityCache');
       return;
     }
-    
+
     const promises = [];
     const currentDate = new Date(start);
-    
+
     while (currentDate <= end) {
       promises.push(getAvailableSlots(sanitizedServiceId, new Date(currentDate)));
       currentDate.setDate(currentDate.getDate() + 1);
     }
-    
+
     await Promise.all(promises);
-    
+
   } catch (error) {
     console.error('Error refreshing availability cache:', error);
   }
@@ -379,17 +379,17 @@ export async function getAvailabilityStats(serviceId, daysAhead = 7) {
       occupancyRate: 0,
       nextAvailable: null
     };
-    
+
     for (let i = 0; i < daysAhead; i++) {
       const date = new Date();
       date.setDate(date.getDate() + i);
-      
+
       const allSlots = generateTimeSlots(date, SERVICE_DURATIONS[sanitizedServiceId] || 60);
       const availableSlots = await getAvailableSlots(sanitizedServiceId, date, { maxSlots: 100 });
-      
+
       stats.totalSlots += allSlots.length;
       stats.availableSlots += availableSlots.length;
-      
+
       if (!stats.nextAvailable && availableSlots.length > 0) {
         stats.nextAvailable = {
           ...availableSlots[0],
@@ -397,13 +397,13 @@ export async function getAvailabilityStats(serviceId, daysAhead = 7) {
         };
       }
     }
-    
-    stats.occupancyRate = stats.totalSlots > 0 
+
+    stats.occupancyRate = stats.totalSlots > 0
       ? ((stats.totalSlots - stats.availableSlots) / stats.totalSlots * 100).toFixed(1)
       : 0;
-    
+
     return stats;
-    
+
   } catch (error) {
     console.error('Error getting availability stats:', error);
     return {

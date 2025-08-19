@@ -1,7 +1,7 @@
 // Node environment test setup (no DOM dependencies)
 import { vi, beforeAll, afterAll } from 'vitest'
 
-// Mock performance monitoring service  
+// Mock performance monitoring service
 vi.mock('@/services/performanceMonitoring', () => ({
   default: {
     generateReport: vi.fn(() => ({
@@ -23,10 +23,10 @@ vi.mock('@/services/performanceMonitoring', () => ({
 // Mock offline support service
 vi.mock('@/services/offlineSupport', () => ({
   default: {
-    getState: vi.fn(() => ({ 
-      isOnline: true, 
-      queuedActions: [], 
-      lastSync: new Date() 
+    getState: vi.fn(() => ({
+      isOnline: true,
+      queuedActions: [],
+      lastSync: new Date()
     })),
     addAction: vi.fn(),
     processQueue: vi.fn(),

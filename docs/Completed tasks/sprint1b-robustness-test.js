@@ -46,12 +46,12 @@ class IntervalManager {
 
 function validateCardData(card) {
   console.log('🔍 Validating card data:', JSON.stringify(card, null, 2));
-  
+
   if (!card || typeof card !== 'object') {
     console.log('❌ Invalid card: not an object');
     return null;
   }
-  
+
   const required = ['id', 'customerName', 'start'];
   for (const field of required) {
     if (!card[field]) {
@@ -59,7 +59,7 @@ function validateCardData(card) {
       return null;
     }
   }
-  
+
   const validated = {
     id: String(card.id),
     customerName: String(card.customerName),
@@ -69,7 +69,7 @@ function validateCardData(card) {
     price: Number(card.price) || 0,
     urgency: ['urgent', 'soon'].includes(card.urgency) ? card.urgency : 'normal'
   };
-  
+
   console.log('✅ Card validation successful');
   return validated;
 }
@@ -220,15 +220,15 @@ function measureCardPerformance(operation, label) {
   const start = performance.now();
   const result = operation();
   const duration = performance.now() - start;
-  
+
   console.log(`⏱️ Performance [${label}]: ${duration.toFixed(2)}ms`);
-  
+
   if (duration > 16) {
     console.log('⚠️ Performance warning: operation exceeded 16ms budget');
   } else {
     console.log('✅ Performance: within 60fps budget');
   }
-  
+
   return result;
 }
 

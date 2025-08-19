@@ -84,5 +84,3 @@ Final enforced contexts will match those that are actually passing on `main` and
 
 - How to add a new required check?
   - Land the workflow on `main`, ensure it passes reliably across a few runs, then add it to the required contexts list in branch protection settings.
-
-

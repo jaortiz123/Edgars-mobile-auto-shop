@@ -1,9 +1,9 @@
 /**
  * Phase 2 Task 2: Happy Path Integration Workflow Test
- * 
+ *
  * Comprehensive end-to-end integration test covering the core user journey:
  * Calendar → Board → Drawer → Add Service → Status Change sequence
- * 
+ *
  * Features:
  * - Real HTTP calls against MSW in-process server
  * - Full React app rendering via @testing-library/react
@@ -64,7 +64,7 @@ describe('Happy Path Integration Workflow', () => {
     it('should complete the full happy path workflow successfully', async () => {
       // Setup: Mock admin authentication for board access
       mockAuthentication('Owner', 'test-admin');
-      
+
       // Render the full app
       const user = userEvent.setup();
       renderWithProviders({ initialRoute: '/admin/dashboard' });
@@ -114,7 +114,7 @@ describe('Happy Path Integration Workflow', () => {
       // Look for any board-related elements
       const boardElements = screen.queryAllByTestId(/board/i);
       console.log('🔍 Board test-id elements:', boardElements.length);
-      
+
       // Check if we need to switch views
       if (statusElements.length === 0) {
         console.log('🔍 Looking for view toggle buttons...');
@@ -123,12 +123,12 @@ describe('Happy Path Integration Workflow', () => {
         allButtons.forEach((btn, i) => {
           console.log(`  Button ${i}: "${btn.textContent}" test-id="${btn.getAttribute('data-testid')}"`);
         });
-        
+
         // Try to find and click a board toggle
-        const boardToggle = screen.queryByTestId('toggle-board') || 
+        const boardToggle = screen.queryByTestId('toggle-board') ||
                            screen.queryByText(/board/i) ||
                            allButtons.find(btn => btn.textContent?.match(/board|status/i));
-        
+
         if (boardToggle) {
           console.log('📌 Found potential board toggle, clicking...');
           await user.click(boardToggle);
@@ -168,7 +168,7 @@ describe('Happy Path Integration Workflow', () => {
           screen.queryByText(/history/i),
           screen.queryByText(/appointment.*details/i)
         ].filter(Boolean);
-        
+
         expect(drawerIndicators.length).toBeGreaterThan(0);
       }, { timeout: 8000 });
 
@@ -213,10 +213,10 @@ describe('Happy Path Integration Workflow', () => {
       console.log('🔍 After clicking Add Service button:');
       const drawer = screen.getByTestId('drawer-open');
       console.log('🔍 Drawer content:', drawer.innerHTML.slice(0, 2000) + '...');
-      
+
       const allForms = screen.queryAllByTestId(/form|add/i);
       console.log('🔍 All form-related elements:', allForms.map(el => el.getAttribute('data-testid')));
-      
+
       const allButtons = within(drawer).queryAllByRole('button');
       console.log('🔍 All buttons in drawer:', allButtons.map(btn => ({
         text: btn.textContent,
@@ -232,19 +232,19 @@ describe('Happy Path Integration Workflow', () => {
       console.log('🔍 DEBUG: About to click service name input...');
       await user.click(serviceNameInput);
       console.log('🔍 DEBUG: About to type service name...');
-      
+
       // Clear any existing value first
       await user.clear(serviceNameInput);
-      
+
       // Type slower to ensure all characters are captured
       for (const char of 'Happy Path Test Service') {
         await user.type(serviceNameInput, char);
         await new Promise(resolve => setTimeout(resolve, 10));
       }
-      
+
       console.log('🔍 DEBUG: Finished typing service name');
       console.log('🔍 DEBUG: Input value after typing:', (serviceNameInput as HTMLInputElement).value);
-      
+
       // Check if drawer is still open after typing
       const drawerAfterTyping = screen.queryByTestId('drawer-open');
       console.log('🔍 DEBUG: Drawer still open after typing:', !!drawerAfterTyping);
@@ -260,11 +260,11 @@ describe('Happy Path Integration Workflow', () => {
         const submitButton = within(drawer).queryByTestId('add-service-submit-button');
         console.log('🔍 DEBUG: Submit button found:', !!submitButton);
         console.log('🔍 DEBUG: Submit button disabled state:', submitButton ? (submitButton as HTMLButtonElement).disabled : 'N/A');
-        
+
         if (!submitButton) {
-          console.log('🔍 DEBUG: Submit button not found! Available test-ids:', 
+          console.log('🔍 DEBUG: Submit button not found! Available test-ids:',
             within(drawer).queryAllByTestId(/.*/).map(el => el.getAttribute('data-testid')));
-          console.log('🔍 DEBUG: All buttons in drawer:', 
+          console.log('🔍 DEBUG: All buttons in drawer:',
             within(drawer).queryAllByRole('button').map(btn => ({
               text: btn.textContent,
               testId: btn.getAttribute('data-testid'),
@@ -273,7 +273,7 @@ describe('Happy Path Integration Workflow', () => {
           console.log('🔍 DEBUG: Looking for add-service form:', !!within(drawer).queryByTestId('add-service-form'));
           console.log('🔍 DEBUG: Current drawer content:', drawer.innerHTML.slice(0, 1000));
         }
-        
+
         expect(submitButton).toBeInTheDocument();
         expect(submitButton).not.toBeDisabled(); // Should be enabled now with name filled
       }, { timeout: 3000 });
@@ -294,21 +294,21 @@ describe('Happy Path Integration Workflow', () => {
       const saveButton = await waitFor(() => {
         // Scope search to within the drawer to avoid FAB conflicts
         const drawer = screen.getByTestId('drawer-open');
-        
+
         // Look for the specific submit button first within the drawer
         const specificButton = within(drawer).queryByTestId('add-service-submit-button');
         if (specificButton) {
           return specificButton;
         }
-        
+
         // Fallback to generic save button, but scoped to drawer and exclude "Add Service" button
         const genericButtons = within(drawer).queryAllByRole('button', { name: /save|create|submit/i });
         const nonAddServiceButtons = genericButtons.filter(btn => !btn.textContent?.match(/add.*service/i));
-        
+
         if (nonAddServiceButtons.length > 0) {
           return nonAddServiceButtons[0];
         }
-        
+
         throw new Error('Save button not found - form may not be displayed yet');
       }, { timeout: 5000 });
 
@@ -321,14 +321,14 @@ describe('Happy Path Integration Workflow', () => {
       // Give some time for the API call to be initiated and logged
       await new Promise(resolve => setTimeout(resolve, 1000));
       console.log('🔍 DEBUG: After 1 second delay...');
-      
+
       // Debug: Check what's actually in the drawer now
       const currentDrawer = screen.queryByTestId('drawer-open');
       if (currentDrawer) {
         console.log('🔍 DEBUG: Services in drawer after save:');
         const allServiceItems = within(currentDrawer).queryAllByTestId(/service-item-/);
         console.log('🔍 DEBUG: Found', allServiceItems.length, 'service items');
-        
+
         allServiceItems.forEach((item, index) => {
           const nameElement = within(item).queryByTestId(/service-name-/);
           console.log(`🔍 DEBUG: Service ${index + 1}:`, nameElement?.textContent || 'No name found');
@@ -340,7 +340,7 @@ describe('Happy Path Integration Workflow', () => {
         // Instead of looking for exact text, check that services count increased
         const drawer = screen.getByTestId('drawer-open');
         const servicesList = within(drawer).queryByTestId('services-list');
-        
+
         if (servicesList) {
           // Check if we have at least 3 services now (2 original + 1 new)
           const serviceItems = within(servicesList).queryAllByTestId(/service-item-/);
@@ -372,7 +372,7 @@ describe('Happy Path Integration Workflow', () => {
 
       console.log('🔍 DEBUG: Happy path workflow completed successfully!');
       console.log('🔍 DEBUG: Core workflow tested: Dashboard → Board → Drawer → Add Service → Verification');
-      
+
       // The core workflow is complete - we've successfully:
       // 1. Loaded the dashboard
       // 2. Clicked on an appointment card
@@ -404,7 +404,7 @@ describe('Happy Path Integration Workflow', () => {
     it('should handle API errors gracefully during the workflow', async () => {
       // Setup with authentication
       mockAuthentication('Owner', 'test-admin');
-      
+
       const user = userEvent.setup();
       renderWithProviders({ initialRoute: '/admin/dashboard' });
 
@@ -417,17 +417,17 @@ describe('Happy Path Integration Workflow', () => {
       // This tests the robustness of the integration under error conditions
       const boardElements = screen.queryAllByText(/scheduled|in progress/i);
       expect(boardElements.length).toBeGreaterThanOrEqual(0); // Should handle empty or error states gracefully
-      
+
       // Use user interaction to avoid lint warnings
       await user.keyboard('{Tab}');
-      
+
       console.log('✅ Error handling test completed');
     }, 30000);
 
     it('should support keyboard navigation throughout the workflow', async () => {
       // Setup with authentication
       mockAuthentication('Owner', 'test-admin');
-      
+
       const user = userEvent.setup();
       renderWithProviders({ initialRoute: '/admin/dashboard' });
 
@@ -441,7 +441,7 @@ describe('Happy Path Integration Workflow', () => {
 
       // Verify focus management works
       expect(document.activeElement).toBeTruthy();
-      
+
       console.log('✅ Keyboard navigation test completed');
     }, 30000);
   });
@@ -449,7 +449,7 @@ describe('Happy Path Integration Workflow', () => {
   describe('Happy Path Data Verification', () => {
     it('should load and display happy path appointment data correctly', async () => {
       mockAuthentication('Owner', 'test-admin');
-      
+
       renderWithProviders({ initialRoute: '/admin/dashboard' });
 
       // Verify MSW is serving our happy path data
@@ -459,28 +459,28 @@ describe('Happy Path Integration Workflow', () => {
 
       // Verify appointment details
       expect(screen.getByText(/toyota camry|2020.*toyota/i)).toBeInTheDocument();
-      
+
       console.log('✅ Happy path data verification completed');
     }, 20000);
 
     it('should make real HTTP calls that are intercepted by MSW', async () => {
       mockAuthentication('Owner', 'test-admin');
-      
+
       // Make a direct API call to test MSW interception
       const response = await fetch('http://localhost:3001/api/admin/appointments/board');
       expect(response.ok).toBe(true);
-      
+
       const data = await response.json();
       expect(data).toHaveProperty('columns');
       expect(data).toHaveProperty('cards');
-      
+
       // Verify our happy path data is present
-      const hasHappyPathData = data.cards.some((card: BoardCard) => 
-        card.customerName?.includes('Happy Path Customer') || 
+      const hasHappyPathData = data.cards.some((card: BoardCard) =>
+        card.customerName?.includes('Happy Path Customer') ||
         card.customer_name?.includes('Happy Path Customer')
       );
       expect(hasHappyPathData).toBe(true);
-      
+
       console.log('✅ MSW HTTP interception verification completed');
     }, 15000);
   });

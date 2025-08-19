@@ -16,9 +16,9 @@ interface ExportOptions {
   status?: string;
 }
 
-export const ReportsDropdown: React.FC<ReportsDropdownProps> = ({ 
+export const ReportsDropdown: React.FC<ReportsDropdownProps> = ({
   ffReports = true,
-  className = '' 
+  className = ''
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState<'appointments' | 'payments' | null>(null);
@@ -32,7 +32,7 @@ export const ReportsDropdown: React.FC<ReportsDropdownProps> = ({
 
   const handleExport = async (type: 'appointments' | 'payments') => {
     setIsExporting(type);
-    
+
     try {
       // Build query parameters
       const params = new URLSearchParams();
@@ -42,15 +42,15 @@ export const ReportsDropdown: React.FC<ReportsDropdownProps> = ({
         params.append('status', exportOptions.status);
       }
 
-      const endpoint = type === 'appointments' 
+      const endpoint = type === 'appointments'
         ? `/api/admin/reports/appointments.csv`
         : `/api/admin/reports/payments.csv`;
-      
+
       const url = params.toString() ? `${endpoint}?${params}` : endpoint;
 
       // Get the auth token from localStorage or wherever it's stored
       const token = localStorage.getItem('authToken'); // Adjust based on your auth implementation
-      
+
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -71,7 +71,7 @@ export const ReportsDropdown: React.FC<ReportsDropdownProps> = ({
 
       // Get filename from Content-Disposition header or use default
       const contentDisposition = response.headers.get('Content-Disposition');
-      const filename = contentDisposition?.match(/filename="(.+)"/)?.[1] || 
+      const filename = contentDisposition?.match(/filename="(.+)"/)?.[1] ||
         `${type}_export_${new Date().toISOString().split('T')[0]}.csv`;
 
       // Download the file
@@ -87,7 +87,7 @@ export const ReportsDropdown: React.FC<ReportsDropdownProps> = ({
 
       // Close dropdown on successful export
       setIsOpen(false);
-      
+
     } catch (error) {
       console.error(`${type} export failed:`, error);
       alert(`Export failed: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
@@ -103,7 +103,7 @@ export const ReportsDropdown: React.FC<ReportsDropdownProps> = ({
   const getDatePreset = (preset: 'today' | 'week' | 'month' | 'quarter') => {
     const now = new Date();
     const today = formatDateForInput(now);
-    
+
     switch (preset) {
       case 'today':
         return { from: today, to: today };
@@ -152,7 +152,7 @@ export const ReportsDropdown: React.FC<ReportsDropdownProps> = ({
         <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border z-50">
           <div className="p-4">
             <h3 className="font-semibold text-gray-900 mb-4">Export Data</h3>
-            
+
             {/* Quick Export Options */}
             <div className="space-y-3 mb-4">
               <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
@@ -163,8 +163,8 @@ export const ReportsDropdown: React.FC<ReportsDropdownProps> = ({
                     <div className="text-sm text-gray-500">Export appointment data</div>
                   </div>
                 </div>
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   onClick={() => handleExport('appointments')}
                   disabled={isExporting !== null}
                 >
@@ -180,8 +180,8 @@ export const ReportsDropdown: React.FC<ReportsDropdownProps> = ({
                     <div className="text-sm text-gray-500">Export payment records</div>
                   </div>
                 </div>
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   onClick={() => handleExport('payments')}
                   disabled={isExporting !== null}
                 >

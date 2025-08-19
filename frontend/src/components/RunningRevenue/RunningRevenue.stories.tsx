@@ -1,6 +1,6 @@
 /**
  * Sprint 4A-T-003: Running Revenue Component Stories
- * 
+ *
  * Storybook stories demonstrating the RunningRevenue component in various states
  * and configurations for UI development and testing.
  */
@@ -13,7 +13,7 @@ const mockRevenueService = {
   subscribeToRevenueUpdates: (callback: (data: any) => void) => {
     // Simulate real-time updates
     let revenue = 2500;
-    
+
     // Initial callback
     setTimeout(() => {
       callback({
@@ -38,7 +38,7 @@ const mockRevenueService = {
     // Return unsubscribe function
     return () => clearInterval(interval);
   },
-  
+
   formatCurrency: (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -66,7 +66,7 @@ A real-time revenue tracking component that displays today's revenue total with 
 
 ## Features
 - 🔄 Real-time updates via subscription
-- 💰 Currency formatting with thousands separators  
+- 💰 Currency formatting with thousands separators
 - 📊 Breakdown of paid vs unpaid amounts
 - ⚡ Smooth animations on revenue changes
 - 📱 Responsive design with mobile variants
@@ -178,7 +178,7 @@ export const Loading: Story = {
         </div>
       );
     };
-    
+
     return <LoadingRevenue />;
   },
   parameters: {
@@ -205,7 +205,7 @@ export const ErrorState: Story = {
         </div>
       );
     };
-    
+
     return <ErrorRevenue />;
   },
   parameters: {
@@ -247,7 +247,7 @@ export const HighRevenue: Story = {
         </div>
       );
     };
-    
+
     return <HighRevenueComponent />;
   },
   args: {
@@ -272,12 +272,12 @@ export const AllVariants: Story = {
         <h3 className="text-lg font-semibold mb-2">Header Version</h3>
         <RunningRevenue showBreakdown={true} />
       </div>
-      
+
       <div>
         <h3 className="text-lg font-semibold mb-2">Compact Version</h3>
         <RunningRevenueCompact />
       </div>
-      
+
       <div>
         <h3 className="text-lg font-semibold mb-2">Card Version</h3>
         <RunningRevenueCard />
@@ -306,14 +306,14 @@ export const Responsive: Story = {
           <RunningRevenue className="text-sm" />
         </div>
       </div>
-      
+
       <div className="w-full max-w-md">
         <h4 className="text-sm font-medium mb-2">Tablet (768px)</h4>
         <div className="border border-gray-200 p-3">
           <RunningRevenue showBreakdown={true} />
         </div>
       </div>
-      
+
       <div className="w-full max-w-2xl">
         <h4 className="text-sm font-medium mb-2">Desktop (1024px+)</h4>
         <div className="border border-gray-200 p-4">
@@ -339,21 +339,21 @@ export const WithAnimation: Story = {
   render: () => {
     const AnimatedRevenue = () => {
       const [isAnimating, setIsAnimating] = React.useState(false);
-      
+
       const triggerAnimation = () => {
         setIsAnimating(true);
         setTimeout(() => setIsAnimating(false), 300);
       };
-      
+
       return (
         <div className="space-y-4">
-          <button 
+          <button
             onClick={triggerAnimation}
             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             Trigger Update Animation
           </button>
-          
+
           <div className={`running-revenue ${isAnimating ? 'updating' : ''}`}>
             <div className="revenue-content">
               <div className="revenue-label">💰 Revenue Today:</div>
@@ -363,7 +363,7 @@ export const WithAnimation: Story = {
         </div>
       );
     };
-    
+
     return <AnimatedRevenue />;
   },
   parameters: {

@@ -4,28 +4,28 @@
 
 ### SEC-002: Added Zod validation middleware and integrated it with forms.
 - **Status**: **DONE**. The `zod` library was installed in both frontend and backend. Validation schema created in `backend/src/validation/schemas.js` and used in `appointments.js` route via validation middleware. Frontend `Booking.tsx` integrated with Zod schema via `@hookform/resolvers/zod`.
-  
+
 ### API-001: Implemented loading and error states in the booking form.
 - **Status**: **DONE**. The `Booking.tsx` component refactored to include `isLoading` state, disables submit button and shows "Submitting..." message during API calls. Basic `try/catch` with alert added.
-  
+
 ### debug-tracker #18 / API-002: Added global error handler and `next(err)` pattern across routes.
 - **Status**: **DONE**. Global error handling middleware created in `backend/src/middleware/errorHandler.js` and implemented in `app.js`. All backend routes refactored to use `next(err)` pattern. Frontend API calls in `frontend/src/services/api.ts` have `try/catch` blocks.
-  
+
 ### DEP-001: Removed duplicate dependencies in the frontend package.json.
 - **Status**: **DONE**. Analysis confirms the duplicate entries for `react-hook-form` and `lucide-react` were removed.
-  
+
 ### SEC-001 / SEC-003: Refactor authentication to use HttpOnly cookies.
 - **Status**: **DONE**. This critical security refactor is complete. The backend `admin.js` route now sets a secure, `HttpOnly` cookie. The `auth.js` middleware can read from it, and the frontend `api.ts` and components (`Login.tsx`, `AdminLayout.tsx`) were modified to remove `localStorage` and use the cookie-based flow.
-  
+
 ### TEST-002: Add E2E tests.
 - **Status**: **DONE**. The Playwright framework was set up with a `playwright.config.ts` file. A smoke test (`e2e/smoke.spec.ts`) and a booking flow test (`e2e/booking-flow.spec.ts`) were created.
-  
+
 ### DEP-002: Fix security vulnerabilities in npm dependencies.
 - **Status**: **DONE**. The logs confirm that `npm audit fix --force` was run for both the `frontend` and `backend`, addressing known vulnerabilities at the time of execution.
-  
+
 ### INFRA-001: Standardize Docker development setup.
 - **Status**: **DONE**. The `docker-compose.yml` file was corrected and standardized with proper service definitions, volumes, healthchecks, and `depends_on` conditions to ensure a consistent and reliable startup sequence.
-  
+
 ### PROD-001 (Monitoring part): Implement production monitoring.
 - **Status**: **DONE**. The foundation for this has been laid. `Winston` was added to the backend for structured logging (`logger.js`) and `Sentry` was added to the frontend (`main.tsx`) for error tracking.
 
@@ -33,10 +33,10 @@
 
 ### PERF-001 / PERF-002: Optimize re-renders & fix memory leaks.
 - **Status**: **IN PROGRESS**. Event handlers in `Booking.tsx` were memoized with `useCallback` and a placeholder `useEffect` for cleanup was added. However, wrapping presentational components in `React.memo` (like a `ServiceCard` component) was not completed as the component did not exist.
-  
+
 ### TEST-001: Add test coverage for critical components.
 - **Status**: **IN PROGRESS**. The testing frameworks are in place and working. A new test for `Button.tsx` was created. However, the test for `AppointmentForm.tsx` failed because the component doesn't exist, and overall coverage is still very low.
-  
+
 ### PROD-001 (CI/CD part): Fix CI/CD workflow.
 - **Status**: **IN PROGRESS**. The primary blocker (failing tests due to missing dependencies) has been addressed by providing a recovery plan that prioritizes `npm install`. However, the CI workflow files themselves have not yet been refactored for a proper test-then-deploy sequence.
 
@@ -44,7 +44,7 @@
 
 ### ARCH-001: Refactor components to separate concerns.
 - **Status**: **PENDING**. This task was attempted, but the target files (`ServiceList.tsx`, etc.) did not exist, so no changes were made. This architectural improvement is still outstanding.
-  
+
 ### A11Y-001: Fix accessibility issues in forms.
 - **Status**: **PENDING**. This task was attempted, but the target file (`AppointmentForm.tsx`) did not exist. The forms still need a full accessibility audit.
 

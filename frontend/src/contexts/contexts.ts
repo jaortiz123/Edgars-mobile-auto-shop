@@ -12,13 +12,13 @@ export interface State {
   error: string | null;
 }
 
-export const initialState: State = { 
-  user: null, 
+export const initialState: State = {
+  user: null,
   isLoading: true,
-  error: null 
+  error: null
 }
 
-export type Action = 
+export type Action =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_USER'; payload: User | null }
   | { type: 'SET_ERROR'; payload: string | null }

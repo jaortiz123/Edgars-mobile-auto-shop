@@ -7,5 +7,3 @@
 - **No API/DB schema changes unless task specifies**
 - **No secrets in code or logs**; redact `email`, `phone`, `JWT` in logs
 - **Off-limits**: `/api/payments/*`
-
-

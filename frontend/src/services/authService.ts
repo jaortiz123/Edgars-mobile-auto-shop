@@ -86,7 +86,7 @@ const makeApiCall = async (url: string, options: RequestInit = {}): Promise<Resp
     }
 
     const response = await fetch(url, fetchOptions);
-    
+
     if (timeoutId) clearTimeout(timeoutId);
     return response;
   } catch (error) {
@@ -110,22 +110,22 @@ export const authService = {
     if (!password?.trim()) {
       throw new ValidationError('Password is required');
     }
-    
+
     const response = await makeApiCall(`${API_URL}/customers/login`, {
       method: 'POST',
       body: JSON.stringify({ email: email.trim(), password }),
     });
-    
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Login failed' }));
       throw new AuthError(error.message || 'Login failed', response.status);
     }
-    
+
     const data: LoginResponse = await response.json();
     if (!data.token) {
       throw new AuthError('Invalid response: missing token');
     }
-    
+
     this.setToken(data.token);
   },
 
@@ -140,12 +140,12 @@ export const authService = {
     if (password.length < 8) {
       throw new ValidationError('Password must be at least 8 characters long');
     }
-    
+
     const response = await makeApiCall(`${API_URL}/customers/register`, {
       method: 'POST',
       body: JSON.stringify({ email: email.trim(), password }),
     });
-    
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Registration failed' }));
       throw new AuthError(error.message || 'Registration failed', response.status);
@@ -158,11 +158,11 @@ export const authService = {
 
     const response = await makeApiCall(`${API_URL}/customers/profile`, {
       method: 'GET',
-      headers: { 
+      headers: {
         'Authorization': `Bearer ${token}`
       },
     });
-    
+
     if (!response.ok) {
       if (response.status === 401) {
         this.clearToken(); // Clear invalid token
@@ -171,7 +171,7 @@ export const authService = {
       const error = await response.json().catch(() => ({ message: 'Failed to fetch profile' }));
       throw new AuthError(error.message || 'Failed to fetch profile', response.status);
     }
-    
+
     return response.json();
   },
 
@@ -186,12 +186,12 @@ export const authService = {
 
     const response = await makeApiCall(`${API_URL}/customers/profile`, {
       method: 'PUT',
-      headers: { 
+      headers: {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify(profileData),
     });
-    
+
     if (!response.ok) {
       if (response.status === 401) {
         this.clearToken(); // Clear invalid token
@@ -261,12 +261,12 @@ export const authService = {
   isLoggedIn(): boolean {
     const decoded = this.parseToken();
     if (!decoded) return false;
-    
+
     // Check if token is expired (with 30 second buffer)
     const expirationTime = decoded.exp * 1000;
     const currentTime = Date.now();
     const bufferTime = 30 * 1000; // 30 seconds
-    
+
     return expirationTime > (currentTime + bufferTime);
   },
 
@@ -274,11 +274,11 @@ export const authService = {
   shouldRefreshToken(): boolean {
     const decoded = this.parseToken();
     if (!decoded) return false;
-    
+
     const expirationTime = decoded.exp * 1000;
     const currentTime = Date.now();
     const refreshThreshold = 5 * 60 * 1000; // 5 minutes
-    
+
     return expirationTime - currentTime < refreshThreshold;
   }
 };

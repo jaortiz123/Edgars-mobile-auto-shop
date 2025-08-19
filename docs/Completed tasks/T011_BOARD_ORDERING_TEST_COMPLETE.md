@@ -21,7 +21,7 @@
 
 **Verification**:
 - ✅ Earlier appointment appears first in response
-- ✅ Later appointment appears second in response  
+- ✅ Later appointment appears second in response
 - ✅ SQL query contains "ORDER BY a.start_ts ASC, a.id ASC"
 - ✅ JSON envelope structure is correct
 
@@ -93,7 +93,7 @@ tests/test_appointments_api.py::test_get_admin_appointments_orders_by_id_when_sa
 
 ### Integration with Existing Tests
 - ✅ Maintains compatibility with existing no-DB smoke test
-- ✅ Does not interfere with T-008 edge case filter tests  
+- ✅ Does not interfere with T-008 edge case filter tests
 - ✅ Uses same mocking patterns as other tests
 - ✅ Preserves existing JSON envelope validation
 
@@ -109,7 +109,7 @@ This ensures the canonical timestamp migration maintains proper board ordering.
 
 ### ✅ **Board ordering integration test implemented**
 - Primary ordering by `start_ts ASC` verified
-- Secondary ordering by `id ASC` verified  
+- Secondary ordering by `id ASC` verified
 - Mock/fake DB cursor returns controlled test data
 - JSON envelope structure validated
 

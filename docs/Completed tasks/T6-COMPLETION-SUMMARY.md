@@ -50,7 +50,7 @@ frontend-tests:
 ### Coverage Infrastructure
 ```
 ✅ Frontend: Vitest v8 + coverage-summary.json generation
-✅ Backend: pytest-cov + XML reporting 
+✅ Backend: pytest-cov + XML reporting
 ✅ Codecov: Token-based uploads with frontend/backend flags
 ✅ Artifacts: HTML reports, LCOV files, JSON summaries
 ✅ Thresholds: Dual-layer (CI minimums + Vitest targets)
@@ -94,7 +94,7 @@ coverage: {
 ## 📋 VERIFICATION CHECKLIST
 
 - [x] **Coverage Enforcement**: CI fails on threshold violations
-- [x] **bc Calculator**: Installed for floating-point arithmetic 
+- [x] **bc Calculator**: Installed for floating-point arithmetic
 - [x] **Coverage Reports**: Generated with json-summary format
 - [x] **Codecov Integration**: Automatic uploads with proper tokens
 - [x] **Artifact Publishing**: Coverage reports stored with 30-day retention
@@ -143,7 +143,7 @@ coverage: {
 
 All T6 requirements have been successfully implemented:
 - ✅ CI coverage enforcement with failure thresholds
-- ✅ Coverage artifact publishing 
+- ✅ Coverage artifact publishing
 - ✅ Automated coverage reporting
 - ✅ GitHub Actions workflow enhancement
 - ✅ Quality gates and threshold validation

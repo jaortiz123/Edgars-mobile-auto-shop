@@ -41,12 +41,12 @@ let actWarnings: string[] = [];
 export function setupCleanConsole() {
   consoleErrors = [];
   actWarnings = [];
-  
+
   console.error = (...args) => {
     const message = String(args[0] || '');
-    
+
     // Detect React act() warnings and fail tests
-    if ((message.includes('state update') && message.includes('act(')) || 
+    if ((message.includes('state update') && message.includes('act(')) ||
         message.includes('not wrapped in act(') ||
         message.includes('Warning: An update to') && message.includes('act(')) {
       actWarnings.push(message);
@@ -54,7 +54,7 @@ export function setupCleanConsole() {
         throw new Error(`React act() warning detected: ${message}`);
       }
     }
-    
+
     // Filter out known test noise (but still track them)
     if (
       message.includes('Warning: ReactDOM.render') ||
@@ -65,15 +65,15 @@ export function setupCleanConsole() {
     ) {
       return;
     }
-    
+
     // Track all console errors for potential test failures
     consoleErrors.push(message);
     originalError(...args);
   };
-  
+
   console.warn = (...args) => {
     const message = String(args[0] || '');
-    
+
     // Filter out known warnings
     if (
       message.includes('componentWillMount') ||
@@ -82,7 +82,7 @@ export function setupCleanConsole() {
     ) {
       return;
     }
-    
+
     originalWarn(...args);
   };
 }
@@ -114,7 +114,7 @@ export function hasActWarnings() {
 export const testUtils = {
   // Wait for async operations
   waitForAsync: (ms = 0) => new Promise(resolve => setTimeout(resolve, ms)),
-  
+
   // Mock timer utilities
   mockTimers: () => {
     vi.useFakeTimers();
@@ -124,20 +124,20 @@ export const testUtils = {
       restore: () => vi.useRealTimers(),
     };
   },
-  
+
   // Performance testing helpers
   measurePerformance: async (fn: () => Promise<void> | void) => {
     const start = performance.now();
     await fn();
     return performance.now() - start;
   },
-  
+
   // Memory leak detection helpers
   checkMemoryLeaks: () => {
     if ('gc' in global && typeof global.gc === 'function') {
       global.gc();
     }
-    
+
     return {
       heapUsed: process.memoryUsage?.()?.heapUsed || 0,
       external: process.memoryUsage?.()?.external || 0

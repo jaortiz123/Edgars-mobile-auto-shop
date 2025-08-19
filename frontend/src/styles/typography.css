@@ -178,11 +178,11 @@ select:focus-visible {
   .text-fs-6 {
     font-size: var(--fs-5, 2rem); /* Scale down hero text on mobile */
   }
-  
+
   .text-fs-5 {
     font-size: var(--fs-4, 1.5rem);
   }
-  
+
   /* Increase line height for better mobile readability */
   .text-body,
   .text-fs-2 {
@@ -198,17 +198,17 @@ select:focus-visible {
     color: black;
     background: white;
   }
-  
+
   h1, h2, h3, h4, h5, h6 {
     color: black;
     page-break-after: avoid;
   }
-  
+
   a {
     color: black;
     text-decoration: underline;
   }
-  
+
   a[href]:after {
     content: " (" attr(href) ")";
     font-size: 0.8em;

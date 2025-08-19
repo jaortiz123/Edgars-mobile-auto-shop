@@ -16,31 +16,31 @@ const allowedConsoleErrors: RegExp[] = [
   // AppointmentContext errors during test scenarios
   /AppointmentContext: Error in refreshBoard/,
   /Failed to send message/,
-  
+
   // React act() warnings (handled separately but listed for awareness)
   /Warning: An update to .* inside a test was not wrapped in act/,
-  
+
   // Network/API errors in test scenarios
   /Network request failed/,
   /API error:/,
   /Failed to fetch/,
-  
+
   // Authentication errors during negative testing
   /Authentication failed/,
   /Unauthorized access/,
-  
+
   // Form validation errors (expected in negative tests)
   /Validation error:/,
   /Invalid form data/,
-  
+
   // Mock-related debug messages that shouldn't fail tests
   /🔧 DIRECT MOCK:/,
   /MOCK FACTORY:/,
-  
+
   // MSW-related warnings that are expected
   /Found a redundant usage of query/,
   /\[MSW\]/,
-  
+
   // React Testing Library warnings that are acceptable
   /Consider adding the "hidden" attribute/,
   /Unable to find an element with the text/,
@@ -52,13 +52,13 @@ const allowedConsoleErrors: RegExp[] = [
  */
 function safeArgsToString(args: unknown[]): string {
   const seen = new WeakSet<object>();
-  
+
   const safeArgs = args.map((arg) => {
     if (arg === null) return 'null';
     if (arg === undefined) return 'undefined';
     if (typeof arg === 'string') return arg;
     if (typeof arg === 'number' || typeof arg === 'boolean') return String(arg);
-    
+
     if (typeof arg === 'object' && arg !== null) {
       try {
         return JSON.stringify(arg, (key, value) => {
@@ -76,14 +76,14 @@ function safeArgsToString(args: unknown[]): string {
         }
       }
     }
-    
+
     try {
       return String(arg);
     } catch {
       return `[${typeof arg}]`;
     }
   });
-  
+
   return safeArgs.join(' ');
 }
 
@@ -102,34 +102,34 @@ failOnConsole({
   shouldFailOnDebug: false,
   shouldFailOnInfo: false,
   shouldFailOnLog: false,
-  
+
   // Use our sophisticated allowlist system
   allowMessage: (message, methodName) => {
     // Convert the message to our expected format for pattern matching
     const fullMessage = message;
     return isAllowedConsoleMessage(fullMessage);
   },
-  
+
   // Enhanced error message to maintain CI-STRICT-001 branding
   errorMessage: (methodName, bold) => {
     return `${bold('[CI-STRICT-001]')} Unexpected console.${methodName} call detected. Use withConsoleErrorSpy() for tests that expect ${methodName} calls, or add patterns to allowedConsoleErrors.`;
   },
-  
+
   // Skip console checking for integration tests that have different setup
   skipTest: ({ testPath }) => {
     // Skip for integration tests that use MSW setup
     if (testPath.includes('.it.tsx') || testPath.includes('.it.ts')) {
       return true;
     }
-    
+
     // Skip for specific legacy test files
     if (testPath.includes('.old.tsx') || testPath.includes('.legacy.')) {
       return true;
     }
-    
+
     return false;
   },
-  
+
   // Add delay in non-CI environments for debugging
   afterEachDelay: process.env.CI ? 0 : 100,
 });
@@ -143,7 +143,7 @@ export async function withConsoleErrorSpy<T>(testFn: () => T | Promise<T>): Prom
   // Store original console methods
   const originalError = console.error;
   const originalWarn = console.warn;
-  
+
   // Create spies that don't throw
   const errorSpy = vi.fn((...args) => {
     // Only log to actual console in development for debugging
@@ -156,11 +156,11 @@ export async function withConsoleErrorSpy<T>(testFn: () => T | Promise<T>): Prom
       originalWarn(...args);
     }
   });
-  
+
   // Temporarily replace console methods with non-throwing versions
   console.error = errorSpy;
   console.warn = warnSpy;
-  
+
   try {
     const result = await Promise.resolve(testFn());
     return result;
@@ -173,7 +173,7 @@ export async function withConsoleErrorSpy<T>(testFn: () => T | Promise<T>): Prom
 
 /**
  * Get current console spy references for test assertions
- * Note: With vitest-fail-on-console, spies work differently, so this provides 
+ * Note: With vitest-fail-on-console, spies work differently, so this provides
  * compatibility for existing tests
  */
 export function getConsoleSpies() {
@@ -233,7 +233,7 @@ afterEach(() => {
       throw error;
     }
   }
-  
+
   // 2. Ensure all mocks are properly reset (redundant safety check)
   vi.clearAllMocks();
 });

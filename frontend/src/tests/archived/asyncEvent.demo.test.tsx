@@ -55,7 +55,7 @@ describe('ACT-HELPER-001: AsyncEvent Helper Demonstration', () => {
     await act(async () => {
       fireEvent.change(input, { target: { value: 'Test input' } });
     });
-    
+
     await act(async () => {
       fireEvent.click(button);
     });
@@ -75,7 +75,7 @@ describe('ACT-HELPER-001: AsyncEvent Helper Demonstration', () => {
     await asyncEvent(() => {
       fireEvent.change(input, { target: { value: 'Test input' } });
     });
-    
+
     await asyncEvent(() => {
       fireEvent.click(button);
     });
@@ -127,7 +127,7 @@ describe('ACT-HELPER-001: AsyncEvent Helper Demonstration', () => {
     await wrapUserAction(() => {
       fireEvent.change(input, { target: { value: 'User action' } });
     });
-    
+
     await wrapUserAction(() => {
       fireEvent.click(button);
     });

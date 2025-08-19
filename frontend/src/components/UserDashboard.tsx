@@ -80,7 +80,7 @@ const UserDashboard: React.FC = () => {
   const handleViewServiceHistory = () => {
     // For now, show informative message about upcoming feature
     const hasVehicles = (user?.profile?.vehicles?.length || 0) > 0;
-    
+
     if (!hasVehicles) {
       if (window.confirm(
         '🚗 No Vehicles Found\n\n' +
@@ -223,7 +223,7 @@ const UserDashboard: React.FC = () => {
         <div className="bg-white rounded-lg border p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
           <div className="space-y-3">
-            <button 
+            <button
               onClick={handleAddVehicle}
               className="w-full flex items-center justify-between p-3 text-left bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
             >
@@ -238,7 +238,7 @@ const UserDashboard: React.FC = () => {
               </svg>
             </button>
 
-            <button 
+            <button
               onClick={handleScheduleService}
               className="w-full flex items-center justify-between p-3 text-left bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
             >
@@ -253,7 +253,7 @@ const UserDashboard: React.FC = () => {
               </svg>
             </button>
 
-            <button 
+            <button
               onClick={handleViewServiceHistory}
               className="w-full flex items-center justify-between p-3 text-left bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
             >
@@ -282,7 +282,7 @@ const UserDashboard: React.FC = () => {
                 <p className="text-xs text-gray-500">Today</p>
               </div>
             </div>
-            
+
             <div className="flex items-start space-x-3">
               <div className="p-1 bg-green-100 rounded-full mt-1">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>

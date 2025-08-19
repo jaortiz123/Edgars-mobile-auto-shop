@@ -70,16 +70,16 @@ class PerformanceMonitoringService {
   private init() {
     // Setup performance observers
     this.setupPerformanceObservers();
-    
+
     // Setup memory monitoring
     this.setupMemoryMonitoring();
-    
+
     // Setup network monitoring
     this.setupNetworkMonitoring();
-    
+
     // Setup periodic reporting
     this.setupPeriodicReporting();
-    
+
     console.log('📊 Sprint 3C Performance Monitoring initialized');
   }
 
@@ -156,7 +156,7 @@ class PerformanceMonitoringService {
         downlink?: number;
         addEventListener: (event: string, callback: () => void) => void;
       } }).connection;
-      
+
       const recordNetworkInfo = () => {
         if (connection) {
           this.recordMetric('network', connection.rtt || 0, {
@@ -230,12 +230,12 @@ class PerformanceMonitoringService {
       // Store metrics in localStorage for persistence
       const stored = JSON.parse(localStorage.getItem('sprint3c_metrics') || '[]');
       stored.push(...this.measurementQueue);
-      
+
       // Keep only last 1000 metrics
       if (stored.length > 1000) {
         stored.splice(0, stored.length - 1000);
       }
-      
+
       localStorage.setItem('sprint3c_metrics', JSON.stringify(stored));
       this.measurementQueue = [];
     } catch (error) {
@@ -256,7 +256,7 @@ class PerformanceMonitoringService {
     }
 
     const metrics = this.componentMetrics.get(name)!;
-    
+
     switch (operation) {
       case 'mount':
         metrics.mountTime = duration || 0;
@@ -271,7 +271,7 @@ class PerformanceMonitoringService {
         metrics.errorCount++;
         break;
     }
-    
+
     metrics.lastUpdate = new Date().toISOString();
     this.recordMetric(`component-${operation}`, duration || 1, { component: name });
   }
@@ -286,11 +286,11 @@ class PerformanceMonitoringService {
 
   public startMeasurement(name: string): () => void {
     const startTime = performance.now();
-    
+
     return () => {
       const duration = performance.now() - startTime;
       this.recordMetric(name, duration);
-      
+
       // Warn about slow operations
       if (duration > 16) { // One frame at 60fps
         console.warn(`🐌 Slow operation detected: ${name} took ${duration.toFixed(2)}ms`);
@@ -323,7 +323,7 @@ class PerformanceMonitoringService {
     const delivered = this.getMetricCount('notification-delivered');
     const failed = this.getMetricCount('notification-failed');
     const retried = this.getMetricCount('notification-retry');
-    
+
     return {
       sent,
       delivered,
@@ -338,7 +338,7 @@ class PerformanceMonitoringService {
     const calculations = this.getMetricCount('time-utils-calculation');
     const cacheHits = this.getMetricCount('time-utils-cache-hit');
     const cacheMisses = this.getMetricCount('time-utils-cache-miss');
-    
+
     return {
       calculations,
       cacheHits,
@@ -373,7 +373,7 @@ class PerformanceMonitoringService {
   private getMetricAverage(name: string): number {
     const metrics = this.metrics.get(name) || [];
     if (metrics.length === 0) return 0;
-    
+
     const sum = metrics.reduce((acc, metric) => acc + metric.value, 0);
     return sum / metrics.length;
   }
@@ -402,7 +402,7 @@ class PerformanceMonitoringService {
         score -= metrics.errorCount * 5;
         recommendations.push(`Component ${name} has ${metrics.errorCount} errors. Review error handling.`);
       }
-      
+
       if (metrics.renderTime > 16) {
         score -= 10;
         recommendations.push(`Component ${name} render time (${metrics.renderTime.toFixed(2)}ms) exceeds 16ms frame budget.`);
@@ -452,7 +452,7 @@ class PerformanceMonitoringService {
     // Auto-optimization based on performance metrics
     if (report.overall.score < 70) {
       console.warn('🚨 Sprint 3C Performance Warning:', report.overall);
-      
+
       // Log recommendations
       report.overall.recommendations.forEach(rec => {
         console.warn('💡 Recommendation:', rec);
@@ -467,7 +467,7 @@ class PerformanceMonitoringService {
 
   private triggerMemoryCleanup() {
     console.log('🧹 Triggering memory cleanup for Sprint 3C...');
-    
+
     // Clear old metrics
     this.metrics.forEach((metrics) => {
       if (metrics.length > 50) {

@@ -28,19 +28,19 @@ export interface AppointmentStatistics {
   today: number;
 }
 
-export type AppointmentStatus = 
-  | 'pending' 
-  | 'confirmed' 
-  | 'in-progress' 
-  | 'completed' 
-  | 'cancelled' 
+export type AppointmentStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'in-progress'
+  | 'completed'
+  | 'cancelled'
   | 'no-show';
 
-export type UrgencyLevel = 
-  | 'normal' 
-  | 'today' 
-  | 'starting-soon' 
-  | 'running-late' 
+export type UrgencyLevel =
+  | 'normal'
+  | 'today'
+  | 'starting-soon'
+  | 'running-late'
   | 'overdue';
 
 export interface UrgencyThresholds {

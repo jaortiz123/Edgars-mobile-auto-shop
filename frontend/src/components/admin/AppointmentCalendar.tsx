@@ -30,7 +30,7 @@ interface AppointmentCalendarProps {
   initialDate?: Date;
 }
 
-export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({ 
+export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   appointments,
   onAppointmentClick,
   onAddAppointment,
@@ -48,18 +48,18 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
     }
     // When initialDate is undefined, do not force-change currentDate
   }, [initialDate]);
-  
+
   // Generate days for week view
   const startOfTheWeek = startOfWeek(currentDate);
   const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(startOfTheWeek, i));
-  
+
   // Generate days for month view
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
-  
+
   // Get appointments for current day
-  const dayAppointments = appointments.filter(apt => 
+  const dayAppointments = appointments.filter(apt =>
     isSameDay(apt.dateTime, currentDate)
   ).sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
 
@@ -130,21 +130,21 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-gray-900">📅 Today's Schedule</h2>
         <div className="flex space-x-2">
-          <Button 
+          <Button
             onClick={() => setView('day')}
             variant={view === 'day' ? 'info' : 'secondary'}
             size="sm"
           >
             📋 Day View
           </Button>
-          <Button 
+          <Button
             onClick={() => setView('week')}
             variant={view === 'week' ? 'info' : 'secondary'}
             size="sm"
           >
             📆 Week View
           </Button>
-          <Button 
+          <Button
             onClick={() => setView('month')}
             variant={view === 'month' ? 'info' : 'secondary'}
             size="sm"
@@ -156,7 +156,7 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
 
       {/* Date navigation */}
       <div className="flex justify-between items-center mb-6 bg-gray-50 rounded-lg p-4">
-        <Button 
+        <Button
           onClick={goToPrevious}
           variant="outline"
           size="sm"
@@ -164,14 +164,14 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
           <span className="text-base mr-2">←</span>
           <span className="font-medium">Previous</span>
         </Button>
-        
+
         <h3 className="text-lg font-bold text-gray-900">
           {view === 'day' && format(currentDate, 'EEEE, MMMM d, yyyy')}
           {view === 'week' && `Week of ${format(startOfTheWeek, 'MMMM d, yyyy')}`}
           {view === 'month' && format(currentDate, 'MMMM yyyy')}
         </h3>
-        
-        <Button 
+
+        <Button
           onClick={goToNext}
           variant="outline"
           size="sm"
@@ -187,7 +187,7 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
           {dayAppointments.length > 0 ? (
             <div className="space-y-3">
               {dayAppointments.map(appointment => (
-                <div 
+                <div
                   key={appointment.id}
                   data-testid={`calendar-tile-${appointment.id}`}
                   className="flex flex-col p-3 border-b border-gray-200 last:border-b-0 hover:shadow-md cursor-pointer transition-all duration-200 hover:border-blue-300"
@@ -218,7 +218,7 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                   <Badge variant="outline">{appointment.service}</Badge>
                   <div className="flex justify-end mt-2 space-x-2">
                     {appointment.status === 'scheduled' && onStartJob && (
-                      <button 
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           onStartJob(appointment.id);
@@ -229,7 +229,7 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                       </button>
                     )}
                     {appointment.status === 'in-progress' && onCompleteJob && (
-                      <button 
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           onCompleteJob(appointment.id);
@@ -240,7 +240,7 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                       </button>
                     )}
                     {appointment.phone && onCallCustomer && (
-                      <button 
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           onCallCustomer(appointment.phone!);
@@ -259,7 +259,7 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
               <div className="text-6xl mb-4">🛠️</div>
               <p className="text-lg font-medium text-gray-600 mb-4">Today is open - Schedule a service</p>
               <p className="text-gray-500 mb-6">Looks like you have a free day!</p>
-              <button 
+              <button
                 onClick={onAddAppointment}
                 className="px-6 py-3 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors shadow-sm"
               >
@@ -278,12 +278,12 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
               const dayAppointments = appointments
                 .filter(apt => isSameDay(apt.dateTime, day))
                 .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
-              
+
               return (
                 <div key={day.toString()} className={`border rounded-lg overflow-hidden flex flex-col ${hasConflict(dayAppointments) ? 'border-red-500 ring-2 ring-red-500' : ''}`}>
                   <div className={`py-3 font-bold text-center text-sm ${
-                    isSameDay(day, new Date()) 
-                      ? 'bg-blue-500 text-white' 
+                    isSameDay(day, new Date())
+                      ? 'bg-blue-500 text-white'
                       : 'bg-gray-100 text-gray-700'
                   }`}>
                     {format(day, 'EEE')}
@@ -293,7 +293,7 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                   <div className="p-2 space-y-1 flex-1 min-h-[120px] relative">
                     {dayAppointments.length > 0 ? (
                       dayAppointments.map(apt => (
-                        <div 
+                        <div
                           key={apt.id}
                           onClick={() => onAppointmentClick(apt)}
                           className={`w-full p-1 text-xs rounded cursor-pointer hover:shadow-sm transition-shadow mb-1 ${getStatusBg(apt.status)}`}
@@ -327,19 +327,19 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
               </div>
             ))}
           </div>
-          
+
           {/* Calendar Body */}
           <div className="grid grid-cols-7">
             {/* Add empty cells for days before month start */}
             {Array.from({ length: monthStart.getDay() }).map((_, index) => (
               <div key={`empty-${index}`} className="h-24 border-b border-r border-gray-200"></div>
             ))}
-            
+
             {/* Month days */}
             {monthDays.map(day => {
               const dayAppointments = getAppointmentsForDay(day);
               const appointmentCount = dayAppointments.length;
-              
+
               return (
                 <div
                   key={day.toString()}
@@ -357,7 +357,7 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                     <div className={`text-sm font-medium ${isToday(day) ? 'text-blue-700' : ''}`}>
                       {format(day, 'd')}
                     </div>
-                    
+
                     {appointmentCount > 0 && (
                       <div className="flex-1 flex items-center justify-center">
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -366,13 +366,13 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Hover tooltip */}
                   {appointmentCount > 0 && (
                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
                       <div className="bg-gray-900 text-white text-xs rounded py-1 px-2 whitespace-nowrap">
-                        {appointmentCount === 1 
-                          ? '1 appointment' 
+                        {appointmentCount === 1
+                          ? '1 appointment'
                           : `${appointmentCount} appointments`
                         }
                         <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
@@ -385,9 +385,9 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
           </div>
         </div>
       )}
-      
+
       <div className="mt-6 flex justify-center">
-        <Button 
+        <Button
           onClick={onAddAppointment}
           variant="primary"
           size="lg"

@@ -36,21 +36,21 @@ describe('AuthService Coverage Tests', () => {
     // Reset all mocks
     vi.clearAllMocks();
     mockLocalStorage.clear();
-    
+
     // Setup localStorage mock
     Object.defineProperty(window, 'localStorage', {
       value: mockLocalStorage,
       writable: true
     });
-    
+
     // Setup fetch mock
     global.fetch = mockFetch;
-    
+
     // Mock jwt-decode module
     vi.doMock('jwt-decode', () => ({
       jwtDecode: mockJwtDecode
     }));
-    
+
     // Dynamic import to get fresh module
     const authModule = await import('../../services/authService.ts');
     authService = authModule.authService;
@@ -112,19 +112,19 @@ describe('AuthService Coverage Tests', () => {
       mockLocalStorage.getItem.mockImplementation(() => {
         throw new Error('Storage access denied');
       });
-      
+
       const token = authService.getToken();
       expect(token).toBeNull();
       expect(consoleWarnSpy).toHaveBeenCalledWith('Failed to access localStorage:', expect.any(Error));
-      
+
       consoleWarnSpy.mockRestore();
     });
 
     it('should set valid token successfully', () => {
       mockJwtDecode.mockReturnValue(mockDecodedToken);
-      
+
       authService.setToken(validToken);
-      
+
       expect(mockJwtDecode).toHaveBeenCalledWith(validToken);
       expect(mockLocalStorage.setItem).toHaveBeenCalledWith('auth_token', validToken);
     });
@@ -132,16 +132,16 @@ describe('AuthService Coverage Tests', () => {
     it('should reject expired token', () => {
       const expiredToken = { ...mockDecodedToken, exp: Math.floor(Date.now() / 1000) - 3600 };
       mockJwtDecode.mockReturnValue(expiredToken);
-      
+
       expect(() => authService.setToken(validToken)).toThrow(AuthError);
       expect(() => authService.setToken(validToken)).toThrow('Invalid or expired token');
     });
 
     it('should clear token from localStorage', () => {
       mockLocalStorage.store['auth_token'] = validToken;
-      
+
       authService.clearToken();
-      
+
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('auth_token');
       expect(mockLocalStorage.store['auth_token']).toBeUndefined();
     });
@@ -158,9 +158,9 @@ describe('AuthService Coverage Tests', () => {
     it('should parse valid token successfully', () => {
       mockLocalStorage.store['auth_token'] = validToken;
       mockJwtDecode.mockReturnValue(mockDecodedToken);
-      
+
       const parsed = authService.parseToken();
-      
+
       expect(parsed).toEqual(mockDecodedToken);
       expect(mockJwtDecode).toHaveBeenCalledWith(validToken);
     });
@@ -173,7 +173,7 @@ describe('AuthService Coverage Tests', () => {
     it('should check if user is logged in with valid token', () => {
       mockLocalStorage.store['auth_token'] = validToken;
       mockJwtDecode.mockReturnValue(mockDecodedToken);
-      
+
       const isLoggedIn = authService.isLoggedIn();
       expect(isLoggedIn).toBe(true);
     });
@@ -182,7 +182,7 @@ describe('AuthService Coverage Tests', () => {
       const expiredToken = { ...mockDecodedToken, exp: Math.floor(Date.now() / 1000) - 3600 };
       mockLocalStorage.store['auth_token'] = validToken;
       mockJwtDecode.mockReturnValue(expiredToken);
-      
+
       const isLoggedIn = authService.isLoggedIn();
       expect(isLoggedIn).toBe(false);
     });
@@ -204,9 +204,9 @@ describe('AuthService Coverage Tests', () => {
         ok: true,
         json: vi.fn().mockResolvedValue(mockLoginResponse)
       });
-      
+
       await authService.login('test@example.com', 'password123');
-      
+
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/customers/login'),
         expect.objectContaining({
@@ -236,7 +236,7 @@ describe('AuthService Coverage Tests', () => {
         status: 401,
         json: vi.fn().mockResolvedValue({ message: 'Invalid credentials' })
       });
-      
+
       await expect(authService.login('test@example.com', 'wrongpassword')).rejects.toThrow(AuthError);
       await expect(authService.login('test@example.com', 'wrongpassword')).rejects.toThrow('Invalid credentials');
     });
@@ -248,9 +248,9 @@ describe('AuthService Coverage Tests', () => {
         ok: true,
         json: vi.fn().mockResolvedValue({ message: 'Registration successful' })
       });
-      
+
       await authService.register('test@example.com', 'password123');
-      
+
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/customers/register'),
         expect.objectContaining({
@@ -289,9 +289,9 @@ describe('AuthService Coverage Tests', () => {
         ok: true,
         json: vi.fn().mockResolvedValue(mockProfileData)
       });
-      
+
       const profile = await authService.getProfile();
-      
+
       expect(profile).toEqual(mockProfileData);
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/customers/profile'),
@@ -306,7 +306,7 @@ describe('AuthService Coverage Tests', () => {
 
     it('should throw AuthError when no token exists', async () => {
       mockLocalStorage.store = {};
-      
+
       await expect(authService.getProfile()).rejects.toThrow(AuthError);
       await expect(authService.getProfile()).rejects.toThrow('No authentication token');
     });
@@ -321,13 +321,13 @@ describe('AuthService Coverage Tests', () => {
         iat: 1516239022,
         exp: 9999999999
       });
-      
+
       mockFetch.mockResolvedValue({
         ok: false,
         status: 401,
         json: vi.fn().mockResolvedValue({ message: 'Unauthorized' })
       });
-      
+
       // Make the call and check both the error type and message in one call
       let thrownError: Error | null = null;
       try {
@@ -335,7 +335,7 @@ describe('AuthService Coverage Tests', () => {
       } catch (error) {
         thrownError = error as Error;
       }
-      
+
       expect(thrownError).toBeInstanceOf(AuthError);
       expect(thrownError?.message).toBe('Session expired. Please log in again.');
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('auth_token');
@@ -345,7 +345,7 @@ describe('AuthService Coverage Tests', () => {
   describe('Network Error Handling', () => {
     it('should handle fetch rejection', async () => {
       mockFetch.mockRejectedValue(new Error('Network failed'));
-      
+
       await expect(authService.login('test@example.com', 'password123')).rejects.toThrow(NetworkError);
       await expect(authService.login('test@example.com', 'password123')).rejects.toThrow('Network error: Network failed');
     });
@@ -357,7 +357,7 @@ describe('AuthService Coverage Tests', () => {
       mockJwtDecode.mockImplementation(() => {
         throw new Error('Invalid token');
       });
-      
+
       const result = authService.parseToken();
       expect(result).toBeNull();
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('auth_token');
@@ -370,7 +370,7 @@ describe('AuthService Coverage Tests', () => {
         name: 'John Doe'
         // Missing sub and exp
       });
-      
+
       const result = authService.parseToken();
       expect(result).toBeNull();
     });
@@ -382,7 +382,7 @@ describe('AuthService Coverage Tests', () => {
         sub: '1234567890',
         exp: nearExpiry
       });
-      
+
       const shouldRefresh = authService.shouldRefreshToken();
       expect(shouldRefresh).toBe(true);
     });
@@ -394,7 +394,7 @@ describe('AuthService Coverage Tests', () => {
         sub: '1234567890',
         exp: farExpiry
       });
-      
+
       const shouldRefresh = authService.shouldRefreshToken();
       expect(shouldRefresh).toBe(false);
     });
@@ -412,7 +412,7 @@ describe('AuthService Coverage Tests', () => {
         sub: '1234567890',
         exp: expiredToken
       });
-      
+
       const isLoggedIn = authService.isLoggedIn();
       expect(isLoggedIn).toBe(false);
     });
@@ -424,7 +424,7 @@ describe('AuthService Coverage Tests', () => {
         sub: '1234567890',
         exp: soonExpiry
       });
-      
+
       const isLoggedIn = authService.isLoggedIn();
       expect(isLoggedIn).toBe(false);
     });

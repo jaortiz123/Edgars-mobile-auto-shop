@@ -147,4 +147,3 @@ cd frontend && pnpm i && pnpm dev
 5. Axe a11y scan: **0 serious/critical** on Calendar, Board, Drawer.
 
 **Build it. Demo it. Iterate.**
-

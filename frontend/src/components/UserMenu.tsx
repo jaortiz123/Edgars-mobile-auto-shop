@@ -48,7 +48,7 @@ const UserMenu: React.FC = () => {
               <div className="font-medium">{user.email}</div>
               <div className="text-xs text-gray-500">Customer Account</div>
             </div>
-            
+
             <Link
               to="/profile"
               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
@@ -57,7 +57,7 @@ const UserMenu: React.FC = () => {
               <User className="inline-block w-4 h-4 mr-2" />
               Profile & Vehicles
             </Link>
-            
+
             <button
               onClick={handleLogout}
               className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"

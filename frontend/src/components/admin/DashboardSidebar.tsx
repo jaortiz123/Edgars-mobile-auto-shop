@@ -60,7 +60,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               </div>
             </CardContent>
           </Card>
-          
+
           {/* Quick Tools */}
           <Card>
             <CardHeader>
@@ -71,28 +71,28 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             </CardHeader>
                         <CardContent className="p-sp-5">
               <div className="grid grid-cols-2 gap-sp-2">
-                <button 
+                <button
                   onClick={handleWorkOrders}
                   className="p-sp-4 rounded-xl hover:bg-blue-100 transition-colors flex flex-col items-center space-y-sp-2 touch-manipulation"
                 >
                   <span className="text-fs-3">📋</span>
                   <span className="font-medium text-fs-0">Work Orders</span>
                 </button>
-                <button 
+                <button
                   onClick={handlePartsLookup}
                   className="p-sp-4 rounded-xl hover:bg-green-100 transition-colors flex flex-col items-center space-y-sp-2 touch-manipulation"
                 >
                   <span className="text-fs-3">🔧</span>
                   <span className="font-medium text-fs-0">Parts Lookup</span>
                 </button>
-                <button 
+                <button
                   onClick={handleCreateQuote}
                   className="p-sp-4 rounded-xl hover:bg-yellow-100 transition-colors flex flex-col items-center space-y-sp-2 touch-manipulation"
                 >
                   <span className="text-fs-3">💰</span>
                   <span className="font-medium text-fs-0">Create Quote</span>
                 </button>
-                <button 
+                <button
                   onClick={handleEmergency}
                   className="p-sp-4 rounded-xl hover:bg-red-100 transition-colors flex flex-col items-center space-y-sp-2 touch-manipulation"
                 >

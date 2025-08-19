@@ -171,8 +171,8 @@ export const RetryNotificationComponent = () => {
       {error && (
         <div data-testid="error-toast" className="error-toast">
           <span data-testid="error-message">{error}</span>
-          <button 
-            data-testid="retry-button" 
+          <button
+            data-testid="retry-button"
             onClick={handleRetry}
             disabled={retryCount >= 3}
           >
@@ -328,12 +328,12 @@ describe('P2-T-007: Notification System Integration Tests - Final', () => {
   it('should verify exactly one MSW call per notification', async () => {
     let callCount = 0;
     const { http, HttpResponse } = await import('msw');
-    
+
     server.use(
       http.post('http://localhost:3000/notifications', async () => {
         callCount++;
         console.log(`📨 MSW: Notification call count: ${callCount}`);
-        
+
         return HttpResponse.json({
           data: {
             id: `notification-${Date.now()}`,
@@ -348,7 +348,7 @@ describe('P2-T-007: Notification System Integration Tests - Final', () => {
         });
       })
     );
-    
+
     render(
       <TestAppWrapper>
         <ReminderNotificationComponent />

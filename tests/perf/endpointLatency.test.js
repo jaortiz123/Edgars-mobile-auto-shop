@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * P2-T-010: Performance Smoke Tests
- * 
+ *
  * Super-lightweight performance test using undici to measure GET /dashboard/stats latency.
  * Fails if p95 > 500ms on CI AWS dev environment.
  * Publishes timing as an artifact and runs in <1s on CI.
@@ -34,7 +34,7 @@ function calculatePercentile(latencies, percentile) {
  */
 async function measureLatency() {
   const startTime = process.hrtime.bigint();
-  
+
   try {
     const response = await request(`${CONFIG.endpoint}${CONFIG.path}`, {
       method: 'GET',
@@ -97,10 +97,10 @@ async function runPerformanceTest() {
   // Make requests sequentially to avoid overwhelming the server
   for (let i = 0; i < CONFIG.samples; i++) {
     process.stdout.write(`\r⏱️  Progress: ${i + 1}/${CONFIG.samples} requests`);
-    
+
     const result = await measureLatency();
     results.push(result);
-    
+
     if (result.success) {
       latencies.push(result.latency);
       successCount++;

@@ -1,6 +1,6 @@
 /**
  * Sprint 1B Card Design System - Robustness Utilities
- * 
+ *
  * This file provides robust utilities for card components including:
  * - Safe date parsing and validation
  * - Type guards for card data
@@ -65,7 +65,7 @@ export function parseAppointmentTime(dateString: string | null | undefined): Dat
 
   try {
     const parsed = new Date(dateString);
-    
+
     // Check if date is valid
     if (isNaN(parsed.getTime())) {
       // Silently return fallback to avoid test issues
@@ -126,15 +126,15 @@ export function determineUrgencyLevel(
 ): 'urgent' | 'soon' | 'normal' {
   try {
     if (!card.start) return 'normal';
-    
+
     // Check time-based urgency first
     if (isOverdueFunc(appointmentTime)) return 'urgent';
     if (isRunningLateFunc(appointmentTime)) return 'soon';
-    
+
     // Check card-defined urgency
     if (card.urgency === 'urgent') return 'urgent';
     if (card.urgency === 'soon') return 'soon';
-    
+
     return 'normal';
   } catch (error) {
     console.error('Error determining urgency level:', error);
@@ -148,21 +148,21 @@ export function determineUrgencyLevel(
 export function createCardAriaLabel(card: ValidatedCard, urgencyLevel: string, minutesUntil: number): string {
   try {
     const parts = [];
-    
+
     // Basic appointment info
     parts.push(`Appointment for ${card.customerName}`);
     parts.push(`Vehicle: ${card.vehicle}`);
-    
+
     // Service information
     if (card.servicesSummary) {
       parts.push(`Services: ${card.servicesSummary}`);
     }
-    
+
     // Price information
     if (typeof card.price === 'number') {
       parts.push(`Total: ${formatCardPrice(card.price)}`);
     }
-    
+
     // Timing information
     if (card.start) {
       if (minutesUntil > 0) {
@@ -173,14 +173,14 @@ export function createCardAriaLabel(card: ValidatedCard, urgencyLevel: string, m
         parts.push('Starting now');
       }
     }
-    
+
     // Urgency information
     if (urgencyLevel === 'urgent') {
       parts.push('URGENT appointment');
     } else if (urgencyLevel === 'soon') {
       parts.push('Starting soon');
     }
-    
+
     return parts.join(', ');
   } catch (error) {
     console.error('Error creating ARIA label:', error);
@@ -198,7 +198,7 @@ export function createStatusAnnouncement(
 ): string | null {
   try {
     if (previousUrgency === currentUrgency) return null;
-    
+
     if (currentUrgency === 'urgent') {
       return `${customerName}'s appointment is now urgent`;
     } else if (currentUrgency === 'soon') {
@@ -206,7 +206,7 @@ export function createStatusAnnouncement(
     } else if (previousUrgency !== 'normal') {
       return `${customerName}'s appointment status returned to normal`;
     }
-    
+
     return null;
   } catch (error) {
     console.error('Error creating status announcement:', error);
@@ -222,7 +222,7 @@ export function createDebouncedFunction<T extends (...args: unknown[]) => unknow
   delay: number
 ): T {
   let timeoutId: ReturnType<typeof setTimeout>;
-  
+
   return ((...args: Parameters<T>) => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => func(...args), delay);
@@ -234,18 +234,18 @@ export function createDebouncedFunction<T extends (...args: unknown[]) => unknow
  */
 export class IntervalManager {
   private intervals: Set<ReturnType<typeof setTimeout>> = new Set();
-  
+
   create(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
     const intervalId = setInterval(callback, delay);
     this.intervals.add(intervalId);
     return intervalId;
   }
-  
+
   clear(intervalId: ReturnType<typeof setTimeout>): void {
     clearInterval(intervalId);
     this.intervals.delete(intervalId);
   }
-  
+
   clearAll(): void {
     this.intervals.forEach(intervalId => clearInterval(intervalId));
     this.intervals.clear();
@@ -279,11 +279,11 @@ export function measureCardPerformance<T>(
   try {
     const result = operation();
     const endTime = performance.now();
-    
+
     if (endTime - startTime > 16) { // More than one frame at 60fps
       console.warn(`Slow card operation detected: ${operationName} took ${endTime - startTime}ms`);
     }
-    
+
     return result;
   } catch (error) {
     const endTime = performance.now();
@@ -304,9 +304,9 @@ export const CardAccessibility = {
       announcer.setAttribute('aria-atomic', 'true');
       announcer.className = 'sr-only';
       announcer.textContent = message;
-      
+
       document.body.appendChild(announcer);
-      
+
       // Clean up after announcement
       setTimeout(() => {
         if (document.body.contains(announcer)) {
@@ -317,13 +317,13 @@ export const CardAccessibility = {
       console.error('Failed to announce to screen reader:', error);
     }
   },
-  
+
   // Enhanced focus management
   manageFocus: {
     saveFocus(): Element | null {
       return document.activeElement;
     },
-    
+
     restoreFocus(element: Element | null): void {
       if (element && 'focus' in element && typeof element.focus === 'function') {
         try {
@@ -333,7 +333,7 @@ export const CardAccessibility = {
         }
       }
     },
-    
+
     focusCard(cardId: string): void {
       try {
         const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);

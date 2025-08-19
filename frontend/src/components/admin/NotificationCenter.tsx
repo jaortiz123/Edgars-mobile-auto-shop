@@ -11,14 +11,14 @@ export default function NotificationCenter() {
     const handleNotificationAdded = () => {
       setNotifications(getNotifications());
     };
-    
+
     const handleNotificationUpdated = () => {
       setNotifications(getNotifications());
     };
 
     window.addEventListener('notificationAdded', handleNotificationAdded);
     window.addEventListener('notificationUpdated', handleNotificationUpdated);
-    
+
     return () => {
       window.removeEventListener('notificationAdded', handleNotificationAdded);
       window.removeEventListener('notificationUpdated', handleNotificationUpdated);
@@ -34,8 +34,8 @@ export default function NotificationCenter() {
 
   return (
     <div className="relative">
-      <button 
-        onClick={() => setIsOpen(!isOpen)} 
+      <button
+        onClick={() => setIsOpen(!isOpen)}
         className="p-sp-2 rounded-full hover:bg-gray-200 relative"
         aria-label={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ''}`}
       >
@@ -53,7 +53,7 @@ export default function NotificationCenter() {
             <h3 className="font-bold">Notifications</h3>
             <div className="flex items-center gap-sp-2">
               {notifications.length > 0 && (
-                <button 
+                <button
                   onClick={() => {
                     clearAllNotifications();
                     setNotifications([]);
@@ -64,8 +64,8 @@ export default function NotificationCenter() {
                   Clear All
                 </button>
               )}
-              <button 
-                onClick={() => setIsOpen(false)} 
+              <button
+                onClick={() => setIsOpen(false)}
                 className="p-sp-1 rounded-full hover:bg-gray-100"
                 aria-label="Close notifications"
                 title="Close notifications"

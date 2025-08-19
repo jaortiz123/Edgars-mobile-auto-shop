@@ -60,7 +60,7 @@ describe('NotificationService Coverage Tests', () => {
     // Reset all mocks
     vi.clearAllMocks();
     mockLocalStorage.clear();
-    
+
     // Setup localStorage mock
     Object.defineProperty(window, 'localStorage', {
       value: mockLocalStorage,
@@ -80,7 +80,7 @@ describe('NotificationService Coverage Tests', () => {
       className: '',
       style: {}
     } as unknown as HTMLElement;
-    
+
     vi.spyOn(document, 'createElement').mockReturnValue(mockElement);
     vi.spyOn(document.body, 'appendChild').mockImplementation(vi.fn());
     vi.spyOn(document.body, 'removeChild').mockImplementation(vi.fn());
@@ -104,7 +104,7 @@ describe('NotificationService Coverage Tests', () => {
   describe('Core Notification Functions', () => {
     it('should add a basic notification', () => {
       const id = addNotification('info', 'Test message');
-      
+
       expect(id).toBeTruthy();
       const notifications = getNotifications();
       expect(notifications).toHaveLength(1);
@@ -121,7 +121,7 @@ describe('NotificationService Coverage Tests', () => {
       };
 
       const id = addNotification('reminder', 'Reminder message', options);
-      
+
       expect(id).toBeTruthy();
       const notifications = getNotifications();
       expect(notifications[0]).toMatchObject({
@@ -149,7 +149,7 @@ describe('NotificationService Coverage Tests', () => {
     it('should sanitize message input', () => {
       const maliciousMessage = '<script>alert("xss")</script>Test';
       addNotification('info', maliciousMessage);
-      
+
       const notifications = getNotifications();
       expect(notifications[0].message).not.toContain('<script>');
       expect(notifications[0].message).toContain('Test');
@@ -188,7 +188,7 @@ describe('NotificationService Coverage Tests', () => {
     it('should mark notification as read', () => {
       const id = addNotification('info', 'Test message');
       const result = markAsRead(id);
-      
+
       expect(result).toBe(true);
       const notification = getNotifications().find((n: MockNotification) => n.id === id);
       expect(notification?.read).toBe(true);
@@ -197,7 +197,7 @@ describe('NotificationService Coverage Tests', () => {
     it('should mark notification as read using alias method', () => {
       const id = addNotification('info', 'Test message');
       const result = markNotificationAsRead(id);
-      
+
       expect(result).toBe(true);
       const notification = getNotifications().find((n: MockNotification) => n.id === id);
       expect(notification?.read).toBe(true);
@@ -206,9 +206,9 @@ describe('NotificationService Coverage Tests', () => {
     it('should mark all notifications as read', () => {
       addNotification('info', 'Message 1');
       addNotification('info', 'Message 2');
-      
+
       markAllAsRead();
-      
+
       const notifications = getNotifications();
       expect(notifications.every((n: MockNotification) => n.read)).toBe(true);
     });
@@ -216,7 +216,7 @@ describe('NotificationService Coverage Tests', () => {
     it('should remove notification by ID', () => {
       const id = addNotification('info', 'Test message');
       const result = removeNotification(id);
-      
+
       expect(result).toBe(true);
       expect(getNotifications()).toHaveLength(0);
     });
@@ -224,9 +224,9 @@ describe('NotificationService Coverage Tests', () => {
     it('should clear all notifications', () => {
       addNotification('info', 'Message 1');
       addNotification('info', 'Message 2');
-      
+
       clearAllNotifications();
-      
+
       expect(getNotifications()).toHaveLength(0);
     });
   });
@@ -234,7 +234,7 @@ describe('NotificationService Coverage Tests', () => {
   describe('Specialized Notification Functions', () => {
     it('should notify customer is late', () => {
       const id = notifyLate('John Doe', 'apt-123', 15);
-      
+
       expect(id).toBeTruthy();
       const notifications = getNotifications();
       expect(notifications[0].type).toBe('late');
@@ -244,7 +244,7 @@ describe('NotificationService Coverage Tests', () => {
 
     it('should notify appointment is overdue', () => {
       const id = notifyOverdue('Jane Smith', 'apt-456', 30);
-      
+
       expect(id).toBeTruthy();
       const notifications = getNotifications();
       expect(notifications[0].type).toBe('overdue');
@@ -254,7 +254,7 @@ describe('NotificationService Coverage Tests', () => {
 
     it('should notify customer arrival', () => {
       const id = notifyArrival('Bob Wilson', 'apt-789');
-      
+
       expect(id).toBeTruthy();
       const notifications = getNotifications();
       expect(notifications[0].type).toBe('arrival');
@@ -264,7 +264,7 @@ describe('NotificationService Coverage Tests', () => {
 
     it('should create reminder notification', () => {
       const id = notifyReminder('Alice Cooper', 'apt-101', 10);
-      
+
       expect(id).toBeTruthy();
       const notifications = getNotifications();
       expect(notifications[0].type).toBe('reminder');
@@ -274,7 +274,7 @@ describe('NotificationService Coverage Tests', () => {
 
     it('should schedule a reminder', () => {
       const id = scheduleReminder('apt-202', 'Charlie Brown', 5);
-      
+
       expect(id).toBeTruthy();
       const notifications = getNotifications();
       expect(notifications[0].type).toBe('reminder');
@@ -285,22 +285,22 @@ describe('NotificationService Coverage Tests', () => {
     it('should subscribe to notification changes', () => {
       const observer = vi.fn();
       const unsubscribe = subscribe(observer);
-      
+
       addNotification('info', 'Test message');
-      
+
       expect(observer).toHaveBeenCalledWith(expect.any(Array));
       expect(observer.mock.calls[0][0]).toHaveLength(1);
-      
+
       unsubscribe();
     });
 
     it('should unsubscribe from notification changes', () => {
       const observer = vi.fn();
       const unsubscribe = subscribe(observer);
-      
+
       unsubscribe();
       addNotification('info', 'Test message');
-      
+
       expect(observer).not.toHaveBeenCalled();
     });
   });
@@ -309,7 +309,7 @@ describe('NotificationService Coverage Tests', () => {
     it('should update configuration', () => {
       const newConfig = { maxNotifications: 50, enablePersistence: false };
       updateConfig(newConfig);
-      
+
       const currentConfig = getConfig();
       expect(currentConfig.maxNotifications).toBe(50);
       expect(currentConfig.enablePersistence).toBe(false);
@@ -317,7 +317,7 @@ describe('NotificationService Coverage Tests', () => {
 
     it('should get current configuration', () => {
       const config = getConfig();
-      
+
       expect(config).toHaveProperty('maxNotifications');
       expect(config).toHaveProperty('retentionPeriod');
       expect(config).toHaveProperty('enablePersistence');
@@ -329,9 +329,9 @@ describe('NotificationService Coverage Tests', () => {
       addNotification('info', 'Message 1');
       addNotification('error', 'Message 2');
       addNotification('info', 'Message 3');
-      
+
       const stats = getStats();
-      
+
       expect(stats.total).toBe(3);
       expect(stats.byType.info).toBe(2);
       expect(stats.byType.error).toBe(1);
@@ -340,7 +340,7 @@ describe('NotificationService Coverage Tests', () => {
 
     it('should get analytics data', () => {
       addNotification('info', 'Test message');
-      
+
       const analytics = getAnalytics();
       expect(analytics).toBeInstanceOf(Array);
       expect(analytics.length).toBeGreaterThan(0);
@@ -349,7 +349,7 @@ describe('NotificationService Coverage Tests', () => {
     it('should clear analytics data', () => {
       addNotification('info', 'Test message');
       clearAnalytics();
-      
+
       const analytics = getAnalytics();
       expect(analytics).toHaveLength(0);
     });
@@ -359,7 +359,7 @@ describe('NotificationService Coverage Tests', () => {
     it('should save notifications to localStorage when persistence enabled', () => {
       updateConfig({ enablePersistence: true });
       addNotification('info', 'Persistent message');
-      
+
       expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
         'notifications',
         expect.stringContaining('Persistent message')
@@ -375,12 +375,12 @@ describe('NotificationService Coverage Tests', () => {
         read: false,
         priority: 'medium'
       }];
-      
+
       mockLocalStorage.setItem('notifications', JSON.stringify(testNotifications));
-      
+
       // Re-initialize to trigger loading with stored data
       initializeService();
-      
+
       const notifications = getNotifications();
       expect(notifications.some((n: MockNotification) => n.message === 'Loaded message')).toBe(true);
     });
@@ -389,7 +389,7 @@ describe('NotificationService Coverage Tests', () => {
       mockLocalStorage.setItem.mockImplementation(() => {
         throw new Error('localStorage error');
       });
-      
+
       // Should not throw error
       expect(() => {
         addNotification('info', 'Test message');
@@ -404,13 +404,13 @@ describe('NotificationService Coverage Tests', () => {
       addNotification('info', 'Expired message', {
         expiresAt: pastDate
       });
-      
+
       // Add current notification
       addNotification('info', 'Current message');
-      
+
       // Get notifications triggers cleanup
       const notifications = getNotifications();
-      
+
       // Only current notification should remain
       expect(notifications).toHaveLength(1);
       expect(notifications[0].message).toBe('Current message');
@@ -418,21 +418,21 @@ describe('NotificationService Coverage Tests', () => {
 
     it('should enforce maximum notification limit', () => {
       updateConfig({ maxNotifications: 3 });
-      
+
       // Add more than the limit
       for (let i = 0; i < 5; i++) {
         addNotification('info', `Message ${i}`);
       }
-      
+
       const notifications = getNotifications();
       expect(notifications.length).toBeLessThanOrEqual(3);
     });
 
     it('should cleanup service resources', () => {
       addNotification('info', 'Test message');
-      
+
       cleanup();
-      
+
       const notifications = getNotifications();
       expect(notifications).toHaveLength(0);
     });
@@ -444,12 +444,12 @@ describe('NotificationService Coverage Tests', () => {
       vi.spyOn(Math, 'random').mockImplementation(() => {
         throw new Error('Random error');
       });
-      
+
       const id = addNotification('info', 'Test message');
-      
+
       // Should return empty string on error
       expect(id).toBe('');
-      
+
       vi.restoreAllMocks();
     });
 
@@ -467,7 +467,7 @@ describe('NotificationService Coverage Tests', () => {
 
     it('should handle empty notification list operations', () => {
       clearAllNotifications();
-      
+
       expect(() => {
         markAllAsRead();
         getUnreadNotifications();
@@ -480,7 +480,7 @@ describe('NotificationService Coverage Tests', () => {
     it('should announce notifications to screen readers when enabled', () => {
       updateConfig({ accessibilityEnabled: true });
       addNotification('info', 'Important message');
-      
+
       // Should have called document.createElement for screen reader announcement
       expect(document.createElement).toHaveBeenCalledWith('div');
     });
@@ -488,9 +488,9 @@ describe('NotificationService Coverage Tests', () => {
     it('should not announce when accessibility is disabled', () => {
       updateConfig({ accessibilityEnabled: false });
       vi.clearAllMocks();
-      
+
       addNotification('info', 'Test message');
-      
+
       expect(document.createElement).not.toHaveBeenCalled();
     });
   });

@@ -18,7 +18,7 @@ describe('Console Guard Tests', () => {
       console.warn('This is an expected warning in negative path testing');
       return 'success';
     });
-    
+
     expect(result).toBe('success');
   });
 });

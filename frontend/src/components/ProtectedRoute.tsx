@@ -7,9 +7,9 @@ interface ProtectedRouteProps {
   fallback?: string;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
-  fallback = '/login' 
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
+  fallback = '/login'
 }) => {
   const { user, loading } = useAuth(); // Changed from useAuthState to useAuth, and isLoading to loading
   const location = useLocation();

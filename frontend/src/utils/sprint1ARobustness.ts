@@ -10,18 +10,18 @@ export function initializeSprint1ARobustness(): void {
   try {
     // Initialize design system validation
     initializeDesignSystemValidation();
-    
+
     // Initialize CSS performance monitoring
     initializeCSSPerformanceMonitoring();
-    
+
     // Add global error handlers for CSS-related issues
     addCSSErrorHandlers();
-    
+
     // Setup development mode enhancements
     if (process.env.NODE_ENV === 'development') {
       setupDevelopmentMode();
     }
-    
+
     // Log successful initialization
     if (process.env.NODE_ENV === 'development') {
       console.log('✅ Sprint 1A Design System Robustness initialized');
@@ -43,7 +43,7 @@ function addCSSErrorHandlers(): void {
       const link = event.target as HTMLLinkElement;
       if (link.rel === 'stylesheet') {
         console.warn('[Design System] CSS loading failed:', link.href);
-        
+
         // Attempt to load fallback styles
         loadFallbackStyles();
       }
@@ -77,7 +77,7 @@ function loadFallbackStyles(): void {
       font-family: system-ui, -apple-system, sans-serif;
       line-height: 1.5;
     }
-    
+
     .text-fs-0 { font-size: 0.75rem; }
     .text-fs-1 { font-size: 0.875rem; }
     .text-fs-2 { font-size: 1rem; }
@@ -85,30 +85,30 @@ function loadFallbackStyles(): void {
     .text-fs-4 { font-size: 1.5rem; }
     .text-fs-5 { font-size: 2rem; }
     .text-fs-6 { font-size: 2.5rem; }
-    
+
     .p-sp-1, .p-1 { padding: 0.5rem; }
     .p-sp-2, .p-2 { padding: 1rem; }
     .p-sp-3, .p-3 { padding: 1.5rem; }
     .p-sp-4, .p-4 { padding: 2rem; }
-    
+
     .m-sp-1, .m-1 { margin: 0.5rem; }
     .m-sp-2, .m-2 { margin: 1rem; }
     .m-sp-3, .m-3 { margin: 1.5rem; }
     .m-sp-4, .m-4 { margin: 2rem; }
-    
+
     .mt-sp-1, .mt-1 { margin-top: 0.5rem; }
     .mt-sp-2, .mt-2 { margin-top: 1rem; }
     .mt-sp-3, .mt-3 { margin-top: 1.5rem; }
     .mt-sp-4, .mt-4 { margin-top: 2rem; }
-    
+
     *:focus-visible {
       outline: 2px solid #3b82f6;
       outline-offset: 2px;
     }
   `;
-  
+
   document.head.appendChild(style);
-  
+
   if (process.env.NODE_ENV === 'development') {
     console.warn('[Design System] Fallback styles loaded');
   }
@@ -122,10 +122,10 @@ function setupDevelopmentMode(): void {
 
   // Add visual indicators for design system usage
   addDesignSystemIndicators();
-  
+
   // Setup keyboard shortcuts for debugging
   setupKeyboardShortcuts();
-  
+
   // Add performance monitoring UI
   addPerformanceMonitoringUI();
 }
@@ -151,7 +151,7 @@ function addDesignSystemIndicators(): void {
       z-index: 9999;
       pointer-events: none;
     }
-    
+
     [class*="-sp-"]:not(.ds-validated)::after {
       content: "SP";
       position: absolute;
@@ -165,20 +165,20 @@ function addDesignSystemIndicators(): void {
       z-index: 9999;
       pointer-events: none;
     }
-    
+
     .ds-error::before {
       content: "❌";
       background: #ef4444;
     }
-    
+
     .ds-warning::before {
       content: "⚠️";
       background: #f59e0b;
     }
   `;
-  
+
   document.head.appendChild(style);
-  
+
   // Add indicators to existing elements
   setTimeout(() => {
     addIndicatorsToElements();
@@ -207,7 +207,7 @@ function setupKeyboardShortcuts(): void {
       event.preventDefault();
       toggleDebugMode();
     }
-    
+
     // Ctrl/Cmd + Shift + P = Show performance report
     if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'P') {
       event.preventDefault();
@@ -259,9 +259,9 @@ function addPerformanceMonitoringUI(): void {
     pointer-events: none;
     opacity: 0.7;
   `;
-  
+
   document.body.appendChild(indicator);
-  
+
   // Update performance metrics every 5 seconds
   setInterval(() => {
     updatePerformanceIndicator(indicator);
@@ -275,21 +275,21 @@ function updatePerformanceIndicator(element: HTMLElement): void {
   import('@/utils/cssPerformanceMonitor').then(({ cssPerformanceMonitor }) => {
     const report = cssPerformanceMonitor.getPerformanceReport();
     const metrics = report.metrics;
-    
+
     let content = 'CSS Performance:\n';
-    
+
     if (metrics['first-contentful-paint']) {
       content += `FCP: ${metrics['first-contentful-paint'].latest}ms\n`;
     }
-    
+
     if (metrics['cumulative-layout-shift']) {
       content += `CLS: ${metrics['cumulative-layout-shift'].latest}\n`;
     }
-    
+
     if (Object.keys(metrics).length === 0) {
       content += 'No metrics available';
     }
-    
+
     element.textContent = content;
   });
 }
@@ -309,7 +309,7 @@ export function validateDesignSystemImplementation(): Promise<{
         // Run comprehensive validation
         const validationState = designSystemValidator.getValidationState();
         const performanceReport = cssPerformanceMonitor.getPerformanceReport();
-        
+
         resolve({
           isValid: validationState.isValid && performanceReport.recommendations.length === 0,
           errors: validationState.errors,
@@ -333,17 +333,17 @@ export function cleanupSprint1ARobustness(): void {
   if (indicators) {
     indicators.remove();
   }
-  
+
   const performanceIndicator = document.getElementById('performance-indicator');
   if (performanceIndicator) {
     performanceIndicator.remove();
   }
-  
+
   // Stop performance monitoring
   import('@/utils/cssPerformanceMonitor').then(({ cssPerformanceMonitor }) => {
     cssPerformanceMonitor.stopMonitoring();
   });
-  
+
   if (process.env.NODE_ENV === 'development') {
     console.log('[Design System] Robustness features cleaned up');
   }

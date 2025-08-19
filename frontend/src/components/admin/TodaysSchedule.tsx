@@ -42,12 +42,12 @@ export default function TodaysSchedule({ appointments }: TodaysScheduleProps) {
     .sort((a, b) => {
       const statusA = getStatusInfo(a);
       const statusB = getStatusInfo(b);
-      
+
       // First sort by priority (urgent first)
       if (statusA.priority !== statusB.priority) {
         return statusB.priority - statusA.priority;
       }
-      
+
       // Then sort by time
       return a.dateTime.getTime() - b.dateTime.getTime();
     });
@@ -70,7 +70,7 @@ export default function TodaysSchedule({ appointments }: TodaysScheduleProps) {
         <div className="space-y-sp-2">
           {sortedAppointments.map((appointment) => {
             const statusInfo = getStatusInfo(appointment);
-            
+
             return (
               <div
                 key={appointment.id}
@@ -98,24 +98,24 @@ export default function TodaysSchedule({ appointments }: TodaysScheduleProps) {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Right side - Status and actions */}
                   <div className="flex items-center gap-sp-2">
                     {appointment.phone && (
-                      <button 
+                      <button
                         className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
                         title={`Call ${appointment.customer}`}
                       >
                         <Phone className="h-3 w-3" />
                       </button>
                     )}
-                    
+
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>
                       {statusInfo.label}
                     </span>
                   </div>
                 </div>
-                
+
                 {/* Additional info row */}
                 {(appointment.vehicle || appointment.estimatedDuration) && (
                   <div className="mt-sp-2 flex items-center gap-sp-4 text-fs-1 text-gray-500">

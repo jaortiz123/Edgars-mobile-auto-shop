@@ -139,7 +139,7 @@ rolling back a transaction:
 ...     con.run("INSERT INTO book (title) VALUES (:title)", title=title)
 >>>
 >>> con.run("START TRANSACTION")
->>> con.run("DELETE FROM book WHERE title = :title", title="Phineas Finn") 
+>>> con.run("DELETE FROM book WHERE title = :title", title="Phineas Finn")
 >>> con.run("ROLLBACK")
 >>> for row in con.run("SELECT * FROM book"):
 ...     print(row)
@@ -789,7 +789,7 @@ To connect over SSL with custom settings, set the ``ssl_context`` parameter to a
 
   ssl_context = ssl.create_default_context()
   ssl_context.verify_mode = ssl.CERT_REQUIRED
-  ssl_context.load_verify_locations('root.pem')        
+  ssl_context.load_verify_locations('root.pem')
   connection = pg8000.native.Connection(
     'postgres', password="cpsnow", ssl_context=ssl_context)
 
@@ -1433,7 +1433,7 @@ sock
   A socket-like object to use for the connection. For example, ``sock`` could be a plain
   ``socket.socket``, or it could represent an SSH tunnel or perhaps an
   ``ssl.SSLSocket`` to an SSL proxy. If an |ssl.SSLContext| is provided, then it will be
-  used to attempt to create an SSL socket from the provided socket. 
+  used to attempt to create an SSL socket from the provided socket.
 
 pg8000.native.Connection.notifications
 ``````````````````````````````````````
@@ -1480,7 +1480,7 @@ stream
     The stream parameter must be a writable file-like object.
 
 types
-  A dictionary of oids. A key corresponds to a parameter. 
+  A dictionary of oids. A key corresponds to a parameter.
 
 kwargs
   The parameters of the SQL statement.
@@ -1760,7 +1760,7 @@ sock
   A socket-like object to use for the connection. For example, ``sock`` could be a plain
   ``socket.socket``, or it could represent an SSH tunnel or perhaps an
   ``ssl.SSLSocket`` to an SSL proxy. If an |ssl.SSLContext| is provided, then it will be
-  used to attempt to create an SSL socket from the provided socket. 
+  used to attempt to create an SSL socket from the provided socket.
 
 
 pg8000.dbapi.Date(year, month, day)
@@ -2244,7 +2244,7 @@ Version 1.30.3, 2023-10-31
 ``````````````````````````
 
 - Fix problem with PG date overflowing Python types. Now we return the ``str`` we got from the
-  server if we can't parse it. 
+  server if we can't parse it.
 
 
 Version 1.30.2, 2023-09-17

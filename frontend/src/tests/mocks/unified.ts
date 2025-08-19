@@ -1,9 +1,9 @@
 /**
  * Unified Mock Factory - Consolidates All Test Mock Interfaces
- * 
+ *
  * This file provides a single source of truth for all test mocks,
  * ensuring consistent interfaces across all test files.
- * 
+ *
  * CRITICAL: This solves the import issues by providing all expected
  * mock functions that tests are trying to use.
  */
@@ -19,24 +19,24 @@ export interface UnifiedTimeMocks {
   setCurrentTime: MockedFunction<(time: string | Date) => void>;
   getCurrentTime: MockedFunction<() => Date>;
   advanceTime: MockedFunction<(minutes: number) => void>;
-  
+
   // Time calculation functions
   getMinutesUntil: MockedFunction<(startTime: Date | string | number) => number>;
   minutesPast: MockedFunction<(time: Date | string | number) => number>;
-  
+
   // Duration and display functions
   formatDuration: MockedFunction<(minutes: number) => string>;
   getCountdownText: MockedFunction<(minutesUntil: number, options?: Record<string, unknown>) => string>;
-  
+
   // Status check functions
   isStartingSoon: MockedFunction<(startTime: Date | string | number, threshold?: number) => boolean>;
   isRunningLate: MockedFunction<(startTime: Date | string | number, threshold?: number) => boolean>;
   isOverdue: MockedFunction<(startTime: Date | string | number, threshold?: number) => boolean>;
-  
+
   // Cache management functions
   clearTimeCache: MockedFunction<() => void>;
   getTimeCacheStats: MockedFunction<() => { size: number; hits: number; misses: number }>;
-  
+
   // Reset function
   reset: MockedFunction<() => void>;
 }
@@ -46,23 +46,23 @@ export interface UnifiedNotificationMocks {
   addNotification: MockedFunction<(message: string, type?: string, options?: Record<string, unknown>) => string>;
   removeNotification: MockedFunction<(id: string) => boolean>;
   clearAllNotifications: MockedFunction<() => void>;
-  
+
   // Specialized notification functions
   notifyArrival: MockedFunction<(customerName: string, appointmentId?: string) => string>;
   notifyLate: MockedFunction<(customerName: string, minutesLate: number, appointmentId?: string) => string>;
   notifyOverdue: MockedFunction<(customerName: string, minutesOverdue: number, appointmentId?: string) => string>;
   notifyReminder: MockedFunction<(customerName: string, minutesUntil: number, appointmentId?: string) => string>;
-  
+
   // Query functions
   getNotifications: MockedFunction<() => Array<{ id: string; type: string; message: string; timestamp: Date; read?: boolean }>>;
   getNotificationsByType: MockedFunction<(type: string) => Array<{ id: string; type: string; message: string; timestamp: Date; read?: boolean }>>;
   getNotificationCount: MockedFunction<() => number>;
-  
+
   // State management functions
   markNotificationAsRead: MockedFunction<(id: string) => boolean>;
   markAsRead: MockedFunction<(id: string) => boolean>; // Alias for compatibility
   clearAll: MockedFunction<() => void>; // Alias for compatibility
-  
+
   // Reset function
   reset: MockedFunction<() => void>;
 }
@@ -88,15 +88,15 @@ export interface UnifiedMockFactory {
 export function createUnifiedMocks(): UnifiedMockFactory {
   // Local state for isolated mock instances
   let localCurrentTime = new Date('2024-01-15T10:00:00Z').getTime();
-  let localNotifications: Array<{ 
-    id: string; 
-    type: string; 
-    message: string; 
-    timestamp: Date; 
+  let localNotifications: Array<{
+    id: string;
+    type: string;
+    message: string;
+    timestamp: Date;
     read?: boolean;
     appointmentId?: string;
   }> = [];
-  
+
   // Helper for time calculations
   const calculateMinutesUntil = (startTime: Date | string | number): number => {
     try {
@@ -116,23 +116,23 @@ export function createUnifiedMocks(): UnifiedMockFactory {
       localCurrentTime = new Date(time).getTime();
       console.log('🔧 UNIFIED MOCK: setCurrentTime called with:', time);
     }),
-    
+
     getCurrentTime: vi.fn().mockImplementation(() => {
       return new Date(localCurrentTime);
     }),
-    
+
     advanceTime: vi.fn().mockImplementation((minutes: number) => {
       localCurrentTime += minutes * 60 * 1000;
       console.log('🔧 UNIFIED MOCK: advanceTime called with:', minutes);
     }),
-    
+
     getMinutesUntil: vi.fn().mockImplementation(calculateMinutesUntil),
-    
+
     minutesPast: vi.fn().mockImplementation((time: Date | string | number) => {
       const minutesUntil = calculateMinutesUntil(time);
       return Math.max(0, -minutesUntil);
     }),
-    
+
     formatDuration: vi.fn().mockImplementation((minutes: number) => {
       if (minutes >= 60) {
         const hours = Math.floor(minutes / 60);
@@ -144,7 +144,7 @@ export function createUnifiedMocks(): UnifiedMockFactory {
       }
       return `${minutes}m`;
     }),
-    
+
     getCountdownText: vi.fn().mockImplementation((minutesUntil: number, options: Record<string, unknown> = {}) => {
       if (minutesUntil > 0) {
         return `Starts in ${minutesUntil}m`;
@@ -154,32 +154,32 @@ export function createUnifiedMocks(): UnifiedMockFactory {
         return 'Starting now';
       }
     }),
-    
+
     isStartingSoon: vi.fn().mockImplementation((startTime: Date | string | number, threshold = 15) => {
       const minutesUntil = calculateMinutesUntil(startTime);
       return minutesUntil > 0 && minutesUntil <= threshold;
     }),
-    
+
     isRunningLate: vi.fn().mockImplementation((startTime: Date | string | number, threshold = 10) => {
       const minutesUntil = calculateMinutesUntil(startTime);
       return minutesUntil < 0 && Math.abs(minutesUntil) >= threshold;
     }),
-    
+
     isOverdue: vi.fn().mockImplementation((startTime: Date | string | number, threshold = 30) => {
       const minutesUntil = calculateMinutesUntil(startTime);
       return minutesUntil < -threshold;
     }),
-    
+
     clearTimeCache: vi.fn().mockImplementation(() => {
       console.log('🔧 UNIFIED MOCK: clearTimeCache called');
     }),
-    
+
     getTimeCacheStats: vi.fn().mockImplementation(() => ({
       size: 0,
       hits: 0,
       misses: 0
     })),
-    
+
     reset: vi.fn().mockImplementation(() => {
       localCurrentTime = new Date('2024-01-15T10:00:00Z').getTime();
       // Reset all mock call history
@@ -206,7 +206,7 @@ export function createUnifiedMocks(): UnifiedMockFactory {
       console.log('🔧 UNIFIED MOCK: addNotification called with:', message, type);
       return id;
     }),
-    
+
     removeNotification: vi.fn().mockImplementation((id: string) => {
       const index = localNotifications.findIndex(n => n.id === id);
       if (index > -1) {
@@ -215,11 +215,11 @@ export function createUnifiedMocks(): UnifiedMockFactory {
       }
       return false;
     }),
-    
+
     clearAllNotifications: vi.fn().mockImplementation(() => {
       localNotifications.length = 0;
     }),
-    
+
     notifyArrival: vi.fn().mockImplementation((customerName: string, appointmentId?: string) => {
       const id = `arrival-${Date.now()}`;
       localNotifications.push({
@@ -233,7 +233,7 @@ export function createUnifiedMocks(): UnifiedMockFactory {
       console.log('🔧 UNIFIED MOCK: notifyArrival called with:', customerName);
       return id;
     }),
-    
+
     notifyLate: vi.fn().mockImplementation((customerName: string, minutesLate: number, appointmentId?: string) => {
       const id = `late-${Date.now()}`;
       localNotifications.push({
@@ -247,7 +247,7 @@ export function createUnifiedMocks(): UnifiedMockFactory {
       console.log('🔧 UNIFIED MOCK: notifyLate called with:', customerName, minutesLate);
       return id;
     }),
-    
+
     notifyOverdue: vi.fn().mockImplementation((customerName: string, minutesOverdue: number, appointmentId?: string) => {
       const id = `overdue-${Date.now()}`;
       localNotifications.push({
@@ -261,7 +261,7 @@ export function createUnifiedMocks(): UnifiedMockFactory {
       console.log('🔧 UNIFIED MOCK: notifyOverdue called with:', customerName, minutesOverdue);
       return id;
     }),
-    
+
     notifyReminder: vi.fn().mockImplementation((customerName: string, minutesUntil: number, appointmentId?: string) => {
       const id = `reminder-${Date.now()}`;
       localNotifications.push({
@@ -275,19 +275,19 @@ export function createUnifiedMocks(): UnifiedMockFactory {
       console.log('🔧 UNIFIED MOCK: notifyReminder called with:', customerName, minutesUntil);
       return id;
     }),
-    
+
     getNotifications: vi.fn().mockImplementation(() => {
       return [...localNotifications];
     }),
-    
+
     getNotificationsByType: vi.fn().mockImplementation((type: string) => {
       return localNotifications.filter(n => n.type === type);
     }),
-    
+
     getNotificationCount: vi.fn().mockImplementation(() => {
       return localNotifications.length;
     }),
-    
+
     markNotificationAsRead: vi.fn().mockImplementation((id: string) => {
       const notification = localNotifications.find(n => n.id === id);
       if (notification) {
@@ -296,16 +296,16 @@ export function createUnifiedMocks(): UnifiedMockFactory {
       }
       return false;
     }),
-    
+
     // Aliases for compatibility
     markAsRead: vi.fn().mockImplementation((id: string) => {
       return notificationMocks.markNotificationAsRead(id);
     }),
-    
+
     clearAll: vi.fn().mockImplementation(() => {
       notificationMocks.clearAllNotifications();
     }),
-    
+
     reset: vi.fn().mockImplementation(() => {
       localNotifications.length = 0;
       // Reset all mock call history
@@ -329,16 +329,16 @@ export function createUnifiedMocks(): UnifiedMockFactory {
         }
       };
     }),
-    
+
     updateAppointment: vi.fn().mockImplementation(async (id: string, data: Record<string, unknown>) => {
       console.log('🔧 UNIFIED MOCK: updateAppointment called with:', id, data);
       return { success: true, id, data };
     }),
-    
+
     simulateFailureRate: vi.fn().mockImplementation((rate: number) => {
       console.log('🔧 UNIFIED MOCK: simulateFailureRate called with:', rate);
     }),
-    
+
     reset: vi.fn().mockImplementation(() => {
       // Reset all mock call history
       Object.values(apiMocks).forEach(mock => {
@@ -354,7 +354,7 @@ export function createUnifiedMocks(): UnifiedMockFactory {
     time: timeMocks,
     notification: notificationMocks,
     api: apiMocks,
-    
+
     resetAll: vi.fn().mockImplementation(() => {
       timeMocks.reset();
       notificationMocks.reset();

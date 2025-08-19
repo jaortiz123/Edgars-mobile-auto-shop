@@ -104,9 +104,7 @@ def _make_cb_data(name, ssl_socket):
         try:
             hash_obj = hashlib.new(hash_algo, cert_bin)
         except ValueError as e:
-            raise ScramException(
-                f"Hash algorithm {hash_algo} not supported by hashlib. {e}"
-            )
+            raise ScramException(f"Hash algorithm {hash_algo} not supported by hashlib. {e}")
         return hash_obj.digest()
 
     else:
@@ -156,9 +154,7 @@ class ScramMechanism:
         return stored_key, server_key
 
     def make_server(self, auth_fn, channel_binding=None, s_nonce=None):
-        return ScramServer(
-            self, auth_fn, channel_binding=channel_binding, s_nonce=s_nonce
-        )
+        return ScramServer(self, auth_fn, channel_binding=channel_binding, s_nonce=s_nonce)
 
 
 def _make_auth_info(hf, password, i, salt=None):
@@ -175,9 +171,7 @@ def _validate_channel_binding(channel_binding):
         return
 
     if not isinstance(channel_binding, tuple):
-        raise ScramException(
-            "The channel_binding parameter must either be None or a tuple."
-        )
+        raise ScramException("The channel_binding parameter must either be None or a tuple.")
 
     if len(channel_binding) != 2:
         raise ScramException(
@@ -200,9 +194,7 @@ def _validate_channel_binding(channel_binding):
 
 
 class ScramClient:
-    def __init__(
-        self, mechanisms, username, password, channel_binding=None, c_nonce=None
-    ):
+    def __init__(self, mechanisms, username, password, channel_binding=None, c_nonce=None):
         if not isinstance(mechanisms, (list, tuple)):
             raise ScramException(
                 "The 'mechanisms' parameter must be a list or tuple of mechanism names."
@@ -241,9 +233,7 @@ class ScramClient:
     def set_server_first(self, message):
         self._set_stage(ClientStage.set_server_first)
         self.server_first = message
-        self.nonce, self.salt, self.iterations = _set_server_first(
-            message, self.c_nonce
-        )
+        self.nonce, self.salt, self.iterations = _set_server_first(message, self.c_nonce)
 
     def get_client_final(self):
         self._set_stage(ClientStage.get_client_final)
@@ -295,8 +285,7 @@ class ScramServer:
     def _set_mechanism(self, mechanism):
         if mechanism.use_binding and self.channel_binding is None:
             raise ScramException(
-                "The mechanism requires channel binding, and so channel_binding can't "
-                "be None."
+                "The mechanism requires channel binding, and so channel_binding can't " "be None."
             )
         self.m = mechanism
 
@@ -312,9 +301,7 @@ class ScramServer:
             self.user,
             self.client_first_bare,
             upgrade_mechanism,
-        ) = _set_client_first(
-            client_first, self.s_nonce, self.channel_binding, self.m.use_binding
-        )
+        ) = _set_client_first(client_first, self.s_nonce, self.channel_binding, self.m.use_binding)
 
         if upgrade_mechanism:
             mech = ScramMechanism(f"{self.m.name}-PLUS")
@@ -556,9 +543,7 @@ def _get_client_final(
 
     cbind_input = _make_cbind_input(channel_binding, use_binding)
     client_final_without_proof = f"c={b64enc(cbind_input)},r={nonce}"
-    auth_msg = _make_auth_message(
-        client_first_bare, server_first, client_final_without_proof
-    )
+    auth_msg = _make_auth_message(client_first_bare, server_first, client_final_without_proof)
 
     client_signature = hmac(hf, stored_key, auth_msg)
     client_proof = xor(client_key, client_signature)
@@ -573,9 +558,7 @@ SERVER_ERROR_INVALID_PROOF = "invalid-proof"
 SERVER_ERROR_INVALID_ENCODING = "invalid-encoding"
 SERVER_ERROR_CHANNEL_BINDINGS_DONT_MATCH = "channel-bindings-dont-match"
 SERVER_ERROR_SERVER_DOES_SUPPORT_CHANNEL_BINDING = "server-does-support-channel-binding"
-SERVER_ERROR_SERVER_DOES_NOT_SUPPORT_CHANNEL_BINDING = (
-    "server does not support channel binding"
-)
+SERVER_ERROR_SERVER_DOES_NOT_SUPPORT_CHANNEL_BINDING = "server does not support channel binding"
 SERVER_ERROR_CHANNEL_BINDING_NOT_SUPPORTED = "channel-binding-not-supported"
 SERVER_ERROR_UNSUPPORTED_CHANNEL_BINDING_TYPE = "unsupported-channel-binding-type"
 SERVER_ERROR_UNKNOWN_USER = "unknown-user"
@@ -600,9 +583,7 @@ def _set_client_final(
 
     nonce = msg["r"]
     proof = msg["p"]
-    if use_binding and b64dec(chan_binding) != _make_cbind_input(
-        channel_binding, use_binding
-    ):
+    if use_binding and b64dec(chan_binding) != _make_cbind_input(channel_binding, use_binding):
         raise ScramException(
             "The channel bindings don't match.",
             SERVER_ERROR_CHANNEL_BINDINGS_DONT_MATCH,
@@ -612,9 +593,7 @@ def _set_client_final(
         raise ScramException("Server nonce doesn't match.", SERVER_ERROR_OTHER_ERROR)
 
     client_final_without_proof = f"c={chan_binding},r={nonce}"
-    auth_msg = _make_auth_message(
-        client_first_bare, server_first, client_final_without_proof
-    )
+    auth_msg = _make_auth_message(client_first_bare, server_first, client_final_without_proof)
     _check_client_key(hf, stored_key, auth_msg, proof)
 
     sig = hmac(hf, server_key, auth_msg)
@@ -631,9 +610,7 @@ def _set_server_final(message, server_signature):
         raise ScramException(f"The server returned the error: {msg['e']}")
 
     if server_signature != msg["v"]:
-        raise ScramException(
-            "The server signature doesn't match.", SERVER_ERROR_OTHER_ERROR
-        )
+        raise ScramException("The server signature doesn't match.", SERVER_ERROR_OTHER_ERROR)
 
 
 def saslprep(source):
@@ -659,9 +636,7 @@ def saslprep(source):
     is_ral_char = in_table_d1
     if is_ral_char(data[0]):
         if not is_ral_char(data[-1]):
-            raise ScramException(
-                "malformed bidi sequence", SERVER_ERROR_INVALID_ENCODING
-            )
+            raise ScramException("malformed bidi sequence", SERVER_ERROR_INVALID_ENCODING)
         # forbid L chars within R/AL sequence.
         is_forbidden_bidi_char = in_table_d2
     else:

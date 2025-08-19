@@ -35,7 +35,7 @@ export function simulateTabKey(shiftKey = false): void {
     bubbles: true,
     cancelable: true
   });
-  
+
   document.activeElement?.dispatchEvent(tabEvent);
 }
 
@@ -50,7 +50,7 @@ export function simulateEscapeKey(): void {
     bubbles: true,
     cancelable: true
   });
-  
+
   document.activeElement?.dispatchEvent(escapeEvent);
 }
 
@@ -66,7 +66,7 @@ export function getFocusedElement(): Element | null {
  */
 export async function waitForFocus(selector: string, timeoutMs = 1000): Promise<Element | null> {
   const startTime = Date.now();
-  
+
   while (Date.now() - startTime < timeoutMs) {
     const element = document.querySelector(selector);
     if (element && document.activeElement === element) {
@@ -74,7 +74,7 @@ export async function waitForFocus(selector: string, timeoutMs = 1000): Promise<
     }
     await new Promise(resolve => setTimeout(resolve, 10));
   }
-  
+
   return null;
 }
 

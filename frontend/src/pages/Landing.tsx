@@ -4,19 +4,19 @@ import { Star, Shield, Award, CheckCircle, Wrench } from 'lucide-react';
 
 // Single source of truth for the services we want to showcase
 const featuredServices = [
-    { 
+    {
         name: "Emergency No-Start Service",
         description: "Battery, starter, or alternator replacement to get you back on the road, fast.",
         price: 95,
         pricePrefix: "Diagnostics from"
     },
-    { 
+    {
         name: "On-Site Brake Repair",
         description: "Complete brake pad and rotor replacement at your home or office for ultimate safety.",
         price: 150,
         pricePrefix: "Service from"
     },
-    { 
+    {
         name: "Check Engine Light Diagnostics",
         description: "We use dealership-level tools to accurately diagnose the problem and provide a clear repair plan.",
         price: 75,
@@ -24,8 +24,8 @@ const featuredServices = [
     },
 ];
 
-const testimonial = { 
-    name: "Jessica R., Davis, CA", 
+const testimonial = {
+    name: "Jessica R., Davis, CA",
     text: "My car died suddenly on the freeway during my commute. I was sure I'd need a tow and a long wait at a shop. Edgar came out, diagnosed the dead alternator, and had the new part installed in under two hours. He really saved my day!",
     headline: '"He fixed my car right on the side of the highway!"'
 };
@@ -115,7 +115,7 @@ export default function Landing() {
             </div>
         </div>
       </section>
-      
+
       {/* Footer will naturally follow */}
     </div>
   );

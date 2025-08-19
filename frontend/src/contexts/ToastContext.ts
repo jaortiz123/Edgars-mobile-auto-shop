@@ -12,7 +12,7 @@ export interface ToastState {
   toasts: Toast[];
 }
 
-export type ToastAction = 
+export type ToastAction =
   | { type: 'ADD_TOAST'; payload: Toast }
   | { type: 'REMOVE_TOAST'; payload: string };
 

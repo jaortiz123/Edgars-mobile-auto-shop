@@ -229,9 +229,7 @@ class PreparedStatement:
         self.con = con
         self.statement, self.make_vals = to_statement(sql)
         oids = () if types is None else self.make_vals(defaultdict(lambda: None, types))
-        self.name_bin, self.cols, self.input_funcs = con.prepare_statement(
-            self.statement, oids
-        )
+        self.name_bin, self.cols, self.input_funcs = con.prepare_statement(self.statement, oids)
 
     @property
     def columns(self):

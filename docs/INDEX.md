@@ -1,6 +1,6 @@
 # Docs Index
 
-This is the jumping-off point. **Read in this order.**  
+This is the jumping-off point. **Read in this order.**
 Legend: ✅ done · 🟡 WIP · 🔵 planned
 
 ## Read First
@@ -33,6 +33,6 @@ Legend: ✅ done · 🟡 WIP · 🔵 planned
 
 ---
 
-**Tokens:** source of truth in `tailwind.config.ts`.  
-**Timezone:** **America/Los_Angeles** (store **UTC**, display local).  
+**Tokens:** source of truth in `tailwind.config.ts`.
+**Timezone:** **America/Los_Angeles** (store **UTC**, display local).
 **Feature flags:** `ff.messaging`, `ff.payments`, `ff.inspections`, `ff.command_palette`, `ff.brand_theming`.

@@ -143,22 +143,22 @@ describe('Services CRUD in AppointmentDrawer', () => {
     await user.click(nameField);
     await user.keyboard('{Control>}a{/Control}');
     await user.type(nameField, 'Tire Rotation');
-    
+
     const notesField = screen.getByLabelText('Notes');
     await user.click(notesField);
     await user.keyboard('{Control>}a{/Control}');
     await user.type(notesField, 'All four tires');
-    
+
     const hoursField = screen.getByLabelText('Hours');
     await user.click(hoursField);
     await user.keyboard('{Control>}a{/Control}');
     await user.type(hoursField, '0.5');
-    
+
     const priceField = screen.getByLabelText('Price ($)');
     await user.click(priceField);
     await user.keyboard('{Control>}a{/Control}');
     await user.type(priceField, '50.00');
-    
+
     const categoryField = screen.getByLabelText('Category');
     await user.click(categoryField);
     await user.keyboard('{Control>}a{/Control}');

@@ -26,10 +26,10 @@ const AsyncComponent: React.FC = () => {
 describe('Act Warning Detection', () => {
   test('unwrapped fireEvent should trigger act() warning', async () => {
     render(<AsyncComponent />);
-    
+
     // This should trigger act() warning because of async state update
     fireEvent.click(screen.getByTestId('async-btn'));
-    
+
     // Wait for async update
     await waitFor(() => {
       expect(screen.getByTestId('count')).toHaveTextContent('1');

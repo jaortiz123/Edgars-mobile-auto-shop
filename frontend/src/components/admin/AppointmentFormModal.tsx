@@ -270,11 +270,11 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('🔥 Form submitted!', formData);
-    
+
     const isValid = validateForm();
     console.log('✅ Form validation result:', isValid);
     console.log('❌ Validation errors:', errors);
-    
+
     if (isValid && (!conflict || overrideConflict)) {
       console.log('📤 Calling onSubmit with:', formData);
   const dataToSubmit = { ...formData };
@@ -367,7 +367,7 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
                 Customer Information
               </h3>
             </div>
-            
+
             <div>
         <label htmlFor="customer-name" className="block text-xs font-medium text-gray-700 mb-2">
                 Customer Name *

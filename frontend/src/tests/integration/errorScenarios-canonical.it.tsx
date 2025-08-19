@@ -1,6 +1,6 @@
 /**
  * P2-T-006: Error Path Integration Tests - Deterministic Implementation
- * 
+ *
  * Tests how the app behaves under failure conditions using the canonical
  * withErrorScenario helper with MSW server.use() pattern.
  */
@@ -43,14 +43,14 @@ describe('Error Path Integration Tests', () => {
           const handleSave = async () => {
             setIsLoading(true);
             setError(null);
-            
+
             try {
               const response = await fetch('/api/appointments/123', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'completed' })
               });
-              
+
               if (!response.ok) {
                 throw new Error('Failed to update appointment');
               }
@@ -76,7 +76,7 @@ describe('Error Path Integration Tests', () => {
         };
 
         const user = userEvent.setup();
-        
+
         render(
           <TestAppWrapper>
             <MockAppointmentEditor />
@@ -108,10 +108,10 @@ describe('Error Path Integration Tests', () => {
             const loadDashboard = async () => {
               setIsLoading(true);
               setError(null);
-              
+
               try {
                 const response = await fetch('/api/admin/dashboard/stats');
-                
+
                 if (response.status === 401) {
                   throw new Error('Unauthorized access');
                 }
@@ -161,26 +161,26 @@ describe('Error Path Integration Tests', () => {
             const loadBoard = async () => {
               setIsLoading(true);
               setError(null);
-              
+
               try {
                 // Create a timeout promise that rejects after 2 seconds
                 const timeoutPromise = new Promise((_, reject) => {
                   setTimeout(() => reject(new Error('Network timeout')), 2000);
                 });
-                
+
                 // Race the fetch against the timeout
                 const result = await Promise.race([
                   fetch('/api/appointments/board'),
                   timeoutPromise
                 ]);
-                
+
                 // Type guard to ensure we have a Response
                 if (!(result instanceof Response)) {
                   throw new Error('Unexpected result type');
                 }
-                
+
                 const response = result;
-                
+
                 if (!response.ok) {
                   throw new Error('Failed to load board');
                 }
@@ -237,14 +237,14 @@ describe('Error Path Integration Tests', () => {
             const loadStats = async () => {
               setIsLoading(true);
               setError(null);
-              
+
               try {
                 const response = await fetch('/api/admin/dashboard/stats');
-                
+
                 if (!response.ok) {
                   throw new Error('Failed to load dashboard statistics');
                 }
-                
+
                 const data = await response.json();
                 setStats(data);
               } catch (err) {

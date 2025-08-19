@@ -13,10 +13,10 @@ interface ButtonProps {
   style?: React.CSSProperties
 }
 
-export default function Button({ 
-  children, 
-  to, 
-  href, 
+export default function Button({
+  children,
+  to,
+  href,
   variant = 'primary',
   className = '',
   onClick,
@@ -25,7 +25,7 @@ export default function Button({
   style
 }: ButtonProps) {
   const baseClasses = "inline-flex items-center justify-center font-bold transition-all duration-300"
-  
+
   const variantClasses = {
     primary: "px-10 py-4 text-white rounded-lg text-lg shadow-lg",
     outline: "px-10 py-4 bg-transparent hover:bg-navy border-2 border-navy text-navy hover:text-white rounded-lg text-lg",
@@ -37,8 +37,8 @@ export default function Button({
 
   if (to) {
     return (
-      <Link 
-        to={to} 
+      <Link
+        to={to}
         className={combinedClassName}
         onClick={onClick}
         onMouseEnter={onMouseEnter}
@@ -52,8 +52,8 @@ export default function Button({
 
   if (href) {
     return (
-      <a 
-        href={href} 
+      <a
+        href={href}
         className={combinedClassName}
         onClick={onClick}
         onMouseEnter={onMouseEnter}
@@ -66,7 +66,7 @@ export default function Button({
   }
 
   return (
-    <button 
+    <button
       className={combinedClassName}
       onClick={onClick}
       onMouseEnter={onMouseEnter}

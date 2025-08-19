@@ -1,6 +1,6 @@
 /**
  * Sprint 4A-T-002: Daily Achievement Summary Service
- * 
+ *
  * Service for fetching daily summary data including completed jobs count,
  * total revenue, and top performer metrics
  */
@@ -25,54 +25,54 @@ export async function getDailySummary(date = new Date()) {
   try {
     // Convert date to ISO string for API
     const dateStr = date instanceof Date ? date.toISOString().split('T')[0] : date;
-    
+
     // Get dashboard stats which contain some of the data we need
     const statsResponse = await fetch('/api/admin/dashboard/stats', {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
       }
     });
-    
+
     if (!statsResponse.ok) {
       throw new Error(`Stats API failed: ${statsResponse.status}`);
     }
-    
+
     const stats = await statsResponse.json();
-    
+
     // Get appointments data for more detailed analysis
     const appointmentsResponse = await fetch(`/api/admin/appointments?from=${dateStr}T00:00:00Z&to=${dateStr}T23:59:59Z&status=COMPLETED`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
       }
     });
-    
+
     let completedAppointments = [];
     if (appointmentsResponse.ok) {
       const appointmentsData = await appointmentsResponse.json();
       completedAppointments = appointmentsData.appointments || [];
     }
-    
+
     // Calculate jobs completed today
     const jobsCompleted = stats.totals?.today_completed || 0;
-    
+
     // Calculate total revenue for completed jobs today
     const revenue = completedAppointments.reduce((total, appointment) => {
       return total + (appointment.total_amount || 0);
     }, 0);
-    
+
     // Calculate top performer (mock data for now since we don't have tech assignment in current schema)
     const topTech = calculateTopPerformer(completedAppointments);
-    
+
     return {
       jobsCompleted,
       revenue: Math.round(revenue * 100) / 100, // Round to 2 decimal places
       topTech,
       date: dateStr
     };
-    
+
   } catch (error) {
     console.error('Failed to fetch daily summary:', error);
-    
+
     // Return fallback data
     return {
       jobsCompleted: 0,
@@ -98,10 +98,10 @@ function calculateTopPerformer(appointments) {
       jobsCompleted: 0
     };
   }
-  
+
   // Group by tech_id (when available)
   const techStats = {};
-  
+
   appointments.forEach(appointment => {
     const techId = appointment.tech_id || 'unassigned';
     if (!techStats[techId]) {
@@ -114,11 +114,11 @@ function calculateTopPerformer(appointments) {
     techStats[techId].jobsCompleted++;
     techStats[techId].totalRevenue += appointment.total_amount || 0;
   });
-  
+
   // Find tech with most completed jobs
   let topTech = { name: 'No data', jobsCompleted: 0 };
   let maxJobs = 0;
-  
+
   Object.values(techStats).forEach(tech => {
     if (tech.jobsCompleted > maxJobs) {
       maxJobs = tech.jobsCompleted;
@@ -128,7 +128,7 @@ function calculateTopPerformer(appointments) {
       };
     }
   });
-  
+
   return topTech;
 }
 
@@ -139,15 +139,15 @@ function calculateTopPerformer(appointments) {
 export function shouldShowDailySummary() {
   const now = new Date();
   const hour = now.getHours();
-  
+
   // Show automatically at 6 PM (18:00) local time
   const isAutoShowTime = hour >= 18;
-  
+
   // Check if user has already seen today's summary
   const today = now.toISOString().split('T')[0];
   const seenKey = `dailySummary_seen_${today}`;
   const alreadySeen = localStorage.getItem(seenKey) === 'true';
-  
+
   return isAutoShowTime && !alreadySeen;
 }
 
@@ -178,14 +178,14 @@ export function scheduleAutomaticSummary(callback) {
   const now = new Date();
   const sixPM = new Date();
   sixPM.setHours(18, 0, 0, 0);
-  
+
   // If it's already past 6 PM today, schedule for tomorrow
   if (now >= sixPM) {
     sixPM.setDate(sixPM.getDate() + 1);
   }
-  
+
   const timeUntilSixPM = sixPM.getTime() - now.getTime();
-  
+
   return setTimeout(() => {
     if (shouldShowDailySummary()) {
       callback();
@@ -201,11 +201,11 @@ export function scheduleAutomaticSummary(callback) {
 export async function getHistoricalSummaries(days = 7) {
   const summaries = [];
   const today = new Date();
-  
+
   for (let i = 0; i < days; i++) {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
-    
+
     try {
       const summary = await getDailySummary(date);
       summaries.push(summary);
@@ -213,6 +213,6 @@ export async function getHistoricalSummaries(days = 7) {
       console.warn(`Failed to fetch summary for ${date.toISOString().split('T')[0]}:`, error);
     }
   }
-  
+
   return summaries;
 }

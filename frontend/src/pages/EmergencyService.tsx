@@ -14,8 +14,8 @@ export default function EmergencyService() {
           For immediate, on-site emergency assistance for no-starts, dead batteries, flat tires, and critical brake issues, call us directly.
         </p>
         <div className="mt-12">
-          <a 
-            href="tel:555-123-4567" 
+          <a
+            href="tel:555-123-4567"
             className="inline-flex items-center justify-center rounded-lg text-base font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg hover:shadow-xl hover:-translate-y-0.5 px-8 py-4 text-lg text-2xl h-16 px-12 transform transition-transform hover:scale-105"
           >
             <Phone className="mr-4 h-8 w-8" />

@@ -1,17 +1,17 @@
 // Sprint 1A Robustness: Design System Token Tests (Node Environment)
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { 
-  DESIGN_TOKENS, 
-  CSS_VARIABLES, 
+import {
+  DESIGN_TOKENS,
+  CSS_VARIABLES,
   ACCESSIBILITY_REQUIREMENTS,
   PERFORMANCE_THRESHOLDS
 } from '@/types/designSystem';
-import { 
+import {
   getCSSVariable,
   validateDesignToken,
   initializeDesignSystemValidation
 } from '@/utils/designSystemValidator';
-import { 
+import {
   measureCSSPerformance,
   initializeCSSPerformanceMonitoring
 } from '@/utils/cssPerformanceMonitor';
@@ -26,14 +26,14 @@ describe('Design System Token Validation', () => {
     it('should have correct typography scale tokens', () => {
       const expectedScales = ['fs-0', 'fs-1', 'fs-2', 'fs-3', 'fs-4', 'fs-5', 'fs-6'];
       const actualScales = Object.keys(DESIGN_TOKENS.typography);
-      
+
       expect(actualScales).toEqual(expectedScales);
     });
 
     it('should have correct spacing scale tokens', () => {
       const expectedScales = ['sp-0', 'sp-1', 'sp-2', 'sp-3', 'sp-4', 'sp-5', 'sp-6', 'sp-8'];
       const actualScales = Object.keys(DESIGN_TOKENS.spacing);
-      
+
       expect(actualScales).toEqual(expectedScales);
     });
 
@@ -86,7 +86,7 @@ describe('Design System Token Validation', () => {
       // Test that fallback values are used when CSS variables are undefined
       const expectedFallbacks = {
         'fs-0': '12px',
-        'fs-1': '14px', 
+        'fs-1': '14px',
         'fs-2': '16px',
         'sp-1': '8px',
         'sp-2': '16px',
@@ -122,16 +122,16 @@ describe('Design System Token Validation', () => {
     it('should have consistent modular scale ratios', () => {
       const scales = Object.values(DESIGN_TOKENS.typography);
       const ratios: number[] = [];
-      
+
       for (let i = 1; i < scales.length; i++) {
         const current = parseFloat(scales[i].value);
         const previous = parseFloat(scales[i - 1].value);
         ratios.push(current / previous);
       }
-      
+
       // Test actual scale progression - not all steps are exactly 1.25 due to rem rounding
       // fs-0 (0.75) -> fs-1 (0.875): ratio = 1.167
-      // fs-1 (0.875) -> fs-2 (1): ratio = 1.143  
+      // fs-1 (0.875) -> fs-2 (1): ratio = 1.143
       // fs-2 (1) -> fs-3 (1.25): ratio = 1.25
       // fs-3 (1.25) -> fs-4 (1.5): ratio = 1.2
       // fs-4 (1.5) -> fs-5 (2): ratio = 1.333
@@ -147,13 +147,13 @@ describe('Design System Token Validation', () => {
     it('should have consistent spacing increments', () => {
       const spacings = Object.values(DESIGN_TOKENS.spacing);
       const increments: number[] = [];
-      
+
       for (let i = 1; i < spacings.length; i++) {
         const current = parseFloat(spacings[i].value) * 16; // Convert rem to px
         const previous = parseFloat(spacings[i - 1].value) * 16;
         increments.push(current - previous);
       }
-      
+
       // Should be 8px increments (except for sp-8 which is a jump)
       increments.slice(0, -1).forEach(increment => {
         expect(increment).toBe(8);
@@ -169,7 +169,7 @@ describe('Design System Token Validation', () => {
 
     it('should have logical typography scale progression', () => {
       const scales = Object.values(DESIGN_TOKENS.typography);
-      
+
       // Test that each scale is larger than the previous
       for (let i = 1; i < scales.length; i++) {
         const current = parseFloat(scales[i].value);
@@ -180,7 +180,7 @@ describe('Design System Token Validation', () => {
 
     it('should have logical spacing scale progression', () => {
       const spacings = Object.values(DESIGN_TOKENS.spacing);
-      
+
       // Test that each spacing is larger than the previous (except sp-8 special case)
       for (let i = 1; i < spacings.length - 1; i++) { // Exclude sp-8
         const current = parseFloat(spacings[i].value);
@@ -257,7 +257,7 @@ describe('Design System Token Validation', () => {
         const remValue = parseFloat(token.value);
         const pxValue = parseFloat(token.fallback);
         const ratio = pxValue / remValue;
-        
+
         // Should be 16px per rem (standard browser default)
         expect(ratio).toBeCloseTo(16, 0);
       });

@@ -79,11 +79,11 @@ export default function CustomerHistory({ customerId, onAppointmentClick }: Cust
     if (!historyData?.data?.pastAppointments) return [];
 
     const groups: { [year: number]: YearGroup } = {};
-    
+
     historyData.data.pastAppointments.forEach(appointment => {
       const appointmentDate = new Date(appointment.start);
       const year = appointmentDate.getFullYear();
-      
+
       if (!groups[year]) {
         groups[year] = {
           year,
@@ -92,7 +92,7 @@ export default function CustomerHistory({ customerId, onAppointmentClick }: Cust
           paidAmount: 0
         };
       }
-      
+
       groups[year].appointments.push(appointment);
       groups[year].totalAmount += appointment.total_amount || 0;
       groups[year].paidAmount += appointment.paid_amount || 0;

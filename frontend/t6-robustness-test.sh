@@ -20,10 +20,10 @@ TESTS_FAILED=0
 run_test() {
     local test_name="$1"
     local test_command="$2"
-    
+
     TESTS_RUN=$((TESTS_RUN + 1))
     echo "🔍 Test $TESTS_RUN: $test_name"
-    
+
     if eval "$test_command"; then
         echo "✅ PASSED: $test_name"
         TESTS_PASSED=$((TESTS_PASSED + 1))
@@ -42,8 +42,8 @@ run_test "Normal coverage generation" "npm test -- --coverage --run > /dev/null 
 
 # Test 2: Coverage File Validation
 run_test "Coverage files exist and are valid" "
-    [ -f coverage/coverage-summary.json ] && 
-    [ -f coverage/lcov.info ] && 
+    [ -f coverage/coverage-summary.json ] &&
+    [ -f coverage/lcov.info ] &&
     [ -s coverage/coverage-summary.json ] &&
     node -p 'JSON.parse(require(\"fs\").readFileSync(\"coverage/coverage-summary.json\"))' > /dev/null 2>&1
 "
@@ -81,7 +81,7 @@ run_test "Handle missing coverage directory gracefully" "
 run_test "Handle corrupted coverage JSON" "
     cp coverage/coverage-summary.json coverage/coverage-summary.json.backup
     echo 'invalid json' > coverage/coverage-summary.json
-    
+
     # Test that our robust parsing detects corruption
     if node -p 'JSON.parse(require(\"fs\").readFileSync(\"coverage/coverage-summary.json\"))' > /dev/null 2>&1; then
         # Restore and fail - should have detected corruption
@@ -98,13 +98,13 @@ run_test "Handle corrupted coverage JSON" "
 run_test "Handle empty coverage file" "
     cp coverage/coverage-summary.json coverage/coverage-summary.json.backup
     echo '' > coverage/coverage-summary.json
-    
+
     # Test file size detection
     size=\$(wc -c < coverage/coverage-summary.json)
-    
+
     # Restore file
     cp coverage/coverage-summary.json.backup coverage/coverage-summary.json
-    
+
     # Empty file should be detected
     [ \"\$size\" -eq 0 ]
 "
@@ -135,7 +135,7 @@ run_test "Coverage generation completes within reasonable time" "
     npm test -- --coverage --run > /dev/null 2>&1
     end_time=\$(date +%s)
     duration=\$((end_time - start_time))
-    
+
     # Should complete within 60 seconds for robustness
     [ \$duration -lt 60 ]
 "

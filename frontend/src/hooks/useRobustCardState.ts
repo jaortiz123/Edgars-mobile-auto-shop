@@ -3,9 +3,9 @@ import type { BoardCard } from '@/types/models';
 import { getMinutesUntil, minutesPast, isRunningLate, isOverdue } from '@/utils/time';
 import { notifyLate, notifyOverdue, notifyArrival } from '@/services/notificationService';
 import { markArrived } from '@/lib/api';
-import { 
-  validateCardData, 
-  parseAppointmentTime, 
+import {
+  validateCardData,
+  parseAppointmentTime,
   determineUrgencyLevel,
   IntervalManager,
   withCardErrorBoundary,
@@ -77,7 +77,7 @@ export function useRobustCardState(
 
   // State management
   const [cardState, setCardState] = useState<CardState>(DEFAULT_CARD_STATE);
-  
+
   // Refs for cleanup and performance
   const intervalManagerRef = useRef<IntervalManager>(new IntervalManager());
   const previousUrgencyRef = useRef<string>('normal');
@@ -114,11 +114,11 @@ export function useRobustCardState(
 
     try {
       await markArrived(validatedCard.id);
-      
-      setCardState(prev => ({ 
-        ...prev, 
-        hasArrived: true, 
-        isLoading: false 
+
+      setCardState(prev => ({
+        ...prev,
+        hasArrived: true,
+        isLoading: false
       }));
 
       // Send notification if enabled
@@ -140,11 +140,11 @@ export function useRobustCardState(
     } catch (error) {
       console.error('Error marking arrived:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to mark as arrived';
-      
-      setCardState(prev => ({ 
-        ...prev, 
-        error: errorMessage, 
-        isLoading: false 
+
+      setCardState(prev => ({
+        ...prev,
+        error: errorMessage,
+        isLoading: false
       }));
 
       // Announce error to screen reader if enabled
@@ -195,14 +195,14 @@ export function useRobustCardState(
     withCardErrorBoundary(
       () => {
         const newMinutesUntil = getMinutesUntil(appointmentTime);
-        
+
         setCardState(prevState => {
           const newState = { ...prevState, minutesUntil: newMinutesUntil };
 
           // Only process notifications if enabled and not arrived
           if (enableNotifications && !prevState.hasArrived && validatedCard.start) {
             const minutes_past = minutesPast(appointmentTime);
-            
+
             // Running late notification (10+ minutes past start)
             if (minutes_past > 10 && !prevState.notifiedLate) {
               sendNotificationSafely(() => {
@@ -210,7 +210,7 @@ export function useRobustCardState(
               });
               newState.notifiedLate = true;
             }
-            
+
             // Overdue notification (30+ minutes past start)
             if (minutes_past > 30 && !prevState.notifiedOverdue) {
               sendNotificationSafely(() => {
@@ -254,7 +254,7 @@ export function useRobustCardState(
 
     if (prevUrgency !== currentUrgency) {
       let announcement = '';
-      
+
       if (currentUrgency === 'urgent' && prevUrgency !== 'urgent') {
         announcement = `${validatedCard.customerName}'s appointment is now urgent`;
       } else if (currentUrgency === 'soon' && prevUrgency === 'normal') {
@@ -275,11 +275,11 @@ export function useRobustCardState(
   useEffect(() => {
     const intervalManager = intervalManagerRef.current;
     const notificationTimeouts = notificationTimeoutsRef.current;
-    
+
     return () => {
       // Clear all intervals
       intervalManager.clearAll();
-      
+
       // Clear all notification timeouts
       notificationTimeouts.forEach(timeoutId => {
         clearTimeout(timeoutId);
