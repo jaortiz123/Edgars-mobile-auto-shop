@@ -21,6 +21,7 @@
     "test:coverage-check": "npm run test:coverage && node scripts/coverage/check.js",
     "catalog:validate": "ts-node scripts/validateServiceCatalog.ts",
     "test:integration": "vitest run --config vitest.config.ts src/tests/integration --maxConcurrency=4",
+  "test:integration:full": "vitest run --config vitest.integration.config.ts",
     "test:strict": "VITEST_STRICT_CONSOLE=true vitest --run --maxConcurrency=4",
     "test:ci": "VITEST_STRICT_CONSOLE=true vitest --run --reporter=verbose --silent=false --maxConcurrency=4",
     "test:ci-serial": "VITEST_STRICT_CONSOLE=true vitest --run --reporter=verbose --silent=false --maxConcurrency=1",
