@@ -1,6 +1,8 @@
 import os
 import jwt
 from datetime import datetime, timedelta
+import random
+import string
 
 import pytest
 
@@ -16,6 +18,10 @@ def make_token(role="Advisor", sub="user-1"):
 
 def auth_headers(role="Advisor"):
     return {"Authorization": f"Bearer {make_token(role=role)}"}
+
+
+def _rand_plate():
+    return "PLT" + "".join(random.choices(string.ascii_uppercase + string.digits, k=5))
 
 
 @pytest.mark.usefixtures("db_connection")
@@ -68,14 +74,18 @@ def test_profile_basic(client, db_connection):
 
 @pytest.mark.usefixtures("db_connection")
 def test_profile_limit_and_filter(client, db_connection):
+    plate1 = _rand_plate()
+    plate2 = _rand_plate()
     with db_connection:
         with db_connection.cursor() as cur:
             cur.execute("INSERT INTO customers(id,name) VALUES(1101,'Grace Hopper')")
             cur.execute(
-                "INSERT INTO vehicles(id,customer_id,year,make,model,license_plate) VALUES(2101,1101,2018,'Honda','Civic','ABC123')"
+                "INSERT INTO vehicles(id,customer_id,year,make,model,license_plate) VALUES(2101,1101,2018,'Honda','Civic',%s)",
+                (plate1,),
             )
             cur.execute(
-                "INSERT INTO vehicles(id,customer_id,year,make,model,license_plate) VALUES(2102,1101,2019,'Ford','F150','TRK100')"
+                "INSERT INTO vehicles(id,customer_id,year,make,model,license_plate) VALUES(2102,1101,2019,'Ford','F150',%s)",
+                (plate2,),
             )
             # create 7 appointments across two vehicles
             for i in range(1, 8):
@@ -192,27 +202,32 @@ def test_etag_round_trip_change(client, db_connection):
 
 @pytest.mark.usefixtures("db_connection")
 def test_etag_no_change_stability(client, db_connection):
+    # Use randomized IDs to avoid clashes across tests now that uniqueness constraints tightened
+    import random
+
+    base = random.randint(5000, 9000)
+    cust_id = base + 1
+    veh_id = base + 2
+    appt_id = base + 3
     with db_connection:
         with db_connection.cursor() as cur:
-            # Use high, likely-unique IDs to avoid collisions across test re-runs in same DB session
+            cur.execute("INSERT INTO customers(id,name) VALUES(%s,'Stable User')", (cust_id,))
+            cur.execute("INSERT INTO vehicles(id,customer_id) VALUES(%s,%s)", (veh_id, cust_id))
             cur.execute(
-                "INSERT INTO customers(id,name) VALUES(92001,'Stable User') ON CONFLICT (id) DO NOTHING"
+                "INSERT INTO appointments(id,customer_id,vehicle_id,status,total_amount,paid_amount,start_ts) VALUES(%s,%s,%s,'COMPLETED',5.00,5.00,NOW())",
+                (appt_id, cust_id, veh_id),
             )
-            cur.execute(
-                "INSERT INTO vehicles(id,customer_id) VALUES(93001,92001) ON CONFLICT (id) DO NOTHING"
-            )
-            cur.execute(
-                "INSERT INTO appointments(id,customer_id,vehicle_id,status,total_amount,paid_amount,start_ts) VALUES(94001,92001,93001,'COMPLETED',5.00,5.00,NOW()) ON CONFLICT (id) DO NOTHING"
-            )
-    r1 = client.get("/api/admin/customers/92001/profile", headers=auth_headers())
+    r1 = client.get(f"/api/admin/customers/{cust_id}/profile", headers=auth_headers())
     assert r1.status_code == 200
     etag_a = r1.headers.get("ETag")
     r2 = client.get(
-        "/api/admin/customers/92001/profile", headers={**auth_headers(), "If-None-Match": etag_a}
+        f"/api/admin/customers/{cust_id}/profile",
+        headers={**auth_headers(), "If-None-Match": etag_a},
     )
     assert r2.status_code == 304
     r3 = client.get(
-        "/api/admin/customers/92001/profile", headers={**auth_headers(), "If-None-Match": etag_a}
+        f"/api/admin/customers/{cust_id}/profile",
+        headers={**auth_headers(), "If-None-Match": etag_a},
     )
     assert r3.status_code == 304
     assert r2.headers.get("ETag") == etag_a

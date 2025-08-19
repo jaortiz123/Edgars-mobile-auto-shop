@@ -1,5 +1,11 @@
 import json
 from http import HTTPStatus
+import random
+import string
+
+
+def _rand_plate():
+    return "PLT" + "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
 
 
 def test_get_single_appointment_details(client, db_connection):
@@ -9,9 +15,10 @@ def test_get_single_appointment_details(client, db_connection):
         "INSERT INTO customers (name, email, phone) VALUES ('Alice Tester','alice@example.com','555-0101') RETURNING id"
     )
     cust_id = cur.fetchone()[0]
+    plate = _rand_plate()
     cur.execute(
-        "INSERT INTO vehicles (customer_id, year, make, model, license_plate) VALUES (%s, 2020, 'Honda','Civic','ABC123') RETURNING id",
-        (cust_id,),
+        "INSERT INTO vehicles (customer_id, year, make, model, license_plate) VALUES (%s, 2020, 'Honda','Civic',%s) RETURNING id",
+        (cust_id, plate),
     )
     veh_id = cur.fetchone()[0]
     op_id = "svc-op-align"
