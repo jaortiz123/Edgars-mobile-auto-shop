@@ -95,16 +95,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, [push]);
 
   return (
-    <ToastCtx.Provider value={{ 
+    <ToastCtx.Provider value={{
       push,
       success: (text: string, opts?: { key?: string }) => push({ kind: 'success', text, key: opts?.key }),
       error: (text: string, opts?: { key?: string }) => push({ kind: 'error', text, key: opts?.key })
     }}>
       {children}
       {/* ARIA live region for screen reader announcements */}
-      <div 
-        aria-live="polite" 
-        aria-atomic="true" 
+      <div
+        aria-live="polite"
+        aria-atomic="true"
         className="absolute -top-full left-0 w-1 h-1 overflow-hidden opacity-0"
       >
         {items.length > 0 && items[items.length - 1].text}

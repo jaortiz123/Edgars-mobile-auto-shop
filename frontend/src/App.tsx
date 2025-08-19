@@ -6,7 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 // --- Layouts ---
 // A single Suspense boundary can be placed within the layout itself.
-import PublicLayout from './layout/PublicLayout'; 
+import PublicLayout from './layout/PublicLayout';
 import AdminLayout from './admin/AdminLayout';
 
 // --- Page Components (Lazy Loaded) ---

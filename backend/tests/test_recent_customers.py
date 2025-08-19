@@ -19,18 +19,22 @@ app = local_server.app
 JWT_SECRET = local_server.JWT_SECRET
 JWT_ALG = local_server.JWT_ALG
 
+
 @pytest.fixture
 def client():
-    app.config['TESTING'] = True
+    app.config["TESTING"] = True
     with app.test_client() as c:
         yield c
+
 
 @pytest.fixture
 def auth_headers():
     def make(role="Owner", sub="tester"):
         token = jwt.encode({"sub": sub, "role": role}, JWT_SECRET, algorithm=JWT_ALG)
         return {"Authorization": f"Bearer {token}"}
+
     return make
+
 
 @pytest.fixture
 def mock_db(mocker):
@@ -38,13 +42,30 @@ def mock_db(mocker):
     mock_cursor = mocker.MagicMock()
     mock_connection.__enter__.return_value = mock_connection
     mock_connection.cursor.return_value.__enter__.return_value = mock_cursor
-    mocker.patch('backend.local_server.db_conn', return_value=mock_connection)
+    mocker.patch("backend.local_server.db_conn", return_value=mock_connection)
     return mock_cursor
 
 
-def make_row(idx: int, vehicles_json=None, *, visits=0, last_service_at=None, is_vip=False, total_spent=None, is_overdue=False):
+def make_row(
+    idx: int,
+    vehicles_json=None,
+    *,
+    visits=0,
+    last_service_at=None,
+    is_vip=False,
+    total_spent=None,
+    is_overdue=False,
+):
     if vehicles_json is None:
-        vehicles_json = [{"id": f"veh-{idx}", "plate": f"PLT{idx}", "year": 2020, "make": "Make", "model": f"Model{idx}"}]
+        vehicles_json = [
+            {
+                "id": f"veh-{idx}",
+                "plate": f"PLT{idx}",
+                "year": 2020,
+                "make": "Make",
+                "model": f"Model{idx}",
+            }
+        ]
     now = datetime(2025, 8, 15, 12, 0, 0, tzinfo=timezone.utc)
     if total_spent is None:
         total_spent = 123.45 * idx
@@ -69,21 +90,35 @@ def test_recent_customers_default_limit(client, auth_headers, mock_db):
     # Simulate 3 rows returned
     mock_db.fetchall.return_value = [make_row(1), make_row(2), make_row(3)]
 
-    resp = client.get('/api/admin/recent-customers', headers=auth_headers())
+    resp = client.get("/api/admin/recent-customers", headers=auth_headers())
     assert resp.status_code == 200
     data = resp.get_json()["data"]
     assert "recent_customers" in data
     assert data["limit"] == 8
     assert len(data["recent_customers"]) == 3
     first = data["recent_customers"][0]
-    assert {"customerId", "name", "phone", "email", "latestAppointmentId", "latestAppointmentAt", "latestStatus", "vehicles", "totalSpent", "visitsCount", "lastServiceAt", "isVip", "isOverdueForService"}.issubset(first.keys())
+    assert {
+        "customerId",
+        "name",
+        "phone",
+        "email",
+        "latestAppointmentId",
+        "latestAppointmentAt",
+        "latestStatus",
+        "vehicles",
+        "totalSpent",
+        "visitsCount",
+        "lastServiceAt",
+        "isVip",
+        "isOverdueForService",
+    }.issubset(first.keys())
     assert isinstance(first["vehicles"], list)
 
 
 def test_recent_customers_custom_limit(client, auth_headers, mock_db):
     mock_db.fetchall.return_value = [make_row(i) for i in range(1, 6)]
 
-    resp = client.get('/api/admin/recent-customers?limit=5', headers=auth_headers())
+    resp = client.get("/api/admin/recent-customers?limit=5", headers=auth_headers())
     assert resp.status_code == 200
     data = resp.get_json()["data"]
     assert data["limit"] == 5
@@ -92,7 +127,7 @@ def test_recent_customers_custom_limit(client, auth_headers, mock_db):
 
 def test_recent_customers_limit_cap(client, auth_headers, mock_db):
     mock_db.fetchall.return_value = []
-    resp = client.get('/api/admin/recent-customers?limit=999', headers=auth_headers())
+    resp = client.get("/api/admin/recent-customers?limit=999", headers=auth_headers())
     assert resp.status_code == 200
     data = resp.get_json()["data"]
     assert data["limit"] == 25  # capped
@@ -101,12 +136,26 @@ def test_recent_customers_limit_cap(client, auth_headers, mock_db):
 
 def test_recent_customers_vip_and_overdue_logic(client, auth_headers, mock_db):
     # Row 1: Derived VIP via spend >= 5000
-    mock_row1 = make_row(1, total_spent=6000, visits=10, last_service_at=datetime(2025, 7, 1, tzinfo=timezone.utc), is_vip=False, is_overdue=False)
+    mock_row1 = make_row(
+        1,
+        total_spent=6000,
+        visits=10,
+        last_service_at=datetime(2025, 7, 1, tzinfo=timezone.utc),
+        is_vip=False,
+        is_overdue=False,
+    )
     # Row 2: Explicit VIP flag but not enough spend, overdue (older than 6 months)
-    mock_row2 = make_row(2, total_spent=200, visits=3, last_service_at=datetime(2024, 12, 1, tzinfo=timezone.utc), is_vip=True, is_overdue=True)
+    mock_row2 = make_row(
+        2,
+        total_spent=200,
+        visits=3,
+        last_service_at=datetime(2024, 12, 1, tzinfo=timezone.utc),
+        is_vip=True,
+        is_overdue=True,
+    )
     mock_db.fetchall.return_value = [mock_row1, mock_row2]
 
-    resp = client.get('/api/admin/recent-customers', headers=auth_headers())
+    resp = client.get("/api/admin/recent-customers", headers=auth_headers())
     assert resp.status_code == 200
     data = resp.get_json()["data"]["recent_customers"]
 

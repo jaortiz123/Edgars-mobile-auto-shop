@@ -1,7 +1,7 @@
 /**
  * P2-T-006: Canonical Error Test Helpers
- * 
- * Provides clean, deterministic error scenario testing using MSW server.use() 
+ *
+ * Provides clean, deterministic error scenario testing using MSW server.use()
  * pattern to avoid global state issues and ensure proper test isolation.
  */
 
@@ -12,9 +12,9 @@ import { server } from './server/mswServer';
 /**
  * Available error scenarios for testing
  */
-export type ErrorScenario = 
+export type ErrorScenario =
   | 'appointmentPatch500'
-  | 'unauthorizedAccess' 
+  | 'unauthorizedAccess'
   | 'networkTimeout'
   | 'dashboardStats500'
   | 'appointmentBoard500';
@@ -31,18 +31,18 @@ interface ErrorTestConfig {
 
 /**
  * Canonical error scenario wrapper using MSW server.use() pattern.
- * 
+ *
  * This function ensures:
  * - Error scenarios are enabled only for the duration of the test
  * - Proper cleanup using server.resetHandlers() in finally block
  * - No global state that can cause test interference
  * - Timeout protection to prevent hanging tests
- * 
+ *
  * @param scenario - The error scenario to enable during test
  * @param testFn - The test function to execute
  * @param config - Additional configuration options
  * @returns Promise that resolves when test completes
- * 
+ *
  * @example
  * ```tsx
  * await withErrorScenario('appointmentPatch500', async () => {
@@ -81,12 +81,12 @@ export async function withErrorScenario<T>(
   } finally {
     // Clear timeout
     clearTimeout(timeoutId!);
-    
+
     // Guaranteed cleanup - runs even if test throws or times out
     try {
       // Reset MSW handlers to remove error scenario
       server.resetHandlers();
-      
+
       // Run custom cleanup if provided
       if (cleanup) {
         await cleanup();

@@ -73,5 +73,3 @@
 - Precise backend contract and response shape for `/api/admin/appointments/today` beyond what `CalendarView` maps: TODO:SEARCH (backend endpoints).
 - Tests asserting calendar interactions (drag/drop, event resize, keyboard accessibility): UNKNOWN; TODO:SEARCH (frontend/src/tests/**).
 - Any virtualization/performance technique for large appointment sets (e.g., windowing libraries): UNKNOWN; TODO:SEARCH.
-
-

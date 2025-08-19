@@ -20,7 +20,7 @@ describe('CI-STRICT-001: Console error detection', () => {
   })
 
   test.skip('should fail when console.warn is called', () => {
-    // This should throw and fail the test  
+    // This should throw and fail the test
     console.warn('This is a test warning message')
     expect(true).toBe(true) // This line should never be reached
   })

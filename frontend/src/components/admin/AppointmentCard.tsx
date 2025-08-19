@@ -6,10 +6,10 @@ import { getMinutesUntil, minutesPast, getCountdownText, isStartingSoon, isRunni
 import ArrivalButton from './ArrivalButton';
 import { markArrived } from '@/lib/api';
 import { notifyLate, notifyOverdue, notifyArrival } from '@/services/notificationService';
-import { 
-  validateCardData, 
-  parseAppointmentTime, 
-  formatCardPrice, 
+import {
+  validateCardData,
+  parseAppointmentTime,
+  formatCardPrice,
   createCardAriaLabel,
   withCardErrorBoundary,
   CardAccessibility,
@@ -33,11 +33,11 @@ interface AppointmentCardProps {
   onCardRemoved?: (id: string) => void;
 }
 
-export default function AppointmentCard({ 
-  card, 
-  onOpen, 
-  onMove, 
-  onQuickReschedule, 
+export default function AppointmentCard({
+  card,
+  onOpen,
+  onMove,
+  onQuickReschedule,
   isRescheduling = false,
   onCompleteJob,
   isCompleting = false,
@@ -68,7 +68,7 @@ export default function AppointmentCard({
     if (!validatedCard) return new Date();
     return parseAppointmentTime(validatedCard.start);
   }, [validatedCard]);
-  
+
   // Enhanced urgency level calculation
   const getUrgencyLevel = useCallback(() => {
     if (!validatedCard) return 'normal';
@@ -83,7 +83,7 @@ export default function AppointmentCard({
       'Error determining urgency level'
     );
   }, [validatedCard, appointmentTime]);
-  
+
   const urgencyLevel = useMemo(() => getUrgencyLevel(), [getUrgencyLevel]);
 
   // Enhanced ARIA label
@@ -95,10 +95,10 @@ export default function AppointmentCard({
   // Drag functionality
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'card',
-    item: { 
-      id: validatedCard?.id || '', 
-      status: validatedCard?.status || 'SCHEDULED', 
-      position: validatedCard?.position || 0 
+    item: {
+      id: validatedCard?.id || '',
+      status: validatedCard?.status || 'SCHEDULED',
+      position: validatedCard?.position || 0
     },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
@@ -146,7 +146,7 @@ export default function AppointmentCard({
     } catch (error) {
       console.error('Error marking arrived:', error);
       setError('Failed to mark as arrived. Please try again.');
-      
+
       CardAccessibility.announceToScreenReader(
         'Failed to mark customer as arrived',
         'assertive'
@@ -178,7 +178,7 @@ export default function AppointmentCard({
 
   useEffect(() => {
     if (!validatedCard || !cardRef.current) return;
-    
+
     if (validatedCard.status === 'COMPLETED') {
       safeAnimateCompletion(cardRef.current, () => {
         if (onCardRemoved) {
@@ -207,7 +207,7 @@ export default function AppointmentCard({
     if (!validatedCard) return;
 
     const intervalManager = intervalManagerRef.current;
-    
+
     const updateCardState = () => {
       withCardErrorBoundary(
         () => {
@@ -216,12 +216,12 @@ export default function AppointmentCard({
 
           if (!hasArrived && validatedCard.start) {
             const minutes_past = minutesPast(appointmentTime);
-            
+
             if (minutes_past > 10 && !notifiedLate) {
               notifyLate(validatedCard.customerName, validatedCard.id, minutes_past);
               setNotifiedLate(true);
             }
-            
+
             if (minutes_past > 30 && !notifiedOverdue) {
               notifyOverdue(validatedCard.customerName, validatedCard.id, minutes_past);
               setNotifiedOverdue(true);

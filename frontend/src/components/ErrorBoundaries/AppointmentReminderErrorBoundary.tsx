@@ -31,7 +31,7 @@ export class AppointmentReminderErrorBoundary extends Component<ErrorBoundaryPro
 
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    
+
     this.state = {
       hasError: false,
       error: null,
@@ -52,7 +52,7 @@ export class AppointmentReminderErrorBoundary extends Component<ErrorBoundaryPro
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Enhanced error logging
     console.error('🚨 Sprint 3C Error Boundary caught an error:', error, errorInfo);
-    
+
     // Update state with error info
     this.setState({ errorInfo });
 
@@ -91,7 +91,7 @@ export class AppointmentReminderErrorBoundary extends Component<ErrorBoundaryPro
     }
 
     const retryDelay = Math.min(1000 * Math.pow(2, this.state.retryCount), 10000); // Exponential backoff, max 10s
-    
+
     this.retryTimer = setTimeout(() => {
       console.log(`🔄 Attempting retry ${this.state.retryCount + 1} for Sprint 3C component`);
       this.setState(prevState => ({
@@ -120,12 +120,12 @@ export class AppointmentReminderErrorBoundary extends Component<ErrorBoundaryPro
       // Store error data for debugging
       const errors = JSON.parse(localStorage.getItem('sprint3c_errors') || '[]');
       errors.push(errorData);
-      
+
       // Keep only last 50 errors
       if (errors.length > 50) {
         errors.splice(0, errors.length - 50);
       }
-      
+
       localStorage.setItem('sprint3c_errors', JSON.stringify(errors));
     } catch (trackingError) {
       console.warn('Failed to track error:', trackingError);
@@ -179,7 +179,7 @@ export class AppointmentReminderErrorBoundary extends Component<ErrorBoundaryPro
               </h3>
               <div className="mt-2 text-sm text-red-700">
                 <p>
-                  Something went wrong with the appointment reminder system. 
+                  Something went wrong with the appointment reminder system.
                   {this.state.retryCount > 0 && ` (Attempt ${this.state.retryCount + 1})`}
                 </p>
                 {process.env.NODE_ENV === 'development' && this.state.error && (
@@ -268,7 +268,7 @@ export function useErrorHandler() {
 
   const captureError = React.useCallback((error: Error, context?: string) => {
     console.error(`🚨 Sprint 3C Error${context ? ` in ${context}` : ''}:`, error);
-    
+
     // Track error for analytics
     try {
       const errorData = {
@@ -280,11 +280,11 @@ export function useErrorHandler() {
 
       const errors = JSON.parse(localStorage.getItem('sprint3c_hook_errors') || '[]');
       errors.push(errorData);
-      
+
       if (errors.length > 25) {
         errors.splice(0, errors.length - 25);
       }
-      
+
       localStorage.setItem('sprint3c_hook_errors', JSON.stringify(errors));
     } catch (trackingError) {
       console.warn('Failed to track hook error:', trackingError);

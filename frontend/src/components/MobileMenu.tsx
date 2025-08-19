@@ -51,7 +51,7 @@ const MobileMenu: React.FC = () => {
             >
               Service Areas
             </Link>
-            
+
             {/* Phone number */}
             <a
               href="tel:555-123-4567"
@@ -105,9 +105,9 @@ const MobileMenu: React.FC = () => {
               <Button asLink to="/booking" variant="outline" className="w-full" onClick={closeMenu}>
                 Schedule Service
               </Button>
-              <Button 
-                asLink 
-                to="/emergency" 
+              <Button
+                asLink
+                to="/emergency"
                 className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
                 onClick={closeMenu}
               >
@@ -120,7 +120,7 @@ const MobileMenu: React.FC = () => {
 
       {/* Overlay for mobile menu */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black bg-opacity-25"
           onClick={closeMenu}
         />

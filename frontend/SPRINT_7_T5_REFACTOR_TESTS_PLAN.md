@@ -9,10 +9,10 @@ Refactor existing tests to use the new Mock Factory System for improved:
 
 ## Refactoring Strategy
 
-### 1. **API Mock Integration** 
-**Target Files**: 
+### 1. **API Mock Integration**
+**Target Files**:
 - `services.crud.test.tsx` - Currently uses manual `vi.mock` for API calls
-- `MessageThread.test.tsx` - Ad-hoc API mocking  
+- `MessageThread.test.tsx` - Ad-hoc API mocking
 - `appointments.optimisticMove.test.tsx` - Basic API mocking
 - `CustomerHistory.test.tsx` - Manual API mocking
 
@@ -24,19 +24,19 @@ Refactor existing tests to use the new Mock Factory System for improved:
 
 ### 2. **Time-Dependent Test Enhancement**
 **Target Files**:
-- `sprint3c-simple.test.tsx` - Basic time calculations 
+- `sprint3c-simple.test.tsx` - Basic time calculations
 - Tests using `Date.now()` or time-sensitive logic
 
 **Improvements**:
 - Use `mockFactory.time` for deterministic time testing
-- Add time progression scenarios  
+- Add time progression scenarios
 - Test countdown and status changes over time
 - Implement timezone-aware testing
 
 ### 3. **Component Test Isolation**
 **Target Files**:
 - `components/__tests__/Button.test.tsx`
-- `components/__tests__/ServiceCard.test.tsx` 
+- `components/__tests__/ServiceCard.test.tsx`
 - `components/__tests__/ServiceList.test.tsx`
 
 **Improvements**:
@@ -63,7 +63,7 @@ Refactor existing tests to use the new Mock Factory System for improved:
 2. Enhance `MessageThread.test.tsx` with mock factory patterns
 3. Improve `appointments.optimisticMove.test.tsx` with network simulation
 
-### Phase 2: Time-Dependent Test Enhancement  
+### Phase 2: Time-Dependent Test Enhancement
 1. Refactor `sprint3c-simple.test.tsx` to use `mockFactory.time`
 2. Add new time progression test scenarios
 3. Create appointment lifecycle testing utilities

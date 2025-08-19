@@ -34,7 +34,7 @@ export const tokenUtils = {
     try {
       const payload = token.split('.')[1];
       if (!payload) return null;
-      
+
       const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
       return JSON.parse(decoded);
     } catch {
@@ -48,7 +48,7 @@ export const tokenUtils = {
   isTokenExpired: (token: string, bufferMinutes: number = 5): boolean => {
     const decoded = tokenUtils.safeDecodeToken(token);
     if (!decoded?.exp) return true;
-    
+
     const now = Date.now() / 1000;
     const buffer = bufferMinutes * 60;
     return (decoded.exp as number) <= (now + buffer);
@@ -60,7 +60,7 @@ export const tokenUtils = {
   getTokenTimeToExpiry: (token: string): number => {
     const decoded = tokenUtils.safeDecodeToken(token);
     if (!decoded?.exp) return 0;
-    
+
     const now = Date.now() / 1000;
     return Math.max(0, (decoded.exp as number) - now);
   }
@@ -73,77 +73,77 @@ export const authValidation = {
    */
   validateEmail: (email: string): { isValid: boolean; error?: string } => {
     const trimmedEmail = email.trim();
-    
+
     if (!trimmedEmail) {
       return { isValid: false, error: 'Email is required' };
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
       return { isValid: false, error: 'Please enter a valid email address' };
     }
-    
+
     if (trimmedEmail.length > 254) {
       return { isValid: false, error: 'Email address is too long' };
     }
-    
+
     return { isValid: true };
   },
 
   /**
    * Comprehensive password validation
    */
-  validatePassword: (password: string): { 
-    isValid: boolean; 
-    errors: string[]; 
+  validatePassword: (password: string): {
+    isValid: boolean;
+    errors: string[];
     strength: number;
     strengthText: string;
   } => {
     const errors: string[] = [];
     let strength = 0;
-    
+
     if (!password) {
-      return { 
-        isValid: false, 
-        errors: ['Password is required'], 
+      return {
+        isValid: false,
+        errors: ['Password is required'],
         strength: 0,
         strengthText: 'None'
       };
     }
-    
+
     if (password.length < 8) {
       errors.push('Password must be at least 8 characters long');
     } else {
       strength++;
     }
-    
+
     if (!/[A-Z]/.test(password)) {
       errors.push('Password must contain at least one uppercase letter');
     } else {
       strength++;
     }
-    
+
     if (!/[a-z]/.test(password)) {
       errors.push('Password must contain at least one lowercase letter');
     } else {
       strength++;
     }
-    
+
     if (!/\d/.test(password)) {
       errors.push('Password must contain at least one number');
     } else {
       strength++;
     }
-    
+
     if (!/[^A-Za-z0-9]/.test(password)) {
       errors.push('Password must contain at least one special character');
     } else {
       strength++;
     }
-    
-    const strengthText = strength < 2 ? 'Weak' : 
+
+    const strengthText = strength < 2 ? 'Weak' :
                         strength < 4 ? 'Medium' : 'Strong';
-    
+
     return {
       isValid: errors.length === 0 && strength >= 3,
       errors,
@@ -155,18 +155,18 @@ export const authValidation = {
   /**
    * Password confirmation validation
    */
-  validatePasswordConfirmation: (password: string, confirmPassword: string): { 
-    isValid: boolean; 
-    error?: string 
+  validatePasswordConfirmation: (password: string, confirmPassword: string): {
+    isValid: boolean;
+    error?: string
   } => {
     if (!confirmPassword) {
       return { isValid: false, error: 'Please confirm your password' };
     }
-    
+
     if (password !== confirmPassword) {
       return { isValid: false, error: 'Passwords do not match' };
     }
-    
+
     return { isValid: true };
   }
 };
@@ -238,7 +238,7 @@ export const networkUtils = {
    */
   handleApiError: async (response: Response): Promise<never> => {
     let errorMessage = 'An unexpected error occurred';
-    
+
     try {
       const errorData = await response.json();
       errorMessage = errorData.message || errorData.error || errorMessage;
@@ -246,19 +246,19 @@ export const networkUtils = {
       // If parsing JSON fails, use status text
       errorMessage = response.statusText || errorMessage;
     }
-    
+
     if (response.status === 401) {
       throw new AuthenticationError(errorMessage, 'UNAUTHORIZED', 401);
     }
-    
+
     if (response.status === 400) {
       throw new ValidationError(errorMessage);
     }
-    
+
     if (response.status >= 500) {
       throw new NetworkError(`Server error: ${errorMessage}`);
     }
-    
+
     throw new Error(errorMessage);
   }
 };
@@ -270,19 +270,19 @@ export const idUtils = {
    */
   generateId: (prefix: string = ''): string => {
     const timestamp = Date.now().toString(36);
-    
+
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
       const uuid = crypto.randomUUID();
       return prefix ? `${prefix}-${uuid}` : uuid;
     }
-    
+
     if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
       const array = new Uint8Array(16);
       crypto.getRandomValues(array);
       const randomStr = Array.from(array, byte => byte.toString(36)).join('');
       return prefix ? `${prefix}-${timestamp}-${randomStr}` : `${timestamp}-${randomStr}`;
     }
-    
+
     // Fallback for environments without crypto
     const random = Math.random().toString(36).substr(2, 9);
     return prefix ? `${prefix}-${timestamp}-${random}` : `${timestamp}-${random}`;
@@ -297,7 +297,7 @@ export const a11yUtils = {
   generateErrorMessage: (errors: string[]): string => {
     if (errors.length === 0) return '';
     if (errors.length === 1) return errors[0];
-    
+
     return `Multiple errors: ${errors.join(', ')}`;
   },
 
@@ -319,9 +319,9 @@ export const a11yUtils = {
     liveRegion.setAttribute('aria-atomic', 'true');
     liveRegion.className = 'sr-only';
     liveRegion.textContent = message;
-    
+
     document.body.appendChild(liveRegion);
-    
+
     // Remove after announcement
     setTimeout(() => {
       document.body.removeChild(liveRegion);

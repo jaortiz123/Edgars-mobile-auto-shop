@@ -1,6 +1,6 @@
 /**
  * Phase 2 Task 1: Integration Test Validation
- * 
+ *
  * Basic integration test to validate that the MSW harness works correctly
  * and can render the full application with real HTTP calls.
  */
@@ -81,7 +81,7 @@ describe('MSW Integration Server', () => {
     // Get services for an appointment
     const getResponse = await fetch('http://localhost:3001/api/appointments/apt-1/services');
     expect(getResponse.ok).toBe(true);
-    
+
     const services = await getResponse.json();
     expect(services).toHaveProperty('services');
     expect(Array.isArray(services.services)).toBe(true);

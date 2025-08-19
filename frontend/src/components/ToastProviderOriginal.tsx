@@ -35,7 +35,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Generate a more robust unique ID
     const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const newToast = { ...toast, id };
-    
+
     dispatch({ type: 'ADD_TOAST', payload: newToast });
 
     // Auto remove after duration with proper cleanup
@@ -44,7 +44,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       dispatch({ type: 'REMOVE_TOAST', payload: id });
       timeoutRefs.current.delete(id);
     }, duration);
-    
+
     timeoutRefs.current.set(id, timeoutId);
   }, []);
 
@@ -80,7 +80,7 @@ const ToastContainer: React.FC = () => {
   const { state, removeToast } = context;
 
   return (
-    <div 
+    <div
       className="fixed top-4 right-4 z-50 space-y-2"
       aria-live="polite"
       aria-label="Notifications"
@@ -146,7 +146,7 @@ const ToastNotification: React.FC<{
 
   return (
     <div className={`
-      max-w-sm w-full border rounded-lg shadow-lg p-4 
+      max-w-sm w-full border rounded-lg shadow-lg p-4
       ${getToastStyles(toast.type)}
       animate-in slide-in-from-right duration-300
     `}>

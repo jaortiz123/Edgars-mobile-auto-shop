@@ -70,7 +70,7 @@ const AdvancedFilter: React.FC<AdvancedFilterProps> = ({
     const newStatus = tempFilters.status.includes(status)
       ? tempFilters.status.filter(s => s !== status)
       : [...tempFilters.status, status];
-    
+
     setTempFilters({ ...tempFilters, status: newStatus });
   };
 
@@ -78,7 +78,7 @@ const AdvancedFilter: React.FC<AdvancedFilterProps> = ({
     const newServices = tempFilters.services.includes(service)
       ? tempFilters.services.filter(s => s !== service)
       : [...tempFilters.services, service];
-    
+
     setTempFilters({ ...tempFilters, services: newServices });
   };
 
@@ -86,7 +86,7 @@ const AdvancedFilter: React.FC<AdvancedFilterProps> = ({
     const newLocations = tempFilters.locations.includes(location)
       ? tempFilters.locations.filter(l => l !== location)
       : [...tempFilters.locations, location];
-    
+
     setTempFilters({ ...tempFilters, locations: newLocations });
   };
 
@@ -156,7 +156,7 @@ const AdvancedFilter: React.FC<AdvancedFilterProps> = ({
           </Button>
         </div>
       </CardHeader>
-      
+
       <CardContent className="space-y-6">
         {/* Date Range Filter */}
         <div>

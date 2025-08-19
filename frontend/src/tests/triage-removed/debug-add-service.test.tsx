@@ -54,7 +54,7 @@ describe('Debug Add Service Form', () => {
     // Click on appointment card to open drawer
     const appointmentCard = screen.getByText(/happy path customer/i);
     await user.click(appointmentCard);
-    
+
     console.log('📌 Clicked appointment card');
 
     // Wait for drawer to open
@@ -68,7 +68,7 @@ describe('Debug Add Service Form', () => {
     const drawer = screen.getByTestId('drawer-open');
     const tablist = within(drawer).getByRole('tablist');
     const servicesTab = within(tablist).getByRole('tab', { name: /services/i });
-    
+
     await user.click(servicesTab);
     console.log('📌 Clicked Services tab');
 
@@ -87,7 +87,7 @@ describe('Debug Add Service Form', () => {
     // Click Add Service button
     const addServiceButton = within(drawer).getByTestId('add-service-button');
     await user.click(addServiceButton);
-    
+
     console.log('📌 Clicked Add Service button');
 
     // Debug: Show drawer content after clicking

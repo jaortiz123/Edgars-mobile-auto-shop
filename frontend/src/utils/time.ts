@@ -1,7 +1,7 @@
 /**
  * Enhanced Time Utility Functions for Sprint 3C Appointment Reminders
  * Enterprise-grade implementation with comprehensive robustness framework
- * 
+ *
  * Features:
  * - Input validation with detailed error handling
  * - Timezone awareness and standardization
@@ -117,7 +117,7 @@ function validateAndNormalizeTime(
     if (error instanceof Error && (error as TimeError).code) {
       throw error; // Re-throw our custom errors
     }
-    
+
     throw createTimeError(
       `Failed to parse ${context}: ${error instanceof Error ? error.message : 'Unknown error'}`,
       'TIME_PARSE_ERROR',
@@ -132,7 +132,7 @@ function validateAndNormalizeTime(
 function clearExpiredTimeCache(): void {
   const now = Date.now();
   const entries = Array.from(timeCalculationCache.entries());
-  
+
   for (const [key, value] of entries) {
     if (now - value.timestamp > CACHE_DURATION) {
       timeCalculationCache.delete(key);
@@ -151,12 +151,12 @@ export function getMinutesUntil(
   options: TimeCalculationOptions = {}
 ): number {
   const opts = { ...DEFAULT_OPTIONS, ...options };
-  
+
   try {
     // Create cache key for performance optimization
     const cacheKey = `minutesUntil:${startTime}:${JSON.stringify(opts)}`;
     const cached = timeCalculationCache.get(cacheKey);
-    
+
     if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
       return cached.result;
     }
@@ -164,7 +164,7 @@ export function getMinutesUntil(
     // Validate inputs
     const start = validateAndNormalizeTime(startTime, 'start time');
     const now = new Date();
-    
+
     // Apply timezone standardization if specified
     let adjustedStart = start;
     if (opts.timezone && opts.timezone !== DEFAULT_OPTIONS.timezone) {
@@ -172,11 +172,11 @@ export function getMinutesUntil(
       const offset = new Date().getTimezoneOffset() * 60000;
       adjustedStart = new Date(start.getTime() + offset);
     }
-    
+
     // Calculate difference in milliseconds, then convert to minutes
     const diffMs = adjustedStart.getTime() - now.getTime();
     const diffMinutes = Math.round(diffMs / (1000 * 60));
-    
+
     // Apply business rules validation
     if (!opts.allowFuture && diffMinutes > 0) {
       throw createTimeError(
@@ -185,7 +185,7 @@ export function getMinutesUntil(
         { diffMinutes, options: opts }
       );
     }
-    
+
     if (!opts.allowPast && diffMinutes < 0) {
       throw createTimeError(
         'Past times not allowed with current options',
@@ -193,7 +193,7 @@ export function getMinutesUntil(
         { diffMinutes, options: opts }
       );
     }
-    
+
     // Check reasonable limits
     const daysDiff = Math.abs(diffMinutes) / (24 * 60);
     if (diffMinutes > 0 && daysDiff > (opts.maxDaysAhead || 365)) {
@@ -203,7 +203,7 @@ export function getMinutesUntil(
         { daysDiff, maxDaysAhead: opts.maxDaysAhead }
       );
     }
-    
+
     if (diffMinutes < 0 && daysDiff > (opts.maxDaysBehind || 30)) {
       throw createTimeError(
         `Start time too far in past: ${daysDiff.toFixed(1)} days`,
@@ -232,12 +232,12 @@ export function getMinutesUntil(
       error: error instanceof Error ? error.message : error,
       stack: error instanceof Error ? error.stack : undefined
     });
-    
+
     // Return safe fallback for non-critical usage
     if (error instanceof Error && (error as TimeError).code === 'TIME_NULL_INPUT') {
       return 0; // Safe fallback for null inputs
     }
-    
+
     throw error; // Re-throw for critical errors
   }
 }
@@ -291,9 +291,9 @@ export function formatDuration(
     const absMinutes = Math.abs(minutes);
     const hours = Math.floor(absMinutes / 60);
     const mins = Math.round(absMinutes % 60);
-    
+
     const { shortForm = false, accessibility = false } = options;
-    
+
     // Format for screen readers
     if (accessibility) {
       if (hours > 0) {
@@ -303,7 +303,7 @@ export function formatDuration(
       }
       return mins === 1 ? '1 minute' : `${mins} minutes`;
     }
-    
+
     // Short form
     if (shortForm) {
       if (hours > 0) {
@@ -311,7 +311,7 @@ export function formatDuration(
       }
       return `${mins}m`;
     }
-    
+
     // Standard form
     if (hours > 0) {
       return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
@@ -353,7 +353,7 @@ export function getCountdownText(
 
     const { showDirection = true, accessibility = false, context = 'appointment' } = options;
     const duration = formatDuration(Math.abs(minutesUntil), { accessibility });
-    
+
     if (minutesUntil > 0) {
       if (accessibility) {
         return `${context} starts in ${duration}`;
@@ -538,7 +538,7 @@ export function getTimeCacheStats(): {
   const entries = Array.from(timeCalculationCache.entries());
   const now = Date.now();
   const validEntries = entries.filter(([, value]) => now - value.timestamp < CACHE_DURATION);
-  
+
   return {
     size: timeCalculationCache.size,
     hitRate: validEntries.length / Math.max(entries.length, 1),

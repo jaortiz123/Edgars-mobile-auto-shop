@@ -1,6 +1,6 @@
 /**
  * Phase 2 Task 1: Integration Test Utilities
- * 
+ *
  * Helper functions for integration testing that render the full React app
  * with all necessary providers.
  */
@@ -22,7 +22,7 @@ interface IntegrationRenderOptions extends Omit<RenderOptions, 'wrapper'> {
 /**
  * Renders the full App component with all necessary providers for integration testing.
  * This simulates the real application environment.
- * 
+ *
  * @param options - Rendering options including initial route
  * @returns Render result from React Testing Library
  */
@@ -45,7 +45,7 @@ export function renderWithProviders(options: IntegrationRenderOptions = {}) {
 /**
  * Renders a specific component with all necessary providers.
  * Useful for testing individual components in isolation but with full context.
- * 
+ *
  * @param component - The component to render
  * @param options - Rendering options
  * @returns Render result from React Testing Library
@@ -90,7 +90,7 @@ export function renderComponentWithProviders(
 /**
  * Waits for all React Query mutations and queries to settle.
  * Useful for ensuring all async operations are complete before assertions.
- * 
+ *
  * @param queryClient - The QueryClient instance
  */
 export async function waitForQueriesAndMutations(queryClient: QueryClient) {
@@ -109,7 +109,7 @@ export async function waitForQueriesAndMutations(queryClient: QueryClient) {
 
 /**
  * Creates a fresh QueryClient for each test to avoid state pollution.
- * 
+ *
  * @returns A new QueryClient configured for testing
  */
 export function createTestQueryClient() {
@@ -135,7 +135,7 @@ export function createTestQueryClient() {
 /**
  * Utility to simulate user authentication for integration tests.
  * Sets up mock JWT token and user context.
- * 
+ *
  * @param role - User role (Owner, Advisor, Tech)
  * @param userId - User ID
  */

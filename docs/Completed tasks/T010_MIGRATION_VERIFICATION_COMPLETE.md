@@ -13,7 +13,7 @@ Create an automated pytest that verifies database migration correctly handles th
 
 #### 1. **`test_canonical_timestamps_migration_handles_start_ts_nulls()`**
 - **Purpose**: Comprehensive migration verification for canonical timestamps
-- **Approach**: 
+- **Approach**:
   - Creates SQLite in-memory database with appointments table
   - Sets up test data with various NULL/non-NULL scenarios
   - Simulates the actual migration logic from `abcdef123456_canonical_timestamps.py`
@@ -26,7 +26,7 @@ Create an automated pytest that verifies database migration correctly handles th
 #### 2. **`test_migration_ensures_no_null_start_ts_for_valid_appointments()`**
 - **Purpose**: Core T-010 requirement verification
 - **Focus**: Tests the specific requirement that COUNT(*) WHERE start_ts IS NULL = 0 for valid appointments
-- **Implementation**: 
+- **Implementation**:
   - Creates test data with only valid scheduled_date values
   - Runs migration logic
   - **Asserts COUNT(*) WHERE start_ts IS NULL = 0** ✅
@@ -70,9 +70,9 @@ assert null_start_ts_count == 0, (
 
 1. **SQLite In-Memory Database**: Fast, isolated testing without external dependencies
 2. **SQLAlchemy text() Queries**: As specified in T-010 requirements
-3. **Comprehensive Test Scenarios**: 
+3. **Comprehensive Test Scenarios**:
    - Both date and time present
-   - Date only (time NULL) 
+   - Date only (time NULL)
    - Both NULL
    - Date NULL, time present (edge case)
    - Multiple valid appointments
@@ -98,7 +98,7 @@ pytest tests/test_migrations.py::test_canonical_timestamps_migration_handles_sta
 All tests pass successfully:
 ```
 tests/test_migrations.py::test_canonical_timestamps_migration_handles_start_ts_nulls PASSED
-tests/test_migrations.py::test_migration_verification_sql_helper PASSED  
+tests/test_migrations.py::test_migration_verification_sql_helper PASSED
 tests/test_migrations.py::test_migration_ensures_no_null_start_ts_for_valid_appointments PASSED
 ```
 
@@ -124,7 +124,7 @@ The test framework can be extended for other migrations:
 This implementation provides **automated verification** of the critical canonical timestamps migration, replacing manual checklist verification with reliable, repeatable tests. The test suite ensures that:
 
 1. **No data loss** occurs during migration
-2. **NULL handling** is correct for all edge cases  
+2. **NULL handling** is correct for all edge cases
 3. **Migration logic** matches the actual alembic implementation
 4. **Future changes** can be verified automatically
 

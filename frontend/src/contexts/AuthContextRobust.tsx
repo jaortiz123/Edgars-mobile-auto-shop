@@ -36,11 +36,11 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
     case 'SET_ERROR':
       return { ...state, error: action.payload, isLoading: false };
     case 'SET_USER':
-      return { 
-        ...state, 
-        user: action.payload, 
-        isLoading: false, 
-        error: null 
+      return {
+        ...state,
+        user: action.payload,
+        isLoading: false,
+        error: null
       };
     case 'SET_INITIALIZED':
       return { ...state, isInitialized: action.payload };
@@ -131,7 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // In a real app, you would call a refresh endpoint here
         console.log('Token should be refreshed');
       }
-      
+
       if (!authService.isLoggedIn()) {
         dispatch({ type: 'SET_USER', payload: null });
         dispatch({ type: 'SET_ERROR', payload: 'Session expired. Please log in again.' });
@@ -148,7 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await authService.login(email, password);
       const decoded = authService.parseToken();
-      
+
       if (decoded) {
         const profile = await authService.getProfile();
         dispatch({

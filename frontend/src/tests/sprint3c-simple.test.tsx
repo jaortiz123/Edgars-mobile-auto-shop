@@ -12,7 +12,7 @@ describe('Sprint 3C: Time Utilities - Enhanced with Redesigned Mock Factory', ()
   beforeEach(() => {
     // Create fresh mocks for each test
     mocks = createTestMocks();
-    
+
     // Set a fixed current time for deterministic testing
     const fixedTime = new Date('2024-01-15T10:00:00Z');
     mocks.time.setCurrentTime(fixedTime);
@@ -24,14 +24,14 @@ describe('Sprint 3C: Time Utilities - Enhanced with Redesigned Mock Factory', ()
     expect(mocks.time.isStartingSoon).toBeDefined();
     expect(mocks.time.isRunningLate).toBeDefined();
     expect(mocks.time.isOverdue).toBeDefined();
-    
+
     console.log('Dependency injection time utils available:', Object.keys(mocks.time));
   });
 
   test('appointment timing calculations with dependency injection', () => {
     // Set appointments at specific times relative to our fixed current time (10:00 AM)
     const startingSoonTime = new Date('2024-01-15T10:10:00Z'); // 10 minutes from now
-    const lateTime = new Date('2024-01-15T09:45:00Z'); // 15 minutes ago  
+    const lateTime = new Date('2024-01-15T09:45:00Z'); // 15 minutes ago
     const overdueTime = new Date('2024-01-15T09:25:00Z'); // 35 minutes ago
 
     // Test using dependency injection time calculations
@@ -58,7 +58,7 @@ describe('Sprint 3C: Time Utilities - Enhanced with Redesigned Mock Factory', ()
     expect(isStartingSoon).toBe(true);
     expect(isRunningLate).toBe(true);
     expect(isOverdue).toBe(true);
-    
+
     // Test negative cases
     expect(mocks.time.isStartingSoon(lateTime)).toBe(false);
     expect(mocks.time.isRunningLate(startingSoonTime)).toBe(false);
@@ -67,21 +67,21 @@ describe('Sprint 3C: Time Utilities - Enhanced with Redesigned Mock Factory', ()
 
   test('time progression simulation with dependency injection', () => {
     const appointmentTime = new Date('2024-01-15T10:30:00Z'); // 30 minutes from current time
-    
+
     // Initially, appointment is 30 minutes away
     expect(mocks.time.getMinutesUntil(appointmentTime)).toBe(30);
     expect(mocks.time.isStartingSoon(appointmentTime)).toBe(false);
-    
+
     // Advance time by 20 minutes
     mocks.time.advanceTime(20); // 20 minutes
-    
+
     // Now appointment should be 10 minutes away
     expect(mocks.time.getMinutesUntil(appointmentTime)).toBe(10);
     expect(mocks.time.isStartingSoon(appointmentTime)).toBe(true);
-    
+
     // Advance time past the appointment
     mocks.time.advanceTime(25); // 25 more minutes (total: 45 min advanced)
-    
+
     // Now appointment should be 15 minutes overdue (30 - 45 = -15)
     expect(mocks.time.getMinutesUntil(appointmentTime)).toBe(-15);
     expect(mocks.time.isRunningLate(appointmentTime)).toBe(false); // 15 min is beyond 5 min buffer
@@ -97,19 +97,19 @@ describe('Sprint 3C: Time Utilities - Enhanced with Redesigned Mock Factory', ()
 
   test('cache management with dependency injection', () => {
     const appointmentTime = new Date('2024-01-15T10:30:00Z');
-    
+
     // Make some calculations to populate cache
     mocks.time.getMinutesUntil(appointmentTime);
     mocks.time.isStartingSoon(appointmentTime);
-    
+
     // Get cache stats
     const stats = mocks.time.getTimeCacheStats();
     expect(stats).toBeDefined();
     expect(typeof stats.size).toBe('number');
-    
+
     // Clear cache
     mocks.time.clearTimeCache();
-    
+
     // Cache should be cleared (function should execute without error)
     expect(() => mocks.time.clearTimeCache()).not.toThrow();
   });

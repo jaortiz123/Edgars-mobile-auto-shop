@@ -156,11 +156,11 @@
   .countdown {
     @apply text-xs;
   }
-  
+
   .appointment-card {
     @apply p-2;
   }
-  
+
   .notification-center {
     @apply w-72;
   }

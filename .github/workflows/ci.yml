@@ -42,7 +42,7 @@ jobs:
           echo "🔍 Running ESLint in strict CI mode (zero warnings allowed)..."
           npm run lint:ci
 
-  # Backend flake8 - Fail fast on lint issues  
+  # Backend flake8 - Fail fast on lint issues
   backend-lint:
     runs-on: ubuntu-latest
     defaults:
@@ -78,7 +78,7 @@ jobs:
     defaults:
       run:
         working-directory: backend
-    
+
     services:
       postgres:
         image: postgres:16
@@ -168,7 +168,7 @@ jobs:
     defaults:
       run:
         working-directory: backend
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -241,7 +241,7 @@ jobs:
           python local_server.py &
           SERVER_PID=$!
           echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
-          
+
           # Wait for server to start
           for i in {1..30}; do
             if curl -f http://localhost:3001/health 2>/dev/null; then
@@ -255,34 +255,34 @@ jobs:
       - name: Test API endpoint with curl and assert envelope shape
         run: |
           echo "🧪 Testing /api/admin/appointments endpoint..."
-          
+
           # Make curl request and capture response
           echo "📡 Making curl request to http://localhost:3001/api/admin/appointments"
           response=$(curl -s -X GET "http://localhost:3001/api/admin/appointments" \
             -H "Content-Type: application/json")
-          
+
           echo "📄 Response: $response"
-          
+
           # Use jq to assert .errors == null (T-007 requirement)
           errors_field=$(echo "$response" | jq -r '.errors')
-          
+
           if [ "$errors_field" = "null" ]; then
             echo "✅ SUCCESS: .errors field is null as expected"
           else
             echo "❌ FAILURE: .errors field is not null, got: $errors_field"
             exit 1
           fi
-          
+
           # Additional validation: ensure we have proper envelope structure
           data_field=$(echo "$response" | jq '.data')
           meta_field=$(echo "$response" | jq '.meta')
-          
+
           if [ "$data_field" != "null" ] && [ "$meta_field" != "null" ]; then
             echo "✅ SUCCESS: Envelope structure is valid (has data and meta fields)"
           else
             echo "❌ FAILURE: Invalid envelope structure"
             echo "data field: $data_field"
-            echo "meta field: $meta_field" 
+            echo "meta field: $meta_field"
             exit 1
           fi
 
@@ -335,13 +335,13 @@ jobs:
         run: |
           echo "🧪 Running frontend unit tests with coverage enforcement..."
           set -euo pipefail
-          
+
           # Clean previous coverage data
           rm -rf coverage/ || true
-          
+
           # P2-T-009: Capture test output for retry analysis
           echo "📝 Capturing test output for retry analysis..."
-          
+
           # Run tests with proper error handling and output capture
           if ! npm test -- --coverage --run --coverageProvider=v8 --reporter=verbose 2>&1 | tee vitest-output.log; then
             echo "❌ Tests failed, but continuing to check if coverage was generated..."
@@ -350,21 +350,21 @@ jobs:
             echo "✅ Tests completed successfully"
             TEST_EXIT_CODE=0
           fi
-          
+
           # Export test result for later steps
           echo "TEST_EXIT_CODE=$TEST_EXIT_CODE" >> $GITHUB_OUTPUT
-          
+
           # Store test output for retry analysis
           if [ -f "vitest-output.log" ]; then
             echo "📊 Test output captured for retry analysis"
           fi
-          
+
           # Verify coverage files were generated
           if [ ! -d "coverage" ]; then
             echo "❌ Coverage directory not created - tests may have failed catastrophically"
             exit 1
           fi
-          
+
           echo "📁 Coverage files generated:"
           ls -la coverage/ || echo "❌ Cannot list coverage directory"
 
@@ -382,7 +382,7 @@ jobs:
         run: |
           echo "📊 Checking coverage thresholds with enhanced error handling..."
           set -euo pipefail
-          
+
           # Validate coverage files exist
           COVERAGE_SUMMARY="coverage/coverage-summary.json"
           if [ ! -f "$COVERAGE_SUMMARY" ]; then
@@ -391,7 +391,7 @@ jobs:
             ls -la coverage/ || echo "❌ Coverage directory does not exist"
             exit 1
           fi
-          
+
           # Validate JSON format
           if ! node -p "JSON.parse(require('fs').readFileSync('$COVERAGE_SUMMARY'))" > /dev/null 2>&1; then
             echo "❌ Coverage summary file is not valid JSON"
@@ -399,7 +399,7 @@ jobs:
             head -10 "$COVERAGE_SUMMARY" || echo "❌ Cannot read file"
             exit 1
           fi
-          
+
           # Extract coverage percentages with error handling
           echo "📈 Extracting coverage metrics..."
           statements=$(node -p "
@@ -413,7 +413,7 @@ jobs:
               process.exit(1);
             }
           ")
-          
+
           branches=$(node -p "
             try {
               const data = JSON.parse(require('fs').readFileSync('$COVERAGE_SUMMARY'));
@@ -425,7 +425,7 @@ jobs:
               process.exit(1);
             }
           ")
-          
+
           functions=$(node -p "
             try {
               const data = JSON.parse(require('fs').readFileSync('$COVERAGE_SUMMARY'));
@@ -437,7 +437,7 @@ jobs:
               process.exit(1);
             }
           ")
-          
+
           lines=$(node -p "
             try {
               const data = JSON.parse(require('fs').readFileSync('$COVERAGE_SUMMARY'));
@@ -449,23 +449,23 @@ jobs:
               process.exit(1);
             }
           ")
-          
+
           echo "📈 Coverage Results:"
           echo "  Statements: ${statements}% (CI threshold: 60%, Vitest target: 80%)"
           echo "  Branches: ${branches}% (CI threshold: 50%, Vitest target: 75%)"
           echo "  Functions: ${functions}% (CI threshold: 60%, Vitest target: 80%)"
           echo "  Lines: ${lines}% (CI threshold: 60%, Vitest target: 80%)"
-          
+
           # Store results for other steps
           echo "COVERAGE_STATEMENTS=$statements" >> $GITHUB_OUTPUT
           echo "COVERAGE_BRANCHES=$branches" >> $GITHUB_OUTPUT
           echo "COVERAGE_FUNCTIONS=$functions" >> $GITHUB_OUTPUT
           echo "COVERAGE_LINES=$lines" >> $GITHUB_OUTPUT
-          
+
           # Check CI thresholds with robust floating-point comparison
           echo "🔍 Checking CI minimum thresholds..."
           FAILED=0
-          
+
           # Statements check
           if (( $(echo "$statements < 60" | bc -l) )); then
             echo "❌ Statements coverage ${statements}% is below CI threshold of 60%"
@@ -473,15 +473,15 @@ jobs:
           else
             echo "✅ Statements coverage ${statements}% meets CI threshold"
           fi
-          
-          # Branches check  
+
+          # Branches check
           if (( $(echo "$branches < 50" | bc -l) )); then
             echo "❌ Branches coverage ${branches}% is below CI threshold of 50%"
             FAILED=1
           else
             echo "✅ Branches coverage ${branches}% meets CI threshold"
           fi
-          
+
           # Functions check
           if (( $(echo "$functions < 60" | bc -l) )); then
             echo "❌ Functions coverage ${functions}% is below CI threshold of 60%"
@@ -489,7 +489,7 @@ jobs:
           else
             echo "✅ Functions coverage ${functions}% meets CI threshold"
           fi
-          
+
           # Lines check
           if (( $(echo "$lines < 60" | bc -l) )); then
             echo "❌ Lines coverage ${lines}% is below CI threshold of 60%"
@@ -497,10 +497,10 @@ jobs:
           else
             echo "✅ Lines coverage ${lines}% meets CI threshold"
           fi
-          
+
           # Export failure status
           echo "THRESHOLD_FAILED=$FAILED" >> $GITHUB_OUTPUT
-          
+
           if [ "$FAILED" = "1" ]; then
             echo ""
             echo "❌ Coverage does not meet CI minimum thresholds"
@@ -516,21 +516,21 @@ jobs:
         run: |
           echo "🔍 Checking critical module coverage thresholds (P2-T-004)..."
           set -euo pipefail
-          
+
           # Navigate to project root where coverage check script is located
           cd ..
-          
+
           # Verify critical modules config and coverage check script exist
           if [ ! -f "scripts/coverage/critical-modules.json" ]; then
             echo "❌ Critical modules configuration not found at scripts/coverage/critical-modules.json"
             exit 1
           fi
-          
+
           if [ ! -f "scripts/coverage/check.js" ]; then
             echo "❌ Coverage check script not found at scripts/coverage/check.js"
             exit 1
           fi
-          
+
           # Verify coverage summary exists
           if [ ! -f "frontend/coverage/coverage-summary.json" ]; then
             echo "❌ Coverage summary not found at frontend/coverage/coverage-summary.json"
@@ -538,7 +538,7 @@ jobs:
             ls -la frontend/coverage/ || echo "❌ Coverage directory does not exist"
             exit 1
           fi
-          
+
           # Run critical module coverage check
           echo "🎯 Running critical module coverage analysis..."
           if node scripts/coverage/check.js frontend/coverage/coverage-summary.json scripts/coverage/critical-modules.json; then
@@ -587,38 +587,38 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
-            
+
             try {
               const coveragePath = path.join('frontend', 'coverage', 'coverage-summary.json');
-              
+
               // Validate file exists and is readable
               if (!fs.existsSync(coveragePath)) {
                 console.log('❌ Coverage summary not found, skipping PR comment');
                 return;
               }
-              
+
               // Validate file size (should be reasonable JSON)
               const stats = fs.statSync(coveragePath);
               if (stats.size === 0) {
                 console.log('❌ Coverage summary file is empty, skipping PR comment');
                 return;
               }
-              
+
               if (stats.size > 1024 * 1024) { // 1MB limit
                 console.log('❌ Coverage summary file too large, skipping PR comment');
                 return;
               }
-              
+
               // Parse and validate JSON structure
               let coverage;
               try {
                 const content = fs.readFileSync(coveragePath, 'utf8');
                 coverage = JSON.parse(content);
-                
+
                 if (!coverage.total || typeof coverage.total !== 'object') {
                   throw new Error('Invalid coverage structure: missing total');
                 }
-                
+
                 const required = ['statements', 'branches', 'functions', 'lines'];
                 for (const metric of required) {
                   if (!coverage.total[metric] || typeof coverage.total[metric].pct !== 'number') {
@@ -629,59 +629,59 @@ jobs:
                 console.log(`❌ Failed to parse coverage JSON: ${e.message}`);
                 return;
               }
-              
+
               const { statements, branches, functions, lines } = coverage.total;
-              
+
               // Validate percentages are reasonable
               const metrics = [statements.pct, branches.pct, functions.pct, lines.pct];
               if (metrics.some(pct => pct < 0 || pct > 100 || isNaN(pct))) {
                 console.log('❌ Invalid coverage percentages detected, skipping PR comment');
                 return;
               }
-              
+
               // Get threshold check results from previous step
               const testsFailed = '${{ steps.run-tests.outputs.TEST_EXIT_CODE }}' !== '0';
               const thresholdsFailed = '${{ steps.check-coverage.outputs.THRESHOLD_FAILED }}' === '1';
-              
+
               // Calculate overall status
               const overallStatus = !testsFailed && !thresholdsFailed ? '✅ PASSING' : '❌ FAILING';
               const statusIcon = !testsFailed && !thresholdsFailed ? '✅' : '❌';
-              
+
               const body = `## 📊 Frontend Test Coverage Report ${statusIcon}
-              
+
               **Overall Status:** ${overallStatus}
-              
+
               | Metric | Coverage | CI Threshold | Vitest Target | Status |
               |--------|----------|--------------|---------------|---------|
               | Statements | ${statements.pct}% | 60% | 80% | ${statements.pct >= 60 ? '✅' : '❌'} |
               | Branches | ${branches.pct}% | 50% | 75% | ${branches.pct >= 50 ? '✅' : '❌'} |
               | Functions | ${functions.pct}% | 60% | 80% | ${functions.pct >= 60 ? '✅' : '❌'} |
               | Lines | ${lines.pct}% | 60% | 80% | ${lines.pct >= 60 ? '✅' : '❌'} |
-              
+
               **Test Results:**
               - **Tests:** ${testsFailed ? '❌ Failed' : '✅ Passed'}
               - **CI Thresholds:** ${thresholdsFailed ? '❌ Failed' : '✅ Passed'} (minimum requirements)
               - **Total Tests:** ${Math.max(statements.total, branches.total, functions.total, lines.total)}
               - **Covered Lines:** ${statements.covered}
-              
+
               ${thresholdsFailed ? '⚠️ **Coverage below CI minimums** - see [improvement guide](docs/CI-Coverage-Integration.md)' : ''}
-              
+
               📈 [View detailed coverage report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
               📊 [Download coverage artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
               `;
-              
+
               // Find existing coverage comment to update instead of creating multiple
               const { data: comments } = await github.rest.issues.listComments({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
               });
-              
-              const existingComment = comments.find(comment => 
-                comment.user.login === 'github-actions[bot]' && 
+
+              const existingComment = comments.find(comment =>
+                comment.user.login === 'github-actions[bot]' &&
                 comment.body.includes('📊 Frontend Test Coverage Report')
               );
-              
+
               if (existingComment) {
                 await github.rest.issues.updateComment({
                   owner: context.repo.owner,
@@ -699,7 +699,7 @@ jobs:
                 });
                 console.log('✅ Created new coverage comment');
               }
-              
+
             } catch (error) {
               console.log(`❌ Failed to post coverage comment: ${error.message}`);
               console.log('Stack trace:', error.stack);
@@ -713,7 +713,7 @@ jobs:
         run: |
           echo "🔍 P2-T-009: Analyzing Vitest test retries..."
           cd ..
-          
+
           # Run retry analysis script
           if [ -f "scripts/aggregate-test-retries.js" ]; then
             if [ -f "frontend/vitest-output.log" ]; then
@@ -771,7 +771,7 @@ jobs:
       fail-fast: false
       matrix:
         browser: [chromium, firefox, webkit, mobile-chrome]
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -807,13 +807,13 @@ jobs:
         if: always() # Run even if tests failed
         run: |
           echo "🔍 P2-T-009: Analyzing Playwright test retries for ${{ matrix.browser }}..."
-          
+
           # Run retry analysis script with Playwright output
           if [ -f "scripts/aggregate-test-retries.js" ]; then
             if [ -f "playwright-output-${{ matrix.browser }}.log" ]; then
               PLAYWRIGHT_OUTPUT=$(cat playwright-output-${{ matrix.browser }}.log) node scripts/aggregate-test-retries.js
               echo "📊 Playwright retry analysis completed for ${{ matrix.browser }}"
-              
+
               # Rename the report to include browser name
               if [ -f "test-retry-report.md" ]; then
                 mv test-retry-report.md "test-retry-report-${{ matrix.browser }}.md"
@@ -854,7 +854,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     needs: [backend-tests, frontend-tests]
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -898,7 +898,7 @@ jobs:
   build-and-scan:
     runs-on: ubuntu-latest
     needs: [backend-tests, frontend-tests]
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -934,7 +934,7 @@ jobs:
           echo "🔒 Running frontend security audit..."
           npm audit --audit-level=high
 
-      - name: Security audit - Backend  
+      - name: Security audit - Backend
         run: |
           cd backend
           echo "🔒 Running backend security audit..."
@@ -946,7 +946,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-tests, frontend-tests]
     if: always()
-    
+
     steps:
       - name: Coverage Summary
         run: |
@@ -1047,7 +1047,7 @@ jobs:
     defaults:
       run:
         working-directory: backend
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -1091,7 +1091,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-tests, no-db-smoke-tests]
     if: github.event_name == 'push' || github.event_name == 'pull_request'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -1152,17 +1152,17 @@ jobs:
         run: |
           echo "📊 P2-T-010: Performance Test Summary"
           echo "====================================="
-          
+
           if [ -f test-results/performance-results.json ]; then
             echo "✅ Performance results generated"
-            
+
             # Extract key metrics using jq if available, otherwise use basic parsing
             if command -v jq >/dev/null 2>&1; then
               P95=$(jq -r '.latencies.p95' test-results/performance-results.json)
               MEAN=$(jq -r '.latencies.mean' test-results/performance-results.json)
               SUCCESS_RATE=$(jq -r '.successRate' test-results/performance-results.json)
               THRESHOLD_PASSED=$(jq -r '.thresholds.p95Passed' test-results/performance-results.json)
-              
+
               echo "📈 Key Metrics:"
               echo "   P95 Latency: ${P95}ms"
               echo "   Mean Latency: ${MEAN}ms"
@@ -1171,7 +1171,7 @@ jobs:
             else
               echo "📄 Performance results file found - detailed metrics in artifact"
             fi
-            
+
             echo ""
             echo "📄 Artifacts uploaded:"
             echo "   - performance-results-${{ github.run_id }}"
@@ -1180,7 +1180,7 @@ jobs:
           else
             echo "❌ No performance results file found"
           fi
-          
+
           echo ""
           echo "🎯 P2-T-010 Criteria Check:"
           echo "   ✅ Super-lightweight script using undici"
@@ -1194,7 +1194,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [frontend-tests, cross-browser-smoke, performance-smoke-tests]
     if: always() # Run even if some tests failed
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -1215,19 +1215,19 @@ jobs:
       - name: Aggregate retry reports
         run: |
           echo "📊 P2-T-009: Aggregating all test retry reports..."
-          
+
           # Create combined retry report
           echo "# Combined Test Retry Report" > combined-retry-report.md
           echo "" >> combined-retry-report.md
           echo "**Generated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> combined-retry-report.md
           echo "**CI Run:** ${{ github.run_id }}" >> combined-retry-report.md
           echo "" >> combined-retry-report.md
-          
+
           # Count total retry reports
           REPORT_COUNT=$(find retry-reports/ -name "*.md" 2>/dev/null | wc -l)
           echo "**Total Report Files:** $REPORT_COUNT" >> combined-retry-report.md
           echo "" >> combined-retry-report.md
-          
+
           if [ "$REPORT_COUNT" -eq 0 ]; then
             echo "## ✅ No Retry Reports Found" >> combined-retry-report.md
             echo "" >> combined-retry-report.md
@@ -1236,7 +1236,7 @@ jobs:
           else
             echo "## 📋 Individual Retry Reports" >> combined-retry-report.md
             echo "" >> combined-retry-report.md
-            
+
             # Process each retry report
             for report in retry-reports/*.md; do
               if [ -f "$report" ]; then
@@ -1249,10 +1249,10 @@ jobs:
               fi
             done
           fi
-          
+
           echo "---" >> combined-retry-report.md
           echo "*Generated by P2-T-009: Flaky Test Detection & Retries*" >> combined-retry-report.md
-          
+
           echo "📄 Combined retry report generated:"
           ls -la combined-retry-report.md
 
@@ -1267,23 +1267,23 @@ jobs:
         run: |
           echo "🔍 P2-T-009: Test Retry Summary"
           echo "=============================="
-          
+
           # Count total reports and look for retry indicators
           TOTAL_REPORTS=$(find retry-reports/ -name "*.md" 2>/dev/null | wc -l)
           echo "📊 Total retry report files: $TOTAL_REPORTS"
-          
+
           if [ "$TOTAL_REPORTS" -eq 0 ]; then
             echo "✅ No retry reports found - all tests stable"
           else
             echo "📋 Retry reports generated:"
             find retry-reports/ -name "*.md" -exec echo "  - {}" \;
-            
+
             # Look for retry indicators in the reports
             RETRY_COUNT=0
             if find retry-reports/ -name "*.md" -exec grep -l "retry\|Retry\|RETRY" {} \; 2>/dev/null | head -1 > /dev/null; then
               RETRY_COUNT=$(find retry-reports/ -name "*.md" -exec grep -c "retry\|Retry\|RETRY" {} \; 2>/dev/null | awk '{sum += $1} END {print sum}')
             fi
-            
+
             if [ "$RETRY_COUNT" -gt 0 ]; then
               echo "⚠️ Total retry indicators found: $RETRY_COUNT"
               echo "📄 Check the combined retry report for details"
@@ -1291,6 +1291,6 @@ jobs:
               echo "✅ No retry indicators found in reports"
             fi
           fi
-          
+
           echo ""
           echo "📄 Combined report available as artifact: combined-retry-report-${{ github.run_id }}"

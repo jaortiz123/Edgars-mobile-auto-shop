@@ -1,6 +1,6 @@
 /**
  * Sprint 4A-T-002: Daily Achievement Summary Styles
- * 
+ *
  * Uses design system variables: --card-shadow-default, --fs-3, --sp-2
  * GPU-accelerated animations with accessibility support
  */
@@ -20,12 +20,12 @@
   align-items: center;
   justify-content: center;
   padding: var(--sp-2);
-  
+
   /* Animation setup */
   opacity: 0;
   visibility: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  
+
   /* Performance optimization */
   will-change: opacity, visibility;
   transform: translateZ(0); /* Force GPU acceleration */
@@ -46,11 +46,11 @@
   max-height: 90vh;
   overflow-y: auto;
   position: relative;
-  
+
   /* Animation setup */
   transform: translateY(20px) scale(0.95) translateZ(0);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  
+
   /* Performance optimization */
   will-change: transform;
   backface-visibility: hidden;
@@ -95,7 +95,7 @@
   padding: var(--sp-1);
   border-radius: 0.5rem;
   transition: all 0.2s ease;
-  
+
   /* Performance optimization */
   will-change: color, background-color;
   transform: translateZ(0);
@@ -137,7 +137,7 @@
   padding: var(--sp-3);
   box-shadow: var(--card-shadow-default);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  
+
   /* Performance optimization */
   will-change: transform, box-shadow;
   transform: translateZ(0);
@@ -229,7 +229,7 @@
   font-weight: var(--fw-semibold);
   cursor: pointer;
   transition: all 0.2s ease;
-  
+
   /* Performance optimization */
   will-change: background-color, transform;
   transform: translateZ(0);
@@ -282,7 +282,7 @@
   font-weight: var(--fw-medium);
   cursor: pointer;
   transition: all 0.2s ease;
-  
+
   /* Performance optimization */
   will-change: background-color, color;
   transform: translateZ(0);
@@ -340,20 +340,20 @@
     margin: var(--sp-2);
     max-height: calc(100vh - var(--sp-4));
   }
-  
+
   .summary-header {
     padding: var(--sp-3) var(--sp-3) var(--sp-2);
   }
-  
+
   .summary-content {
     padding: var(--sp-2) var(--sp-3) var(--sp-3);
   }
-  
+
   .summary-cards {
     grid-template-columns: 1fr;
     gap: var(--sp-2);
   }
-  
+
   .dashboard-summary-stats {
     grid-template-columns: 1fr;
   }
@@ -365,46 +365,46 @@
     background: #1f2937;
     color: #f9fafb;
   }
-  
+
   .summary-header {
     border-bottom-color: #374151;
   }
-  
+
   .summary-title {
     color: #f9fafb;
   }
-  
+
   .summary-card {
     background: #374151;
     border-color: #4b5563;
   }
-  
+
   .card-value {
     color: #f9fafb;
   }
-  
+
   .summary-message {
     background: #374151;
     border-color: #4b5563;
   }
-  
+
   .summary-message p {
     color: #d1d5db;
   }
-  
+
   .summary-dashboard-card {
     background: #1f2937;
     border-color: #374151;
   }
-  
+
   .dashboard-card-title {
     color: #f9fafb;
   }
-  
+
   .dashboard-stat {
     background: #374151;
   }
-  
+
   .stat-value {
     color: #f9fafb;
   }
@@ -419,7 +419,7 @@
   .view-recap-btn {
     transition: none;
   }
-  
+
   .summary-card:hover,
   .summary-action-btn:hover {
     transform: none;
@@ -436,7 +436,7 @@
   .summary-card {
     border-width: 2px;
   }
-  
+
   .summary-action-btn,
   .view-recap-btn {
     border-width: 2px;

@@ -79,7 +79,7 @@ export class CSSPerformanceMonitor {
       list.getEntries().forEach((entry: any) => {
         if (entry.value > 0.1) { // CLS threshold
           this.recordMetric('cumulative-layout-shift', entry.value);
-          
+
           if (process.env.NODE_ENV === 'development') {
             console.warn('[CSS Performance] High layout shift detected:', entry.value);
           }
@@ -105,7 +105,7 @@ export class CSSPerformanceMonitor {
       list.getEntries().forEach((entry: any) => {
         if (entry.name === 'recalculate-style') {
           this.recordMetric('style-recalculation', entry.duration);
-          
+
           if (entry.duration > PERFORMANCE_THRESHOLDS.render.maxStyleRecalc) {
             if (process.env.NODE_ENV === 'development') {
               console.warn('[CSS Performance] Slow style recalculation:', entry.duration);
@@ -139,7 +139,7 @@ export class CSSPerformanceMonitor {
 
     document.fonts.addEventListener('loadingerror', (event: any) => {
       this.recordMetric('font-loading-error', performance.now());
-      
+
       if (process.env.NODE_ENV === 'development') {
         console.warn('[CSS Performance] Font loading error:', event);
       }
@@ -161,17 +161,17 @@ export class CSSPerformanceMonitor {
       const start = performance.now();
       const result = originalGetComputedStyle.apply(this, args);
       const end = performance.now();
-      
+
       accessCount++;
       totalTime += (end - start);
-      
+
       // Log slow CSS variable access
       if ((end - start) > 1) { // 1ms threshold
         if (process.env.NODE_ENV === 'development') {
           console.warn('[CSS Performance] Slow CSS variable access:', end - start);
         }
       }
-      
+
       return result;
     };
 
@@ -191,18 +191,18 @@ export class CSSPerformanceMonitor {
    */
   measureTypographyRender(element: HTMLElement, label: string): void {
     const start = performance.now();
-    
+
     // Force style recalculation
     const computedStyle = getComputedStyle(element);
     const fontSize = computedStyle.fontSize;
     const lineHeight = computedStyle.lineHeight;
     const fontWeight = computedStyle.fontWeight;
-    
+
     const end = performance.now();
     const duration = end - start;
-    
+
     this.recordMetric(`typography-render-${label}`, duration);
-    
+
     if (duration > PERFORMANCE_THRESHOLDS.render.maxStyleRecalc) {
       if (process.env.NODE_ENV === 'development') {
         console.warn(`[CSS Performance] Slow typography render for ${label}:`, duration);
@@ -215,18 +215,18 @@ export class CSSPerformanceMonitor {
    */
   measureSpacingCalculation(element: HTMLElement, label: string): void {
     const start = performance.now();
-    
+
     // Force layout calculation
     const rect = element.getBoundingClientRect();
     const computedStyle = getComputedStyle(element);
     const margin = computedStyle.margin;
     const padding = computedStyle.padding;
-    
+
     const end = performance.now();
     const duration = end - start;
-    
+
     this.recordMetric(`spacing-calculation-${label}`, duration);
-    
+
     if (duration > PERFORMANCE_THRESHOLDS.render.maxLayoutTime) {
       if (process.env.NODE_ENV === 'development') {
         console.warn(`[CSS Performance] Slow spacing calculation for ${label}:`, duration);
@@ -250,7 +250,7 @@ export class CSSPerformanceMonitor {
       const start = performance.now();
       const elements = document.querySelectorAll(selector);
       const end = performance.now();
-      
+
       this.recordMetric(`selector-${selector}`, end - start);
       this.recordMetric(`selector-${selector}-count`, elements.length);
     });
@@ -271,15 +271,15 @@ export class CSSPerformanceMonitor {
       try {
         const rules = Array.from(sheet.cssRules || []);
         totalRules += rules.length;
-        
+
         rules.forEach(rule => {
           const cssText = rule.cssText;
-          
+
           // Count utility classes
           if (cssText.match(/\.(text-fs-|[mp][tblrxy]?-sp-)/)) {
             utilityRules++;
           }
-          
+
           // Count CSS variables
           if (cssText.includes('--')) {
             variableRules++;
@@ -315,10 +315,10 @@ export class CSSPerformanceMonitor {
     if (!this.metrics.has(name)) {
       this.metrics.set(name, []);
     }
-    
+
     const values = this.metrics.get(name)!;
     values.push(value);
-    
+
     // Keep only last 100 measurements
     if (values.length > 100) {
       values.shift();
@@ -329,11 +329,11 @@ export class CSSPerformanceMonitor {
    * Get Performance Report
    */
   getPerformanceReport(): {
-    metrics: Record<string, { 
-      count: number; 
-      avg: number; 
-      min: number; 
-      max: number; 
+    metrics: Record<string, {
+      count: number;
+      avg: number;
+      min: number;
+      max: number;
       latest: number;
     }>;
     thresholds: typeof PERFORMANCE_THRESHOLDS;
@@ -361,11 +361,11 @@ export class CSSPerformanceMonitor {
         if (name.includes('paint') && avg > PERFORMANCE_THRESHOLDS.render.maxPaintTime) {
           recommendations.push(`Consider optimizing paint performance for ${name}`);
         }
-        
+
         if (name.includes('layout') && avg > PERFORMANCE_THRESHOLDS.render.maxLayoutTime) {
           recommendations.push(`Consider optimizing layout performance for ${name}`);
         }
-        
+
         if (name.includes('style-recalc') && avg > PERFORMANCE_THRESHOLDS.render.maxStyleRecalc) {
           recommendations.push(`Consider optimizing style recalculation for ${name}`);
         }
@@ -403,7 +403,7 @@ export class CSSPerformanceMonitor {
  * Measure CSS Performance for a Function
  */
 export function measureCSSPerformance<T>(
-  label: string, 
+  label: string,
   fn: () => T
 ): { result: T; duration: number } {
   const start = performance.now();
@@ -421,11 +421,11 @@ export function measureCSSPerformance<T>(
  * Performance-Optimized CSS Variable Getter
  */
 export function getOptimizedCSSVariable(
-  variableName: string, 
+  variableName: string,
   element?: HTMLElement
 ): string {
   const cacheKey = `css-var-${variableName}`;
-  
+
   // Simple cache for frequently accessed variables
   if ((window as any).__cssVariableCache?.[cacheKey]) {
     return (window as any).__cssVariableCache[cacheKey];
@@ -441,7 +441,7 @@ export function getOptimizedCSSVariable(
     (window as any).__cssVariableCache = {};
   }
   (window as any).__cssVariableCache[cacheKey] = result;
-  
+
   setTimeout(() => {
     delete (window as any).__cssVariableCache?.[cacheKey];
   }, 1000);

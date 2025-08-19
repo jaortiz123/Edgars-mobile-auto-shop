@@ -35,7 +35,7 @@ export default function NotificationDashboard() {
         customer_phone: 'invalid-phone'
       }
     ];
-    
+
     setNotifications(mockNotifications);
     setLoading(false);
   }, []);
@@ -163,7 +163,7 @@ export default function NotificationDashboard() {
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Notification History</h2>
         </div>
-        
+
         {loading ? (
           <div className="p-6 text-center">Loading notifications...</div>
         ) : error ? (

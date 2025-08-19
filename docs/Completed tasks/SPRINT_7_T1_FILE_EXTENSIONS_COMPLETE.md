@@ -14,7 +14,7 @@ Successfully identified and renamed all `.ts` files containing JSX syntax to `.t
    - Returns JSX elements with className styling
 
 3. **`src/services/performanceMonitoring.ts`** → **`src/services/performanceMonitoring.tsx`**
-   - Contains `PerformanceWidget` React component with JSX rendering  
+   - Contains `PerformanceWidget` React component with JSX rendering
    - Includes React hooks (`React.useState`, `React.useEffect`, `React.useCallback`)
    - Returns complex JSX with conditional rendering and event handlers
 

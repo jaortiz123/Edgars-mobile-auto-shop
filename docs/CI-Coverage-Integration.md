@@ -108,7 +108,7 @@ The automated PR comments include:
    # Frontend
    cd frontend
    npm test -- --coverage
-   
+
    # Backend
    cd backend
    pytest --cov=. --cov-report=term-missing

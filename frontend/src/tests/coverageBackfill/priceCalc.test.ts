@@ -71,7 +71,7 @@ const mockPriceCalculator: PriceCalculatorService = {
 
   calculateDiscount(subtotal: number, discountType: 'percentage' | 'fixed', value: number): number {
     if (subtotal <= 0 || value < 0) return 0;
-    
+
     if (discountType === 'percentage') {
       const maxPercentage = 50; // Max 50% discount
       const safeValue = Math.min(value, maxPercentage);
@@ -171,7 +171,7 @@ describe('Price Calculator - Critical Coverage Tests', () => {
         { id: '1', name: 'Oil Filter', price: 15.99, quantity: 1 },
         { id: '2', name: 'Motor Oil', price: 8.99, quantity: 5 }
       ];
-      
+
       const expected = (15.99 * 1 * 1.3) + (8.99 * 5 * 1.3);
       expect(calculator.calculatePartsCost(parts)).toBe(expected);
     });
@@ -180,7 +180,7 @@ describe('Price Calculator - Critical Coverage Tests', () => {
       const parts: Part[] = [
         { id: '1', name: 'Brake Pads', price: 75.00, quantity: 1, markup: 1.5 }
       ];
-      
+
       expect(calculator.calculatePartsCost(parts)).toBe(112.5);
     });
 
@@ -192,7 +192,7 @@ describe('Price Calculator - Critical Coverage Tests', () => {
       const parts: Part[] = [
         { id: '1', name: 'Spark Plug', price: 12.50, quantity: 4, markup: 1.2 }
       ];
-      
+
       expect(calculator.calculatePartsCost(parts)).toBe(60); // 12.5 * 4 * 1.2
     });
   });
@@ -280,7 +280,7 @@ describe('Price Calculator - Critical Coverage Tests', () => {
       const parts: Part[] = [
         { id: '1', name: 'Oil Filter', price: 15, quantity: 1 }
       ];
-      
+
       // Expected: (2 hours * 85) + (15 * 1.3) = 170 + 19.5 = 189.5
       // With oil_change rule: 189.5 * 1.0 = 189.5
       expect(calculator.calculateServicePrice('oil_change', 2, parts)).toBe(189.5);
@@ -393,7 +393,7 @@ describe('Price Calculator - Critical Coverage Tests', () => {
       const parts: Part[] = [
         { id: '1', name: 'Complex Part', price: 33.33, quantity: 3, markup: 1.333 }
       ];
-      
+
       const result = calculator.calculatePartsCost(parts);
       expect(typeof result).toBe('number');
       expect(result).toBeGreaterThan(0);

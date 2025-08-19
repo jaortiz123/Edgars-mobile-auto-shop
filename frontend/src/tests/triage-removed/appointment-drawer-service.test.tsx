@@ -46,7 +46,7 @@ describe('AppointmentDrawer Service Submission', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Setup default mock responses
     mockCreateAppointmentService.mockResolvedValue({
       service: {
@@ -110,7 +110,7 @@ describe('AppointmentDrawer Service Submission', () => {
     // Submit the form
     const submitButton = screen.getByTestId('add-service-submit-button');
     expect(submitButton).not.toBeDisabled();
-    
+
     await user.click(submitButton);
 
     // Verify API was called correctly

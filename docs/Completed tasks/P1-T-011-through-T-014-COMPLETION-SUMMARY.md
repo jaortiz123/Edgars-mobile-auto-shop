@@ -16,8 +16,8 @@
 
 #### Acceptance Criteria Met
 
-✅ A dummy PR that drops coverage to 79% will fail the "Coverage Check" step  
-✅ The coverage badge reflects the latest build via Codecov integration  
+✅ A dummy PR that drops coverage to 79% will fail the "Coverage Check" step
+✅ The coverage badge reflects the latest build via Codecov integration
 ✅ CI artifacts include downloadable coverage/ reports
 
 ---
@@ -47,7 +47,7 @@
 
 #### Acceptance Criteria Met
 
-✅ Zero circular-dependency warnings in the mock logs  
+✅ Zero circular-dependency warnings in the mock logs
 ✅ All existing tests that rely on these mocks now pass without "undefined is not a function"
 
 ---
@@ -76,8 +76,8 @@ environmentMatchGlobs: [
 
 #### Acceptance Criteria Met
 
-✅ `components.test.tsx` runs in jsdom and passes (7 tests)  
-✅ `utils.test.ts` runs in Node and passes (10 tests)  
+✅ `components.test.tsx` runs in jsdom and passes (7 tests)
+✅ `utils.test.ts` runs in Node and passes (10 tests)
 ✅ No environment-mismatch errors in the console
 
 ---
@@ -114,8 +114,8 @@ await user.click(screen.getByLabelText('Close summary'));
 
 #### Acceptance Criteria Met
 
-✅ No "not wrapped in act()" warnings in test runs  
-✅ All component tests still pass  
+✅ No "not wrapped in act()" warnings in test runs
+✅ All component tests still pass
 ✅ ESLint rules prevent future act() issues
 
 ---

@@ -1,6 +1,6 @@
 /**
  * P2-T-007: Notification System Integration Tests - Debug Version
- * 
+ *
  * This version is purely for debugging the waitFor timing issue.
  */
 
@@ -14,7 +14,7 @@ export const TestAppWrapper = ({ children }: { children: React.ReactNode }) => {
   return <div>{children}</div>;
 };
 
-// Ultra-simple notification component 
+// Ultra-simple notification component
 export const DebugNotificationComponent = () => {
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -24,7 +24,7 @@ export const DebugNotificationComponent = () => {
       setError(null);
       setLoading(true);
       console.log('🔵 About to send notification...');
-      
+
       const response = await fetch('/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -101,7 +101,7 @@ describe('Debug Notification Tests', () => {
 
   it('should successfully send notification with detailed logging', async () => {
     console.log('🧪 Starting test...');
-    
+
     render(
       <TestAppWrapper>
         <DebugNotificationComponent />
@@ -109,7 +109,7 @@ describe('Debug Notification Tests', () => {
     );
 
     console.log('🧪 Component rendered, checking for loading...');
-    
+
     // Should show loading initially
     expect(screen.getByTestId('loading')).toBeInTheDocument();
     console.log('🧪 Loading confirmed, waiting for success...');
@@ -118,19 +118,19 @@ describe('Debug Notification Tests', () => {
     await waitFor(() => {
       const component = screen.getByTestId('debug-component');
       console.log('🔍 Current HTML:', component.innerHTML);
-      
+
       const successElement = screen.queryByTestId('success');
       console.log('🔍 Success element found:', !!successElement);
-      
+
       if (!successElement) {
         throw new Error('Success element not found yet');
       }
-      
+
       expect(successElement).toBeInTheDocument();
     }, { timeout: 15000, interval: 100 });
 
     console.log('🧪 Success found! Test completed.');
-    
+
     // Should not show error
     expect(screen.queryByTestId('error-toast')).not.toBeInTheDocument();
   }, 20000);

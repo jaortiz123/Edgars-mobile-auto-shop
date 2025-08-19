@@ -1,6 +1,6 @@
 /**
  * P2-T-007: Notification System Integration Tests - Ultra Simplified
- * 
+ *
  * This version exactly matches the working debug-notification.it.tsx pattern
  * with minimal complexity to ensure DOM updates work correctly.
  */
@@ -29,10 +29,10 @@ const NotificationComponent = ({ type = 'reminder_15min', appointmentId = 'apt-t
       const response = await fetch('/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          type, 
-          appointmentId, 
-          message: type === 'reminder_15min' 
+        body: JSON.stringify({
+          type,
+          appointmentId,
+          message: type === 'reminder_15min'
             ? "Reminder: Test Customer's appointment is in 15 minutes"
             : "Test Customer is running late for their appointment"
         })
@@ -91,10 +91,10 @@ const RetryNotificationComponent = ({ type = 'reminder_15min', appointmentId = '
       const response = await fetch('/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          type, 
-          appointmentId, 
-          message: type === 'reminder_15min' 
+        body: JSON.stringify({
+          type,
+          appointmentId,
+          message: type === 'reminder_15min'
             ? "Reminder: Test Customer's appointment is in 15 minutes"
             : "Test Customer is running late for their appointment"
         })
@@ -138,8 +138,8 @@ const RetryNotificationComponent = ({ type = 'reminder_15min', appointmentId = '
       {error && (
         <div data-testid="error-toast" className="error-toast">
           <span data-testid="error-message">{error}</span>
-          <button 
-            data-testid="retry-button" 
+          <button
+            data-testid="retry-button"
             onClick={handleRetry}
             disabled={retryCount >= 3}
           >
@@ -304,13 +304,13 @@ describe('P2-T-007: Notification System Integration Tests - Ultra Simplified', (
   describe('MSW Integration Verification', () => {
     it('should verify MSW handler receives correct notification payload', async () => {
       let capturedPayload: Record<string, unknown> | null = null;
-      
+
       const { http, HttpResponse } = await import('msw');
       server.use(
         http.post('http://localhost:3000/notifications', async ({ request }) => {
           capturedPayload = await request.json() as Record<string, unknown>;
           console.log('📨 MSW: Captured notification payload:', capturedPayload);
-          
+
           if (capturedPayload) {
             return HttpResponse.json({
               data: {
@@ -328,7 +328,7 @@ describe('P2-T-007: Notification System Integration Tests - Ultra Simplified', (
           return HttpResponse.json({ error: 'No payload' }, { status: 400 });
         })
       );
-      
+
       render(
         <TestAppWrapper>
           <NotificationComponent type="reminder_15min" appointmentId="apt-payload-test" />

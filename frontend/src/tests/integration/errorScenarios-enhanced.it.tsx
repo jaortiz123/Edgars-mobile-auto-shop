@@ -1,6 +1,6 @@
 /**
  * P2-T-006: Error Path Integration Tests
- * 
+ *
  * Comprehensive error scenario testing to verify how the app behaves under failure conditions:
  * - API 500 errors with proper error handling and user feedback
  * - Network timeouts and delays with loading states
@@ -13,8 +13,8 @@ import { describe, it, expect, beforeAll, afterEach, afterAll, vi, beforeEach } 
 import { screen, waitFor, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders, mockAuthentication, clearAuthentication } from '../../test/integrationUtils';
-import { 
-  server, 
+import {
+  server,
   resetMockData,
   enableErrorScenario,
   disableErrorScenario,
@@ -46,7 +46,7 @@ const originalUnhandledRejection = process.listeners('unhandledRejection');
 describe('P2-T-006: Error Path Integration Tests', () => {
   beforeAll(() => {
     console.log('🚀 Starting MSW server for Error Path integration tests...');
-    
+
     // Start MSW server
     server.listen({
       onUnhandledRequest: 'warn',
@@ -60,7 +60,7 @@ describe('P2-T-006: Error Path Integration Tests', () => {
 
     // Mock console.error to track errors
     console.error = consoleErrorSpy;
-    
+
     console.log('🌐 MSW enabled for error scenario testing');
   });
 
@@ -82,7 +82,7 @@ describe('P2-T-006: Error Path Integration Tests', () => {
   afterAll(() => {
     // Restore original console.error
     console.error = originalConsoleError;
-    
+
     // Restore original unhandled rejection listeners
     process.removeAllListeners('unhandledRejection');
     originalUnhandledRejection.forEach(listener => {
@@ -106,7 +106,7 @@ describe('P2-T-006: Error Path Integration Tests', () => {
 
       // Wait for board to load
       await waitFor(() => {
-        const boardView = screen.queryByTestId?.('board-view') || 
+        const boardView = screen.queryByTestId?.('board-view') ||
                          container.querySelector('[data-testid="board-view"]') ||
                          container.querySelector('[class*="board"]');
         expect(boardView).toBeTruthy();
@@ -119,7 +119,7 @@ describe('P2-T-006: Error Path Integration Tests', () => {
         // Look for status update mechanisms (buttons, dropdowns, drag targets)
         const updateElements = container.querySelectorAll([
           '[data-testid*="status-update"]',
-          '[data-testid*="move-to"]', 
+          '[data-testid*="move-to"]',
           'button[class*="status"]',
           'select[name*="status"]',
           '[class*="status-column"] button'
@@ -134,7 +134,7 @@ describe('P2-T-006: Error Path Integration Tests', () => {
             '[class*="appointment-card"]',
             '[draggable="true"]'
           ].join(', '));
-          
+
           if (appointmentCard) {
             await user.click(appointmentCard as HTMLElement);
           }
@@ -184,7 +184,7 @@ describe('P2-T-006: Error Path Integration Tests', () => {
       // Arrange: Set up authenticated user then enable 401 scenario
       const authData = mockAuthentication('Owner', 'test-owner');
       expect(localStorage.getItem('auth_token')).toBe(authData.token);
-      
+
       enableErrorScenario('unauthorizedAccess');
 
       // Act: Navigate to protected route
@@ -197,7 +197,7 @@ describe('P2-T-006: Error Path Integration Tests', () => {
 
       // Trigger action that will result in 401
       const user = userEvent.setup();
-      
+
       await act(async () => {
         // Look for dashboard actions that require authentication
         const protectedActions = container.querySelectorAll([
@@ -273,7 +273,7 @@ describe('P2-T-006: Error Path Integration Tests', () => {
           '[data-testid*="stats"]',
           '[class*="stats"]',
           '[class*="dashboard-data"]'
-        ].join(', ')) || 
+        ].join(', ')) ||
         container.textContent?.includes('completed') ||
         container.textContent?.includes('booked');
 
@@ -296,7 +296,7 @@ describe('P2-T-006: Error Path Integration Tests', () => {
 
       // Test multiple error scenarios in sequence with proper act() wrapping
       const errorScenarios = ['appointmentPatch500', 'unauthorizedAccess'] as const;
-      
+
       for (const scenario of errorScenarios) {
         enableErrorScenario(scenario);
 
@@ -311,7 +311,7 @@ describe('P2-T-006: Error Path Integration Tests', () => {
         // Trigger error scenario with proper act() wrapping
         await act(async () => {
           const interactiveElements = container.querySelectorAll('button, [role="button"], a[href]');
-          
+
           if (interactiveElements.length > 0) {
             await user.click(interactiveElements[0] as HTMLElement);
           }
@@ -354,12 +354,12 @@ describe('P2-T-006: Error Path Integration Tests', () => {
 
       // Try to perform an action that will trigger the 500 error (e.g., status update)
       const user = userEvent.setup();
-      
+
       await act(async () => {
         try {
           // Look for status update buttons or drag targets
           const statusButtons = container.querySelectorAll('[data-testid*="status"], button[class*="status"], [class*="progress"], [class*="ready"], [class*="completed"]');
-          
+
           if (statusButtons.length > 0) {
             await user.click(statusButtons[0] as HTMLElement);
           } else {
@@ -379,11 +379,11 @@ describe('P2-T-006: Error Path Integration Tests', () => {
       await waitFor(() => {
         // Look for error indicators (toast, error message, etc.)
         const errorElements = container.querySelectorAll('[data-testid*="error"], [class*="error"], [class*="toast"], [role="alert"]');
-        const hasErrorText = container.textContent?.includes('error') || 
+        const hasErrorText = container.textContent?.includes('error') ||
                             container.textContent?.includes('Error') ||
                             container.textContent?.includes('failed') ||
                             container.textContent?.includes('Failed');
-        
+
         // Should have either error elements or error text
         expect(errorElements.length > 0 || hasErrorText).toBe(true);
       }, { timeout: 3000 });
@@ -406,15 +406,15 @@ describe('P2-T-006: Error Path Integration Tests', () => {
 
       // Look for add appointment functionality
       const user = userEvent.setup();
-      
+
       await act(async () => {
         try {
           // Look for add/create buttons
           const createButtons = container.querySelectorAll('[data-testid*="add"], [data-testid*="create"], button[class*="add"], button[class*="create"], [class*="add-appointment"]');
-          
+
           if (createButtons.length > 0) {
             await user.click(createButtons[0] as HTMLElement);
-            
+
             // Wait for form or modal to appear
             await waitFor(() => {
               const forms = container.querySelectorAll('form, [role="dialog"], [class*="modal"], [class*="drawer"]');
@@ -457,7 +457,7 @@ describe('P2-T-006: Error Path Integration Tests', () => {
         try {
           // Try to perform an action that will trigger 401 error
           const actionButtons = container.querySelectorAll('button, [role="button"], [data-testid*="action"]');
-          
+
           if (actionButtons.length > 0) {
             await user.click(actionButtons[0] as HTMLElement);
           }
@@ -470,11 +470,11 @@ describe('P2-T-006: Error Path Integration Tests', () => {
       // Assert: Should handle unauthorized access appropriately
       await waitFor(() => {
         const unauthorizedElements = container.querySelectorAll('[data-testid*="unauthorized"], [class*="unauthorized"]');
-        const hasAuthErrorText = container.textContent?.includes('unauthorized') || 
+        const hasAuthErrorText = container.textContent?.includes('unauthorized') ||
                                 container.textContent?.includes('Unauthorized') ||
                                 container.textContent?.includes('login') ||
                                 container.textContent?.includes('Login');
-        
+
         // Should show unauthorized feedback or redirect indicators
         expect(unauthorizedElements.length > 0 || hasAuthErrorText).toBe(true);
       }, { timeout: 3000 });
@@ -504,7 +504,7 @@ describe('P2-T-006: Error Path Integration Tests', () => {
         try {
           // Perform action that should trigger 401
           const interactiveElements = container.querySelectorAll('button, [role="button"], a, [tabindex="0"]');
-          
+
           if (interactiveElements.length > 0) {
             await user.click(interactiveElements[0] as HTMLElement);
           }
@@ -537,9 +537,9 @@ describe('P2-T-006: Error Path Integration Tests', () => {
       await waitFor(() => {
         // Look for loading indicators
         const loadingElements = container.querySelectorAll('[data-testid*="loading"], [class*="loading"], [class*="spinner"], [class*="skeleton"]');
-        const hasLoadingText = container.textContent?.includes('loading') || 
+        const hasLoadingText = container.textContent?.includes('loading') ||
                               container.textContent?.includes('Loading');
-        
+
         // Should show loading state during the delay
         expect(loadingElements.length > 0 || hasLoadingText).toBe(true);
       }, { timeout: 2000 });
@@ -548,10 +548,10 @@ describe('P2-T-006: Error Path Integration Tests', () => {
       await waitFor(() => {
         // After delay, should show actual content
         const contentElements = container.querySelectorAll('[data-testid*="stats"], [class*="stats"], [class*="dashboard"]');
-        const hasStatsContent = container.textContent?.includes('today') || 
+        const hasStatsContent = container.textContent?.includes('today') ||
                                container.textContent?.includes('completed') ||
                                container.textContent?.includes('scheduled');
-        
+
         expect(contentElements.length > 0 || hasStatsContent).toBe(true);
       }, { timeout: 5000 }); // Wait longer than the 3.5s delay
 
@@ -578,7 +578,7 @@ describe('P2-T-006: Error Path Integration Tests', () => {
         try {
           // Try to interact with other elements while delay is happening
           const interactiveElements = container.querySelectorAll('button:not([disabled]), [role="button"]:not([aria-disabled="true"]), a');
-          
+
           if (interactiveElements.length > 0) {
             // Click should work even during network delay
             await user.click(interactiveElements[0] as HTMLElement);
@@ -615,7 +615,7 @@ describe('P2-T-006: Error Path Integration Tests', () => {
         try {
           // Trigger action that will fail
           const actionElements = container.querySelectorAll('button, [role="button"]');
-          
+
           if (actionElements.length > 0) {
             await user.click(actionElements[0] as HTMLElement);
           }
@@ -628,10 +628,10 @@ describe('P2-T-006: Error Path Integration Tests', () => {
       await waitFor(() => {
         // Look for retry buttons or error recovery options
         const retryElements = container.querySelectorAll('[data-testid*="retry"], [class*="retry"], button[class*="try-again"]');
-        const hasRetryText = container.textContent?.includes('retry') || 
+        const hasRetryText = container.textContent?.includes('retry') ||
                             container.textContent?.includes('Retry') ||
                             container.textContent?.includes('Try again');
-        
+
         // Should provide some form of error recovery
         expect(retryElements.length > 0 || hasRetryText || container.innerHTML.length > 0).toBe(true);
       }, { timeout: 3000 });
@@ -642,7 +642,7 @@ describe('P2-T-006: Error Path Integration Tests', () => {
       await act(async () => {
         try {
           const retryButtons = container.querySelectorAll('[data-testid*="retry"], button:contains("retry"), button:contains("Retry")');
-          
+
           if (retryButtons.length > 0) {
             await user.click(retryButtons[0] as HTMLElement);
           }
@@ -674,7 +674,7 @@ describe('P2-T-006: Error Path Integration Tests', () => {
       await act(async () => {
         try {
           const actionElements = container.querySelectorAll('button, [role="button"], a');
-          
+
           // Try multiple interactions
           for (let i = 0; i < Math.min(3, actionElements.length); i++) {
             try {
@@ -707,10 +707,10 @@ describe('P2-T-006: Error Path Integration Tests', () => {
     // This test ensures that throughout all the error scenarios,
     // we haven't accumulated any uncaught promise rejections
     expect(unhandledRejections).toHaveLength(0);
-    
+
     // Also verify that our error tracking is working
     expect(consoleErrorSpy).toBeDefined();
-    
+
     console.log('✅ All error scenarios completed successfully without uncaught promise rejections');
   });
 });

@@ -83,7 +83,7 @@ if [[ $confirm =~ ^[Yy]$ ]]; then
     echo ""
     echo "🚀 Applying infrastructure changes..."
     terraform apply tfplan
-    
+
     if [ $? -eq 0 ]; then
         echo ""
         echo "✅ Infrastructure deployment completed successfully!"
@@ -110,10 +110,10 @@ if [[ $confirm =~ ^[Yy]$ ]]; then
         echo "  • Run: ../scripts/test_reminder_system.sh"
         echo "  • Create test appointments for tomorrow to verify reminders"
         echo ""
-        
+
         # Clean up plan file
         rm -f tfplan
-        
+
     else
         echo "❌ Infrastructure deployment failed"
         exit 1

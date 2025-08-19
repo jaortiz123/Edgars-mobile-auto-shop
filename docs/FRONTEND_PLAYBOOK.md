@@ -65,4 +65,3 @@ theme: {
 ## 7. Testing
 - **Vitest** for unit/integration tests.
 - **Playwright** for E2E flows and visual regression.
-

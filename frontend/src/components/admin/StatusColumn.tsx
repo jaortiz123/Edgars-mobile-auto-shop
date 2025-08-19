@@ -19,7 +19,7 @@ export default function StatusColumn({
   filteredCount?: number;
 }) {
   const columnRef = useRef<HTMLDivElement>(null);
-  
+
   const [, drop] = useDrop(() => ({
     accept: 'card',
     drop: (item: { id: string; status: string; position: number }) => {

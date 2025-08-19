@@ -3,10 +3,10 @@ import { Suspense } from 'react';
 // Lazy-load admin-specific neobrutal styles so public pages are unaffected
 import '../styles/admin-neobrutal.css';
 import { useAuth } from '@/hooks/useAuth';
-import { 
-  LayoutDashboard, 
-  Users, 
-  MessageSquare, 
+import {
+  LayoutDashboard,
+  Users,
+  MessageSquare,
   LogOut,
   BarChart3
 } from 'lucide-react';
@@ -16,7 +16,7 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout: authLogout } = useAuth();
-  
+
   const logout = async () => {
     authLogout();
     navigate('/admin/login');

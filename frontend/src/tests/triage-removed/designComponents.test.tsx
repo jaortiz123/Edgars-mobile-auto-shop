@@ -1,13 +1,13 @@
 // Sprint 1A Robustness: Design System Component Tests (jsdom Environment)
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, screen } from '@testing-library/react';
-import { 
+import {
   DesignSystemValidator,
   getCSSVariable,
   createDesignSystemClasses,
   validateDesignToken
 } from '@/utils/designSystemValidator';
-import { 
+import {
   CSSPerformanceMonitor,
   measureCSSPerformance,
   getOptimizedCSSVariable
@@ -44,7 +44,7 @@ describe('Design System Component Validation', () => {
     it('should detect invalid typography scale', () => {
       const isValid = validator.validateTypographyScale('fs-invalid');
       expect(isValid).toBe(false);
-      
+
       const state = validator.getValidationState();
       expect(state.warnings.length).toBeGreaterThan(0);
     });
@@ -59,7 +59,7 @@ describe('Design System Component Validation', () => {
       // Test with a variable that doesn't exist in our global setup
       const isValid = validator.validateCSSVariable('--non-existent-variable');
       expect(isValid).toBe(false);
-      
+
       const state = validator.getValidationState();
       expect(state.warnings.length).toBeGreaterThan(0);
     });
@@ -86,7 +86,7 @@ describe('Design System Component Validation', () => {
       element.style.width = '44px';
       element.style.height = '44px';
       element.style.outline = '2px solid blue';
-      
+
       const isValid = validator.validateAccessibility(element);
       expect(isValid).toBe(true);
     });
@@ -96,10 +96,10 @@ describe('Design System Component Validation', () => {
       const element = document.createElement('button');
       element.style.width = '20px';  // Too small for touch target
       element.style.height = '20px';
-      
+
       const isValid = validator.validateAccessibility(element);
       expect(isValid).toBe(false);
-      
+
       const state = validator.getValidationState();
       expect(state.warnings.length).toBeGreaterThan(0);
     });
@@ -111,7 +111,7 @@ describe('Design System Component Validation', () => {
       const { result, duration } = measureCSSPerformance('test-operation', () => {
         return 'test-result';
       });
-      
+
       expect(result).toBe('test-result');
       expect(duration).toBeGreaterThanOrEqual(0);
     });
@@ -127,12 +127,12 @@ describe('Design System Component Validation', () => {
       const element = document.createElement('div');
       element.style.fontSize = '1rem';
       document.body.appendChild(element);
-      
+
       // Test that performance measurement doesn't throw
       expect(() => {
         performanceMonitor.measureTypographyRender(element, 'test-typography');
       }).not.toThrow();
-      
+
       // Cleanup
       document.body.removeChild(element);
     });
@@ -153,7 +153,7 @@ describe('Design System Component Validation', () => {
       expect(() => {
         validateDesignToken('typography', 'fs-2');
       }).not.toThrow();
-      
+
       expect(() => {
         validateDesignToken('spacing', 'sp-3');
       }).not.toThrow();

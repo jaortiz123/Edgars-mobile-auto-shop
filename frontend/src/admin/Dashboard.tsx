@@ -32,7 +32,7 @@ const convertTo24Hour = (time12h: string): string => {
 
     // Handle various formats and clean the input
     const cleanTime = time12h.trim().toUpperCase();
-    
+
     // Check if already in 24-hour format
     if (!cleanTime.includes('AM') && !cleanTime.includes('PM')) {
       return cleanTime;
@@ -40,7 +40,7 @@ const convertTo24Hour = (time12h: string): string => {
 
     const [time, modifier] = cleanTime.split(/\s+(AM|PM)/);
     let [hours, minutes] = time.split(':').map(str => str.trim());
-    
+
     if (!hours || !minutes) {
       console.warn('Invalid time format:', time12h);
       return '12:00';
@@ -48,9 +48,9 @@ const convertTo24Hour = (time12h: string): string => {
 
     hours = hours.padStart(2, '0');
     minutes = minutes.padStart(2, '0');
-    
+
     let hour24 = parseInt(hours);
-    
+
     if (modifier === 'AM') {
       if (hour24 === 12) {
         hour24 = 0; // 12:xx AM becomes 00:xx
@@ -60,7 +60,7 @@ const convertTo24Hour = (time12h: string): string => {
         hour24 += 12; // Add 12 for PM times (except 12 PM)
       }
     }
-    
+
     const result = `${hour24.toString().padStart(2, '0')}:${minutes}`;
     console.log(`Converted ${time12h} to ${result}`);
     return result;
@@ -147,7 +147,7 @@ export function Dashboard() {
   const [showScheduleDropdown, setShowScheduleDropdown] = useState(false);
   const loadingRef = useRef(false);
   const setRefreshingRef = useRef(setRefreshing);
-  
+
   // Update the ref when setRefreshing changes
   useEffect(() => {
     setRefreshingRef.current = setRefreshing;
@@ -159,9 +159,9 @@ export function Dashboard() {
       console.log("🚫 Already loading, skipping duplicate call");
       return;
     }
-    
+
     console.log("🚀 Starting loadDashboardData");
-    
+
     // Safety timer to prevent infinite loading
   const safetyTimer = setTimeout(() => {
       console.log("⚠️ Safety timeout triggered after 10s - forcing loading to false");
@@ -169,7 +169,7 @@ export function Dashboard() {
       setLoading(false);
       setRefreshingRef.current(false);
     }, 10000);
-    
+
    const isSoft = !!options?.soft;
    const prevScrollY = window.scrollY;
    loadingRef.current = true;
@@ -180,7 +180,7 @@ export function Dashboard() {
       console.log("📡 Making API calls to backend...");
        const aptRes = await getAdminAppointments();
       console.log("✅ API calls completed", { aptRes });
-      
+
   if (aptRes && aptRes.appointments && Array.isArray(aptRes.appointments)) {
         console.log("📋 Processing appointments data", aptRes);
          fetchedApts = aptRes.appointments.map((apt: ApiAppointmentResponse) => {
@@ -198,7 +198,7 @@ export function Dashboard() {
              } else {
                dateTime = new Date(); // fallback to current date
              }
-             
+
              // Validate the date
              if (isNaN(dateTime.getTime())) {
                console.warn('Invalid date for appointment:', apt.id, apt);
@@ -230,7 +230,7 @@ export function Dashboard() {
              reminderStatus: 'pending' as const, // Default value since backend doesn't provide this
            };
          });
-       }       
+       }
      } catch (err) {
       console.error('❌ Dashboard API error', err);
       // Still proceed to show empty dashboard instead of hanging
@@ -333,10 +333,10 @@ export function Dashboard() {
   // Handler for QuickAddModal submission - integrates with existing appointment creation flow
   const handleQuickAddSubmit = async (formData: AppointmentFormData) => {
     console.log('🚀 QuickAdd submission:', formData);
-    
+
     // Reuse existing appointment creation logic
     await handleAppointmentFormSubmit(formData);
-    
+
     // Close QuickAddModal on success
     setShowQuickAddModal(false);
   };
@@ -344,7 +344,7 @@ export function Dashboard() {
   const handleAppointmentFormSubmit = async (formData: AppointmentFormData) => {
     console.log('🔄 Submitting appointment form:', formData);
     setIsSubmittingAppointment(true);
-    
+
     // Validate required fields
     if (!formData.customerName || !formData.serviceType || (!formData.appointmentDate && formData.appointmentType !== 'emergency') || (!formData.appointmentTime && formData.appointmentType !== 'emergency')) {
       alert('❌ Please fill in all required fields');
@@ -353,10 +353,10 @@ export function Dashboard() {
     }
 
     try {
-      const requestedTime = formData.appointmentDate && formData.appointmentTime ? 
-        new Date(`${formData.appointmentDate}T${convertTo24Hour(formData.appointmentTime)}:00`).toISOString() : 
+      const requestedTime = formData.appointmentDate && formData.appointmentTime ?
+        new Date(`${formData.appointmentDate}T${convertTo24Hour(formData.appointmentTime)}:00`).toISOString() :
         new Date().toISOString(); // fallback to current time for emergency appointments
-        
+
       const vehicleBits = [formData.vehicleYear, formData.vehicleMake, formData.vehicleModel]
         .filter(Boolean)
         .join(' ')
@@ -388,7 +388,7 @@ export function Dashboard() {
       if (isOnline()) {
         const response = await createAppointment(appointmentData);
         console.log('📥 API response:', response);
-        
+
         if (response) {
           // Add to local state for immediate UI update
           const newApt: UIAppointment = {
@@ -404,18 +404,18 @@ export function Dashboard() {
             estimatedDuration: '1 hour',
             reminderStatus: 'pending' as const,
           };
-          
+
           setAppointments(prev => [...prev, newApt]);
           saveLastQuickAdd({
             customer_id: formData.customerName,
             service: formData.serviceType,
             estimated_duration: formData.estimatedDuration,
           });
-          
+
           alert('✅ Appointment scheduled successfully!');
           setShowAppointmentForm(false);
           setIsSubmittingAppointment(false);
-          
+
           // Refresh data to sync with backend
           setTimeout(() => {
             console.log('🔄 Refreshing dashboard after appointment creation...');
@@ -440,25 +440,25 @@ export function Dashboard() {
   const handleStartJob = async (appointmentId: string) => {
     try {
       // Optimistically update UI
-      setAppointments(prev => prev.map((apt: UIAppointment) => 
-        apt.id === appointmentId 
+      setAppointments(prev => prev.map((apt: UIAppointment) =>
+        apt.id === appointmentId
           ? { ...apt, status: 'in-progress' as const }
           : apt
       ));
-      
+
       if (nextAppointment?.id === appointmentId) {
         setNextAppointment(prev => prev ? { ...prev, status: 'in-progress' as const } : null);
       }
-      
+
       // setSelectedAppointment(null);
-      
+
       // Try to update backend if online
     if (isOnline()) {
   const response = await updateAppointmentStatus(appointmentId, 'IN_PROGRESS');
         if (!handleApiError(response, 'Failed to start job')) {
           // Revert on failure
-          setAppointments(prev => prev.map((apt: UIAppointment) => 
-            apt.id === appointmentId 
+          setAppointments(prev => prev.map((apt: UIAppointment) =>
+            apt.id === appointmentId
               ? { ...apt, status: 'scheduled' as const }
               : apt
           ));
@@ -466,7 +466,7 @@ export function Dashboard() {
   // Soft refresh to sync with backend without page jump
   loadDashboardData({ soft: true });
       }
-      
+
       console.log(`Starting job for appointment ${appointmentId}`);
     } catch (error) {
       console.error('Error starting job:', error);
@@ -476,16 +476,16 @@ export function Dashboard() {
   const handleCompleteJob = async (appointmentId: string) => {
     try {
       // Optimistically update UI
-      setAppointments(prev => prev.map((apt: UIAppointment) => 
-        apt.id === appointmentId 
+      setAppointments(prev => prev.map((apt: UIAppointment) =>
+        apt.id === appointmentId
           ? { ...apt, status: 'completed' as const }
           : apt
       ));
-      
+
       if (nextAppointment?.id === appointmentId) {
         // Recalculate next appointment instead of setting to null
         const now = new Date();
-        const updatedAppointments = appointments.map((apt: UIAppointment) => 
+        const updatedAppointments = appointments.map((apt: UIAppointment) =>
           apt.id === appointmentId ? { ...apt, status: 'completed' as const } : apt
         );
         const nextAvailable = updatedAppointments
@@ -494,16 +494,16 @@ export function Dashboard() {
           .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime())[0];
         setNextAppointment(nextAvailable || null);
       }
-      
+
       // setSelectedAppointment(null);
-      
+
       // Try to update backend if online
     if (isOnline()) {
   const response = await updateAppointmentStatus(appointmentId, 'COMPLETED');
         if (!handleApiError(response, 'Failed to complete job')) {
           // Revert on failure
-          setAppointments(prev => prev.map((apt: UIAppointment) => 
-            apt.id === appointmentId 
+          setAppointments(prev => prev.map((apt: UIAppointment) =>
+            apt.id === appointmentId
               ? { ...apt, status: 'in-progress' as const }
               : apt
           ));
@@ -511,7 +511,7 @@ export function Dashboard() {
   // Soft refresh to sync with backend without page jump
   loadDashboardData({ soft: true });
       }
-      
+
       console.log(`Completing job for appointment ${appointmentId}`);
     } catch (error) {
       console.error('Error completing job:', error);
@@ -526,7 +526,7 @@ export function Dashboard() {
 
   const handleQuickAction = (action: 'start' | 'complete' | 'call') => {
     if (!nextAppointment) return;
-    
+
     switch (action) {
       case 'start':
         handleStartJob(nextAppointment.id);

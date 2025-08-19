@@ -1,6 +1,6 @@
 /**
  * Sprint 4A-T-003: Running Revenue Component
- * 
+ *
  * Displays live running total of today's revenue in the dashboard header.
  * Updates in real-time as appointments are completed and payments are received.
  */
@@ -38,13 +38,13 @@ export default function RunningRevenue({ className = '', showBreakdown = false }
   const handleRevenueUpdate = useCallback((revenueData: RevenueData) => {
     setIsLoading(false);
     setError(null);
-    
+
     // Trigger animation if revenue changed
     if (revenue && revenueData.totalRevenue !== revenue.totalRevenue) {
       setIsAnimating(true);
       setTimeout(() => setIsAnimating(false), 300);
     }
-    
+
     setRevenue(revenueData);
     setLastUpdated(new Date());
   }, [revenue]);
@@ -58,7 +58,7 @@ export default function RunningRevenue({ className = '', showBreakdown = false }
   // Subscribe to revenue updates on mount
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
-    
+
     try {
       unsubscribe = subscribeToRevenueUpdates(handleRevenueUpdate);
     } catch (err) {
@@ -66,7 +66,7 @@ export default function RunningRevenue({ className = '', showBreakdown = false }
         handleError(err);
       }
     }
-    
+
     // Cleanup subscription on unmount
     return () => {
       if (unsubscribe) {
@@ -120,7 +120,7 @@ export default function RunningRevenue({ className = '', showBreakdown = false }
         <div className="revenue-amount">
           {formatCurrency(revenue.totalRevenue)}
         </div>
-        
+
         {showBreakdown && (
           <div className="revenue-breakdown">
             <div className="breakdown-item">
@@ -137,14 +137,14 @@ export default function RunningRevenue({ className = '', showBreakdown = false }
             </div>
           </div>
         )}
-        
+
         {lastUpdated && (
           <div className="revenue-updated">
             <span className="update-indicator">●</span>
             <span className="update-time">
-              {lastUpdated.toLocaleTimeString([], { 
-                hour: '2-digit', 
-                minute: '2-digit' 
+              {lastUpdated.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
               })}
             </span>
           </div>
@@ -166,7 +166,7 @@ export function RunningRevenueCompact({ className = '' }: { className?: string }
       setRevenue(revenueData);
       setIsLoading(false);
     });
-    
+
     return unsubscribe;
   }, []);
 
@@ -198,11 +198,11 @@ export function RunningRevenueCard({ className = '' }: { className?: string }) {
 
   useEffect(() => {
     let previousTotal: number | null = null;
-    
+
     const unsubscribe = subscribeToRevenueUpdates((revenueData: RevenueData) => {
       setRevenue(revenueData);
       setIsLoading(false);
-      
+
       // Calculate trend
       if (previousTotal !== null) {
         if (revenueData.totalRevenue > previousTotal) {
@@ -213,10 +213,10 @@ export function RunningRevenueCard({ className = '' }: { className?: string }) {
           setTrend('neutral');
         }
       }
-      
+
       previousTotal = revenueData.totalRevenue;
     });
-    
+
     return unsubscribe;
   }, []);
 
@@ -241,11 +241,11 @@ export function RunningRevenueCard({ className = '' }: { className?: string }) {
           {trend === 'neutral' && '📊'}
         </div>
       </div>
-      
+
       <div className="card-amount">
         {formatCurrency(revenue?.totalRevenue || 0)}
       </div>
-      
+
       <div className="card-breakdown">
         <div className="breakdown-row">
           <span className="breakdown-label">Collected:</span>

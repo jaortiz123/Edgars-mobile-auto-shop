@@ -169,18 +169,14 @@ def _write(sock, d):
         raise InterfaceError("network error") from e
 
 
-def _make_socket(
-    unix_sock, sock, host, port, timeout, source_address, tcp_keepalive, ssl_context
-):
+def _make_socket(unix_sock, sock, host, port, timeout, source_address, tcp_keepalive, ssl_context):
     if unix_sock is not None:
         if sock is not None:
             raise InterfaceError("If unix_sock is provided, sock must be None")
 
         try:
             if not hasattr(socket, "AF_UNIX"):
-                raise InterfaceError(
-                    "attempt to connect to unix socket on unsupported platform"
-                )
+                raise InterfaceError("attempt to connect to unix socket on unsupported platform")
             sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             sock.settimeout(timeout)
             sock.connect(unix_sock)
@@ -230,14 +226,11 @@ def _make_socket(
             sock = ssl_context.wrap_socket(sock, server_hostname=host)
 
             if request_ssl:
-                channel_binding = scramp.make_channel_binding(
-                    "tls-server-end-point", sock
-                )
+                channel_binding = scramp.make_channel_binding("tls-server-end-point", sock)
 
         except ImportError:
             raise InterfaceError(
-                "SSL required but ssl module not available in this python "
-                "installation."
+                "SSL required but ssl module not available in this python " "installation."
             )
     return channel_binding, sock
 
@@ -431,9 +424,7 @@ class CoreConnection:
         # column_formats = unpack_from('!' + 'h' * num_cols, data, 3)
 
         if context.stream is None:
-            raise InterfaceError(
-                "An output stream is required for the COPY OUT response."
-            )
+            raise InterfaceError("An output stream is required for the COPY OUT response.")
 
         elif isinstance(context.stream, TextIOBase):
             if is_binary:
@@ -477,9 +468,7 @@ class CoreConnection:
 
                     def ri(bffr):
                         bffr.clear()
-                        bffr.extend(
-                            context.stream.read(4096).encode(self._client_encoding)
-                        )
+                        bffr.extend(context.stream.read(4096).encode(self._client_encoding))
                         return len(bffr)
 
                     readinto = ri
@@ -557,8 +546,7 @@ class CoreConnection:
         elif auth_code == 3:
             if self.password is None:
                 raise InterfaceError(
-                    "server requesting password authentication, but no password was "
-                    "provided"
+                    "server requesting password authentication, but no password was " "provided"
                 )
             self._send_message(PASSWORD, self.password + NULL_BYTE)
             _flush(self._sock)
@@ -567,8 +555,7 @@ class CoreConnection:
             salt = b"".join(cccc_unpack(data, 4))
             if self.password is None:
                 raise InterfaceError(
-                    "server requesting MD5 password authentication, but no password "
-                    "was provided"
+                    "server requesting MD5 password authentication, but no password " "was provided"
                 )
             pwd = b"md5" + md5(
                 md5(self.password + self.user).hexdigest().encode("ascii") + salt
@@ -608,13 +595,9 @@ class CoreConnection:
             self.auth.set_server_final(data[4:].decode("utf8"))
 
         elif auth_code in (2, 4, 6, 7, 8, 9):
-            raise InterfaceError(
-                f"Authentication method {auth_code} not supported by pg8000."
-            )
+            raise InterfaceError(f"Authentication method {auth_code} not supported by pg8000.")
         else:
-            raise InterfaceError(
-                f"Authentication method {auth_code} not recognized by pg8000."
-            )
+            raise InterfaceError(f"Authentication method {auth_code} not recognized by pg8000.")
 
     def handle_READY_FOR_QUERY(self, data, context):
         self._transaction_status = data
@@ -733,9 +716,7 @@ class CoreConnection:
 
         return statement_name_bin, context.columns, context.input_funcs
 
-    def execute_named(
-        self, statement_name_bin, params, columns, input_funcs, statement
-    ):
+    def execute_named(self, statement_name_bin, params, columns, input_funcs, statement):
         context = Context(columns=columns, input_funcs=input_funcs, statement=statement)
 
         self.send_BIND(statement_name_bin, params)
@@ -761,9 +742,7 @@ class CoreConnection:
     def send_BIND(self, statement_name_bin, params):
         """https://www.postgresql.org/docs/current/protocol-message-formats.html"""
 
-        retval = bytearray(
-            NULL_BYTE + statement_name_bin + h_pack(0) + h_pack(len(params))
-        )
+        retval = bytearray(NULL_BYTE + statement_name_bin + h_pack(0) + h_pack(len(params)))
 
         for value in params:
             if value is None:

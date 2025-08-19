@@ -4,11 +4,24 @@ import pytest
 
 def _state(total_cents: int) -> il.InvoiceState:
     # Build a trivial invoice state with one line item so totals are coherent
-    item = il.LineItem(position=0, name="Svc", quantity=1, unit_price_cents=total_cents,
-                       line_subtotal_cents=total_cents, tax_rate_basis_points=0, tax_cents=0,
-                       total_cents=total_cents, service_operation_id=None)
-    totals = il.InvoiceTotals(subtotal_cents=total_cents, tax_cents=0, total_cents=total_cents,
-                              amount_paid_cents=0, amount_due_cents=total_cents)
+    item = il.LineItem(
+        position=0,
+        name="Svc",
+        quantity=1,
+        unit_price_cents=total_cents,
+        line_subtotal_cents=total_cents,
+        tax_rate_basis_points=0,
+        tax_cents=0,
+        total_cents=total_cents,
+        service_operation_id=None,
+    )
+    totals = il.InvoiceTotals(
+        subtotal_cents=total_cents,
+        tax_cents=0,
+        total_cents=total_cents,
+        amount_paid_cents=0,
+        amount_due_cents=total_cents,
+    )
     return il.InvoiceState(status=il.INITIAL_INVOICE_STATUS, line_items=[item], totals=totals)
 
 
@@ -35,6 +48,7 @@ def test_multiple_partial_payments_then_paid():
     assert r3.new_state.status == "PAID"
     assert r3.new_state.totals.amount_due_cents == 0
     assert r3.new_state.totals.amount_paid_cents == 5000
+
 
 @pytest.mark.parametrize("amount", [0, -1])
 def test_invalid_amount(amount):

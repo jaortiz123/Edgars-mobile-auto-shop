@@ -26,13 +26,13 @@ export function parseAppointmentDate(scheduledAt?: string, requestedTime?: strin
       console.warn('No appointment time provided, using current time');
       return new Date();
     }
-    
+
     const parsed = new Date(timeString);
     if (isNaN(parsed.getTime())) {
       console.warn('Invalid appointment time:', timeString, 'using current time');
       return new Date();
     }
-    
+
     return parsed;
   } catch (error) {
     console.error('Error parsing appointment time:', error);
@@ -89,14 +89,14 @@ export function validateAppointments(appointments: any[]): Appointment[] {
  * Calculate urgency priority with error handling
  */
 export function calculateUrgencyPriority(
-  time: Date, 
+  time: Date,
   todayStr: string,
   urgencyThresholds = { overdue: -30, runningLate: -5, startingSoon: 30 }
 ): number {
   try {
     const now = new Date();
     const diffMinutes = (time.getTime() - now.getTime()) / (1000 * 60);
-    
+
     if (diffMinutes < urgencyThresholds.overdue) return 4; // Overdue
     if (diffMinutes < urgencyThresholds.runningLate) return 3; // Running late
     if (diffMinutes <= urgencyThresholds.startingSoon && diffMinutes > 0) return 2; // Starting soon
@@ -116,7 +116,7 @@ export function debounce<T extends (...args: any[]) => any>(
   wait: number
 ): (...args: Parameters<T>) => void {
   let timeout: ReturnType<typeof setTimeout>;
-  
+
   return (...args: Parameters<T>) => {
     clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), wait);
@@ -131,7 +131,7 @@ export function throttle<T extends (...args: any[]) => any>(
   limit: number
 ): (...args: Parameters<T>) => void {
   let inThrottle: boolean;
-  
+
   return (...args: Parameters<T>) => {
     if (!inThrottle) {
       func(...args);
@@ -153,7 +153,7 @@ export const safeLocalStorage = {
       return null;
     }
   },
-  
+
   setItem: (key: string, value: string): boolean => {
     try {
       localStorage.setItem(key, value);
@@ -163,7 +163,7 @@ export const safeLocalStorage = {
       return false;
     }
   },
-  
+
   removeItem: (key: string): boolean => {
     try {
       localStorage.removeItem(key);
@@ -208,21 +208,21 @@ export async function retryWithBackoff<T>(
   baseDelay = 1000
 ): Promise<T> {
   let lastError: Error;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      
+
       if (attempt === maxRetries) {
         throw lastError;
       }
-      
+
       const delay = baseDelay * Math.pow(2, attempt);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  
+
   throw lastError!;
 }

@@ -46,10 +46,10 @@ describe('MessageThread - Enhanced with Mock Factory', () => {
 
   beforeEach(() => {
     resetAll();
-    
+
     // Setup time mock for consistent testing
     timeMocks.setCurrentTime(new Date('2024-01-15T10:10:00Z'));
-    
+
     // Setup default API responses
     apiMocks.setupDefaultResponses({
       getAppointmentMessages: { success: true, data: mockMessages },
@@ -99,7 +99,7 @@ describe('MessageThread - Enhanced with Mock Factory', () => {
   test('allows sending a new message with real-time updates', async () => {
     // Configure realistic network timing
     apiMocks.setNetworkDelay(200);
-    
+
     render(<MessageThread appointmentId="appt-123" />);
 
     await waitFor(() => {
@@ -147,7 +147,7 @@ describe('MessageThread - Enhanced with Mock Factory', () => {
 
     // Verify validation
     expect(screen.getByText('Message cannot be empty')).toBeInTheDocument();
-    
+
     // Verify no API call was made
     expect(apiMocks.getRequestCount()).toBe(1); // Only initial load
   });

@@ -3,13 +3,13 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: 'e2e',
   globalSetup: require.resolve('./e2e/global-setup'),
-  
+
   // P2-T-009: Retry configuration for flaky test detection
   retries: process.env.CI ? 1 : 0, // Retry once in CI, no retries locally
-  
+
   // Global timeout for the entire test run (4 minutes) to prevent hangs
   globalTimeout: 240000,
-  
+
   // Cross-browser projects for P2-T-005 and mobile viewport for P2-T-008
   projects: [
     {
@@ -33,7 +33,7 @@ export default defineConfig({
       },
     },
   ],
-  
+
   reporter: [
     ['html', { outputFolder: 'e2e-report' }],
     ['monocart-reporter', {
@@ -53,19 +53,19 @@ export default defineConfig({
       }
     }]
   ],
-  
-  use: { 
-    trace: 'on-first-retry', 
+
+  use: {
+    trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     // Set reasonable timeouts for CI
     actionTimeout: 15000,
     navigationTimeout: 30000,
   storageState: 'e2e/storageState.json'
   },
-  
+
   // Global test timeout
   timeout: 30000,
-  
+
   webServer: {
     command: 'bash -lc "export SKIP_KILL_5173=1; npm run dev --prefix frontend"',
     port: 5173,

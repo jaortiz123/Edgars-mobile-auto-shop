@@ -1,9 +1,9 @@
 /**
  * Shortcut Utility for One-Click Scheduling
- * 
+ *
  * Provides intelligent shortcuts and quick scheduling functionality
  * with robust error handling and performance optimization.
- * 
+ *
  * Features:
  * - Memory Management: Cached settings, cleanup on storage changes
  * - Error Handling: Graceful fallbacks, comprehensive error logging
@@ -87,7 +87,7 @@ function sanitizeAppointmentData(data) {
 
   try {
     const sanitized = {};
-    
+
     // Sanitize string fields
     const stringFields = ['appointmentType', 'serviceType', 'estimatedDuration', 'appointmentTime', 'notes'];
     stringFields.forEach(field => {
@@ -100,7 +100,7 @@ function sanitizeAppointmentData(data) {
     if (data.customerName && typeof data.customerName === 'string') {
       sanitized.customerName = data.customerName.trim().slice(0, 100);
     }
-    
+
     if (data.customerPhone && typeof data.customerPhone === 'string') {
       sanitized.customerPhone = data.customerPhone.replace(/[^\d\-\+\(\)\s]/g, '').slice(0, 20);
     }
@@ -118,11 +118,11 @@ function sanitizeAppointmentData(data) {
     if (data.vehicleYear && typeof data.vehicleYear === 'string') {
       sanitized.vehicleYear = data.vehicleYear.replace(/[^\d]/g, '').slice(0, 4);
     }
-    
+
     if (data.vehicleMake && typeof data.vehicleMake === 'string') {
       sanitized.vehicleMake = data.vehicleMake.trim().slice(0, 50);
     }
-    
+
     if (data.vehicleModel && typeof data.vehicleModel === 'string') {
       sanitized.vehicleModel = data.vehicleModel.trim().slice(0, 50);
     }
@@ -157,7 +157,7 @@ export function saveLastAppointmentSettings(appointmentData) {
     }
 
     const sanitizedData = sanitizeAppointmentData(appointmentData);
-    
+
     // Add timestamp
     const dataWithTimestamp = {
       ...sanitizedData,
@@ -167,7 +167,7 @@ export function saveLastAppointmentSettings(appointmentData) {
 
     // Save to localStorage with error handling
     localStorage.setItem(STORAGE_KEYS.LAST_APPOINTMENT, JSON.stringify(dataWithTimestamp));
-    
+
     // Clear cache to force refresh
     settingsCache = null;
     cacheTimestamp = null;
@@ -193,7 +193,7 @@ export function getLastAppointmentSettings() {
     }
 
     const stored = localStorage.getItem(STORAGE_KEYS.LAST_APPOINTMENT);
-    
+
     if (!stored) {
       console.log('No last appointment settings found, using defaults');
       settingsCache = DEFAULT_SETTINGS;
@@ -202,7 +202,7 @@ export function getLastAppointmentSettings() {
     }
 
     const parsed = JSON.parse(stored);
-    
+
     // Validate stored data
     if (!validateAppointmentData(parsed)) {
       console.warn('Invalid stored appointment data, using defaults');
@@ -212,7 +212,7 @@ export function getLastAppointmentSettings() {
     }
 
     const sanitized = sanitizeAppointmentData(parsed);
-    
+
     // Update cache
     settingsCache = sanitized;
     cacheTimestamp = now;
@@ -232,7 +232,7 @@ export function getSmartDefaults() {
   try {
     const lastSettings = getLastAppointmentSettings();
     const currentHour = new Date().getHours();
-    
+
     // Determine best appointment time based on current time
     let suggestedTime = '10:00 AM';
     if (currentHour >= 8 && currentHour < 12) {
@@ -291,9 +291,9 @@ export function saveRecentCustomer(customerData) {
 
     // Get existing recent customers
     const existing = getRecentCustomers();
-    
+
     // Remove existing entry for this customer (by name and phone)
-    const filtered = existing.filter(c => 
+    const filtered = existing.filter(c =>
       c.customerName !== sanitizedCustomer.customerName ||
       c.customerPhone !== sanitizedCustomer.customerPhone
     );
@@ -316,13 +316,13 @@ export function saveRecentCustomer(customerData) {
 export function getRecentCustomers() {
   try {
     const stored = localStorage.getItem(STORAGE_KEYS.RECENT_CUSTOMERS);
-    
+
     if (!stored) {
       return [];
     }
 
     const parsed = JSON.parse(stored);
-    
+
     if (!Array.isArray(parsed)) {
       console.warn('Invalid recent customers data');
       return [];
@@ -354,10 +354,10 @@ export function createOneClickAppointment(overrides = {}) {
   try {
     const smartDefaults = getSmartDefaults();
     const recentCustomers = getRecentCustomers();
-    
+
     // Use most recent customer if available and no customer overrides provided
-    const customerDefaults = recentCustomers.length > 0 && !overrides.customerName 
-      ? recentCustomers[0] 
+    const customerDefaults = recentCustomers.length > 0 && !overrides.customerName
+      ? recentCustomers[0]
       : {};
 
     const appointmentData = {
@@ -376,7 +376,7 @@ export function createOneClickAppointment(overrides = {}) {
     return sanitizeAppointmentData(appointmentData);
   } catch (error) {
     console.error('Error creating one-click appointment:', error);
-    
+
     // Graceful fallback
     return {
       ...DEFAULT_SETTINGS,
@@ -399,7 +399,7 @@ export function clearAllShortcuts() {
     Object.values(STORAGE_KEYS).forEach(key => {
       localStorage.removeItem(key);
     });
-    
+
     // Clear cache
     settingsCache = null;
     cacheTimestamp = null;
@@ -423,11 +423,11 @@ export function getQuickTimeSlots() {
   ];
 
   const currentHour = new Date().getHours();
-  
+
   // Filter out past time slots for today
   const now = new Date();
   const today = now.toISOString().split('T')[0];
-  
+
   return slots.map(slot => ({
     value: slot,
     label: slot,
@@ -447,7 +447,7 @@ export async function checkAppointmentConflicts(appointmentData) {
     await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API call
 
     // Mock conflict detection
-    const isConflict = appointmentData.appointmentTime === '10:00 AM' && 
+    const isConflict = appointmentData.appointmentTime === '10:00 AM' &&
                       appointmentData.appointmentDate === new Date().toISOString().split('T')[0];
 
     return {

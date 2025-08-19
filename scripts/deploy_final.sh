@@ -50,7 +50,7 @@ if aws events describe-rule --name "appointment-reminder-rule" > /dev/null 2>&1;
         --schedule-expression "cron(30 13 * * ? *)" \
         --description "Daily appointment reminders at 1:30 PM UTC" \
         --state ENABLED
-    
+
     print_status "EventBridge rule updated to 1:30 PM UTC"
 else
     print_warning "EventBridge rule 'appointment-reminder-rule' not found. Please create it manually."
@@ -66,7 +66,7 @@ cd backend
 if [ -f "reminder_function.py" ]; then
     echo "Packaging reminder function..."
     zip -q reminder_function.zip reminder_function.py
-    
+
     # Update Lambda function if it exists
     if aws lambda get-function --function-name "appointment-reminder-function" > /dev/null 2>&1; then
         aws lambda update-function-code \
@@ -76,7 +76,7 @@ if [ -f "reminder_function.py" ]; then
     else
         print_warning "Reminder function not found. Please create it manually."
     fi
-    
+
     rm -f reminder_function.zip
 fi
 
@@ -84,7 +84,7 @@ fi
 if [ -f "sms_opt_out_handler.py" ]; then
     echo "Packaging SMS opt-out handler..."
     zip -q sms_opt_out_handler.zip sms_opt_out_handler.py
-    
+
     # Update Lambda function if it exists
     if aws lambda get-function --function-name "sms-opt-out-handler" > /dev/null 2>&1; then
         aws lambda update-function-code \
@@ -94,7 +94,7 @@ if [ -f "sms_opt_out_handler.py" ]; then
     else
         print_warning "SMS opt-out handler not found. Please create it manually."
     fi
-    
+
     rm -f sms_opt_out_handler.zip
 fi
 

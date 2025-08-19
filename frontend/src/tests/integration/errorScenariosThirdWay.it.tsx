@@ -1,6 +1,6 @@
 /**
  * P2-T-006: Third Way Error Scenarios Integration Test
- * 
+ *
  * This test demonstrates the refined "Third Way" approach to error scenario testing:
  * - Uses withErrorScenario helper with proper timer management
  * - Scoped error scenarios with guaranteed cleanup
@@ -137,7 +137,7 @@ describe('P2-T-006: Third Way Error Scenarios Integration', () => {
           <div data-testid="test-component">Test Component</div>
         </TestAppWrapper>
       );
-      
+
       expect(screen.getByTestId('test-component')).toBeInTheDocument();
     });
 
@@ -148,7 +148,7 @@ describe('P2-T-006: Third Way Error Scenarios Integration', () => {
           <div data-testid="test-component-2">Test Component 2</div>
         </TestAppWrapper>
       );
-      
+
       expect(screen.getByTestId('test-component-2')).toBeInTheDocument();
     });
 
@@ -165,9 +165,9 @@ describe('P2-T-006: Third Way Error Scenarios Integration', () => {
         <div data-testid="clean-state-test">Clean State Test</div>
       </TestAppWrapper>
     );
-    
+
     expect(screen.getByTestId('clean-state-test')).toBeInTheDocument();
-    
+
     // Verify no error scenarios are active
     const activeScenarios = getErrorScenarios();
     const hasActiveScenarios = Object.values(activeScenarios).some(Boolean);

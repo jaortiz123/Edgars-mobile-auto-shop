@@ -16,7 +16,7 @@ BACKEND_URL="http://localhost:5001"
 check_service() {
     local url=$1
     local name=$2
-    
+
     echo -n "Checking $name... "
     if curl -s "$url/health" > /dev/null 2>&1; then
         echo "✅ Running"
@@ -32,15 +32,15 @@ test_api_endpoint() {
     local url=$1
     local method=$2
     local description=$3
-    
+
     echo -n "Testing $description... "
-    
+
     if [ "$method" = "GET" ]; then
         response=$(curl -s -w "%{http_code}" -o /tmp/api_response "$url")
     else
         response=$(curl -s -w "%{http_code}" -X "$method" -o /tmp/api_response "$url")
     fi
-    
+
     if [ "$response" -eq 200 ]; then
         echo "✅ Success (HTTP $response)"
         return 0
@@ -129,7 +129,7 @@ echo -n "Checking bundle size... "
 if [ -f "/Users/jesusortiz/Edgars-mobile-auto-shop/frontend/dist/assets/index-"*.js ]; then
     bundle_size=$(stat -f%z /Users/jesusortiz/Edgars-mobile-auto-shop/frontend/dist/assets/index-*.js 2>/dev/null | head -1)
     bundle_size_kb=$((bundle_size / 1024))
-    
+
     if [ "$bundle_size_kb" -lt 500 ]; then
         echo "✅ Bundle size: ${bundle_size_kb}KB (under 500KB target)"
     else

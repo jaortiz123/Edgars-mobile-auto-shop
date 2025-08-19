@@ -38,20 +38,20 @@ fi
 # Check if CSS exists with design system variables
 if [ -f "src/components/DailyAchievementSummary/DailyAchievementSummary.css" ]; then
     echo "✅ DailyAchievementSummary.css - Created"
-    
+
     # Check for design system variables
     if grep -q "var(--card-shadow-default)" src/components/DailyAchievementSummary/DailyAchievementSummary.css; then
         echo "   ├─ Uses --card-shadow-default ✅"
     else
         echo "   ├─ Uses --card-shadow-default ❌"
     fi
-    
+
     if grep -q "var(--fs-3)" src/components/DailyAchievementSummary/DailyAchievementSummary.css; then
         echo "   ├─ Uses --fs-3 ✅"
     else
         echo "   ├─ Uses --fs-3 ❌"
     fi
-    
+
     if grep -q "var(--sp-2)" src/components/DailyAchievementSummary/DailyAchievementSummary.css; then
         echo "   └─ Uses --sp-2 ✅"
     else

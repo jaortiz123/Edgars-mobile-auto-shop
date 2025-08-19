@@ -51,7 +51,7 @@ const DataExport: React.FC<DataExportProps> = ({
     ],
     groupBy: 'none'
   });
-  
+
   const [isExporting, setIsExporting] = useState(false);
   const [exportStatus, setExportStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
@@ -79,7 +79,7 @@ const DataExport: React.FC<DataExportProps> = ({
         const aptDate = new Date(apt.scheduled_at || '');
         const startDate = exportOptions.dateRange?.start ? new Date(exportOptions.dateRange.start) : null;
         const endDate = exportOptions.dateRange?.end ? new Date(exportOptions.dateRange.end) : null;
-        
+
         if (startDate && aptDate < startDate) return false;
         if (endDate && aptDate > endDate) return false;
         return true;
@@ -91,21 +91,21 @@ const DataExport: React.FC<DataExportProps> = ({
 
   const formatFieldValue = (appointment: Appointment, field: string): string => {
     const value = appointment[field as keyof Appointment];
-    
+
     if (field.includes('_at') && value) {
       // Format dates
       return new Date(value as string).toLocaleString();
     }
-    
+
     if (field === 'price' && value) {
       return `$${(value as number).toFixed(2)}`;
     }
-    
+
     return String(value || '');
   };
 
   const exportToCSV = (data: Appointment[]) => {
-    const headers = exportOptions.includeFields.map(field => 
+    const headers = exportOptions.includeFields.map(field =>
       availableFields.find(f => f.key === field)?.label || field
     );
 
@@ -113,7 +113,7 @@ const DataExport: React.FC<DataExportProps> = ({
       exportOptions.includeFields.map(field => {
         const value = formatFieldValue(appointment, field);
         // Escape quotes and wrap in quotes if contains comma or quote
-        return value.includes(',') || value.includes('"') 
+        return value.includes(',') || value.includes('"')
           ? `"${value.replace(/"/g, '""')}"`
           : value;
       })
@@ -149,7 +149,7 @@ const DataExport: React.FC<DataExportProps> = ({
 
     data.forEach(appointment => {
       let groupKey = '';
-      
+
       switch (exportOptions.groupBy) {
         case 'status':
           groupKey = appointment.status || 'Unknown';
@@ -180,7 +180,7 @@ const DataExport: React.FC<DataExportProps> = ({
     try {
       const dataToExport = getDataToExport();
       const groupedData = groupData(dataToExport);
-      
+
       let blob: Blob;
       let filename: string;
 
@@ -198,13 +198,13 @@ const DataExport: React.FC<DataExportProps> = ({
             const csvText = await csvData.text();
             allRows.push(csvText);
           }
-          
+
           blob = new Blob([allRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
           filename = `appointments-grouped-${new Date().toISOString().split('T')[0]}.csv`;
         }
       } else {
         // JSON export with grouping
-        const exportData = exportOptions.groupBy === 'none' 
+        const exportData = exportOptions.groupBy === 'none'
           ? dataToExport.map(appointment => {
               const filtered: any = {};
               exportOptions.includeFields.forEach(field => {
@@ -214,8 +214,8 @@ const DataExport: React.FC<DataExportProps> = ({
             })
           : groupedData;
 
-        blob = new Blob([JSON.stringify(exportData, null, 2)], { 
-          type: 'application/json;charset=utf-8;' 
+        blob = new Blob([JSON.stringify(exportData, null, 2)], {
+          type: 'application/json;charset=utf-8;'
         });
         filename = `appointments-${new Date().toISOString().split('T')[0]}.json`;
       }
@@ -308,7 +308,7 @@ const DataExport: React.FC<DataExportProps> = ({
                 value={exportOptions.dateRange?.start || ''}
                 onChange={(e) => setExportOptions({
                   ...exportOptions,
-                  dateRange: { 
+                  dateRange: {
                     start: e.target.value,
                     end: exportOptions.dateRange?.end || ''
                   }
@@ -323,9 +323,9 @@ const DataExport: React.FC<DataExportProps> = ({
                 value={exportOptions.dateRange?.end || ''}
                 onChange={(e) => setExportOptions({
                   ...exportOptions,
-                  dateRange: { 
+                  dateRange: {
                     start: exportOptions.dateRange?.start || '',
-                    end: e.target.value 
+                    end: e.target.value
                   }
                 })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -339,8 +339,8 @@ const DataExport: React.FC<DataExportProps> = ({
           <label className="block text-sm font-medium mb-3">Group By</label>
           <select
             value={exportOptions.groupBy}
-            onChange={(e) => setExportOptions({ 
-              ...exportOptions, 
+            onChange={(e) => setExportOptions({
+              ...exportOptions,
               groupBy: e.target.value as 'none' | 'status' | 'service' | 'date'
             })}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -381,7 +381,7 @@ const DataExport: React.FC<DataExportProps> = ({
         {/* Export Status */}
         {exportStatus !== 'idle' && (
           <div className={`p-3 rounded-lg flex items-center gap-2 ${
-            exportStatus === 'success' 
+            exportStatus === 'success'
               ? 'bg-green-50 text-green-800 border border-green-200'
               : 'bg-red-50 text-red-800 border border-red-200'
           }`}>
@@ -391,7 +391,7 @@ const DataExport: React.FC<DataExportProps> = ({
               <AlertCircle className="h-4 w-4" />
             )}
             <span className="text-sm">
-              {exportStatus === 'success' 
+              {exportStatus === 'success'
                 ? 'Export completed successfully!'
                 : 'Export failed. Please try again.'
               }
@@ -418,7 +418,7 @@ const DataExport: React.FC<DataExportProps> = ({
               </>
             )}
           </Button>
-          
+
           {onClose && (
             <Button variant="outline" onClick={onClose}>
               Cancel

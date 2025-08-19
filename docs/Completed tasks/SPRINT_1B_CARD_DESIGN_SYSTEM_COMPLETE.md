@@ -50,7 +50,7 @@ Sprint 1B: Card Design System has been completed to 100% specification. This spr
 
 **Implementation**:
 - **Card Base System**: Created `.card-base` utility class with standardized styling
-- **Spacing Utilities**: 
+- **Spacing Utilities**:
   - `.card-content` - Standard padding (24px)
   - `.card-content-compact` - Compact padding (16px)
   - `.card-content-spacious` - Generous padding (32px)
@@ -77,7 +77,7 @@ Sprint 1B: Card Design System has been completed to 100% specification. This spr
   ```
 - **Urgency Levels**:
   - **Urgent**: Red indicators with pulse animation for critical items
-  - **Soon**: Orange indicators for items requiring attention  
+  - **Soon**: Orange indicators for items requiring attention
   - **Normal**: Green indicators for standard items
 - **Card-Level Styling**: Dynamic border and shadow changes based on urgency
 - **Visual Treatments**: Multiple indicator types (badges, status lines, card variants)

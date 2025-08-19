@@ -329,6 +329,6 @@ For technical support or questions about the reminder system:
 
 ---
 
-*Last Updated: July 21, 2025*  
-*Version: 1.0*  
+*Last Updated: July 21, 2025*
+*Version: 1.0*
 *System: Edgar's Mobile Auto Shop - Automated Appointment Reminders*

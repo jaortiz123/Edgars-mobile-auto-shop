@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import importlib
 import io
 import json
 import logging
@@ -5710,6 +5711,96 @@ def cars_on_premises():
         pass
     # Minimal placeholder; can be enriched later
     return jsonify({"cars_on_premises": []})
+
+
+# ----------------------------------------------------------------------------
+# Vehicle Profile (Epic E Phase 1)
+# ----------------------------------------------------------------------------
+
+try:  # runtime import; tests may monkeypatch after
+    _vpr_mod = importlib.import_module("backend.vehicle_profile_repo")
+    fetch_vehicle_header = getattr(_vpr_mod, "fetch_vehicle_header", None)
+    fetch_vehicle_stats = getattr(_vpr_mod, "fetch_vehicle_stats", None)
+    fetch_timeline_page = getattr(_vpr_mod, "fetch_timeline_page", None)
+    compute_vehicle_profile_etag = getattr(_vpr_mod, "compute_vehicle_profile_etag", None)
+except Exception:  # pragma: no cover
+    fetch_vehicle_header = fetch_vehicle_stats = fetch_timeline_page = (
+        compute_vehicle_profile_etag
+    ) = None  # type: ignore
+
+
+@app.route("/api/admin/vehicles/<vehicle_id>/profile", methods=["GET"])
+def vehicle_profile(vehicle_id: str):
+    """Return read-only vehicle profile: header, stats, timeline page.
+
+    Query params:
+      cursor: base64("<ISO>|<id>") for pagination (exclusive, desc order)
+      from, to: YYYY-MM-DD date bounds (ignored if cursor present)
+      page_size: (default 10, max 50)
+      include_invoices: 'true' to embed invoice summary per row
+    Implements weak ETag across related data surfaces; returns 304 when match.
+    """
+    # Authorization (Advisor baseline) reusing existing helper
+    try:
+        # Use maybe/bypass helper so test harness with DEV_NO_AUTH passes without token.
+        require_or_maybe("Advisor")
+    except Exception:
+        return _fail(HTTPStatus.FORBIDDEN, "FORBIDDEN", "Not authorized")
+
+    if not fetch_vehicle_header:
+        return _fail(HTTPStatus.SERVICE_UNAVAILABLE, "UNAVAILABLE", "Profile repo not loaded")
+
+    header = fetch_vehicle_header(vehicle_id)
+    if not header:
+        return _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Vehicle not found")
+
+    etag = compute_vehicle_profile_etag(vehicle_id)
+    inm = request.headers.get("If-None-Match")
+    if inm and inm == etag:
+        resp = make_response("", 304)
+        resp.headers["ETag"] = etag
+        resp.headers["Cache-Control"] = "private, max-age=30"
+        return resp
+
+    q = request.args
+    cursor = q.get("cursor")
+    page_size = min(int(q.get("page_size", "10") or 10), 50)
+    include_invoices = (q.get("include_invoices") or "false").lower() == "true"
+    date_from = q.get("from") if not cursor else None
+    date_to = q.get("to") if not cursor else None
+
+    try:
+        timeline = fetch_timeline_page(
+            vehicle_id=vehicle_id,
+            cursor=cursor,
+            date_from=date_from,
+            date_to=date_to,
+            include_invoices=include_invoices,
+            page_size=page_size,
+        )
+        stats = fetch_vehicle_stats(vehicle_id)
+    except Exception as e:  # pragma: no cover
+        log.exception("vehicle_profile_query_failed vehicle_id=%s", vehicle_id)
+        return _fail(HTTPStatus.INTERNAL_SERVER_ERROR, "PROFILE_ERROR", str(e))
+
+    payload = {
+        "vehicle": header["vehicle"],
+        "stats": stats,
+        "org_readable": header.get("org_readable", True),
+        "timeline": {
+            "cursor": cursor,
+            "next_cursor": timeline["next_cursor"],
+            "has_more": timeline["has_more"],
+            "rows": timeline["rows"],
+            "page_size": timeline["page_size"],
+        },
+    }
+    resp = make_response(
+        jsonify({"data": payload, "errors": None, "meta": {"request_id": _req_id()}}), 200
+    )
+    resp.headers["ETag"] = etag
+    resp.headers["Cache-Control"] = "private, max-age=30"
+    return resp
 
 
 # ----------------------------------------------------------------------------

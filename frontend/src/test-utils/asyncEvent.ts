@@ -1,6 +1,6 @@
 /**
  * ACT-HELPER-001: AsyncEvent Helper
- * 
+ *
  * Provides a standardized way to wrap fireEvent calls in act() to prevent
  * React act() warnings and ensure consistent async handling across tests.
  */
@@ -12,19 +12,19 @@ import { act, fireEvent } from '@testing-library/react';
 /**
  * Wraps a callback function with React's act() utility to ensure proper
  * async handling and prevent act() warnings when using fireEvent.
- * 
+ *
  * @param fn - The callback function to execute (can be sync or async)
  * @returns Promise that resolves when the act-wrapped function completes
- * 
+ *
  * @example
  * // Instead of:
  * await act(async () => {
  *   fireEvent.click(button);
  * });
- * 
+ *
  * // Use:
  * await asyncEvent(() => fireEvent.click(button));
- * 
+ *
  * @example
  * // Works with multiple fireEvent calls:
  * await asyncEvent(() => {

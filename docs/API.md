@@ -505,7 +505,7 @@ Returns all messages for an appointment, ordered by sent_at DESC (latest first).
         "sent_at": "2025-07-29T14:30:00Z"
       },
       {
-        "id": "msg-uuid-2", 
+        "id": "msg-uuid-2",
         "appointment_id": "123",
         "channel": "sms",
         "direction": "in",
@@ -583,7 +583,7 @@ Update message delivery status (typically from webhook or manual retry).
 **Error Responses**
 
 * **400 Bad Request** - Invalid status value
-* **403 Forbidden** - Only Owner & Advisor can update messages  
+* **403 Forbidden** - Only Owner & Advisor can update messages
 * **404 Not Found** - Message not found
 
 ### DELETE `/api/appointments/:id/messages/:message_id`

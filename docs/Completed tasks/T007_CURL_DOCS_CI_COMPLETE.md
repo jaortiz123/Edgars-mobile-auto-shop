@@ -1,7 +1,7 @@
 # T-007 Implementation Complete: Curl Sample in Docs + CI Smoke Test
 
-**Date:** 2025-07-29  
-**Status:** ✅ COMPLETE  
+**Date:** 2025-07-29
+**Status:** ✅ COMPLETE
 **Task:** Add living example to prove envelope shape
 
 ## Summary
@@ -98,7 +98,7 @@ The CI job validates the standard API envelope format:
 The job intelligently skips on PRs that don't affect backend or documentation:
 - ✅ Runs on all `push` events to main/develop branches
 - ✅ Runs on PRs that modify `backend/` files
-- ✅ Runs on PRs that modify `docs/` files  
+- ✅ Runs on PRs that modify `docs/` files
 - ⏭️ Skips on PRs that only modify frontend, infrastructure, etc.
 
 ## Validation Results
@@ -136,7 +136,7 @@ The new job fits seamlessly into the existing CI pipeline:
 
 ```
 ├── frontend-lint
-├── backend-lint  
+├── backend-lint
 ├── backend-tests ← docs-curl depends on this
 ├── docs-curl ← NEW: Validates API envelope shape
 ├── no-db-smoke-tests
