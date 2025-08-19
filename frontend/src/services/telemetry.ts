@@ -47,11 +47,49 @@ const DEFAULT_CONFIG: TelemetryConfig = {
   maxStringLength: 256,
 };
 
+// ---------------- PII Redaction ----------------
+// We implement a deterministic, recursive redaction strategy covering:
+//  1. Key-based detection (exact & pattern based, case-insensitive)
+//  2. Value pattern detection (emails, phones, ipv4, ssn, jwt, credit-card like)
+//  3. Nested structures (objects / arrays) processed depth-first
+//  4. Stable placeholder token (currently static "[REDACTED]" to avoid bloat; could be
+//     swapped for hashed form later without altering traversal semantics).
+// NOTE: We intentionally keep hashing out (for now) to keep payload size small and
+// avoid introducing asynchronous crypto in the hot path; if grouping by PII value
+// becomes required we can add a short deterministic hash variant.
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
-const PHONE_REGEX = /^(\+?\d[\d\-().\s]{6,}\d)$/;
-const PII_KEY_SET = new Set([
-  'email','phone','name','full_name','first_name','last_name','username','user_name'
+const PHONE_REGEX = /^(\+?\d[\d\-().\s]{6,}\d)$/; // permissive international-ish
+const IPV4_REGEX = /\b((25[0-5]|2[0-4]\d|1?\d?\d)(\.|$)){4}\b/; // simple ipv4 detector
+const SSN_REGEX = /\b\d{3}-\d{2}-\d{4}\b/; // US SSN pattern
+const JWT_REGEX = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/; // rough JWT
+const CC_LIKE_REGEX = /\b(?:\d[ -]?){13,16}\b/; // simplistic credit card like sequence
+
+// Exact key matches (normalized to lower-case)
+const PII_KEY_EXACT = new Set([
+  'email','phone','name','full_name','first_name','last_name','username','user_name',
+  'address','street','city','state','zip','postal_code','ip','ip_address',
+  'token','auth_token','session_token','password','pwd','ssn'
 ]);
+// Pattern based key detection (lowercase test)
+const PII_KEY_PATTERNS: RegExp[] = [
+  /email/, /phone/, /name$/, /_name$/, /address/, /ip(_address)?$/, /token/, /pass(word)?/, /ssn/
+];
+
+function isPiiKey(key: string): boolean {
+  const k = key.toLowerCase();
+  if (PII_KEY_EXACT.has(k)) return true;
+  return PII_KEY_PATTERNS.some(r => r.test(k));
+}
+
+function isPiiValue(str: string): boolean {
+  if (EMAIL_REGEX.test(str)) return true;
+  if (PHONE_REGEX.test(str)) return true;
+  if (IPV4_REGEX.test(str)) return true;
+  if (SSN_REGEX.test(str)) return true;
+  if (JWT_REGEX.test(str) && str.split('.').length === 3) return true;
+  if (CC_LIKE_REGEX.test(str.replace(/[- ]/g, ''))) return true;
+  return false;
+}
 
 const sessionId = (() => {
   try {
@@ -72,18 +110,18 @@ export function setLastRequestId(rid?: string){ lastRequestId = rid; }
 function nowIso(){ return new Date().toISOString(); }
 
 function cloneAndRedact(obj: unknown): unknown {
+  // Primitive / null path
   if (obj === null || obj === undefined) return obj;
   if (typeof obj !== 'object') {
-    if (typeof obj === 'string') {
-      if (EMAIL_REGEX.test(obj) || PHONE_REGEX.test(obj)) return '[REDACTED]';
-    }
+    if (typeof obj === 'string' && isPiiValue(obj)) return '[REDACTED]';
     return obj;
   }
+  // Array path – redact each element
   if (Array.isArray(obj)) return obj.map(cloneAndRedact);
+  // Object path – copy & process keys deterministically (Object.entries order is insertion; we keep it)
   const out: Record<string, unknown> = {};
-  for (const [k,v] of Object.entries(obj)) {
-    const keyLower = k.toLowerCase();
-    if (PII_KEY_SET.has(keyLower)) {
+  for (const [k, v] of Object.entries(obj)) {
+    if (isPiiKey(k)) {
       out[k] = '[REDACTED]';
       continue;
     }
