@@ -58,6 +58,8 @@ CREATE TABLE service_operations (
     default_price NUMERIC(10,2),
     flags TEXT[] NOT NULL DEFAULT '{}',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    -- Marks this service operation as a package (collection of other operations)
+    is_package BOOLEAN NOT NULL DEFAULT FALSE,
     replaced_by_id TEXT REFERENCES service_operations(id),
     labor_matrix_code TEXT,
     skill_level INT,
@@ -65,6 +67,40 @@ CREATE TABLE service_operations (
     updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_service_operations_category ON service_operations(category);
+
+-- Package composition table (mirrors production; legacy service_id column name for package id)
+CREATE TABLE package_items (
+    service_id TEXT NOT NULL REFERENCES service_operations(id) ON DELETE CASCADE, -- package id
+    child_id TEXT NOT NULL REFERENCES service_operations(id) ON DELETE RESTRICT,
+    qty NUMERIC(10,2) NOT NULL DEFAULT 1,
+    sort_order INT,
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP NOT NULL DEFAULT now(),
+    PRIMARY KEY (service_id, child_id),
+    CHECK (qty > 0),
+    CHECK (service_id <> child_id)
+);
+
+-- Prevent nesting packages (a package cannot include another package as a child)
+CREATE OR REPLACE FUNCTION trg_package_items_prevent_nesting()
+RETURNS TRIGGER AS $fn$
+DECLARE
+    child_is_package BOOLEAN;
+BEGIN
+    SELECT is_package INTO child_is_package FROM service_operations WHERE id = NEW.child_id;
+    IF child_is_package THEN
+        RAISE EXCEPTION 'Cannot add package % to package % (nesting not allowed)', NEW.child_id, NEW.service_id;
+    END IF;
+    RETURN NEW;
+END;
+$fn$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_package_items_prevent_nesting ON package_items;
+CREATE TRIGGER trg_package_items_prevent_nesting
+BEFORE INSERT ON package_items
+FOR EACH ROW EXECUTE PROCEDURE trg_package_items_prevent_nesting();
+CREATE INDEX idx_package_items_service ON package_items(service_id, sort_order);
+CREATE INDEX idx_package_items_child ON package_items(child_id);
 
 -- appointments table
 -- technicians table (new progress tracking)
@@ -188,6 +224,9 @@ CREATE TABLE invoices (
     CHECK (amount_paid_cents <= total_cents),
     CHECK (amount_due_cents = total_cents - amount_paid_cents)
 );
+-- Performance indexes for profile/timeline lookups
+CREATE INDEX idx_invoices_customer_created ON invoices(customer_id, created_at DESC);
+CREATE INDEX idx_invoices_vehicle_created ON invoices(vehicle_id, created_at DESC);
 
 CREATE TABLE invoice_line_items (
     id TEXT PRIMARY KEY,
@@ -197,6 +236,9 @@ CREATE TABLE invoice_line_items (
     service_category TEXT,
     service_subcategory TEXT,
     service_internal_code TEXT,
+    -- Package tagging for analytics (optional foreign key to service_operations)
+    package_id TEXT REFERENCES service_operations(id),
+    package_name TEXT,
     name TEXT NOT NULL,
     description TEXT,
     quantity NUMERIC(10,2) NOT NULL DEFAULT 1,
@@ -271,7 +313,6 @@ CREATE INDEX idx_customers_email ON customers(email);
 CREATE INDEX idx_vehicles_customer ON vehicles(customer_id);
 CREATE INDEX idx_appointments_status ON appointments(status);
 CREATE INDEX idx_appointments_start_ts ON appointments(start_ts);
-CREATE INDEX IF NOT EXISTS idx_appointments_customer ON appointments(customer_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_vehicle ON appointments(vehicle_id);
 CREATE INDEX idx_services_appt ON appointment_services(appointment_id);
 CREATE INDEX idx_messages_appt ON messages(appointment_id);
