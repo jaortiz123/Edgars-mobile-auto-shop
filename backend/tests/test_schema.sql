@@ -28,8 +28,8 @@ CREATE TABLE customers (
     phone TEXT,
     address TEXT,
     is_vip BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMP NOT NULL DEFAULT now(),
-    updated_at TIMESTAMP NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- vehicles table
@@ -41,8 +41,9 @@ CREATE TABLE vehicles (
     year INTEGER,
     vin TEXT,
     license_plate TEXT,
-    updated_at TIMESTAMP NOT NULL DEFAULT now(),
-    created_at TIMESTAMP NOT NULL DEFAULT now()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (license_plate)
 );
 
 -- service_operations table (must exist before appointments for FK)
@@ -63,8 +64,10 @@ CREATE TABLE service_operations (
     replaced_by_id TEXT REFERENCES service_operations(id),
     labor_matrix_code TEXT,
     skill_level INT,
-    created_at TIMESTAMP NOT NULL DEFAULT now(),
-    updated_at TIMESTAMP NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CHECK (default_hours IS NULL OR default_hours >= 0),
+    CHECK (default_price IS NULL OR default_price >= 0)
 );
 CREATE INDEX idx_service_operations_category ON service_operations(category);
 
@@ -74,8 +77,8 @@ CREATE TABLE package_items (
     child_id TEXT NOT NULL REFERENCES service_operations(id) ON DELETE RESTRICT,
     qty NUMERIC(10,2) NOT NULL DEFAULT 1,
     sort_order INT,
-    created_at TIMESTAMP NOT NULL DEFAULT now(),
-    updated_at TIMESTAMP NOT NULL DEFAULT now(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (service_id, child_id),
     CHECK (qty > 0),
     CHECK (service_id <> child_id)
@@ -97,7 +100,7 @@ $fn$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_package_items_prevent_nesting ON package_items;
 CREATE TRIGGER trg_package_items_prevent_nesting
-BEFORE INSERT ON package_items
+BEFORE INSERT OR UPDATE ON package_items
 FOR EACH ROW EXECUTE PROCEDURE trg_package_items_prevent_nesting();
 CREATE INDEX idx_package_items_service ON package_items(service_id, sort_order);
 CREATE INDEX idx_package_items_child ON package_items(child_id);
@@ -109,7 +112,8 @@ CREATE TABLE technicians (
     name TEXT NOT NULL,
     initials TEXT,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE appointments (
@@ -125,16 +129,19 @@ CREATE TABLE appointments (
     completed_at TIMESTAMPTZ,
     total_amount NUMERIC(10,2),
     paid_amount NUMERIC(10,2) NOT NULL DEFAULT 0,
-    check_in_at TIMESTAMP,
-    check_out_at TIMESTAMP,
+    check_in_at TIMESTAMPTZ,
+    check_out_at TIMESTAMPTZ,
     tech_id UUID REFERENCES technicians(id),
     title TEXT,
     notes TEXT,
     location_address TEXT,
     primary_operation_id TEXT REFERENCES service_operations(id),
     service_category TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT now(),
-    updated_at TIMESTAMP NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CHECK (total_amount IS NULL OR total_amount >= 0),
+    CHECK (paid_amount >= 0),
+    CHECK (total_amount IS NULL OR paid_amount <= total_amount)
 );
 -- Performance indexes for unified profile endpoint
 CREATE INDEX IF NOT EXISTS idx_appointments_customer ON appointments(customer_id);
@@ -150,7 +157,7 @@ CREATE TABLE audit_logs (
     entity_id TEXT NOT NULL,
     before JSONB NOT NULL DEFAULT '{}'::jsonb,
     after JSONB NOT NULL DEFAULT '{}'::jsonb,
-    created_at TIMESTAMP NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- appointment_services table
@@ -163,7 +170,10 @@ CREATE TABLE appointment_services (
     estimated_hours NUMERIC(5,2),
     estimated_price NUMERIC(10,2),
     category TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CHECK (estimated_hours IS NULL OR estimated_hours >= 0),
+    CHECK (estimated_price IS NULL OR estimated_price >= 0)
 );
 
 -- messages table
@@ -174,7 +184,7 @@ CREATE TABLE messages (
     direction message_direction NOT NULL,
     body TEXT NOT NULL,
     status message_status NOT NULL,
-    sent_at TIMESTAMP NOT NULL DEFAULT now()
+    sent_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Customer / Vehicle patch audit tables (Epic E Phase 2)
@@ -241,21 +251,25 @@ CREATE TABLE invoice_line_items (
     package_name TEXT,
     name TEXT NOT NULL,
     description TEXT,
-    quantity NUMERIC(10,2) NOT NULL DEFAULT 1,
+    quantity INTEGER NOT NULL DEFAULT 1,
     unit_price_cents INTEGER NOT NULL DEFAULT 0,
     line_subtotal_cents INTEGER NOT NULL DEFAULT 0,
     tax_rate_basis_points INTEGER NOT NULL DEFAULT 0,
     tax_cents INTEGER NOT NULL DEFAULT 0,
     total_cents INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CHECK (quantity > 0),
     CHECK (unit_price_cents >= 0),
     CHECK (line_subtotal_cents = unit_price_cents * quantity),
     CHECK (tax_cents >= 0),
-    CHECK (total_cents = line_subtotal_cents + tax_cents)
+    CHECK (total_cents = line_subtotal_cents + tax_cents),
+    UNIQUE (invoice_id, position)
 );
 
 CREATE INDEX idx_invoice_line_items_invoice ON invoice_line_items(invoice_id, position);
+CREATE INDEX idx_invoice_line_items_service_op ON invoice_line_items(service_operation_id);
+CREATE INDEX idx_invoice_line_items_package ON invoice_line_items(package_id) WHERE package_id IS NOT NULL;
 
 -- Snapshot trigger for invoice_line_items (mirrors production migration 20250817_009_invoice_snapshot_trigger.sql)
 CREATE OR REPLACE FUNCTION trg_invoice_line_items_snapshot()
@@ -288,7 +302,8 @@ CREATE TABLE payments (
     amount NUMERIC(10,2) NOT NULL,
     method payment_method NOT NULL,
     note TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- inspection_checklists table
@@ -296,7 +311,8 @@ CREATE TABLE inspection_checklists (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     appointment_id INTEGER NOT NULL REFERENCES appointments(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- inspection_items table
@@ -305,7 +321,9 @@ CREATE TABLE inspection_items (
     checklist_id UUID NOT NULL REFERENCES inspection_checklists(id) ON DELETE CASCADE,
     label TEXT NOT NULL,
     status inspection_item_status NOT NULL,
-    notes TEXT
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Create indexes for performance
@@ -331,8 +349,8 @@ CREATE TABLE message_templates (
         body TEXT NOT NULL,
         variables TEXT[] DEFAULT ARRAY[]::TEXT[],
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
-        created_at TIMESTAMP NOT NULL DEFAULT now(),
-        updated_at TIMESTAMP NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_message_templates_active ON message_templates(is_active) WHERE is_active IS TRUE;
 CREATE INDEX idx_message_templates_channel ON message_templates(channel) WHERE is_active IS TRUE;
@@ -353,7 +371,7 @@ CREATE TABLE template_usage_events (
     channel message_channel NOT NULL,
     appointment_id INTEGER NULL REFERENCES appointments(id) ON DELETE SET NULL,
     user_id UUID NULL,
-    sent_at TIMESTAMP NOT NULL DEFAULT now(),
+    sent_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     delivery_ms INTEGER NULL CHECK (delivery_ms IS NULL OR delivery_ms >= 0),
     was_automated BOOLEAN NOT NULL DEFAULT FALSE,
     hash TEXT NULL,
@@ -366,5 +384,57 @@ CREATE INDEX idx_template_usage_template ON template_usage_events(template_id, s
 CREATE INDEX idx_template_usage_slug ON template_usage_events(template_slug);
 CREATE INDEX idx_template_usage_appointment ON template_usage_events(appointment_id) WHERE appointment_id IS NOT NULL;
 CREATE INDEX idx_template_usage_user ON template_usage_events(user_id) WHERE user_id IS NOT NULL;
+
+-- Generic updated_at trigger
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;$$ LANGUAGE plpgsql;
+
+-- Apply updated_at triggers to tables that include an updated_at column
+DO $$
+DECLARE r RECORD;
+BEGIN
+    FOR r IN SELECT unnest(ARRAY[
+        'customers','vehicles','service_operations','package_items','technicians','appointments',
+        'appointment_services','invoices','invoice_line_items','payments','inspection_checklists',
+        'inspection_items','message_templates'
+    ]) AS t LOOP
+        EXECUTE format('DROP TRIGGER IF EXISTS trg_set_updated_at ON %I', r.t);
+        EXECUTE format('CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON %I FOR EACH ROW EXECUTE PROCEDURE set_updated_at()', r.t);
+    END LOOP;
+END$$;
+
+-- Audit JSON shape validation helper (avoids subquery directly in CHECK)
+CREATE OR REPLACE FUNCTION audit_json_has_from_to(j JSONB)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+DECLARE kv RECORD;
+BEGIN
+    -- Must be an object
+    IF jsonb_typeof(j) <> 'object' THEN
+        RETURN FALSE;
+    END IF;
+    -- Empty object OK
+    IF j = '{}'::jsonb THEN
+        RETURN TRUE;
+    END IF;
+    -- Each value must itself be an object containing keys 'from' and 'to'
+    FOR kv IN SELECT * FROM jsonb_each(j) LOOP
+        IF NOT ( (kv.value ? 'from') AND (kv.value ? 'to') ) THEN
+            RETURN FALSE;
+        END IF;
+    END LOOP;
+    RETURN TRUE;
+END;$$;
+
+ALTER TABLE customer_audits
+    ADD CONSTRAINT customer_audits_fields_shape CHECK (audit_json_has_from_to(fields_changed));
+ALTER TABLE vehicle_audits
+    ADD CONSTRAINT vehicle_audits_fields_shape CHECK (audit_json_has_from_to(fields_changed));
 
 COMMIT;
