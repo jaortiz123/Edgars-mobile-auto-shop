@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
@@ -83,13 +83,16 @@ describe('CustomerProfilePage a11y/UX', () => {
     expect(live.textContent).toMatch(/2 items/);
   });
 
-  it('Enter key on focused appointment triggers click handler', async () => {
+  it('Enter key on focused appointment triggers activation', async () => {
     setup([new Response(JSON.stringify(page1), { status:200 })]);
     await screen.findByText(/Oil Change/);
-    const firstAppt = screen.getAllByRole('button').find(b => /Oil Change/.test(b.textContent || ''))!;
+    // The primary row button has a managed tabindex. Select a button within the first timeline row that has tabindex attribute
+    const firstRow = screen.getAllByTestId('timeline-row')[0];
+  const rowButtons = within(firstRow).getAllByRole('button');
+  const primaryBtn = rowButtons.find((b: HTMLElement) => b.hasAttribute('tabindex'))!;
     const user = userEvent.setup();
-    const clickSpy = vi.spyOn(firstAppt, 'click');
-    firstAppt.focus();
+    const clickSpy = vi.spyOn(primaryBtn, 'click');
+    primaryBtn.focus();
     await user.keyboard('{Enter}');
     expect(clickSpy).toHaveBeenCalledTimes(1);
   });
