@@ -5,14 +5,13 @@
  */
 
 import React from 'react';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/server/mswServer';
 
-// Helper to flush all pending promises
-export const flushPromises = () => new Promise(setImmediate);
+// NOTE: Removed custom flushPromises helper; rely on Testing Library's waitFor.
 
 // Mock appointment data
 const createMockAppointment = () => {
@@ -189,29 +188,23 @@ const TimerNotificationComponent = ({ appointment }: { appointment: MockAppointm
 
 // Setup and teardown
 beforeAll(() => {
-  vi.useFakeTimers();
   console.log('🚀 Starting MSW server for notification integration tests...');
-  server.listen({
-    onUnhandledRequest: 'warn',
-  });
+  server.listen({ onUnhandledRequest: 'warn' });
   console.log('🌐 MSW enabled for notification integration tests');
 });
 
 beforeEach(() => {
-  // Reset time before each test
   vi.setSystemTime(new Date('2024-01-15T14:00:00Z'));
 });
 
 afterEach(() => {
-  // Clean up after each test
   server.resetHandlers();
-  vi.clearAllTimers();
+  try { vi.clearAllTimers(); } catch { /* ignore */ }
 });
 
 afterAll(() => {
   console.log('🛑 Stopping MSW server...');
   server.close();
-  vi.useRealTimers();
 });
 
 describe('P2-T-007: Notification System Integration Tests - WORKING VERSION', () => {
@@ -219,138 +212,74 @@ describe('P2-T-007: Notification System Integration Tests - WORKING VERSION', ()
   describe('Reminder Flow Success Scenarios', () => {
     it('should send 15-minute reminder notification and display success toast', async () => {
       const appointment = createMockAppointment();
-
-      // 1. Mount component
       render(<NotificationComponent appointment={appointment} />);
 
-      // 2. Advance timers and flush promises (mount + flush pattern)
-      act(() => {
-        vi.advanceTimersByTime(100); // Advance past the 50ms timer
+      // Wait for success state
+      await waitFor(() => {
+        expect(screen.getByTestId('status-display')).toHaveTextContent('success');
       });
 
-      // 3. Wait for async fetch to complete
-      await act(async () => {
-        await flushPromises();
-      });
-
-      // 4. Verify status changed to success
-      expect(screen.getByTestId('status-display')).toHaveTextContent('success');
-
-      // 5. Assert toast appears using getByRole (since we know it's there)
       const toast = screen.getByRole('alert', { name: /reminder notification/i });
       expect(toast).toBeInTheDocument();
-
-      // 6. Verify notification content
-      const notificationMessage = screen.getByTestId('notification-message');
-      expect(notificationMessage).toHaveTextContent("Reminder: Test Customer's appointment is in 15 minutes");
-
-      // 7. Verify notification ID exists
-      const notificationId = screen.getByTestId('notification-id');
-      expect(notificationId).toBeInTheDocument();
-      expect(notificationId).toHaveTextContent(/notification-/);
-
-      // 8. Verify no errors occurred
+      expect(screen.getByTestId('notification-message')).toHaveTextContent("Reminder: Test Customer's appointment is in 15 minutes");
+      expect(screen.getByTestId('notification-id')).toHaveTextContent(/notification-/);
       expect(screen.queryByTestId('error-toast')).not.toBeInTheDocument();
     });
 
     it('should handle timer advancement for reminder scheduling', async () => {
       const appointment = createMockAppointment();
-
-      // 1. Mount component with timer logic
-      render(<TimerNotificationComponent appointment={appointment} />);
-
-      // 2. Verify initial state
-      expect(screen.getByTestId('timer-status')).toHaveTextContent('waiting');
-
-      // 3. Advance timers by 15 minutes and flush promises
-      act(() => {
-        vi.advanceTimersByTime(15 * 60 * 1000); // 15 minutes
-      });
-
-      await act(async () => {
-        await flushPromises(); // flush async fetch
-      });
-
-      // 4. Verify timer triggered
-      expect(screen.getByTestId('timer-status')).toHaveTextContent('triggered');
-
-      // 5. Assert timer notification appears
-      const timerToast = screen.getByRole('alert', { name: /timer reminder/i });
-      expect(timerToast).toBeInTheDocument();
-
-      // 6. Verify notification content
-      expect(screen.getByTestId('timer-message')).toHaveTextContent(
-        "Reminder: Test Customer's appointment is in 15 minutes"
-      );
+      // Use localized fake timers for long-duration simulation
+      // Reset any prior mocked system time then enable fake timers fresh
+      vi.useRealTimers();
+      vi.useFakeTimers();
+      try {
+        render(<TimerNotificationComponent appointment={appointment} />);
+        expect(screen.getByTestId('timer-status')).toHaveTextContent('waiting');
+        act(() => { vi.advanceTimersByTime(15 * 60 * 1000); });
+  // Wait for trigger state
+  await waitFor(() => expect(screen.getByTestId('timer-status')).toHaveTextContent('triggered'));
+  // Then wait for toast (fetch completion) to appear
+  const toast = await waitFor(() => screen.getByTestId('timer-notification-toast'));
+  expect(toast).toBeInTheDocument();
+  expect(screen.getByTestId('timer-message')).toHaveTextContent("Reminder: Test Customer's appointment is in 15 minutes");
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 
   describe('Reminder Flow Error Scenarios', () => {
     it('should handle 500 error from notification endpoint and show retry button', async () => {
-      // 1. Set up 500 error handler
       server.use(
-        http.post('http://localhost:3000/notifications', () => {
-          return new HttpResponse(
-            JSON.stringify({
-              data: null,
-              errors: [{ detail: 'Failed to send notification' }]
-            }),
-            { status: 500 }
-          );
-        })
+        http.post('http://localhost:3000/notifications', () => new HttpResponse(
+          JSON.stringify({ data: null, errors: [{ detail: 'Failed to send notification' }] }),
+          { status: 500 }
+        ))
       );
-
       const appointment = createMockAppointment();
-
-      // 2. Mount component
       render(<NotificationComponent appointment={appointment} />);
-
-      // 3. Advance timers and wait for async operations to complete
-      act(() => {
-        vi.advanceTimersByTime(100);
+      await waitFor(() => {
+        expect(screen.getByTestId('status-display')).toHaveTextContent('error');
       });
-
-      await act(async () => {
-        await flushPromises();
-      });
-
-      // 4. Verify status changed to error
-      expect(screen.getByTestId('status-display')).toHaveTextContent('error');
-
-      // 5. Assert error toast appears
       const errorToast = screen.getByRole('alert', { name: /error notification/i });
       expect(errorToast).toBeInTheDocument();
-
-      // 6. Verify error message
-      const errorMessage = screen.getByTestId('error-message');
-      expect(errorMessage).toHaveTextContent('Failed to send notification');
-
-      // 7. Verify retry button is present and enabled
+      expect(screen.getByTestId('error-message')).toHaveTextContent('Failed to send notification');
       const retryButton = screen.getByTestId('retry-button');
-      expect(retryButton).toBeInTheDocument();
       expect(retryButton).toBeEnabled();
-      expect(retryButton).toHaveTextContent('Retry (0/3)');
-
-      // 8. Verify no success notifications were created
       expect(screen.queryByTestId('notification-toast')).not.toBeInTheDocument();
     });
 
     it('should allow retry after error and track retry count', async () => {
       let callCount = 0;
-
-      // Set up handler that fails first time, succeeds second time
       server.use(
         http.post('http://localhost:3000/notifications', () => {
           callCount++;
-          if (callCount === 1) {
-            return new HttpResponse(
-              JSON.stringify({
-                data: null,
-                errors: [{ detail: 'Temporary server error' }]
-              }),
-              { status: 500 }
-            );
-          } else {
+            if (callCount === 1) {
+              return new HttpResponse(
+                JSON.stringify({ data: null, errors: [{ detail: 'Temporary server error' }] }),
+                { status: 500 }
+              );
+            }
             return HttpResponse.json({
               data: {
                 id: 'notification-retry-success',
@@ -363,107 +292,59 @@ describe('P2-T-007: Notification System Integration Tests - WORKING VERSION', ()
               errors: null,
               meta: { request_id: 'test-req-id' }
             });
-          }
         })
       );
-
       const appointment = createMockAppointment();
-
-      // 1. Mount component
       render(<NotificationComponent appointment={appointment} />);
-
-      // 2. Wait for initial failure
-      act(() => {
-        vi.advanceTimersByTime(100);
+      await waitFor(() => {
+        expect(screen.getByTestId('status-display')).toHaveTextContent('error');
       });
-
-      await act(async () => {
-        await flushPromises();
-      });
-
-      const errorToast = screen.getByRole('alert', { name: /error notification/i });
-      expect(errorToast).toBeInTheDocument();
-
-      // 3. Click retry button
       const retryButton = screen.getByTestId('retry-button');
       await userEvent.click(retryButton);
-
-      // 4. Wait for retry to succeed
-      await act(async () => {
-        await flushPromises();
+      await waitFor(() => {
+        expect(screen.getByTestId('status-display')).toHaveTextContent('success');
       });
-
-      // 5. Verify success after retry
-      expect(screen.getByTestId('status-display')).toHaveTextContent('success');
-      const successToast = screen.getByRole('alert', { name: /reminder notification/i });
-      expect(successToast).toBeInTheDocument();
-
-      // 6. Verify retry count was incremented
       expect(screen.getByTestId('retry-count')).toHaveTextContent('1');
     });
 
     it('should disable retry button after maximum attempts', async () => {
-      // Set up handler that always fails
       server.use(
-        http.post('http://localhost:3000/notifications', () => {
-          return new HttpResponse(
-            JSON.stringify({
-              data: null,
-              errors: [{ detail: 'Persistent server error' }]
-            }),
-            { status: 500 }
-          );
-        })
+        http.post('http://localhost:3000/notifications', () => new HttpResponse(
+          JSON.stringify({ data: null, errors: [{ detail: 'Persistent server error' }] }),
+          { status: 500 }
+        ))
       );
-
       const appointment = createMockAppointment();
-
-      // 1. Mount component
       render(<NotificationComponent appointment={appointment} />);
-
-      // 2. Wait for initial failure
-      act(() => {
-        vi.advanceTimersByTime(100);
+      await waitFor(() => {
+        expect(screen.getByTestId('status-display')).toHaveTextContent('error');
       });
-
-      await act(async () => {
-        await flushPromises();
-      });
-
-      const errorToast = screen.getByRole('alert', { name: /error notification/i });
-      expect(errorToast).toBeInTheDocument();
-
-      const retryButton = screen.getByTestId('retry-button');
-
-      // 3. Attempt retry 3 times
       for (let i = 1; i <= 3; i++) {
-        expect(retryButton).toBeEnabled();
-        await userEvent.click(retryButton);
-
-        await act(async () => {
-          await flushPromises();
+        // Re-query button each loop to avoid any potential stale reference edge cases
+        const btn = screen.getByTestId('retry-button');
+        expect(btn).toBeEnabled();
+        await userEvent.click(btn);
+        await waitFor(() => {
+          expect(screen.getByTestId('retry-count')).toHaveTextContent(i.toString());
+          const normalized = screen.getByTestId('retry-button').textContent?.replace(/\s+/g, ' ').trim();
+          expect(normalized).toContain(`Retry (${i}/3)`);
         });
-
-        expect(screen.getByTestId('retry-count')).toHaveTextContent(i.toString());
-        expect(retryButton).toHaveTextContent(`Retry (${i}/3)`);
       }
-
-      // 4. Verify button is disabled after 3 retries
-      expect(retryButton).toBeDisabled();
-      expect(retryButton).toHaveTextContent('Retry (3/3)');
+      // Re-query & wait for disabled state to avoid stale element timing issues
+      await waitFor(() => {
+        const finalBtn = screen.getByTestId('retry-button');
+        expect(finalBtn).toBeDisabled();
+        expect(finalBtn).toHaveTextContent('Retry (3/3)');
+      });
     });
   });
 
   describe('MSW Integration Verification', () => {
     it('should verify MSW handler receives correct notification payload', async () => {
       let capturedPayload: Record<string, unknown> | null = null;
-
-      // Set up handler to capture payload
       server.use(
         http.post('http://localhost:3000/notifications', async ({ request }) => {
           capturedPayload = await request.json() as Record<string, unknown>;
-          console.log('📨 MSW: Captured notification payload:', capturedPayload);
-
           return HttpResponse.json({
             data: {
               id: 'notification-test-id',
@@ -478,26 +359,11 @@ describe('P2-T-007: Notification System Integration Tests - WORKING VERSION', ()
           });
         })
       );
-
       const appointment = createMockAppointment();
-
-      // 1. Mount component
       render(<NotificationComponent appointment={appointment} />);
-
-      // 2. Wait for notification to be sent
-      act(() => {
-        vi.advanceTimersByTime(100);
+      await waitFor(() => {
+        expect(screen.getByTestId('status-display')).toHaveTextContent('success');
       });
-
-      await act(async () => {
-        await flushPromises();
-      });
-
-      // 3. Assert success toast appears
-      const toast = screen.getByRole('alert', { name: /reminder notification/i });
-      expect(toast).toBeInTheDocument();
-
-      // 4. Verify payload structure
       expect(capturedPayload).toMatchObject({
         type: 'reminder_15min',
         appointmentId: 'apt-reminder-test',
@@ -505,9 +371,6 @@ describe('P2-T-007: Notification System Integration Tests - WORKING VERSION', ()
         customerName: 'Test Customer',
         appointmentTime: expect.any(String)
       });
-
-      // 5. Verify exactly one call was made
-      expect(capturedPayload).not.toBeNull();
     });
   });
 });

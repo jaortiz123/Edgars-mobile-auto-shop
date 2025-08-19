@@ -1,3 +1,4 @@
+// Utility helpers
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -16,7 +17,7 @@ export function parseDurationToMinutes(input: string): number {
     const s = input.trim().toLowerCase();
 
     // Combined patterns: allow forms like "1h30m" or "1 h 30 m"
-    const combined = s.match(/(\d+(?:\.\d+)?)\s*h(?:ours?)?\s*(?:[:\-\/\s]+)?\s*(\d+(?:\.\d+)?)\s*m(?:in(?:utes?)?)?/);
+  const combined = s.match(/(\d+(?:\.\d+)?)\s*h(?:ours?)?\s*(?:[:\-\s]+)?\s*(\d+(?:\.\d+)?)\s*m(?:in(?:utes?)?)?/);
     if (combined) {
       const hours = parseFloat(combined[1]);
       const minutes = parseFloat(combined[2] || '0');
@@ -54,8 +55,7 @@ export function parseDurationToMinutes(input: string): number {
     return 60;
   } catch (error) {
     // On unexpected errors, log once and return safe default
-    // eslint-disable-next-line no-console
-    console.error('parseDurationToMinutes error for input:', input, error);
+  console.error('parseDurationToMinutes error for input:', input, error);
     return 60;
   }
 }

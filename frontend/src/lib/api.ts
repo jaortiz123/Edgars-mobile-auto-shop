@@ -1,3 +1,4 @@
+// NOTE: This file contains full API utilities. Remove earlier temporary stub declarations to avoid duplicates.
 import axios from 'axios';
 import type { TemplateAnalyticsResponse, FetchTemplateAnalyticsParams } from '../types/analytics';
 import type {

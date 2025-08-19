@@ -9,6 +9,9 @@ export default defineConfig({
 			'@': path.resolve(__dirname, './src'),
 			'@/services': path.resolve(__dirname, './src/services'),
 			'@/components': path.resolve(__dirname, './src/components'),
+			// Added to align with main vitest.config.ts and fix import resolution failures in integration tests
+			'@lib': path.resolve(__dirname, './src/lib'),
+			'@/lib': path.resolve(__dirname, './src/lib'),
 		}
 	},
 	test: {
