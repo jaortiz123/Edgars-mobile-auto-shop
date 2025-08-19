@@ -40,19 +40,19 @@ export const ServiceTypeIcons = {
       <span className="text-danger-600 text-sm font-bold">🛠</span>
     </div>
   ),
-  
+
   oil: () => (
     <div className="w-6 h-6 rounded-lg bg-warning-100 flex items-center justify-center">
       <span className="text-warning-600 text-sm font-bold">🛢</span>
     </div>
   ),
-  
+
   diagnostic: () => (
     <div className="w-6 h-6 rounded-lg bg-primary-100 flex items-center justify-center">
       <span className="text-primary-600 text-sm font-bold">🔍</span>
     </div>
   ),
-  
+
   general: () => (
     <div className="w-6 h-6 rounded-lg bg-steel-100 flex items-center justify-center">
       <span className="text-steel-600 text-sm font-bold">⚙️</span>

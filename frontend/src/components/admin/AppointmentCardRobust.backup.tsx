@@ -1,6 +1,6 @@
 /**
  * Sprint 1B Card Design System - Robust AppointmentCard Component
- * 
+ *
  * Enhanced with comprehensive robustness improvements:
  * - Memory leak prevention with proper cleanup
  * - Performance optimization with memoization
@@ -18,10 +18,10 @@ import { getMinutesUntil, minutesPast, getCountdownText, isStartingSoon, isRunni
 import ArrivalButton from './ArrivalButton';
 import { markArrived } from '@/lib/api';
 import { notifyLate, notifyOverdue, notifyArrival } from '@/services/notificationService';
-import { 
-  validateCardData, 
-  parseAppointmentTime, 
-  formatCardPrice, 
+import {
+  validateCardData,
+  parseAppointmentTime,
+  formatCardPrice,
   determineUrgencyLevel,
   createCardAriaLabel,
   createStatusAnnouncement,
@@ -51,7 +51,7 @@ const DEFAULT_CARD_STATE = {
 
 export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickReschedule }: AppointmentCardProps) {
   // All hooks must be called before any early returns
-  
+
   // Validate and sanitize card data early
   const validatedCard = useMemo(() => {
     return measureCardPerformance(
@@ -61,8 +61,8 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
   }, [card]);
 
   // Safe appointment time parsing with memoization
-  const appointmentTime = useMemo(() => 
-    validatedCard ? parseAppointmentTime(validatedCard.start) : new Date(), 
+  const appointmentTime = useMemo(() =>
+    validatedCard ? parseAppointmentTime(validatedCard.start) : new Date(),
     [validatedCard]
   );
 
@@ -85,7 +85,7 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
     );
   }, [validatedCard, appointmentTime]);
 
-  // Memoized ARIA label generation - only if validatedCard exists  
+  // Memoized ARIA label generation - only if validatedCard exists
   const ariaLabel = useMemo(() => {
     if (!validatedCard) return 'Invalid appointment card';
     return withCardErrorBoundary(
@@ -141,7 +141,7 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
     if (!validatedCard) return;
     setIsLoading(true);
     setError(null);
-    
+
     try {
       // Notify arrival with error boundary
       await withCardErrorBoundary(
@@ -149,7 +149,7 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
         undefined,
         'Error notifying arrival'
       );
-      
+
       setCardState(prev => ({ ...prev, hasArrived: true }));
     } catch (err) {
       setError('Failed to mark as arrived');
@@ -161,13 +161,13 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
   // Main state update function
   useEffect(() => {
     if (!validatedCard) return;
-    
+
     const updateCardState = () => {
       withCardErrorBoundary(() => {
         setCardState(prevState => {
           const newMinutesUntil = getMinutesUntil(validatedCard.start);
           const newState = { ...prevState, minutesUntil: newMinutesUntil };
-          
+
           // Handle notifications
           if (isStartingSoon(newMinutesUntil) && !prevState.notifiedLate) {
             withCardErrorBoundary(
@@ -177,7 +177,7 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
             );
             newState.notifiedLate = true;
           }
-          
+
           if (isOverdue && !prevState.notifiedOverdue) {
             withCardErrorBoundary(
               () => notifyOverdue(validatedCard.id),
@@ -186,7 +186,7 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
             );
             newState.notifiedOverdue = true;
           }
-          
+
           return newState;
         });
       }, undefined, 'Error updating card state');
@@ -205,7 +205,7 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
   // Accessibility announcements
   useEffect(() => {
     if (!validatedCard) return;
-    
+
     const currentUrgency = urgencyLevel;
     if (currentUrgency !== previousUrgencyRef.current) {
       const announcement = `Appointment urgency changed to ${currentUrgency}`;
@@ -251,7 +251,7 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
   );
 
   // Memoized ARIA label
-  const ariaLabel = useMemo(() => 
+  const ariaLabel = useMemo(() =>
     withCardErrorBoundary(
       () => createCardAriaLabel(validatedCard, urgencyLevel, cardState.minutesUntil),
       `Appointment for ${validatedCard.customerName}`,
@@ -318,7 +318,7 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
     try {
       await markArrived(validatedCard.id);
       setCardState(prev => ({ ...prev, hasArrived: true }));
-      
+
       // Notify arrival with error boundary
       withCardErrorBoundary(
         () => notifyArrival(validatedCard.customerName, validatedCard.id),
@@ -334,7 +334,7 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
     } catch (error) {
       console.error('Error marking arrived:', error);
       setError('Failed to mark as arrived. Please try again.');
-      
+
       // Announce error to screen reader
       CardAccessibility.announceToScreenReader(
         'Failed to mark customer as arrived',
@@ -351,14 +351,14 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
       withCardErrorBoundary(
         () => {
           const newMinutesUntil = getMinutesUntil(appointmentTime);
-          
+
           setCardState(prevState => {
             const newState = { ...prevState, minutesUntil: newMinutesUntil };
 
             // Check for running late notifications (only if not arrived)
             if (!prevState.hasArrived && validatedCard.start) {
               const minutes_past = minutesPast(appointmentTime);
-              
+
               // Running late notification (10+ minutes past start)
               if (minutes_past > 10 && !prevState.notifiedLate) {
                 withCardErrorBoundary(
@@ -368,7 +368,7 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
                 );
                 newState.notifiedLate = true;
               }
-              
+
               // Overdue notification (30+ minutes past start)
               if (minutes_past > 30 && !prevState.notifiedOverdue) {
                 withCardErrorBoundary(
@@ -407,11 +407,11 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
       urgencyLevel,
       validatedCard.customerName
     );
-    
+
     if (announcement) {
       CardAccessibility.announceToScreenReader(announcement, 'polite');
     }
-    
+
     previousUrgencyRef.current = urgencyLevel;
   }, [urgencyLevel, validatedCard.customerName]);
 
@@ -423,13 +423,13 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
   }, []);
 
   // Memoized price formatting
-  const formattedPrice = useMemo(() => 
+  const formattedPrice = useMemo(() =>
     formatCardPrice(validatedCard.price),
     [validatedCard.price]
   );
 
   // Memoized countdown text
-  const countdownText = useMemo(() => 
+  const countdownText = useMemo(() =>
     withCardErrorBoundary(
       () => getCountdownText(cardState.minutesUntil),
       'Time unavailable',
@@ -448,9 +448,9 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
   }, [validatedCard.start, appointmentTime]);
 
   // Show arrival button logic
-  const showArrivalButton = useMemo(() => 
-    !cardState.hasArrived && 
-    cardState.minutesUntil < 60 && 
+  const showArrivalButton = useMemo(() =>
+    !cardState.hasArrived &&
+    cardState.minutesUntil < 60 &&
     cardState.minutesUntil > -30,
     [cardState.hasArrived, cardState.minutesUntil]
   );
@@ -476,42 +476,42 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
         <div className="card-content">
           {/* Urgency Badge with enhanced accessibility */}
           {validatedCard.urgency && (
-            <span 
+            <span
               className={`urgency-badge ${urgencyLevel}`}
               aria-label={`${urgencyLevel} priority`}
               role="status"
             />
           )}
-          
+
           {/* Header with customer name */}
           <div className="flex items-center justify-between gap-sp-1">
             <h3 className="text-fs-3 font-semibold text-gray-900" id={`customer-${validatedCard.id}`}>
               {validatedCard.customerName}
             </h3>
           </div>
-          
+
           {/* Vehicle information */}
           <div className="text-fs-1 text-gray-600 mt-sp-1 font-normal">
             {validatedCard.vehicle}
           </div>
-          
+
           {/* Services summary */}
           {validatedCard.servicesSummary && (
             <div className="text-fs-1 text-gray-600 mt-sp-1 font-normal">
               {validatedCard.servicesSummary}
             </div>
           )}
-          
+
           {/* Price with safe formatting */}
           {formattedPrice && (
             <div className="text-fs-2 mt-sp-2 font-medium text-gray-900">
               {formattedPrice}
             </div>
           )}
-          
+
           {/* Urgency Status Line with ARIA support */}
           {urgencyLevel !== 'normal' && (
-            <div 
+            <div
               className={`urgency-status ${urgencyLevel}`}
               role="status"
               aria-live="polite"
@@ -520,9 +520,9 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
               {urgencyLevel === 'urgent' ? 'Urgent' : urgencyLevel === 'soon' ? 'Starting Soon' : ''}
             </div>
           )}
-          
+
           {/* Live Countdown Timer with accessibility */}
-          <div 
+          <div
             className={`countdown mt-sp-2 ${countdownStatusClass}`}
             role="timer"
             aria-live="polite"
@@ -531,12 +531,12 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
             <span className="live-indicator" aria-hidden="true" />
             {countdownText}
           </div>
-          
+
           {/* Customer Arrived Check-in */}
           {showArrivalButton && (
             <div className="mt-sp-2">
-              <ArrivalButton 
-                onClick={handleMarkArrived} 
+              <ArrivalButton
+                onClick={handleMarkArrived}
                 disabled={isLoading}
                 aria-label={`Mark ${validatedCard.customerName} as arrived`}
               />
@@ -547,10 +547,10 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
               )}
             </div>
           )}
-          
+
           {/* Error display */}
           {error && (
-            <div 
+            <div
               id={`error-${validatedCard.id}`}
               className="mt-sp-2 text-red-600 text-fs-0"
               role="alert"
@@ -560,7 +560,7 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
           )}
         </div>
       </button>
-      
+
       {/* Move button with enhanced accessibility */}
       <button
         className="absolute top-sp-2 right-sp-2 text-fs-0 text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-sp-1 hover:bg-gray-100 transition-colors"
@@ -570,7 +570,7 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
       >
         <span aria-hidden="true">⋮</span>
       </button>
-      
+
       {/* Quick reschedule button with enhanced accessibility */}
       <button
         className="absolute bottom-sp-2 right-sp-2 p-sp-1 bg-blue-500 text-white rounded-full opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-300"
@@ -580,7 +580,7 @@ export default function AppointmentCardRobust({ card, onOpen, onMove, onQuickRes
       >
         <RefreshCw className="h-4 w-4" aria-hidden="true" />
       </button>
-      
+
       {/* Live region for screen reader announcements */}
       <div className="sr-only" aria-live="polite" id={`announcements-${validatedCard.id}`} />
     </div>

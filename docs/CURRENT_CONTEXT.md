@@ -12,7 +12,7 @@ Last Updated: 2025-07-27 14:30 PST
 def get_admin_appointments():  # ❌ NO DECORATOR
     # Also fix: Change 'start_ts' to COALESCE(start, scheduled_date + scheduled_time)
 
-# 2. MISSING ROUTE (Line ~617)  
+# 2. MISSING ROUTE (Line ~617)
 # Add: @app.route('/api/admin/appointments', methods=['POST'])
 def create_appointment():  # ❌ NO DECORATOR
     # Also fix: Change UPDATE to INSERT INTO appointments

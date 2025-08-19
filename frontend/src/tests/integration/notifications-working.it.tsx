@@ -1,6 +1,6 @@
 /**
  * P2-T-007: Notification System Integration Tests - Working Version
- * 
+ *
  * This version exactly copies the working debug-notification.it.tsx structure
  * with minimal modifications to complete the T7 requirements.
  */
@@ -29,10 +29,10 @@ export const ReminderNotificationComponent = () => {
       const response = await fetch('/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          type: 'reminder_15min', 
-          appointmentId: 'apt-reminder-test', 
-          message: "Reminder: Test Customer's appointment is in 15 minutes" 
+        body: JSON.stringify({
+          type: 'reminder_15min',
+          appointmentId: 'apt-reminder-test',
+          message: "Reminder: Test Customer's appointment is in 15 minutes"
         })
       });
 
@@ -88,10 +88,10 @@ export const RunningLateNotificationComponent = () => {
       const response = await fetch('/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          type: 'running_late', 
-          appointmentId: 'apt-late-test', 
-          message: "Test Customer is running late for their appointment" 
+        body: JSON.stringify({
+          type: 'running_late',
+          appointmentId: 'apt-late-test',
+          message: "Test Customer is running late for their appointment"
         })
       });
 
@@ -148,10 +148,10 @@ export const RetryNotificationComponent = () => {
       const response = await fetch('/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          type: 'reminder_15min', 
-          appointmentId: 'apt-retry-test', 
-          message: "Reminder: Test Customer's appointment is in 15 minutes" 
+        body: JSON.stringify({
+          type: 'reminder_15min',
+          appointmentId: 'apt-retry-test',
+          message: "Reminder: Test Customer's appointment is in 15 minutes"
         })
       });
 
@@ -193,8 +193,8 @@ export const RetryNotificationComponent = () => {
       {error && (
         <div data-testid="error-toast" className="error-toast">
           <span data-testid="error-message">{error}</span>
-          <button 
-            data-testid="retry-button" 
+          <button
+            data-testid="retry-button"
             onClick={handleRetry}
             disabled={retryCount >= 3}
           >
@@ -357,12 +357,12 @@ describe('P2-T-007: Notification System Integration Tests - Working Version', ()
       // Counter for MSW calls
       let callCount = 0;
       const { http, HttpResponse } = await import('msw');
-      
+
       server.use(
         http.post('http://localhost:3000/notifications', async () => {
           callCount++;
           console.log(`📨 MSW: Notification call count: ${callCount}`);
-          
+
           return HttpResponse.json({
             data: {
               id: `notification-${Date.now()}`,
@@ -377,7 +377,7 @@ describe('P2-T-007: Notification System Integration Tests - Working Version', ()
           });
         })
       );
-      
+
       render(
         <TestAppWrapper>
           <ReminderNotificationComponent />

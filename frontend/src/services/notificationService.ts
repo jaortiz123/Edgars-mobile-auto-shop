@@ -92,22 +92,22 @@ function sanitizeInput(input: string): string {
 function checkRateLimit(type: string): boolean {
   const now = new Date();
   const key = type;
-  
+
   if (!rateLimitMap.has(key)) {
     rateLimitMap.set(key, []);
   }
-  
+
   const timestamps = rateLimitMap.get(key)!;
-  
+
   // Remove timestamps older than 1 minute
   const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
   const recentTimestamps = timestamps.filter(ts => ts > oneMinuteAgo);
-  
+
   if (recentTimestamps.length >= config.rateLimitPerType) {
     console.warn(`Rate limit exceeded for notification type: ${type}`);
     return false;
   }
-  
+
   recentTimestamps.push(now);
   rateLimitMap.set(key, recentTimestamps);
   return true;
@@ -119,21 +119,21 @@ function checkRateLimit(type: string): boolean {
 function cleanupExpiredNotifications(): void {
   const now = new Date();
   const initialCount = notifications.length;
-  
+
   notifications = notifications.filter(notification => {
     if (notification.expiresAt && now > notification.expiresAt) {
       return false;
     }
     return true;
   });
-  
+
   // Clean up old notifications if we exceed max
   if (notifications.length > config.maxNotifications) {
     notifications = notifications
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
       .slice(0, config.maxNotifications);
   }
-  
+
   const cleanedCount = initialCount - notifications.length;
   if (cleanedCount > 0) {
     console.debug(`Cleaned up ${cleanedCount} expired notifications`);
@@ -156,17 +156,17 @@ export function addNotification(
   options: Partial<Notification> = {}
 ): string {
   const endMeasure = performanceService.startMeasurement('addNotification');
-  
+
   try {
     // Rate limiting check
     if (!checkRateLimit(type)) {
       console.warn('Notification dropped due to rate limiting');
       return '';
     }
-    
+
     // Sanitize message
     const sanitizedMessage = sanitizeInput(message);
-    
+
     // Create notification
     const notification: Notification = {
       id: generateId(),
@@ -180,13 +180,13 @@ export function addNotification(
       source: 'notificationService',
       ...options
     };
-    
+
     // Add to notifications
     notifications.push(notification);
-    
+
     // Clean up if needed
     cleanupExpiredNotifications();
-    
+
     // Analytics
     if (config.enableAnalytics) {
       analyticsData.push({
@@ -196,25 +196,25 @@ export function addNotification(
         metadata: { priority: notification.priority }
       });
     }
-    
+
     // Accessibility announcement
     if (config.accessibilityEnabled && typeof window !== 'undefined') {
       announceToScreenReader(sanitizedMessage);
     }
-    
+
     // Notify observers
     notifyObservers();
-    
+
     // Persistence
     if (config.enablePersistence) {
       saveToLocalStorage();
     }
-    
+
     console.debug(`Added notification: ${type} - ${sanitizedMessage}`);
     endMeasure();
-    
+
     return notification.id;
-    
+
   } catch (error) {
     console.error('Error adding notification:', error);
     endMeasure();
@@ -228,7 +228,7 @@ export function addNotification(
 function announceToScreenReader(message: string): void {
   try {
     if (typeof window === 'undefined') return;
-    
+
     // Create live region if it doesn't exist
     let liveRegion = document.getElementById('notification-live-region');
     if (!liveRegion) {
@@ -243,10 +243,10 @@ function announceToScreenReader(message: string): void {
       liveRegion.style.overflow = 'hidden';
       document.body.appendChild(liveRegion);
     }
-    
+
     // Announce the message
     liveRegion.textContent = message;
-    
+
     // Clear after announcement
     setTimeout(() => {
       if (liveRegion) {
@@ -281,13 +281,13 @@ function notifyObservers(): void {
 function saveToLocalStorage(): void {
   try {
     if (typeof window === 'undefined') return;
-    
+
     const serializedNotifications = notifications.map(n => ({
       ...n,
       timestamp: n.timestamp.toISOString(),
       expiresAt: n.expiresAt?.toISOString()
     }));
-    
+
     localStorage.setItem('notifications', JSON.stringify(serializedNotifications));
   } catch (error) {
     console.error('Error saving notifications to localStorage:', error);
@@ -300,20 +300,20 @@ function saveToLocalStorage(): void {
 function loadFromLocalStorage(): void {
   try {
     if (typeof window === 'undefined') return;
-    
+
     const stored = localStorage.getItem('notifications');
     if (!stored) return;
-    
+
     const parsed = JSON.parse(stored);
     notifications = parsed.map((n: Record<string, unknown>) => ({
       ...n,
       timestamp: new Date(n.timestamp as string),
       expiresAt: n.expiresAt ? new Date(n.expiresAt as string) : undefined
     }));
-    
+
     // Clean up expired ones
     cleanupExpiredNotifications();
-    
+
   } catch (error) {
     console.error('Error loading notifications from localStorage:', error);
     notifications = [];
@@ -489,7 +489,7 @@ export function clearAllNotifications(): void {
  */
 export function subscribe(observer: (notifications: Notification[]) => void): () => void {
   observers.push(observer);
-  
+
   // Return unsubscribe function
   return () => {
     const index = observers.indexOf(observer);
@@ -524,19 +524,19 @@ export function getConfig(): NotificationConfig {
 export function getStats(): NotificationStats {
   const total = notifications.length;
   const byType: Record<string, number> = {};
-  
+
   notifications.forEach(n => {
     byType[n.type] = (byType[n.type] || 0) + 1;
   });
-  
+
   // Calculate delivery rate (simplified)
   const delivered = notifications.filter(n => !n.retryCount || n.retryCount === 0).length;
   const deliveryRate = total > 0 ? (delivered / total) * 100 : 100;
-  
+
   // Calculate error rate
   const errors = notifications.filter(n => n.type === 'error').length;
   const errorRate = total > 0 ? (errors / total) * 100 : 0;
-  
+
   return {
     total,
     byType,
@@ -573,12 +573,12 @@ export function initializeService(): void {
     if (config.enablePersistence) {
       loadFromLocalStorage();
     }
-    
+
     // Set up cleanup interval
     setInterval(() => {
       cleanupExpiredNotifications();
     }, 5 * 60 * 1000); // Every 5 minutes
-    
+
     console.debug('Notification service initialized');
   } catch (error) {
     console.error('Error initializing notification service:', error);

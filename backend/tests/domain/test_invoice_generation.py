@@ -4,8 +4,10 @@ from decimal import Decimal
 
 # ------------------ validate_appointment_for_invoicing ------------------
 
+
 def test_validate_appointment_ok():
     il.validate_appointment_for_invoicing("COMPLETED", False)
+
 
 @pytest.mark.parametrize("status", ["SCHEDULED", "READY", "", None])
 def test_validate_appointment_invalid(status):
@@ -19,7 +21,9 @@ def test_validate_appointment_duplicate():
         il.validate_appointment_for_invoicing("COMPLETED", True)
     assert ei.value.code == "ALREADY_EXISTS"
 
+
 # ------------------ line item creation & totals ------------------------
+
 
 def test_create_line_item_rounding():
     svc = {"name": "Oil Change", "estimated_price": 12.3456}

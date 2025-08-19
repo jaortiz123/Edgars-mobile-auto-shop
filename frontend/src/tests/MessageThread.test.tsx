@@ -103,14 +103,14 @@ describe('MessageThread', () => {
     expect(await screen.findByText('No messages yet')).toBeInTheDocument();
 
     const sendButton = screen.getByRole('button', { name: 'Send message' });
-    
+
     // Send button should be disabled when message is empty
     expect(sendButton).toBeDisabled();
   });
 
   it('handles API errors when sending messages', async () => {
     const user = userEvent.setup();
-    
+
   vi.mocked(getAppointmentMessages).mockResolvedValue([]);
   vi.mocked(fetchMessageTemplates).mockResolvedValue({ message_templates: [], suggested: [] });
     vi.mocked(createAppointmentMessage).mockRejectedValue(new Error('Network error'));

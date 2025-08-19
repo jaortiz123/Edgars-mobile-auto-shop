@@ -36,7 +36,7 @@ const VehicleForm: React.FC<VehicleFormProps> = ({ vehicle, onSubmit, onCancel }
           <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
             {vehicle ? 'Edit Vehicle' : 'Add New Vehicle'}
           </h3>
-          
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="make" className="block text-sm font-medium text-gray-700">

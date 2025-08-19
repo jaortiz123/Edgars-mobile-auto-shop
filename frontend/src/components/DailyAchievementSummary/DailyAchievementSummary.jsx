@@ -1,6 +1,6 @@
 /**
  * Sprint 4A-T-002: Daily Achievement Summary Component
- * 
+ *
  * Displays end-of-day recap with completed jobs count, total revenue, and top performer
  * Shows as modal or dashboard section with automatic 6 PM trigger
  */
@@ -19,13 +19,13 @@ import './DailyAchievementSummary.css';
  * @param {Object} props.topTech - Top performer data
  * @param {string} props.date - Date for the summary
  */
-export function DailyAchievementSummary({ 
-  isOpen, 
-  onClose, 
-  jobsCompleted, 
-  revenue, 
+export function DailyAchievementSummary({
+  isOpen,
+  onClose,
+  jobsCompleted,
+  revenue,
   topTech,
-  date 
+  date
 }) {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -68,7 +68,7 @@ export function DailyAchievementSummary({
   };
 
   return (
-    <div 
+    <div
       className={`summary-modal-overlay ${isVisible ? 'visible' : ''}`}
       onClick={handleBackdropClick}
       role="dialog"
@@ -81,7 +81,7 @@ export function DailyAchievementSummary({
             🎉 Today's Achievements
           </h1>
           <p className="summary-date">{formatDate(date)}</p>
-          <button 
+          <button
             className="summary-close-btn"
             onClick={handleClose}
             aria-label="Close summary"
@@ -131,7 +131,7 @@ export function DailyAchievementSummary({
           <div className="summary-message">
             {jobsCompleted > 0 ? (
               <p>
-                Great work today! {jobsCompleted > 5 ? 'Outstanding' : 'Excellent'} productivity 
+                Great work today! {jobsCompleted > 5 ? 'Outstanding' : 'Excellent'} productivity
                 with {formatCurrency(revenue)} in revenue generated.
               </p>
             ) : (
@@ -143,7 +143,7 @@ export function DailyAchievementSummary({
         </main>
 
         <footer className="summary-footer">
-          <button 
+          <button
             className="summary-action-btn primary"
             onClick={handleClose}
           >
@@ -159,12 +159,12 @@ export function DailyAchievementSummary({
  * Daily Achievement Summary Dashboard Section Component
  * Compact version for dashboard display
  */
-export function DailyAchievementSummaryCard({ 
-  jobsCompleted, 
-  revenue, 
-  topTech, 
+export function DailyAchievementSummaryCard({
+  jobsCompleted,
+  revenue,
+  topTech,
   date,
-  onViewDetails 
+  onViewDetails
 }) {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -179,7 +179,7 @@ export function DailyAchievementSummaryCard({
     <div className="summary-dashboard-card">
       <header className="dashboard-card-header">
         <h3 className="dashboard-card-title">Today's Progress</h3>
-        <button 
+        <button
           className="view-recap-btn"
           onClick={onViewDetails}
           aria-label="View today's recap"
@@ -195,13 +195,13 @@ export function DailyAchievementSummaryCard({
             <span className="stat-value">{jobsCompleted}</span>
             <span className="stat-label">jobs</span>
           </div>
-          
+
           <div className="dashboard-stat">
             <span className="stat-icon">💰</span>
             <span className="stat-value">{formatCurrency(revenue)}</span>
             <span className="stat-label">revenue</span>
           </div>
-          
+
           <div className="dashboard-stat">
             <span className="stat-icon">🏆</span>
             <span className="stat-value">{topTech.name}</span>
@@ -226,7 +226,7 @@ export function useDailyAchievementSummary(autoShow = true) {
   const loadSummary = async (date = new Date()) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const data = await getDailySummary(date);
       setSummaryData(data);

@@ -15,7 +15,7 @@ module.exports = {
           800: '#1e40af',
           900: '#1e3a8a'
         },
-        
+
         // Warm neutrals (instead of cold greys)
         neutral: {
           50: '#fafaf9',
@@ -29,7 +29,7 @@ module.exports = {
           800: '#292524',
           900: '#1c1917'
         },
-        
+
         // Status colors with sophistication
         success: {
           50: '#f0fdf4',
@@ -37,21 +37,21 @@ module.exports = {
           600: '#16a34a',
           700: '#15803d'
         },
-        
+
         warning: {
           50: '#fffbeb',
           500: '#f59e0b',
           600: '#d97706',
           700: '#b45309'
         },
-        
+
         danger: {
           50: '#fef2f2',
           500: '#ef4444',
           600: '#dc2626',
           700: '#b91c1c'
         },
-        
+
         // Automotive accent (subtle steel blue)
         steel: {
           50: '#f8fafc',
@@ -68,4 +68,3 @@ module.exports = {
       }
     }
   }
-

@@ -193,7 +193,7 @@ const handleQuickAddSubmit = async (appointmentData) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(appointmentData)
     });
-    
+
     if (response.ok) {
       setShowQuickAddModal(false);
       fetchAppointments(); // Refresh appointment list

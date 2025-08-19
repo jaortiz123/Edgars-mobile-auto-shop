@@ -18,13 +18,13 @@ const Login: React.FC = () => {
   const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const state = location.state as LocationState;
   const from = state?.from?.pathname || '/profile';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Client-side validation
     if (!email.trim()) {
       showToast({
@@ -35,7 +35,7 @@ const Login: React.FC = () => {
       });
       return;
     }
-    
+
     if (!password.trim()) {
       showToast({
         type: 'error',
@@ -45,7 +45,7 @@ const Login: React.FC = () => {
       });
       return;
     }
-    
+
     try {
       await login(email.trim(), password);
       showToast({
@@ -61,7 +61,7 @@ const Login: React.FC = () => {
       if (loginError instanceof Error) {
         errorMessage = loginError.message;
       }
-      
+
       showToast({
         type: 'error',
         title: 'Sign in failed',
@@ -90,14 +90,14 @@ const Login: React.FC = () => {
             </Link>
           </p>
         </div>
-        
+
         <form className="mt-sp-8 space-y-sp-6" onSubmit={handleSubmit} noValidate>
           {error && (
             <div className="rounded-md bg-red-50 p-sp-4" role="alert" aria-live="polite">
               <div className="text-fs-1 text-red-800">{error}</div>
             </div>
           )}
-          
+
           <div className="space-y-sp-4">
             <div>
               <label htmlFor="email" className="block text-fs-1 font-medium text-gray-700">
@@ -115,7 +115,7 @@ const Login: React.FC = () => {
                 placeholder="Enter your email"
               />
             </div>
-            
+
             <div>
               <label htmlFor="password" className="block text-fs-1 font-medium text-gray-700">
                 Password *

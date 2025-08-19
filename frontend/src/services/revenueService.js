@@ -1,6 +1,6 @@
 /**
  * Sprint 4A-T-003: Running Revenue Service
- * 
+ *
  * Service for fetching and subscribing to real-time revenue updates.
  * Provides WebSocket-like functionality using polling for live revenue tracking.
  */
@@ -27,59 +27,59 @@ let isPolling = false;
 export async function fetchTodaysRevenue() {
   try {
     const today = new Date().toISOString().split('T')[0];
-    
+
     // Get dashboard stats for basic revenue info
     const statsResponse = await fetch('/api/admin/dashboard/stats', {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
       }
     });
-    
+
     if (!statsResponse.ok) {
       throw new Error(`Stats API failed: ${statsResponse.status}`);
     }
-    
+
     const stats = await statsResponse.json();
-    
+
     // Get completed appointments for accurate revenue calculation
     const appointmentsResponse = await fetch(`/api/admin/appointments?from=${today}T00:00:00Z&to=${today}T23:59:59Z&status=COMPLETED`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
       }
     });
-    
+
     let completedRevenue = 0;
     if (appointmentsResponse.ok) {
       const appointmentsData = await appointmentsResponse.json();
       const completedAppointments = appointmentsData.appointments || [];
-      
+
       // Calculate total revenue from completed appointments
       completedRevenue = completedAppointments.reduce((total, appointment) => {
         return total + (appointment.total_amount || 0);
       }, 0);
     }
-    
+
     // Get unpaid amount from stats
     const unpaidAmount = stats.unpaidTotal || 0;
-    
+
     // Calculate total revenue (completed + unpaid)
     const totalRevenue = completedRevenue + unpaidAmount;
-    
+
     const revenueData = {
       totalRevenue: Math.round(totalRevenue * 100) / 100,
       paidAmount: Math.round(completedRevenue * 100) / 100,
       unpaidAmount: Math.round(unpaidAmount * 100) / 100,
       lastUpdated: new Date().toISOString()
     };
-    
+
     // Update current revenue cache
     currentRevenue = revenueData;
-    
+
     return revenueData;
-    
+
   } catch (error) {
     console.error('Failed to fetch today\'s revenue:', error);
-    
+
     // Return fallback data
     return {
       totalRevenue: 0,
@@ -99,15 +99,15 @@ export function subscribeToRevenueUpdates(callback) {
   if (typeof callback !== 'function') {
     throw new Error('Callback must be a function');
   }
-  
+
   // Add subscriber
   subscribers.add(callback);
-  
+
   // Start polling if this is the first subscriber
   if (subscribers.size === 1 && !isPolling) {
     startPolling();
   }
-  
+
   // Send current revenue if available
   if (currentRevenue) {
     try {
@@ -125,11 +125,11 @@ export function subscribeToRevenueUpdates(callback) {
       }
     });
   }
-  
+
   // Return unsubscribe function
   return () => {
     subscribers.delete(callback);
-    
+
     // Stop polling if no more subscribers
     if (subscribers.size === 0) {
       stopPolling();
@@ -142,36 +142,36 @@ export function subscribeToRevenueUpdates(callback) {
  */
 function startPolling() {
   if (isPolling) return;
-  
+
   // TEMP: Disabled polling to fix infinite request loop
   console.log('Revenue polling disabled to prevent infinite requests');
   return;
-  
+
   isPolling = true;
-  
+
   const poll = async () => {
     try {
       const newRevenue = await fetchTodaysRevenue();
-      
+
       // Notify all subscribers if revenue changed
       if (!currentRevenue || newRevenue.totalRevenue !== currentRevenue.totalRevenue) {
         notifySubscribers(newRevenue);
       }
-      
+
       // Schedule next poll
       if (isPolling) {
         pollingTimer = setTimeout(poll, POLLING_INTERVAL);
       }
     } catch (error) {
       console.error('Revenue polling error:', error);
-      
+
       // Continue polling even if there's an error
       if (isPolling) {
         pollingTimer = setTimeout(poll, POLLING_INTERVAL);
       }
     }
   };
-  
+
   // Start immediate poll
   poll();
 }
@@ -181,7 +181,7 @@ function startPolling() {
  */
 function stopPolling() {
   isPolling = false;
-  
+
   if (pollingTimer) {
     clearTimeout(pollingTimer);
     pollingTimer = null;

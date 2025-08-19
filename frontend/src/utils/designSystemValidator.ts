@@ -1,7 +1,7 @@
 // Sprint 1A Robustness: Design System Validation Utilities
-import { 
-  TypographyScale, 
-  SpacingScale, 
+import {
+  TypographyScale,
+  SpacingScale,
   DesignSystemUtility,
   DESIGN_TOKENS,
   CSS_VARIABLES,
@@ -30,7 +30,7 @@ export class DesignSystemValidator {
    */
   validateCSSVariable(variableName: string): boolean {
     if (typeof window === 'undefined') return true; // SSR fallback
-    
+
     // Check if we're in a test environment without real CSS
     if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
       // In test environment, assume CSS variables are valid if they're in our design tokens
@@ -40,7 +40,7 @@ export class DesignSystemValidator {
         ...Object.values(CSS_VARIABLES.lineHeight),
         ...Object.values(CSS_VARIABLES.fontWeight)
       ] as string[];
-      
+
       if (allVariables.includes(variableName)) {
         return true;
       }
@@ -49,12 +49,12 @@ export class DesignSystemValidator {
     try {
       const computedStyle = getComputedStyle(document.documentElement);
       const value = computedStyle.getPropertyValue(variableName).trim();
-      
+
       if (!value) {
         this.logWarning(`CSS variable ${variableName} is not defined`);
         return false;
       }
-      
+
       return true;
     } catch (err) {
       this.logError(`Failed to validate CSS variable ${variableName}: ${err}`);
@@ -99,7 +99,7 @@ export class DesignSystemValidator {
       const scale = className.replace('text-', '');
       return this.validateTypographyScale(scale);
     }
-    
+
     if (className.match(/^[mp][tblrxy]?-sp-/)) {
       const scale = className.split('-').slice(-2).join('-');
       return this.validateSpacingScale(scale);
@@ -117,21 +117,21 @@ export class DesignSystemValidator {
     // Check minimum touch target size
     let width = 0;
     let height = 0;
-    
+
     // In test environment (JSDOM), getBoundingClientRect returns 0,0
     // so we need to check CSS styles directly
     if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
       // Parse width and height from style properties
       const styleWidth = element.style.width;
       const styleHeight = element.style.height;
-      
+
       if (styleWidth && styleWidth.endsWith('px')) {
         width = parseFloat(styleWidth);
       }
       if (styleHeight && styleHeight.endsWith('px')) {
         height = parseFloat(styleHeight);
       }
-      
+
       // Also check computed style if inline styles aren't available
       if (width === 0 || height === 0) {
         const computedStyle = getComputedStyle(element);
@@ -148,7 +148,7 @@ export class DesignSystemValidator {
       width = rect.width;
       height = rect.height;
     }
-    
+
     if (width < ACCESSIBILITY_REQUIREMENTS.minimumTouchTarget.width ||
         height < ACCESSIBILITY_REQUIREMENTS.minimumTouchTarget.height) {
       if (element.matches('button, a, input, select, textarea, [role="button"]')) {
@@ -162,10 +162,10 @@ export class DesignSystemValidator {
         // In test environment, check for outline in style or accept any outline indication
         const hasOutlineStyle = element.style.outline && element.style.outline !== 'none';
         const computedStyle = getComputedStyle(element);
-        const hasComputedOutline = computedStyle.outlineWidth && 
-                                  computedStyle.outlineWidth !== 'none' && 
+        const hasComputedOutline = computedStyle.outlineWidth &&
+                                  computedStyle.outlineWidth !== 'none' &&
                                   parseFloat(computedStyle.outlineWidth) >= ACCESSIBILITY_REQUIREMENTS.focusIndicator.minWidth;
-        
+
         if (!hasOutlineStyle && !hasComputedOutline) {
           issues.push('Insufficient focus indicator');
         }
@@ -242,12 +242,12 @@ export class DesignSystemValidator {
         const rules = Array.from(sheet.cssRules || []);
         rules.forEach(rule => {
           const cssText = rule.cssText;
-          
+
           // Find defined variables
           cssText.match(/--[\w-]+/g)?.forEach(variable => {
             definedVariables.add(variable);
           });
-          
+
           // Find used variables
           cssText.match(/var\(--[\w-]+/g)?.forEach(match => {
             const variable = match.replace('var(', '');
@@ -384,13 +384,13 @@ export function getCSSVariable(variableName: string, fallback?: string): string 
     const value = getComputedStyle(document.documentElement)
       .getPropertyValue(variableName)
       .trim();
-    
+
     if (!value && fallback) {
       const validator = DesignSystemValidator.getInstance();
       validator.validateCSSVariable(variableName);
       return fallback;
     }
-    
+
     return value || fallback || '';
   } catch (error) {
     console.warn(`Failed to get CSS variable ${variableName}:`, error);
@@ -403,7 +403,7 @@ export function getCSSVariable(variableName: string, fallback?: string): string 
  */
 export function createDesignSystemClasses(...classes: (DesignSystemUtility | string)[]): string {
   const validator = DesignSystemValidator.getInstance();
-  
+
   return classes
     .filter(Boolean)
     .map(className => {
@@ -420,7 +420,7 @@ export function createDesignSystemClasses(...classes: (DesignSystemUtility | str
  */
 export function validateDesignToken(category: keyof typeof DESIGN_TOKENS, token: string): boolean {
   const validator = DesignSystemValidator.getInstance();
-  
+
   switch (category) {
     case 'typography':
       return validator.validateTypographyScale(token);
@@ -436,16 +436,16 @@ export function validateDesignToken(category: keyof typeof DESIGN_TOKENS, token:
  */
 export function initializeDesignSystemValidation(): void {
   const validator = DesignSystemValidator.getInstance();
-  
+
   // Validate all CSS variables are available
   validator.validateFallbacks();
-  
+
   // Enable development warnings
   validator.enableDevelopmentWarnings();
-  
+
   // Validate runtime CSS
   validator.validateRuntimeCSS();
-  
+
   // Log initialization
   if (process.env.NODE_ENV === 'development') {
     console.log('[Design System] Validation initialized', validator.getValidationState());

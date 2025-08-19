@@ -1,9 +1,9 @@
 /**
  * Template Service for Quick Add Appointments
- * 
+ *
  * Provides predefined appointment templates for common services
  * with robust error handling and type safety.
- * 
+ *
  * Features:
  * - Memory Management: Cached templates, cleanup on module unload
  * - Error Handling: Graceful fallbacks, comprehensive error logging
@@ -205,7 +205,7 @@ function validateTemplate(template) {
   }
 
   const requiredFields = ['id', 'name', 'description', 'category', 'estimatedPrice', 'services'];
-  
+
   for (const field of requiredFields) {
     if (!template[field]) {
       console.warn(`Invalid template: missing required field '${field}'`);
@@ -239,32 +239,32 @@ function sanitizeTemplate(template) {
   try {
     // Create deep copy to avoid mutations
     const sanitized = JSON.parse(JSON.stringify(template));
-    
+
     // Sanitize string fields
     if (sanitized.name) sanitized.name = sanitized.name.toString().trim();
     if (sanitized.description) sanitized.description = sanitized.description.toString().trim();
     if (sanitized.defaultNotes) sanitized.defaultNotes = sanitized.defaultNotes.toString().trim();
-    
+
     // Ensure numeric fields are valid numbers
     if (typeof sanitized.estimatedPrice === 'string') {
       sanitized.estimatedPrice = parseFloat(sanitized.estimatedPrice) || 0;
     }
-    
+
     // Sanitize services
     if (Array.isArray(sanitized.services)) {
       sanitized.services = sanitized.services.map(service => ({
         ...service,
         name: service.name ? service.name.toString().trim() : '',
         notes: service.notes ? service.notes.toString().trim() : '',
-        estimated_price: typeof service.estimated_price === 'string' 
-          ? parseFloat(service.estimated_price) || 0 
+        estimated_price: typeof service.estimated_price === 'string'
+          ? parseFloat(service.estimated_price) || 0
           : service.estimated_price || 0,
         estimated_hours: typeof service.estimated_hours === 'string'
           ? parseFloat(service.estimated_hours) || 0
           : service.estimated_hours || 0
       }));
     }
-    
+
     return sanitized;
   } catch (error) {
     console.error('Error sanitizing template:', error);
@@ -298,7 +298,7 @@ export async function getTemplates() {
     return templates;
   } catch (error) {
     console.error('Error fetching templates:', error);
-    
+
     // Graceful fallback - return basic templates
     return [
       {
@@ -340,7 +340,7 @@ export async function getTemplateById(templateId) {
   try {
     const templates = await getTemplates();
     const template = templates.find(t => t.id === templateId.trim());
-    
+
     if (!template) {
       console.warn(`Template not found: ${templateId}`);
       return null;
@@ -365,7 +365,7 @@ export async function getTemplatesByCategory(category) {
 
   try {
     const templates = await getTemplates();
-    return templates.filter(t => 
+    return templates.filter(t =>
       t.category && t.category.toLowerCase() === category.toLowerCase().trim()
     );
   } catch (error) {
@@ -388,7 +388,7 @@ export function applyTemplateToFormData(template, existingData = {}) {
 
   try {
     const sanitizedTemplate = sanitizeTemplate(template);
-    
+
     return {
       ...existingData,
       serviceType: sanitizedTemplate.name,
@@ -396,7 +396,7 @@ export function applyTemplateToFormData(template, existingData = {}) {
       notes: sanitizedTemplate.defaultNotes || '',
       appointmentType: sanitizedTemplate.isEmergency ? 'emergency' : 'regular',
       // Don't override customer data or dates - only service-related fields
-      ...(existingData.customerName ? {} : { 
+      ...(existingData.customerName ? {} : {
         // Only set defaults if no customer data exists
         templateId: sanitizedTemplate.id,
         category: sanitizedTemplate.category

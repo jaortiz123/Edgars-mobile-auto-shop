@@ -10,9 +10,9 @@ test('minimal design system jsx test', () => {
       Test
     </div>
   );
-  
+
   render(<TestComponent />);
-  
+
   const element = screen.getByTestId('test');
   expect(element).toBeInTheDocument();
   expect(element).toHaveClass('text-fs-2');

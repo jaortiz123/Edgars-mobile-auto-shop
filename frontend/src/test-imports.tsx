@@ -20,11 +20,11 @@ const TestComponent = () => {
   // Test hook usage
   const auth1 = useAuth();
   const auth2 = hookAuth();
-  
+
   console.log('✅ All imports working correctly!');
   console.log('Auth from direct import:', auth1);
   console.log('Auth from hook re-export:', auth2);
-  
+
   return (
     <AuthProvider>
       <div>If this compiles, your imports are fixed!</div>

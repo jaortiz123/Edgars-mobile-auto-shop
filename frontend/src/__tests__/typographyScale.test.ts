@@ -5,7 +5,7 @@ import { glob } from 'glob';
 
 /**
  * Sprint1A-T-002: Typography Scale Migration Tests
- * 
+ *
  * Ensures all components use the new typography scale and prevents
  * regression to hard-coded pixel font-sizes.
  */
@@ -25,7 +25,7 @@ describe('Typography Scale Migration', () => {
       try {
         const content = readFileSync(file, 'utf-8');
         const matches = content.match(pixelFontSizeRegex);
-        
+
         if (matches) {
           violationFiles.push({
             file: file.replace(process.cwd(), ''),
@@ -40,11 +40,11 @@ describe('Typography Scale Migration', () => {
 
     if (violationFiles.length > 0) {
       const errorMessage = violationFiles
-        .map(({ file, matches }) => 
+        .map(({ file, matches }) =>
           `${file}:\n  ${matches.join('\n  ')}`
         )
         .join('\n\n');
-      
+
       throw new Error(
         `Found hard-coded pixel font-sizes in CSS files. All font-sizes should use the typography scale (var(--fs-*)):\n\n${errorMessage}`
       );
@@ -66,7 +66,7 @@ describe('Typography Scale Migration', () => {
       try {
         const content = readFileSync(file, 'utf-8');
         const matches = content.match(inlineFontSizeRegex);
-        
+
         if (matches) {
           violationFiles.push({
             file: file.replace(process.cwd(), ''),
@@ -81,11 +81,11 @@ describe('Typography Scale Migration', () => {
 
     if (violationFiles.length > 0) {
       const errorMessage = violationFiles
-        .map(({ file, matches }) => 
+        .map(({ file, matches }) =>
           `${file}:\n  ${matches.join('\n  ')}`
         )
         .join('\n\n');
-      
+
       throw new Error(
         `Found hard-coded pixel font-sizes in JSX/TSX files. Use CSS variables or Tailwind typography classes:\n\n${errorMessage}`
       );
@@ -101,7 +101,7 @@ describe('Typography Scale Migration', () => {
     ];
 
     const requiredVariables = [
-      '--fs-0', '--fs-1', '--fs-2', '--fs-3', 
+      '--fs-0', '--fs-1', '--fs-2', '--fs-3',
       '--fs-4', '--fs-5', '--fs-6'
     ];
 
@@ -109,7 +109,7 @@ describe('Typography Scale Migration', () => {
       try {
         const fullPath = join(process.cwd(), file);
         const content = readFileSync(fullPath, 'utf-8');
-        
+
         requiredVariables.forEach(variable => {
           const variableRegex = new RegExp(`${variable.replace('--', '\\-\\-')}:\\s*[^;]+;`);
           expect(content).toMatch(variableRegex);
@@ -122,7 +122,7 @@ describe('Typography Scale Migration', () => {
   });
 
   it('should use typography scale in component stylesheets', () => {
-    const componentCssFiles = cssFiles.filter(file => 
+    const componentCssFiles = cssFiles.filter(file =>
       file.includes('/components/') && file.endsWith('.css')
     );
 
@@ -134,7 +134,7 @@ describe('Typography Scale Migration', () => {
       componentCssFiles.forEach(file => {
         try {
           const content = readFileSync(file, 'utf-8');
-          
+
           // Skip if file doesn't contain font-size declarations
           if (!content.includes('font-size')) {
             return;
@@ -158,10 +158,10 @@ describe('Typography Scale Migration', () => {
     try {
       const tailwindConfigPath = join(process.cwd(), 'tailwind.config.js');
       const configContent = readFileSync(tailwindConfigPath, 'utf-8');
-      
+
       // Check that our custom typography scale is defined in Tailwind config
       const requiredClasses = ['fs-0', 'fs-1', 'fs-2', 'fs-3', 'fs-4', 'fs-5', 'fs-6'];
-      
+
       requiredClasses.forEach(fsClass => {
         expect(configContent).toMatch(new RegExp(`['"]${fsClass}['"]`));
       });
@@ -173,7 +173,7 @@ describe('Typography Scale Migration', () => {
 
 /**
  * Typography Scale Usage Validation Tests
- * 
+ *
  * These tests ensure proper usage patterns and help catch misuse.
  */
 describe('Typography Scale Usage Validation', () => {

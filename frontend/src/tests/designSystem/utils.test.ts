@@ -8,7 +8,7 @@ import { DesignSystemValidator } from '@/utils/designSystemValidator';
 const mockDesignTokens = {
   typography: {
     'fs-1': '0.875rem',
-    'fs-2': '1rem', 
+    'fs-2': '1rem',
     'fs-3': '1.125rem',
     'fs-4': '1.25rem',
   },
@@ -83,7 +83,7 @@ describe('Design System Utils (Node)', () => {
       expect(key).toMatch(/^fs-\d+$/);
     });
 
-    // All spacing keys should follow sp-{number} pattern  
+    // All spacing keys should follow sp-{number} pattern
     spacingKeys.forEach(key => {
       expect(key).toMatch(/^sp-\d+$/);
     });
@@ -109,7 +109,7 @@ describe('Design System Utils (Node)', () => {
   test('validates scale progression logic', () => {
     const scales = ['fs-1', 'fs-2', 'fs-3', 'fs-4'];
     const values = scales.map(scale => parseFloat(getTypographyValue(scale)!));
-    
+
     // Each scale should be larger than the previous
     for (let i = 1; i < values.length; i++) {
       expect(values[i]).toBeGreaterThan(values[i - 1]);
@@ -120,14 +120,14 @@ describe('Design System Utils (Node)', () => {
     const fs1 = parseFloat(getTypographyValue('fs-1')!);
     const fs2 = parseFloat(getTypographyValue('fs-2')!);
     const fs3 = parseFloat(getTypographyValue('fs-3')!);
-    
+
     // Validate that there's a consistent scaling pattern
     const ratio1to2 = fs2 / fs1;
     const ratio2to3 = fs3 / fs2;
-    
+
     expect(ratio1to2).toBeGreaterThan(1);
     expect(ratio2to3).toBeGreaterThan(1);
-    
+
     // The ratios should be reasonable (not too large)
     expect(ratio1to2).toBeLessThan(2);
     expect(ratio2to3).toBeLessThan(2);

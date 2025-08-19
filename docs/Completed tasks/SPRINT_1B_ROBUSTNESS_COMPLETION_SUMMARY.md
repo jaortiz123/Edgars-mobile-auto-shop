@@ -70,12 +70,12 @@ useEffect(() => {
 ```typescript
 export function validateCardData(card: any): ValidatedCard | null {
   if (!card || typeof card !== 'object') return null;
-  
+
   const required = ['id', 'customerName', 'start'];
   for (const field of required) {
     if (!card[field]) return null;
   }
-  
+
   return {
     id: String(card.id),
     customerName: String(card.customerName),
@@ -109,9 +109,9 @@ export class CardAccessibility {
     announcer.setAttribute('aria-atomic', 'true');
     announcer.className = 'sr-only';
     document.body.appendChild(announcer);
-    
+
     announcer.textContent = message;
-    
+
     setTimeout(() => document.body.removeChild(announcer), 1000);
   }
 }
@@ -211,11 +211,11 @@ function MyCard({ card }) {
     enableNotifications: true,
     enableAccessibilityAnnouncements: true
   });
-  
+
   if (!validatedCard) {
     return <ErrorCard message="Invalid card data" />;
   }
-  
+
   // Component logic with validated data
 }
 ```
@@ -257,7 +257,7 @@ useEffect(() => {
 
 The Sprint 1B Card Design System components are now **production-ready** with:
 - ✅ Zero memory leaks
-- ✅ 60 FPS smooth animations  
+- ✅ 60 FPS smooth animations
 - ✅ Comprehensive error handling
 - ✅ WCAG 2.2 AA accessibility compliance
 - ✅ TypeScript safety with runtime validation

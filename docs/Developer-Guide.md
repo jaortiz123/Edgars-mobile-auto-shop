@@ -36,4 +36,3 @@ This section details the implementation of the appointment reminders system.
 - **Helper:** `src/lib/time.js` (`minutesPast`)
 - **Service:** `src/lib/notificationService.ts` (`addNotification`)
 - **Integration:** In `src/components/admin/AppointmentCard.tsx`, `minutesPast` is used to determine if an appointment is running late or overdue. `addNotification` is used to send alerts to the `NotificationCenter`.
-

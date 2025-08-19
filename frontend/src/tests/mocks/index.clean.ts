@@ -78,10 +78,10 @@ export function createMocks() {
         if (typeof minutesUntil !== 'number' || !isFinite(minutesUntil)) {
           return 'Time unavailable';
         }
-        
+
         const { showDirection = true, accessibility = false, context = 'appointment' } = options;
         const absMinutes = Math.abs(minutesUntil);
-        
+
         let duration: string;
         if (absMinutes < 60) {
           duration = `${absMinutes}m`;
@@ -94,7 +94,7 @@ export function createMocks() {
             duration = `${hours}h ${remainingMins}m`;
           }
         }
-        
+
         if (minutesUntil > 0) {
           if (accessibility) {
             return `${context} starts in ${duration}`;
@@ -206,12 +206,12 @@ export function createMocks() {
       getBoard: vi.fn(async (params?: { from?: string; to?: string; techId?: string }) => {
         console.log('🔧 MOCK: getBoard called with params:', params);
         console.log('🔧 MOCK: localMockApiFailureRate:', localMockApiFailureRate);
-        
+
         if (Math.random() < localMockApiFailureRate) {
           console.log('🔧 MOCK: Simulating network error');
           throw new Error('Network error');
         }
-        
+
         const result = {
           columns: [
             {
@@ -266,7 +266,7 @@ export function createMocks() {
             }
           ]
         };
-        
+
         console.log('🔧 MOCK: getBoard returning successful result:', JSON.stringify(result, null, 2));
         return result;
       }),
@@ -286,7 +286,7 @@ export function createMocks() {
                 status: 'confirmed'
               },
               {
-                id: 'apt-2', 
+                id: 'apt-2',
                 customer_name: 'Jane Smith',
                 service: 'Brake Inspection',
                 appointment_time: '2024-01-15T14:00:00Z',
@@ -320,12 +320,12 @@ export function createMocks() {
       }),
       getDrawer: vi.fn().mockImplementation((id: string) => {
         console.log('🔧 MOCK: getDrawer called with id:', id);
-        
+
         if (Math.random() < localMockApiFailureRate) {
           console.log('🔧 MOCK: getDrawer simulating network error');
           return Promise.reject(new Error('Network error'));
         }
-        
+
         const result = {
           appointment: {
             id: id,
@@ -372,13 +372,13 @@ export function createMocks() {
             }
           ]
         };
-        
+
         console.log('🔧 MOCK: getDrawer returning result:', JSON.stringify(result, null, 2));
         return Promise.resolve(result);
       }),
       getAppointmentServices: vi.fn().mockImplementation((appointmentId: string) => {
         console.log('🔧 MOCK: getAppointmentServices called with appointmentId:', appointmentId);
-        
+
         const services = [
           {
             id: 'svc-1',
@@ -399,12 +399,12 @@ export function createMocks() {
             category: 'Safety'
           }
         ];
-        
+
         return Promise.resolve(services);
       }),
       createAppointmentService: vi.fn().mockImplementation((appointmentId: string, service: Record<string, unknown>) => {
         console.log('🔧 MOCK: createAppointmentService called:', { appointmentId, service });
-        
+
         const newService = {
           id: `svc-${Date.now()}`,
           appointment_id: appointmentId,
@@ -414,15 +414,15 @@ export function createMocks() {
           estimated_price: (service.estimated_price as number) || 100.00,
           category: (service.category as string) || 'General'
         };
-        
-        return Promise.resolve({ 
-          service: newService, 
-          appointment_total: 500.00 
+
+        return Promise.resolve({
+          service: newService,
+          appointment_total: 500.00
         });
       }),
       updateAppointmentService: vi.fn().mockImplementation((appointmentId: string, serviceId: string, service: Record<string, unknown>) => {
         console.log('🔧 MOCK: updateAppointmentService called:', { appointmentId, serviceId, service });
-        
+
         const updatedService = {
           id: serviceId,
           appointment_id: appointmentId,
@@ -432,18 +432,18 @@ export function createMocks() {
           estimated_price: (service.estimated_price as number) || 100.00,
           category: (service.category as string) || 'General'
         };
-        
-        return Promise.resolve({ 
-          service: updatedService, 
-          appointment_total: 500.00 
+
+        return Promise.resolve({
+          service: updatedService,
+          appointment_total: 500.00
         });
       }),
       deleteAppointmentService: vi.fn().mockImplementation((appointmentId: string, serviceId: string) => {
         console.log('🔧 MOCK: deleteAppointmentService called:', { appointmentId, serviceId });
-        
-        return Promise.resolve({ 
-          message: 'Service deleted successfully', 
-          appointment_total: 300.00 
+
+        return Promise.resolve({
+          message: 'Service deleted successfully',
+          appointment_total: 300.00
         });
       }),
       getCarsOnPremises: vi.fn().mockImplementation(() => {
@@ -570,7 +570,7 @@ interface TestMocks {
 
 export default function createTestMocks(): TestMocks {
   const mocks = createMocks();
-  
+
   return {
     time: mocks.time as TimeMock,
     api: mocks.api as ApiMock,

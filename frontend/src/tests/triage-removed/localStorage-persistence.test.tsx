@@ -93,10 +93,10 @@ describe('localStorage Persistence Fix', () => {
 
     render(
       <TestWrapper>
-        <AppointmentDrawer 
-          open={true} 
-          onClose={() => {}} 
-          id={appointmentId} 
+        <AppointmentDrawer
+          open={true}
+          onClose={() => {}}
+          id={appointmentId}
         />
       </TestWrapper>
     );
@@ -132,7 +132,7 @@ describe('localStorage Persistence Fix', () => {
     await waitFor(() => {
       const storedData = localStorage.getItem(storageKey);
       expect(storedData).toBeTruthy();
-      
+
       const parsed = JSON.parse(storedData!);
       expect(parsed.formState.name).toBe('Oil Change');
       expect(parsed.isAdding).toBe(true);
@@ -161,21 +161,21 @@ describe('localStorage Persistence Fix', () => {
       estimated_price: '150',
       category: 'Safety'
     };
-    
+
     const storageData = {
       formState,
       isAdding: true,
       timestamp: Date.now()
     };
-    
+
     localStorage.setItem(storageKey, JSON.stringify(storageData));
 
     render(
       <TestWrapper>
-        <AppointmentDrawer 
-          open={true} 
-          onClose={() => {}} 
-          id={appointmentId} 
+        <AppointmentDrawer
+          open={true}
+          onClose={() => {}}
+          id={appointmentId}
         />
       </TestWrapper>
     );
@@ -220,10 +220,10 @@ describe('localStorage Persistence Fix', () => {
 
     render(
       <TestWrapper>
-        <AppointmentDrawer 
-          open={true} 
-          onClose={() => {}} 
-          id={appointmentId} 
+        <AppointmentDrawer
+          open={true}
+          onClose={() => {}}
+          id={appointmentId}
         />
       </TestWrapper>
     );
@@ -272,10 +272,10 @@ describe('localStorage Persistence Fix', () => {
 
     render(
       <TestWrapper>
-        <AppointmentDrawer 
-          open={true} 
-          onClose={() => {}} 
-          id={appointmentId} 
+        <AppointmentDrawer
+          open={true}
+          onClose={() => {}}
+          id={appointmentId}
         />
       </TestWrapper>
     );
@@ -313,7 +313,7 @@ describe('localStorage Persistence Fix', () => {
         throw new Error('Storage access denied');
       })
     };
-    
+
     // @ts-ignore
     window.localStorage = mockLocalStorage;
 
@@ -321,10 +321,10 @@ describe('localStorage Persistence Fix', () => {
 
     render(
       <TestWrapper>
-        <AppointmentDrawer 
-          open={true} 
-          onClose={() => {}} 
-          id={appointmentId} 
+        <AppointmentDrawer
+          open={true}
+          onClose={() => {}}
+          id={appointmentId}
         />
       </TestWrapper>
     );

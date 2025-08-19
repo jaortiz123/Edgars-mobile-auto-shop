@@ -35,7 +35,7 @@ await asyncEvent(() => fireEvent.click(button));
 // Click helper
 await asyncClick(button);
 
-// Change helper  
+// Change helper
 await asyncChange(input, 'new value');
 
 // Semantic alias for clarity
@@ -79,7 +79,7 @@ Semantic alias for `asyncEvent()` - use when the name better represents the test
 ### Implementation Details
 
 - ✅ Eliminates React act() warnings
-- ✅ Handles both sync and async callback functions  
+- ✅ Handles both sync and async callback functions
 - ✅ Compatible with all fireEvent methods
 - ✅ Zero dependencies beyond @testing-library/react
 - ✅ TypeScript support with full type safety
@@ -103,7 +103,7 @@ await act(async () => {
   fireEvent.change(input, { target: { value: 'test' } });
 });
 
-// After  
+// After
 await asyncEvent(() => fireEvent.change(input, { target: { value: 'test' } }));
 
 // Or use convenience method

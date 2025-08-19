@@ -1,6 +1,6 @@
 /**
  * P2-T-006: TestAppWrapper - Isolated Provider Testing Component
- * 
+ *
  * Provides a minimal app wrapper for integration testing that includes
  * all necessary providers without the overhead of full app rendering.
  * This enables true integration testing while maintaining isolation.
@@ -30,15 +30,15 @@ interface TestAppWrapperProps {
 
 /**
  * Minimal app wrapper for integration testing.
- * 
+ *
  * This component provides all the essential providers needed for integration testing
  * without the complexity of the full app structure. It's designed to:
- * 
+ *
  * - Include all necessary React contexts (Auth, Notifications, Query)
  * - Provide router functionality for navigation testing
  * - Use optimized settings for test performance
  * - Allow customization of providers for specific test scenarios
- * 
+ *
  * @example
  * ```tsx
  * // Basic usage
@@ -47,14 +47,14 @@ interface TestAppWrapperProps {
  *     <ComponentUnderTest />
  *   </TestAppWrapper>
  * );
- * 
+ *
  * // With custom route
  * render(
  *   <TestAppWrapper initialRoute="/appointments">
  *     <AppointmentPage />
  *   </TestAppWrapper>
  * );
- * 
+ *
  * // With custom QueryClient for advanced testing
  * const queryClient = new QueryClient({ ... });
  * render(
@@ -146,7 +146,7 @@ export function useTestQueryClient(config?: Partial<QueryClient['defaultOptions'
 /**
  * Utility function to render components with TestAppWrapper.
  * Provides a convenient shorthand for common testing patterns.
- * 
+ *
  * @param component - The component to render
  * @param wrapperProps - Props for the TestAppWrapper
  * @returns The render result from testing-library
@@ -158,7 +158,7 @@ export function renderWithTestWrapper(
   // This function would typically use testing-library's render,
   // but since we don't want to import it here (to avoid circular dependencies),
   // we return a wrapper function that can be used with render()
-  
+
   return {
     wrapper: ({ children }: { children: React.ReactNode }) => (
       <TestAppWrapper {...wrapperProps}>

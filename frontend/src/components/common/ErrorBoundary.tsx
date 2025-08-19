@@ -37,14 +37,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({ errorInfo });
-    
+
     // Log error details
     console.error('ErrorBoundary caught an error:', error);
     console.error('Error Info:', errorInfo);
-    
+
     // Call optional error handler
     this.props.onError?.(error, errorInfo);
-    
+
     // Report to monitoring service in production
     if (process.env.NODE_ENV === 'production') {
       // Example: reportError(error, errorInfo);
@@ -77,11 +77,11 @@ export class ErrorBoundary extends Component<Props, State> {
               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
                 <AlertTriangle className="h-6 w-6 text-red-600" />
               </div>
-              
+
               <h3 className="text-lg font-medium text-gray-900 mb-2">
                 Something went wrong
               </h3>
-              
+
               <p className="text-sm text-gray-600 mb-6">
                 We encountered an unexpected error. Please try refreshing the page or go back to the dashboard.
               </p>
@@ -103,7 +103,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   </div>
                 </details>
               )}
-              
+
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
                   onClick={this.handleRetry}
@@ -112,7 +112,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   <RefreshCcw className="h-4 w-4 mr-2" />
                   Try Again
                 </button>
-                
+
                 <button
                   onClick={this.handleGoHome}
                   className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
@@ -142,7 +142,7 @@ export function withErrorBoundary<P extends object>(
       <Component {...props} />
     </ErrorBoundary>
   );
-  
+
   WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
   return WrappedComponent;
 }

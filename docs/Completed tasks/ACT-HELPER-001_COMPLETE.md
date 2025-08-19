@@ -12,7 +12,7 @@ Successfully completed ACT-HELPER-001 to introduce an AsyncEvent Helper that wra
 **Core Functions:**
 - `asyncEvent(fn)` - Main helper that wraps callbacks in act()
 - `asyncClick(element)` - Convenience method for click events
-- `asyncChange(element, value)` - Convenience method for change events  
+- `asyncChange(element, value)` - Convenience method for change events
 - `wrapUserAction(fn)` - Semantic alias for better readability
 
 **Features:**
@@ -105,7 +105,7 @@ All tests passing with comprehensive coverage:
 ```
 ✓ ACT-HELPER-001: AsyncEvent Helper Demonstration (5 tests)
   ✓ OLD WAY: Manual act() wrapping (verbose)
-  ✓ NEW WAY: asyncEvent helper (clean)  
+  ✓ NEW WAY: asyncEvent helper (clean)
   ✓ CONVENIENCE: Using asyncChange and asyncClick helpers
   ✓ BULK OPERATIONS: Multiple events in single asyncEvent call
   ✓ SEMANTIC ALIAS: Using wrapUserAction for clarity

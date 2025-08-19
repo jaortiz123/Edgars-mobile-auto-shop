@@ -106,12 +106,12 @@ After seeding minimal set, we consider catalog “healthy enough” if within 2 
 - Attaching labor skill matrices or dynamic pricing logic.
 - Multi-level hierarchical categories.
 
- 
+
 ## Review Cadence
 
 Revisit in 4 weeks or earlier if a readiness trigger fires; update this doc with outcome & next steps.
 
- 
+
 ## TL;DR
 
 Schema is already rich but totally empty; without real service usage data any enrichment is speculative. Document & defer. Seed only after concrete demand signals appear.

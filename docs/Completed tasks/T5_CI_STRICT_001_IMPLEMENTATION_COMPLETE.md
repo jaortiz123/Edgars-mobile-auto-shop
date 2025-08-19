@@ -20,11 +20,11 @@ beforeAll(() => {
   console.warn = (...args) => {
     throw new Error(`console.warn: ${args.join(' ')}`);
   };
-  
+
   // Store originals for potential restoration if needed
-  (globalThis as { __originalConsole?: { error: typeof console.error; warn: typeof console.warn } }).__originalConsole = { 
-    error: origError, 
-    warn: origWarn 
+  (globalThis as { __originalConsole?: { error: typeof console.error; warn: typeof console.warn } }).__originalConsole = {
+    error: origError,
+    warn: origWarn
   };
 });
 ```
@@ -82,7 +82,7 @@ Comprehensive tests verify the functionality:
 
 ## Acceptance Criteria Status
 - ✅ A test logging `console.error('x')` fails the Vitest job
-- ✅ A test logging `console.warn('x')` fails the Vitest job  
+- ✅ A test logging `console.warn('x')` fails the Vitest job
 - ✅ No unintended console messages slip through on a clean run
 - ✅ CI properly surfaces console output and fails on errors
 

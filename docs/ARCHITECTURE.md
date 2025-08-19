@@ -19,31 +19,31 @@
 │         └──────────────┬──────┴───────────────┬───────────────┴─────────────────────────────────────────┴───────────────┐ │
 │                        │                      │                                                                      UI │ │
 └────────────────────────┼──────────────────────┼──────────────────────────────────────────────────────────────────────────┘ │
-                         ▼                      ▼                                                                              
-                  /api/admin/             /api/appointments/:id                                                                
-                 appointments/board       /api/admin/appointments/:id/move   /api/admin/dashboard/stats   …                    
-                         │                      │                          │                                                
+                         ▼                      ▼
+                  /api/admin/             /api/appointments/:id
+                 appointments/board       /api/admin/appointments/:id/move   /api/admin/dashboard/stats   …
+                         │                      │                          │
 ─────────────────────────┼──────────────────────┼───────────────────────────┼──────────────────────────────────────────────────
-                         ▼                      ▼                          ▼                                                
-                                   Backend (Flask + Gunicorn)                                                                
-                         ┌───────────────────────────────────────────────────────────────────────────┐                      
-                         │  local_server.py (Blueprints)                                            │                      
-                         │  • board_bp  • appt_bp  • services_bp  • msg_bp  • payments_bp  • stats  │                      
-                         │  • webhooks_bp (provider delivery)                                        │                      
-                         └───────────────────────────────────────────────────────────────────────────┘                      
-                                                │                                                                                 
-                           SQLAlchemy / psycopg connection pool                                                                    
-                                                │                                                                                 
+                         ▼                      ▼                          ▼
+                                   Backend (Flask + Gunicorn)
+                         ┌───────────────────────────────────────────────────────────────────────────┐
+                         │  local_server.py (Blueprints)                                            │
+                         │  • board_bp  • appt_bp  • services_bp  • msg_bp  • payments_bp  • stats  │
+                         │  • webhooks_bp (provider delivery)                                        │
+                         └───────────────────────────────────────────────────────────────────────────┘
+                                                │
+                           SQLAlchemy / psycopg connection pool
+                                                │
 ────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────
-                                                ▼                                                                                 
-                                         PostgreSQL (RDS/VM)                                                                      
-                                  appointments • appointment_services • messages                                                   
-                                  payments • inspection_checklists • inspection_items                                             
-                                  customers • vehicles • users • audit_logs                                                       
-                                                │                                                                                 
-                                                ▼                                                                                 
-                                          Redis (optional)                                                                        
-                                 • 5‑min cache for stats  • queues/retries for messaging                                          
+                                                ▼
+                                         PostgreSQL (RDS/VM)
+                                  appointments • appointment_services • messages
+                                  payments • inspection_checklists • inspection_items
+                                  customers • vehicles • users • audit_logs
+                                                │
+                                                ▼
+                                          Redis (optional)
+                                 • 5‑min cache for stats  • queues/retries for messaging
 ```
 
 **Alternatives:**

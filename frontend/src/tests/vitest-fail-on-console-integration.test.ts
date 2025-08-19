@@ -54,7 +54,7 @@ describe('Enhanced CI Console Detection with vitest-fail-on-console', () => {
         console.warn('Expected warning in negative path testing');
         return 'test-success';
       });
-      
+
       expect(result).toBe('test-success');
     });
 
@@ -65,7 +65,7 @@ describe('Enhanced CI Console Detection with vitest-fail-on-console', () => {
         console.error('Async error that should be handled');
         return 'async-success';
       });
-      
+
       expect(result).toBe('async-success');
     });
   });
@@ -74,7 +74,7 @@ describe('Enhanced CI Console Detection with vitest-fail-on-console', () => {
     it('should handle circular objects safely in allowlist checking', () => {
       const circular: Record<string, unknown> = { name: 'test' };
       circular.self = circular;
-      
+
       // Our system should be able to process this without crashing during allowlist checking
       console.error('🔧 DIRECT MOCK: Circular object test', circular);
       expect(true).toBe(true); // Should pass since it's on allowlist

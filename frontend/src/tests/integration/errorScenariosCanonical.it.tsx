@@ -1,6 +1,6 @@
 /**
  * P2-T-006: Error Path Integration Tests - Canonical MSW Implementation
- * 
+ *
  * Comprehensive error scenario testing using MSW's canonical server.use() pattern.
  * Tests verify how the app behaves under failure conditions.
  */
@@ -52,7 +52,7 @@ describe('P2-T-006: Error Path Integration Tests', () => {
 
           // Look for drawer or status update trigger
           const statusButtons = screen.getAllByRole('button');
-          const updateButton = statusButtons.find(btn => 
+          const updateButton = statusButtons.find(btn =>
             btn.textContent?.toLowerCase().includes('progress') ||
             btn.textContent?.toLowerCase().includes('status') ||
             btn.textContent?.toLowerCase().includes('update')
@@ -173,7 +173,7 @@ describe('P2-T-006: Error Path Integration Tests', () => {
 
         // Look for status update that would trigger unauthorized error
         const statusButtons = screen.getAllByRole('button');
-        const statusButton = statusButtons.find(btn => 
+        const statusButton = statusButtons.find(btn =>
           btn.textContent?.toLowerCase().includes('status')
         );
 
@@ -319,20 +319,20 @@ describe('P2-T-006: Error Path Integration Tests', () => {
 
           // Try multiple operations that might fail
           const appointmentCard = await screen.findByText(/happy path customer/i);
-          
+
           // Multiple clicks to trigger multiple error scenarios
           for (let i = 0; i < 3; i++) {
             await act(async () => {
               await user.click(appointmentCard);
             });
-            
+
             // Small delay between operations
             await new Promise(resolve => setTimeout(resolve, 100));
           }
 
           // App should still be functional
           expect(screen.getByText(/scheduled/i)).toBeInTheDocument();
-          
+
           // Console errors may have been logged, but app should not crash
           if (consoleSpy.mock.calls.length > 0) {
             // Errors were handled gracefully

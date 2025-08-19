@@ -160,9 +160,7 @@ class PGInterval:
             return cls.from_str_postgres(interval_str)
         else:
             parts = interval_str.split()
-            if (len(parts) > 1 and parts[1][0].isalpha()) or (
-                len(parts) == 1 and ":" in parts[0]
-            ):
+            if (len(parts) > 1 and parts[1][0].isalpha()) or (len(parts) == 1 and ":" in parts[0]):
                 return cls.from_str_postgres(interval_str)
             else:
                 return cls.from_str_sql_standard(interval_str)
@@ -262,9 +260,7 @@ class PGInterval:
             "millennia",
         }
         if len(overlap) > 0:
-            raise ValueError(
-                "Can't fit the interval fields {overlap} into a datetime.timedelta."
-            )
+            raise ValueError("Can't fit the interval fields {overlap} into a datetime.timedelta.")
 
         return Timedelta(**pairs)
 

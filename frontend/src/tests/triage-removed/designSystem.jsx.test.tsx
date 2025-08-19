@@ -14,18 +14,18 @@ import React from 'react';
  */
 
 // Test components using design system classes
-const TypographyTestComponent: React.FC<{ scale?: string; className?: string }> = ({ 
-  scale = "fs-2", 
-  className = "" 
+const TypographyTestComponent: React.FC<{ scale?: string; className?: string }> = ({
+  scale = "fs-2",
+  className = ""
 }) => (
   <div className={`text-${scale} ${className}`.trim()} data-testid="typography-component">
     Typography Test
   </div>
 );
 
-const SpacingTestComponent: React.FC<{ spacing?: string; className?: string }> = ({ 
-  spacing = "sp-3", 
-  className = "" 
+const SpacingTestComponent: React.FC<{ spacing?: string; className?: string }> = ({
+  spacing = "sp-3",
+  className = ""
 }) => (
   <div className={`p-${spacing} ${className}`.trim()} data-testid="spacing-component">
     Spacing Test
@@ -43,7 +43,7 @@ describe('Design System JSX Environment Tests', () => {
   describe('Typography Scale Rendering', () => {
     it('should render typography component with design system class', () => {
       render(<TypographyTestComponent scale="fs-2" />);
-      
+
       const element = screen.getByTestId('typography-component');
       expect(element).toBeInTheDocument();
       expect(element).toHaveClass('text-fs-2');
@@ -52,21 +52,21 @@ describe('Design System JSX Environment Tests', () => {
 
     it('should render different typography scales', () => {
       const scales = ['fs-1', 'fs-3', 'fs-4', 'fs-5'];
-      
+
       scales.forEach((scale, index) => {
         const { unmount } = render(<TypographyTestComponent scale={scale} />);
         const element = screen.getByTestId('typography-component');
-        
+
         expect(element).toHaveClass(`text-${scale}`);
         expect(element).toHaveTextContent('Typography Test');
-        
+
         unmount(); // Clean up for next iteration
       });
     });
 
     it('should handle custom className prop', () => {
       render(<TypographyTestComponent scale="fs-3" className="font-bold text-red-500" />);
-      
+
       const element = screen.getByTestId('typography-component');
       expect(element).toHaveClass('text-fs-3');
       expect(element).toHaveClass('font-bold');
@@ -77,7 +77,7 @@ describe('Design System JSX Environment Tests', () => {
   describe('Spacing Scale Rendering', () => {
     it('should render spacing component with design system class', () => {
       render(<SpacingTestComponent spacing="sp-3" />);
-      
+
       const element = screen.getByTestId('spacing-component');
       expect(element).toBeInTheDocument();
       expect(element).toHaveClass('p-sp-3');
@@ -86,21 +86,21 @@ describe('Design System JSX Environment Tests', () => {
 
     it('should render different spacing scales', () => {
       const spacings = ['sp-0', 'sp-1', 'sp-2', 'sp-4', 'sp-6'];
-      
+
       spacings.forEach((spacing) => {
         const { unmount } = render(<SpacingTestComponent spacing={spacing} />);
         const element = screen.getByTestId('spacing-component');
-        
+
         expect(element).toHaveClass(`p-${spacing}`);
         expect(element).toHaveTextContent('Spacing Test');
-        
+
         unmount();
       });
     });
 
     it('should handle zero spacing (sp-0)', () => {
       render(<SpacingTestComponent spacing="sp-0" />);
-      
+
       const element = screen.getByTestId('spacing-component');
       expect(element).toHaveClass('p-sp-0');
     });
@@ -109,7 +109,7 @@ describe('Design System JSX Environment Tests', () => {
   describe('Combined Design System Usage', () => {
     it('should render component with multiple design system classes', () => {
       render(<CombinedTestComponent />);
-      
+
       const element = screen.getByTestId('combined-component');
       expect(element).toBeInTheDocument();
       expect(element).toHaveClass('text-fs-3');
@@ -119,11 +119,11 @@ describe('Design System JSX Environment Tests', () => {
 
     it('should render nested elements with design system classes', () => {
       render(<CombinedTestComponent />);
-      
+
       const heading = screen.getByText('Design System Test');
       expect(heading).toHaveClass('text-fs-5');
       expect(heading).toHaveClass('font-semibold');
-      
+
       const paragraph = screen.getByText('This tests multiple design system utilities.');
       expect(paragraph).toHaveClass('text-fs-2');
       expect(paragraph).toHaveClass('leading-normal');
@@ -141,30 +141,30 @@ describe('Design System JSX Environment Tests', () => {
     it('should support CSS class manipulation in jsdom', () => {
       const element = document.createElement('div');
       element.className = 'text-fs-2 p-sp-3';
-      
+
       expect(element.classList.contains('text-fs-2')).toBe(true);
       expect(element.classList.contains('p-sp-3')).toBe(true);
-      
+
       element.classList.add('m-sp-2');
       expect(element.classList.contains('m-sp-2')).toBe(true);
-      
+
       element.classList.remove('text-fs-2');
       expect(element.classList.contains('text-fs-2')).toBe(false);
     });
 
     it('should support React component rendering and unmounting', () => {
       const { unmount } = render(<TypographyTestComponent />);
-      
+
       expect(screen.getByTestId('typography-component')).toBeInTheDocument();
-      
+
       unmount();
-      
+
       expect(screen.queryByTestId('typography-component')).not.toBeInTheDocument();
     });
 
     it('should support element attribute access', () => {
       render(<TypographyTestComponent scale="fs-4" />);
-      
+
       const element = screen.getByTestId('typography-component');
       expect(element.getAttribute('data-testid')).toBe('typography-component');
       expect(element.tagName.toLowerCase()).toBe('div');
@@ -172,7 +172,7 @@ describe('Design System JSX Environment Tests', () => {
 
     it('should support style property access', () => {
       render(<div data-testid="style-test" style={{ color: 'red', fontSize: 'var(--fs-2, 1rem)' }} />);
-      
+
       const element = screen.getByTestId('style-test');
       expect(element.style.color).toBe('red');
       expect(element.style.fontSize).toBe('var(--fs-2, 1rem)');
@@ -185,7 +185,7 @@ describe('Design System JSX Environment Tests', () => {
       expect(() => {
         render(<TypographyTestComponent />);
       }).not.toThrow();
-      
+
       const element = screen.getByTestId('typography-component');
       expect(element).toHaveClass('text-fs-2'); // default scale
     });
@@ -194,7 +194,7 @@ describe('Design System JSX Environment Tests', () => {
       expect(() => {
         render(<TypographyTestComponent scale="fs-1" className="" />);
       }).not.toThrow();
-      
+
       const element = screen.getByTestId('typography-component');
       expect(element).toHaveClass('text-fs-1');
     });
@@ -203,7 +203,7 @@ describe('Design System JSX Environment Tests', () => {
       expect(() => {
         render(<TypographyTestComponent scale={undefined} />);
       }).not.toThrow();
-      
+
       const element = screen.getByTestId('typography-component');
       expect(element).toHaveClass('text-undefined'); // This will render as-is, which is fine
     });

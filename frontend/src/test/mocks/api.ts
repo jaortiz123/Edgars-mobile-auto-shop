@@ -148,16 +148,16 @@ export async function getDrawer(id: string): Promise<DrawerPayload> {
       check_out_at: null,
       tech_id: null
     },
-    customer: { 
+    customer: {
       id: 'cust-123',
       name: `Test Customer ${id}`,
       email: 'test@example.com',
       phone: '555-0123'
     },
-    vehicle: { 
+    vehicle: {
       id: 'veh-456',
-      year: 2020, 
-      make: 'Toyota', 
+      year: 2020,
+      make: 'Toyota',
       model: 'Camry',
       vin: 'TEST123456789'
     },
@@ -209,7 +209,7 @@ export async function createAppointmentService(
     estimated_price: service.estimated_price || 100,
     category: service.category || 'general'
   };
-  
+
   return {
     service: mockService,
     appointment_total: 250.00
@@ -230,7 +230,7 @@ export async function updateAppointmentService(
     estimated_price: service.estimated_price || 120,
     category: service.category || 'general'
   };
-  
+
   return {
     service: mockService,
     appointment_total: 320.00
@@ -354,8 +354,8 @@ export async function markArrived(id: string): Promise<void> {
   });
 }
 
-export function isOnline(): boolean { 
-  return true; 
+export function isOnline(): boolean {
+  return true;
 }
 
 export function handleApiError(err: unknown, defaultMessage?: string): string {
@@ -371,8 +371,8 @@ export function handleApiError(err: unknown, defaultMessage?: string): string {
 
 // Export client and useApi to satisfy advanced imports
 export const client = {};
-export function useApi() { 
-  return client; 
+export function useApi() {
+  return client;
 }
 
 // Export envelope creator for advanced use cases

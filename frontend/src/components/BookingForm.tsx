@@ -51,10 +51,10 @@ const BookingForm: React.FC = () => {
   return (
     <form onSubmit={handleSubmit} className="max-w-md mx-auto p-4 bg-white rounded shadow">
       <h2 className="text-xl font-bold mb-4">Book an Appointment</h2>
-      
+
       {/* The 'name' attribute of each input now directly corresponds to a key
           in the AppointmentPayload interface, enabling the unified handleInputChange. */}
-      
+
       <div className="mb-3">
         <label className="block mb-1 font-medium" htmlFor="customer_id">Customer ID</label>
         <input
@@ -91,7 +91,7 @@ const BookingForm: React.FC = () => {
           required
         />
       </div>
-      
+
       <button
         type="submit"
         className="w-full bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"

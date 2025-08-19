@@ -1,10 +1,10 @@
 /**
  * Enterprise-Grade Notification Service for Sprint 3C Appointment Reminders
  * Enhanced with comprehensive robustness framework
- * 
+ *
  * Features:
  * - Retry mechanisms with exponential backoff
- * - Rate limiting and throttling  
+ * - Rate limiting and throttling
  * - Persistent storage with localStorage fallback
  * - Accessibility announcements for screen readers
  * - Performance monitoring and analytics
@@ -165,26 +165,26 @@ export function initializeNotificationService(userConfig?: Partial<NotificationS
   try {
     // Merge user config with defaults
     config = { ...DEFAULT_CONFIG, ...userConfig };
-    
+
     // Load persisted notifications
     if (config.persistToStorage) {
       loadPersistedNotifications();
     }
-    
+
     // Setup cleanup interval for expired notifications
     setupCleanupInterval();
-    
+
     // Setup retry processor
     setupRetryProcessor();
-    
+
     // Request browser notification permission
     requestNotificationPermission();
-    
+
     // Setup accessibility features
     if (config.enableAccessibility) {
       setupAccessibilityFeatures();
     }
-    
+
     console.log('✅ Enhanced notification service initialized');
   } catch (error) {
     console.error('❌ Failed to initialize notification service:', error);
@@ -205,36 +205,36 @@ export function addNotification(
       console.warn('Rate limit exceeded for notification type:', type);
       return '';
     }
-    
+
     // Create enhanced notification
     const notification = createEnhancedNotification(message, type, options);
-    
+
     // Add to store
     addToStore(notification);
-    
+
     // Handle persistent storage
     if (options.persist !== false && config.persistToStorage) {
       persistNotification(notification);
     }
-    
+
     // Show toast notification
     if (options.showToast !== false) {
       showToast(notification);
     }
-    
+
     // Accessibility announcement
     if (config.enableAccessibility && options.announce !== false) {
       announceToScreenReader(message, notification.priority);
     }
-    
+
     // Analytics tracking
     if (config.enableAnalytics) {
       analytics.sent++;
     }
-    
+
     // Dispatch custom event for real-time updates
     dispatchNotificationEvent('notification-added', notification);
-    
+
     return notification.id;
   } catch (error) {
     console.error('Error adding notification:', error);
@@ -255,20 +255,20 @@ export function getNotifications(options: {
 } = {}): Notification[] {
   try {
     let filtered = [...notifications];
-    
+
     // Apply filters
     if (options.type) {
       filtered = filtered.filter(n => n.type === options.type);
     }
-    
+
     if (options.unreadOnly) {
       filtered = filtered.filter(n => !n.read);
     }
-    
+
     if (options.appointmentId) {
       filtered = filtered.filter(n => n.metadata.appointmentId === options.appointmentId);
     }
-    
+
     // Apply sorting
     if (options.sortBy === 'priority') {
       const priorityOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
@@ -276,12 +276,12 @@ export function getNotifications(options: {
     } else {
       filtered.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     }
-    
+
     // Apply limit
     if (options.limit) {
       filtered = filtered.slice(0, options.limit);
     }
-    
+
     return filtered;
   } catch (error) {
     console.error('Error getting notifications:', error);
@@ -295,20 +295,20 @@ export function getNotifications(options: {
 export function markNotificationAsRead(id: string | string[]): void {
   try {
     const ids = Array.isArray(id) ? id : [id];
-    
+
     ids.forEach(notificationId => {
       const notification = notifications.find(n => n.id === notificationId);
       if (notification && !notification.read) {
         notification.read = true;
         notification.metadata = { ...notification.metadata, readAt: new Date().toISOString() };
-        
+
         // Update persistent storage
         if (config.persistToStorage) {
           persistNotification(notification);
         }
       }
     });
-    
+
     // Dispatch update event
     dispatchNotificationEvent('notifications-updated', { readIds: ids });
   } catch (error) {
@@ -326,12 +326,12 @@ export function clearAllNotifications(type?: NotificationType): void {
     } else {
       notifications = [];
     }
-    
+
     // Update persistent storage
     if (config.persistToStorage) {
       updatePersistedNotifications();
     }
-    
+
     // Dispatch event
     dispatchNotificationEvent('notifications-cleared', { type });
   } catch (error) {
@@ -348,15 +348,15 @@ export function scheduleReminder(appointment: AppointmentData, minutesBefore?: n
     const appointmentTime = new Date(appointment.dateTime || appointment.scheduled_at || '');
     const reminderTime = new Date(appointmentTime.getTime() - (leadTime * 60 * 1000));
     const now = new Date();
-    
+
     // Calculate delay until reminder should fire
     const delay = reminderTime.getTime() - now.getTime();
-    
+
     if (delay <= 0) {
       // Reminder time has already passed
       return null;
     }
-    
+
     // Schedule the reminder
     const timeoutId = window.setTimeout(() => {
       const message = `Appointment with ${appointment.customer || appointment.customer_name} starts in ${leadTime} minutes`;
@@ -367,7 +367,7 @@ export function scheduleReminder(appointment: AppointmentData, minutesBefore?: n
         leadTime
       });
     }, delay);
-    
+
     return timeoutId;
   } catch (error) {
     console.error('Error scheduling reminder:', error);
@@ -382,7 +382,7 @@ export function notifyLate(appointmentId: string, status: string, appointmentDat
   const customerName = appointmentData.customer || appointmentData.customer_name || 'Customer';
   let message: string;
   let type: NotificationType;
-  
+
   if (status === 'running late') {
     message = `Appointment with ${customerName} is running late (10+ minutes past start time)`;
     type = NOTIFICATION_TYPES.RUNNING_LATE;
@@ -392,7 +392,7 @@ export function notifyLate(appointmentId: string, status: string, appointmentDat
   } else {
     return;
   }
-  
+
   addNotification(message, type, {
     persist: true,
     showToast: true,
@@ -414,7 +414,7 @@ export function notifyOverdue(appointmentId: string, appointmentData: Record<str
 export function notifyArrival(appointmentId: string, appointmentData: Record<string, unknown> = {}): void {
   const customerName = appointmentData.customer || appointmentData.customer_name || 'Customer';
   const message = `${customerName} has checked in for their appointment`;
-  
+
   addNotification(message, NOTIFICATION_TYPES.ARRIVED, {
     persist: true,
     showToast: true,
@@ -446,7 +446,7 @@ export function setReminderLeadTime(minutes: number): void {
   if (!REMINDER_CONFIGS.AVAILABLE_LEAD_TIMES.includes(minutes)) {
     throw new Error(`Invalid lead time. Must be one of: ${REMINDER_CONFIGS.AVAILABLE_LEAD_TIMES.join(', ')}`);
   }
-  
+
   try {
     const settings = {
       leadTimeMinutes: minutes,
@@ -480,7 +480,7 @@ function createEnhancedNotification(
   const id = `notif_${++notificationCounter}_${Date.now()}`;
   const priority = options.priority || PRIORITY_MAP[type] || 'normal';
   const ttl = options.ttl || (priority === 'urgent' ? 300000 : 120000); // 5min for urgent, 2min for others
-  
+
   return {
     id,
     message: sanitizeMessage(message),
@@ -504,7 +504,7 @@ function createEnhancedNotification(
  */
 function addToStore(notification: Notification): void {
   notifications.unshift(notification);
-  
+
   // Prevent memory overflow
   if (notifications.length > config.maxNotifications) {
     const removed = notifications.splice(config.maxNotifications);
@@ -522,10 +522,10 @@ function addToStore(notification: Notification): void {
 function showToast(notification: Notification): void {
   const message = notification.message;
   const type = notification.type;
-  
+
   // Try to use existing toast library
   const windowWithToast = window as Window & { toast?: ToastFunction };
-  
+
   if (windowWithToast.toast) {
     try {
       // Handle different toast library APIs
@@ -543,11 +543,11 @@ function showToast(notification: Notification): void {
       console.warn('Toast library error:', error);
     }
   }
-  
+
   // Fallback to browser notifications
   if ('Notification' in window && Notification.permission === 'granted') {
     try {
-      new Notification('Edgar\'s Auto Shop', { 
+      new Notification('Edgar\'s Auto Shop', {
         body: message,
         icon: '/favicon.ico',
         tag: notification.id
@@ -575,24 +575,24 @@ function fallbackToConsole(message: string, type: string): void {
 function checkRateLimit(type: NotificationType): boolean {
   const now = Date.now();
   const key = type;
-  
+
   if (!rateLimitTracker.has(key)) {
     rateLimitTracker.set(key, []);
   }
-  
+
   const timestamps = rateLimitTracker.get(key)!;
-  
+
   // Remove old timestamps outside the window
   const cutoff = now - config.rateLimitWindow;
   while (timestamps.length > 0 && timestamps[0] < cutoff) {
     timestamps.shift();
   }
-  
+
   // Check if under limit
   if (timestamps.length >= config.rateLimitMax) {
     return false;
   }
-  
+
   // Add current timestamp
   timestamps.push(now);
   return true;
@@ -608,9 +608,9 @@ function announceToScreenReader(message: string, priority: NotificationPriority)
     announcement.setAttribute('aria-atomic', 'true');
     announcement.className = 'sr-only';
     announcement.textContent = message;
-    
+
     document.body.appendChild(announcement);
-    
+
     // Remove after announcement
     setTimeout(() => {
       document.body.removeChild(announcement);
@@ -661,7 +661,7 @@ function setupCleanupInterval(): void {
   setInterval(() => {
     const now = Date.now();
     const initialLength = notifications.length;
-    
+
     notifications = notifications.filter(n => {
       if (n.ttl && n.ttl > 0) {
         const age = now - new Date(n.timestamp).getTime();
@@ -669,7 +669,7 @@ function setupCleanupInterval(): void {
       }
       return true;
     });
-    
+
     if (notifications.length !== initialLength && config.persistToStorage) {
       updatePersistedNotifications();
     }
@@ -682,10 +682,10 @@ function setupCleanupInterval(): void {
 function setupRetryProcessor(): void {
   setInterval(() => {
     const now = Date.now();
-    
+
     for (const [, queue] of retryQueues.entries()) {
       const readyItems = queue.filter(item => item.nextRetry <= now);
-      
+
       readyItems.forEach(item => {
         if (item.attempt < config.maxRetries) {
           // Retry the notification
@@ -768,7 +768,7 @@ function loadPersistedNotifications(): void {
     if (stored) {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed)) {
-        notifications = parsed.filter(n => 
+        notifications = parsed.filter(n =>
           n && typeof n === 'object' && n.id && n.message && n.type
         );
       }
@@ -831,18 +831,18 @@ export function cleanupNotificationService(): void {
   try {
     // Clear all notifications
     notifications = [];
-    
+
     // Clear retry queues
     retryQueues.clear();
-    
+
     // Clear rate limit tracking
     rateLimitTracker.clear();
-    
+
     // Reset analytics
     Object.keys(analytics).forEach(key => {
       (analytics as Record<string, number>)[key] = 0;
     });
-    
+
     console.log('✅ Notification service cleaned up');
   } catch (error) {
     console.error('❌ Error cleaning up notification service:', error);

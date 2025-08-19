@@ -22,4 +22,3 @@ This document outlines the production cutover steps for Edgar's Mobile Auto Shop
 ## 5. Post-Launch
 - Record initial TTFB and Lighthouse scores for performance benchmarks.
 - Gather user feedback and track cost metrics in the AWS billing dashboard.
-

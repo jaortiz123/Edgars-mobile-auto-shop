@@ -170,7 +170,7 @@ Sprint 3C Enhanced Architecture
 // Enhanced AppointmentCard with full robustness
 <AppointmentReminderErrorBoundary>
   <OfflineStatusIndicator />
-  <AppointmentCard 
+  <AppointmentCard
     card={card}
     onOpen={handleOpen}
     onMove={handleMove}

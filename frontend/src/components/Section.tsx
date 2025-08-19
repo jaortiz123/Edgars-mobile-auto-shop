@@ -8,9 +8,9 @@ interface SectionProps {
   ariaLabelledBy?: string
 }
 
-export default function Section({ 
-  children, 
-  className = '', 
+export default function Section({
+  children,
+  className = '',
   bgColor = 'white',
   ariaLabel,
   ariaLabelledBy
@@ -22,7 +22,7 @@ export default function Section({
   }
 
   return (
-    <section 
+    <section
       className={`px-sp-3 py-sp-6 ${bgClasses[bgColor]} ${className}`}
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledBy}

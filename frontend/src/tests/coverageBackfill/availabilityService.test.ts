@@ -16,15 +16,15 @@ describe('AvailabilityService Coverage Tests', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    
+
     // Dynamic import each time to ensure fresh module state
     // @ts-expect-error - JavaScript module without TypeScript declarations
     availabilityService = await import('../../services/availabilityService.js');
-    
+
     if (availabilityService?.clearAvailabilityCache) {
       availabilityService.clearAvailabilityCache();
     }
-    
+
     // Reset fetch mock to default success response
     mockFetch.mockResolvedValue({
       ok: true,
@@ -56,7 +56,7 @@ describe('AvailabilityService Coverage Tests', () => {
     it('should handle past dates gracefully', async () => {
       const pastDate = new Date();
       pastDate.setDate(pastDate.getDate() - 1);
-      
+
       const result = await availabilityService.getAvailableSlots('Oil Change', pastDate);
       expect(result).toEqual([]);
     });
@@ -69,13 +69,13 @@ describe('AvailabilityService Coverage Tests', () => {
 
     it('should handle different service durations', async () => {
       const today = new Date();
-      
+
       const oilChangeSlots = await availabilityService.getAvailableSlots('Oil Change', today);
       const brakeServiceSlots = await availabilityService.getAvailableSlots('Brake Service', today);
-      
+
       expect(oilChangeSlots).toBeInstanceOf(Array);
       expect(brakeServiceSlots).toBeInstanceOf(Array);
-      
+
       if (oilChangeSlots.length > 0 && brakeServiceSlots.length > 0) {
         expect(oilChangeSlots[0].duration).toBe(45);
         expect(brakeServiceSlots[0].duration).toBe(120);
@@ -118,7 +118,7 @@ describe('AvailabilityService Coverage Tests', () => {
 
     it('should handle custom days ahead parameter', async () => {
       const result = await availabilityService.getNextAvailableSlot('Oil Change', 3);
-      
+
       if (result) {
         expect(result).toHaveProperty('date');
       }
@@ -199,7 +199,7 @@ describe('AvailabilityService Coverage Tests', () => {
     it('should handle past dates', async () => {
       const pastDate = new Date();
       pastDate.setDate(pastDate.getDate() - 1);
-      
+
       await expect(
         availabilityService.refreshAvailabilityCache('Oil Change', pastDate, pastDate)
       ).resolves.not.toThrow();
@@ -275,7 +275,7 @@ describe('AvailabilityService Coverage Tests', () => {
     it('should handle future dates correctly', async () => {
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + 30);
-      
+
       const result = await availabilityService.getAvailableSlots('Oil Change', futureDate);
       expect(result).toBeInstanceOf(Array);
     });
@@ -285,7 +285,7 @@ describe('AvailabilityService Coverage Tests', () => {
       while (date.getDay() !== 0 && date.getDay() !== 6) {
         date.setDate(date.getDate() + 1);
       }
-      
+
       const result = await availabilityService.getAvailableSlots('Oil Change', date);
       expect(result).toBeInstanceOf(Array);
     });
@@ -293,15 +293,15 @@ describe('AvailabilityService Coverage Tests', () => {
     it('should handle all defined service types', async () => {
       const serviceTypes = [
         'Oil Change',
-        'Brake Service', 
+        'Brake Service',
         'Engine Diagnostics',
         'Tire Rotation',
         'Battery Replacement',
         'Emergency Repair'
       ];
-      
+
       const today = new Date();
-      
+
       for (const service of serviceTypes) {
         const result = await availabilityService.getAvailableSlots(service, today);
         expect(result).toBeInstanceOf(Array);
@@ -311,7 +311,7 @@ describe('AvailabilityService Coverage Tests', () => {
     it('should maintain consistent data types in responses', async () => {
       const today = new Date();
       const result = await availabilityService.getAvailableSlots('Oil Change', today);
-      
+
       if (result.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         result.forEach((slot: any) => {
@@ -326,7 +326,7 @@ describe('AvailabilityService Coverage Tests', () => {
 
     it('should handle stats for very short periods', async () => {
       const result = await availabilityService.getAvailabilityStats('Oil Change', 1);
-      
+
       expect(result.totalSlots).toBeGreaterThanOrEqual(0);
       expect(result.availableSlots).toBeGreaterThanOrEqual(0);
       expect(result.availableSlots).toBeLessThanOrEqual(result.totalSlots);

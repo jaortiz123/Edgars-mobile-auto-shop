@@ -17,7 +17,7 @@ describe('Sprint 7 T3: Vitest Configuration', () => {
   it('supports React component testing', () => {
     const TestComponent = () => <div data-testid="test">Sprint 7 works!</div>
     render(<TestComponent />)
-    
+
     expect(screen.getByTestId('test')).toBeInTheDocument()
   })
 

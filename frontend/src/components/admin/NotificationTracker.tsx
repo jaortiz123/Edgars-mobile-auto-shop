@@ -34,7 +34,7 @@ export const NotificationTracker: React.FC<NotificationTrackerProps> = ({ appoin
       const params = new URLSearchParams();
       if (appointmentId) params.append('appointment_id', appointmentId);
       if (filter !== 'all') params.append('status', filter);
-      
+
       const response = await fetch(`/api/admin/notifications?${params}`);
       const data = await response.json();
       setNotifications(data.notifications || []);
@@ -64,7 +64,7 @@ export const NotificationTracker: React.FC<NotificationTrackerProps> = ({ appoin
       failed: 'destructive',
       pending: 'warning',
     } as const;
-    
+
     return (
       <Badge variant={variants[status as keyof typeof variants] || 'secondary'}>
         {status.toUpperCase()}
@@ -83,7 +83,7 @@ export const NotificationTracker: React.FC<NotificationTrackerProps> = ({ appoin
     }
   };
 
-  const filteredNotifications = notifications.filter(n => 
+  const filteredNotifications = notifications.filter(n =>
     filter === 'all' || n.status === filter
   );
 
@@ -95,9 +95,9 @@ export const NotificationTracker: React.FC<NotificationTrackerProps> = ({ appoin
             <AlertTriangle className="h-5 w-5" />
             Notification Tracking
           </CardTitle>
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={fetchNotifications}
             disabled={loading}
           >
@@ -105,7 +105,7 @@ export const NotificationTracker: React.FC<NotificationTrackerProps> = ({ appoin
             Refresh
           </Button>
         </div>
-        
+
         {/* Filter Buttons */}
         <div className="flex gap-2">
           {(['all', 'sent', 'failed', 'pending'] as const).map((status) => (
@@ -120,7 +120,7 @@ export const NotificationTracker: React.FC<NotificationTrackerProps> = ({ appoin
           ))}
         </div>
       </CardHeader>
-      
+
       <CardContent>
         {loading ? (
           <div className="flex items-center justify-center py-8">
@@ -133,7 +133,7 @@ export const NotificationTracker: React.FC<NotificationTrackerProps> = ({ appoin
         ) : (
           <div className="space-y-4">
             {filteredNotifications.map((notification, index) => (
-              <div 
+              <div
                 key={`${notification.appointment_id}-${notification.notification_type}-${index}`}
                 className="border rounded-lg p-4"
               >
@@ -147,7 +147,7 @@ export const NotificationTracker: React.FC<NotificationTrackerProps> = ({ appoin
                         </span>
                         {getStatusBadge(notification.status)}
                       </div>
-                      
+
                       <div className="text-sm text-gray-600 space-y-1">
                         <p><strong>Appointment:</strong> #{notification.appointment_id}</p>
                         {notification.customer_name && (
@@ -160,7 +160,7 @@ export const NotificationTracker: React.FC<NotificationTrackerProps> = ({ appoin
                           <p><strong>Appointment Time:</strong> {new Date(notification.appointment_time).toLocaleString()}</p>
                         )}
                         <p><strong>Sent:</strong> {new Date(notification.timestamp).toLocaleString()}</p>
-                        
+
                         {notification.error_message && (
                           <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">
                             <strong>Error:</strong> {notification.error_message}
@@ -169,7 +169,7 @@ export const NotificationTracker: React.FC<NotificationTrackerProps> = ({ appoin
                       </div>
                     </div>
                   </div>
-                  
+
                   {notification.status === 'failed' && (
                     <Button
                       variant="outline"

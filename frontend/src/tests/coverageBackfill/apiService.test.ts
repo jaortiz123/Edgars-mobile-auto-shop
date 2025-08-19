@@ -10,17 +10,17 @@ vi.stubEnv('VITE_API_ENDPOINT_URL', 'http://localhost:5001');
 
 describe('ApiService Coverage Tests', () => {
   let apiService: any;
-  
+
   // Mock fetch
   const mockFetch = vi.fn();
 
   beforeEach(async () => {
     // Reset all mocks
     vi.clearAllMocks();
-    
+
     // Setup fetch mock
     global.fetch = mockFetch;
-    
+
     // Dynamic import to get fresh module
     apiService = await import('../../services/apiService');
   });
@@ -85,7 +85,7 @@ describe('ApiService Coverage Tests', () => {
         { id: 'apt1', customer_id: 'cust1', service_id: 'svc1', status: 'scheduled' }
       ];
       const mockResponse = { data: { appointments: mockAppointments } };
-      
+
       mockFetch.mockResolvedValue({
         ok: true,
         json: vi.fn().mockResolvedValue(mockResponse)
@@ -132,7 +132,7 @@ describe('ApiService Coverage Tests', () => {
         { id: 'apt1', customer_id: 'cust1', service_id: 'svc1', status: 'scheduled' }
       ];
       const mockResponse = { appointments: mockAppointments };
-      
+
       mockFetch.mockResolvedValue({
         ok: true,
         json: vi.fn().mockResolvedValue(mockResponse)
@@ -167,7 +167,7 @@ describe('ApiService Coverage Tests', () => {
     it('should update appointment successfully', async () => {
       const updateData = { status: 'completed', notes: 'Work finished' };
       const mockResponse = { message: 'Appointment updated successfully' };
-      
+
       mockFetch.mockResolvedValue({
         ok: true,
         json: vi.fn().mockResolvedValue(mockResponse)

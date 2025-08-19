@@ -25,7 +25,7 @@ Replace `any` types in test utilities with explicit interfaces to improve type s
   - Added types for API mock methods: `updateAppointmentStatus(id: string, status: MockAppointmentStatus)`
   - Enhanced notification mock functions with proper parameter types
 
-- **sprint3c-reminders.test.tsx**: 
+- **sprint3c-reminders.test.tsx**:
   - Replaced `null as any` → `null as unknown as Date`
   - Fixed `mockDiv as any` → `mockDiv as unknown as HTMLDivElement`
   - Removed duplicate `.ts` file that was causing compilation conflicts
@@ -36,7 +36,7 @@ Replace `any` types in test utilities with explicit interfaces to improve type s
 - **noImplicitAny**: Already enabled in `tsconfig.json`
 - **Strict mode compilation**: All test utility files pass TypeScript strict compilation:
   - `src/tests/mockFactory.ts` ✅
-  - `src/tests/testUtils.ts` ✅ 
+  - `src/tests/testUtils.ts` ✅
   - `src/tests/setup-node.ts` ✅
   - `src/types/test.ts` ✅
 
@@ -51,7 +51,7 @@ Replace `any` types in test utilities with explicit interfaces to improve type s
 ### Core Type Definitions
 - `src/types/test.ts` - Comprehensive test type definitions with exports
 
-### Test Utilities  
+### Test Utilities
 - `src/tests/mockFactory.ts` - All mock implementations properly typed
 - `src/tests/testUtils.ts` - Import paths updated
 - `src/tests/setup-node.ts` - Global mock type assertions fixed
@@ -78,7 +78,7 @@ updateAppointmentStatus: vi.fn().mockImplementation(async (id, status) => {
 const notifications: Array<{ id: string; type: string; message: string; timestamp: Date }> = [];
 ```
 
-### After  
+### After
 ```typescript
 // Explicit types throughout
 callback: (entries: MockIntersectionObserverEntry[]) => void
@@ -99,7 +99,7 @@ const notifications: Array<{ id: string; type: string; message: string; timestam
 
 The test utilities now have complete type safety. The remaining TypeScript errors in the project are in application code (not test utilities) and are outside the scope of this task:
 
-- Component prop type mismatches (AppointmentFormModal, DashboardSidebar)  
+- Component prop type mismatches (AppointmentFormModal, DashboardSidebar)
 - Service layer type conflicts (offlineSupport, notificationService)
 - Legacy test files that import non-existent modules
 

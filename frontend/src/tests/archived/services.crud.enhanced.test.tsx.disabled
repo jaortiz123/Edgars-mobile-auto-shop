@@ -67,7 +67,7 @@ describe('Services CRUD in AppointmentDrawer - Enhanced with Mock Factory', () =
   beforeEach(() => {
     // Reset all mocks to clean state
     resetAll();
-    
+
     // Setup default API responses using mock factory
     apiMocks.setupDefaultResponses({
       getDrawer: { success: true, data: mockDrawerData },
@@ -91,10 +91,10 @@ describe('Services CRUD in AppointmentDrawer - Enhanced with Mock Factory', () =
 
   test('displays existing services correctly with mock factory data', async () => {
     renderWithProviders(
-      <AppointmentDrawer 
-        appointmentId="apt-123" 
-        isOpen={true} 
-        onClose={() => {}} 
+      <AppointmentDrawer
+        appointmentId="apt-123"
+        isOpen={true}
+        onClose={() => {}}
       />
     );
 
@@ -116,12 +116,12 @@ describe('Services CRUD in AppointmentDrawer - Enhanced with Mock Factory', () =
   test('adds a new service successfully with network simulation', async () => {
     // Configure realistic network delay
     apiMocks.setNetworkDelay(150);
-    
+
     renderWithProviders(
-      <AppointmentDrawer 
-        appointmentId="apt-123" 
-        isOpen={true} 
-        onClose={() => {}} 
+      <AppointmentDrawer
+        appointmentId="apt-123"
+        isOpen={true}
+        onClose={() => {}}
       />
     );
 
@@ -176,10 +176,10 @@ describe('Services CRUD in AppointmentDrawer - Enhanced with Mock Factory', () =
     });
 
     renderWithProviders(
-      <AppointmentDrawer 
-        appointmentId="apt-123" 
-        isOpen={true} 
-        onClose={() => {}} 
+      <AppointmentDrawer
+        appointmentId="apt-123"
+        isOpen={true}
+        onClose={() => {}}
       />
     );
 
@@ -210,10 +210,10 @@ describe('Services CRUD in AppointmentDrawer - Enhanced with Mock Factory', () =
 
   test('validates required fields with enhanced error messages', async () => {
     renderWithProviders(
-      <AppointmentDrawer 
-        appointmentId="apt-123" 
-        isOpen={true} 
-        onClose={() => {}} 
+      <AppointmentDrawer
+        appointmentId="apt-123"
+        isOpen={true}
+        onClose={() => {}}
       />
     );
 
@@ -240,12 +240,12 @@ describe('Services CRUD in AppointmentDrawer - Enhanced with Mock Factory', () =
   test('edits an existing service with optimistic updates', async () => {
     // Enable optimistic update simulation
     apiMocks.setOptimisticUpdates(true);
-    
+
     renderWithProviders(
-      <AppointmentDrawer 
-        appointmentId="apt-123" 
-        isOpen={true} 
-        onClose={() => {}} 
+      <AppointmentDrawer
+        appointmentId="apt-123"
+        isOpen={true}
+        onClose={() => {}}
       />
     );
 
@@ -276,10 +276,10 @@ describe('Services CRUD in AppointmentDrawer - Enhanced with Mock Factory', () =
 
   test('deletes a service with confirmation flow', async () => {
     renderWithProviders(
-      <AppointmentDrawer 
-        appointmentId="apt-123" 
-        isOpen={true} 
-        onClose={() => {}} 
+      <AppointmentDrawer
+        appointmentId="apt-123"
+        isOpen={true}
+        onClose={() => {}}
       />
     );
 
@@ -314,12 +314,12 @@ describe('Services CRUD in AppointmentDrawer - Enhanced with Mock Factory', () =
   test('handles concurrent operations correctly', async () => {
     // Enable concurrent operation testing
     apiMocks.setNetworkDelay(100);
-    
+
     renderWithProviders(
-      <AppointmentDrawer 
-        appointmentId="apt-123" 
-        isOpen={true} 
-        onClose={() => {}} 
+      <AppointmentDrawer
+        appointmentId="apt-123"
+        isOpen={true}
+        onClose={() => {}}
       />
     );
 
@@ -346,20 +346,20 @@ describe('Services CRUD in AppointmentDrawer - Enhanced with Mock Factory', () =
   test('shows empty state when no services exist', async () => {
     // Setup empty response
     apiMocks.setupDefaultResponses({
-      getDrawer: { 
-        success: true, 
-        data: { 
-          ...mockDrawerData, 
-          services: [] 
-        } 
+      getDrawer: {
+        success: true,
+        data: {
+          ...mockDrawerData,
+          services: []
+        }
       }
     });
 
     renderWithProviders(
-      <AppointmentDrawer 
-        appointmentId="apt-123" 
-        isOpen={true} 
-        onClose={() => {}} 
+      <AppointmentDrawer
+        appointmentId="apt-123"
+        isOpen={true}
+        onClose={() => {}}
       />
     );
 
@@ -375,12 +375,12 @@ describe('Services CRUD in AppointmentDrawer - Enhanced with Mock Factory', () =
   test('performance monitoring integration', async () => {
     // Enable performance monitoring in mock factory
     const performanceTracker = mockFactory.enablePerformanceTracking();
-    
+
     renderWithProviders(
-      <AppointmentDrawer 
-        appointmentId="apt-123" 
-        isOpen={true} 
-        onClose={() => {}} 
+      <AppointmentDrawer
+        appointmentId="apt-123"
+        isOpen={true}
+        onClose={() => {}}
       />
     );
 
@@ -397,10 +397,10 @@ describe('Services CRUD in AppointmentDrawer - Enhanced with Mock Factory', () =
 
   test('accessibility compliance verification', async () => {
     renderWithProviders(
-      <AppointmentDrawer 
-        appointmentId="apt-123" 
-        isOpen={true} 
-        onClose={() => {}} 
+      <AppointmentDrawer
+        appointmentId="apt-123"
+        isOpen={true}
+        onClose={() => {}}
       />
     );
 
@@ -411,7 +411,7 @@ describe('Services CRUD in AppointmentDrawer - Enhanced with Mock Factory', () =
     // Verify ARIA labels and roles
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByLabelText(/appointment details/i)).toBeInTheDocument();
-    
+
     // Test keyboard navigation
     const firstFocusable = screen.getAllByRole('button')[0];
     firstFocusable.focus();

@@ -8,10 +8,10 @@ def _seed_invoices(conn):
     created_appt_ids = []
     # Helper: customer ids 1..3 exist from seed
     specs = [
-        (1, 'COMPLETED', 10000),
-        (1, 'COMPLETED', 5000),
-        (2, 'COMPLETED', 7500),
-        (3, 'COMPLETED', 2500),
+        (1, "COMPLETED", 10000),
+        (1, "COMPLETED", 5000),
+        (2, "COMPLETED", 7500),
+        (3, "COMPLETED", 2500),
     ]
     with conn.cursor() as cur:
         for cust_id, appt_status, cents in specs:
@@ -22,7 +22,7 @@ def _seed_invoices(conn):
             )
             appt_row = cur.fetchone()
             # fetchone may return tuple or mapping depending on cursor factory
-            appt_id = appt_row['id'] if isinstance(appt_row, dict) else appt_row[0]
+            appt_id = appt_row["id"] if isinstance(appt_row, dict) else appt_row[0]
             created_appt_ids.append(appt_id)
             cur.execute(
                 """INSERT INTO appointment_services (appointment_id, name, estimated_price, created_at)
@@ -34,7 +34,7 @@ def _seed_invoices(conn):
     invoice_ids = []
     for aid in created_appt_ids:
         inv = invoice_service.generate_invoice_for_appointment(str(aid))
-        invoice_ids.append(inv['id'])
+        invoice_ids.append(inv["id"])
     return invoice_ids
 
 
@@ -48,10 +48,10 @@ def test_list_invoices_basic(pg_container):
     resp = client.get("/api/admin/invoices?page=1&pageSize=2")
     data = resp.get_json()
     assert resp.status_code == 200, data
-    assert data['data']['page'] == 1
-    assert data['data']['page_size'] == 2
-    assert len(data['data']['items']) == 2
-    assert data['data']['total_items'] >= 4
+    assert data["data"]["page"] == 1
+    assert data["data"]["page_size"] == 2
+    assert len(data["data"]["items"]) == 2
+    assert data["data"]["total_items"] >= 4
 
 
 def test_list_invoices_filter_customer(pg_container):
@@ -65,7 +65,7 @@ def test_list_invoices_filter_customer(pg_container):
     data = resp.get_json()
     assert resp.status_code == 200, data
     # All returned rows have customer_id 1
-    assert all(r['customer_id'] == 1 for r in data['data']['items'])
+    assert all(r["customer_id"] == 1 for r in data["data"]["items"])
 
 
 def test_list_invoices_filter_status(pg_container):
@@ -81,4 +81,4 @@ def test_list_invoices_filter_status(pg_container):
     resp = client.get("/api/admin/invoices?status=VOID")
     data = resp.get_json()
     assert resp.status_code == 200
-    assert all(r['status'] == 'VOID' for r in data['data']['items'])
+    assert all(r["status"] == "VOID" for r in data["data"]["items"])

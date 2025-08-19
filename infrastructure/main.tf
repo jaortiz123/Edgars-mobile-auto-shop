@@ -174,7 +174,7 @@ resource "aws_dynamodb_table" "notification_tracking" {
 # --- SNS TOPIC FOR NOTIFICATIONS ---
 resource "aws_sns_topic" "appointment_notifications" {
   name = "edgar-appointment-notifications"
-  
+
   tags = {
     Project     = "AutoRepairHub"
     Environment = "Dev"
@@ -183,7 +183,7 @@ resource "aws_sns_topic" "appointment_notifications" {
 
 resource "aws_sns_topic_policy" "appointment_notifications_policy" {
   arn = aws_sns_topic.appointment_notifications.arn
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -217,7 +217,7 @@ resource "aws_sns_topic_policy" "appointment_notifications_policy" {
 resource "aws_iam_policy" "lambda_sns_policy" {
   name        = "LambdaSNSPolicy"
   description = "Allows Lambda functions to publish to SNS topics"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -387,7 +387,7 @@ resource "aws_iam_role_policy_attachment" "BookingSNSAttachment" {
 resource "aws_iam_policy" "notification_tracking_policy" {
   name        = "NotificationTrackingPolicy"
   description = "Allows Lambda functions to access notification tracking DynamoDB table"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -518,18 +518,18 @@ resource "aws_vpc_endpoint" "sns_endpoint" {
   vpc_id            = aws_vpc.edgar_vpc.id
   service_name      = "com.amazonaws.${data.aws_region.current.name}.sns"
   vpc_endpoint_type = "Interface"
-  
+
   subnet_ids        = [
     aws_subnet.private_a.id,
     aws_subnet.private_b.id,
   ]
-  
+
   security_group_ids = [
     aws_security_group.lambda_sg.id,
   ]
-  
+
   private_dns_enabled = true
-  
+
   tags = {
     Name = "edgar-sns-endpoint"
     Project = "AutoRepairHub"
@@ -634,11 +634,11 @@ resource "aws_apigatewayv2_route" "AdminAppointmentsUpdate" {
 resource "aws_ecr_repository" "NotifyRepo" {
   name = "edgar-notify-function"
   image_tag_mutability = "MUTABLE"
-  
+
   image_scanning_configuration {
     scan_on_push = true
   }
-  
+
   tags = {
     Project = "AutoRepairHub"
   }
@@ -885,7 +885,7 @@ resource "aws_lambda_function" "auto_confirm" {
   timeout           = 5
   memory_size       = 128
 }
- 
+
 # Grant invocation permission from Cognito for pre-sign-up trigger
 resource "aws_lambda_permission" "AllowCognitoPreSignupInvoke" {
   statement_id  = "AllowCognitoPreSignupInvoke"

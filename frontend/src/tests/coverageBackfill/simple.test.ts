@@ -11,7 +11,7 @@ describe('Simple DateUtils Test', () => {
     const result = utils.validateDate(new Date());
     expect(result).toBeInstanceOf(Date);
   });
-  
+
   it('should call formatDate function', async () => {
     const utils = await import('../../utils/dateUtils.js');
     const result = utils.formatDate(new Date());

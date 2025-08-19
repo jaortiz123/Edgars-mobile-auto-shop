@@ -1,6 +1,6 @@
 /**
  * localStorage Persistence Fix Test
- * 
+ *
  * This test verifies that our form state persistence solution
  * correctly handles the form disappearing bug in the appointment drawer.
  */
@@ -17,7 +17,7 @@ describe('localStorage Persistence Solution', () => {
   it('should save form state to localStorage with proper structure', () => {
     const appointmentId = 'test-appointment-123';
     const storageKey = `appointment-form-${appointmentId}`;
-    
+
     const formState = {
       name: 'Oil Change',
       notes: 'Full synthetic oil change',
@@ -135,7 +135,7 @@ describe('localStorage Persistence Solution', () => {
 
   it('should handle localStorage errors gracefully', () => {
     const appointmentId = 'test-appointment-error';
-    
+
     // Mock localStorage to throw errors
     const originalSetItem = localStorage.setItem;
     const originalGetItem = localStorage.getItem;
@@ -200,7 +200,7 @@ describe('localStorage Persistence Solution', () => {
   it('should demonstrate the architectural solution for form persistence', () => {
     // This test documents our architectural solution
     const appointmentId = 'demo-appointment';
-    
+
     // BEFORE: Form state would be lost during re-renders
     // The issue was that the Services component would re-render when parent state changed,
     // causing the form to disappear and user input to be lost.
@@ -217,7 +217,7 @@ describe('localStorage Persistence Solution', () => {
     // 1. User starts typing in the form
     const saveFormState = (state: any) => {
       localStorage.setItem(
-        `appointment-form-${appointmentId}`, 
+        `appointment-form-${appointmentId}`,
         JSON.stringify({ formState: state, isAdding: true, timestamp: Date.now() })
       );
     };

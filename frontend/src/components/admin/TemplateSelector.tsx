@@ -3,10 +3,10 @@ import { Check, Zap, Clock, DollarSign, Wrench } from 'lucide-react';
 
 /**
  * TemplateSelector Component
- * 
+ *
  * Provides a user-friendly interface for selecting appointment templates
  * with comprehensive robustness features.
- * 
+ *
  * Features:
  * - Memory Management: Optimized re-renders, cleanup on unmount
  * - Error Handling: Graceful fallbacks, error boundaries
@@ -60,7 +60,7 @@ const getCategoryColor = (category?: string): string => {
     'Electrical': 'bg-yellow-100 text-yellow-800 border-yellow-200',
     'General': 'bg-gray-100 text-gray-800 border-gray-200'
   };
-  
+
   return category ? (categoryMap[category] || categoryMap['General']) : categoryMap['General'];
 };
 
@@ -123,7 +123,7 @@ export default function TemplateSelector({
   // Memoized filtered templates for performance
   const filteredTemplates = useMemo(() => {
     if (!searchTerm.trim()) return processedTemplates;
-    
+
     const search = searchTerm.toLowerCase().trim();
     return processedTemplates.filter(template =>
       template.name.toLowerCase().includes(search) ||
@@ -143,7 +143,7 @@ export default function TemplateSelector({
   // Memoized select handler for performance
   const handleTemplateSelect = useCallback((template: Template) => {
     if (disabled) return;
-    
+
     try {
       // Validate template before selection
       if (!template || !template.id) {
@@ -151,9 +151,9 @@ export default function TemplateSelector({
         setError('Invalid template selected');
         return;
       }
-      
+
       setError(null);
-      
+
       // Support both template object and template ID for backward compatibility
       if (typeof onSelect === 'function') {
         // Try to call with template object first, fallback to template ID
@@ -199,7 +199,7 @@ export default function TemplateSelector({
       <div className={`space-y-3 ${className}`} role="region" aria-label="Appointment Templates">
         {/* Error Display */}
         {error && (
-          <div 
+          <div
             className="bg-red-50 border border-red-200 rounded-md p-2 text-xs text-red-700"
             role="alert"
             aria-live="assertive"
@@ -217,7 +217,7 @@ export default function TemplateSelector({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               disabled={disabled}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm 
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm
                          focus:ring-2 focus:ring-blue-500 focus:border-transparent
                          disabled:bg-gray-100 disabled:cursor-not-allowed"
               aria-label="Search appointment templates"
@@ -225,7 +225,7 @@ export default function TemplateSelector({
             {searchTerm && (
               <button
                 onClick={clearSearch}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 
+                className="absolute right-2 top-1/2 transform -translate-y-1/2
                            text-gray-400 hover:text-gray-600"
                 aria-label="Clear search"
                 type="button"
@@ -291,7 +291,7 @@ export default function TemplateSelector({
     <div className={`space-y-4 ${className}`} role="region" aria-label="Appointment Templates">
       {/* Error Display */}
       {error && (
-        <div 
+        <div
           className="bg-red-50 border border-red-200 rounded-md p-3 text-sm text-red-700"
           role="alert"
           aria-live="assertive"
@@ -308,7 +308,7 @@ export default function TemplateSelector({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           disabled={disabled}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm 
+          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm
                      focus:ring-2 focus:ring-blue-500 focus:border-transparent
                      disabled:bg-gray-100 disabled:cursor-not-allowed"
           aria-label="Search appointment templates"
@@ -316,7 +316,7 @@ export default function TemplateSelector({
         {searchTerm && (
           <button
             onClick={clearSearch}
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 
+            className="absolute right-2 top-1/2 transform -translate-y-1/2
                        text-gray-400 hover:text-gray-600"
             aria-label="Clear search"
             type="button"
@@ -374,7 +374,7 @@ function TemplateButton({ template, isSelected, onSelect, disabled = false }: Te
 
   const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
     if (disabled) return;
-    
+
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       onSelect(template);
@@ -423,7 +423,7 @@ function TemplateCard({ template, isSelected, onSelect, disabled = false }: Temp
 
   const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
     if (disabled) return;
-    
+
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       onSelect(template);
@@ -441,8 +441,8 @@ function TemplateCard({ template, isSelected, onSelect, disabled = false }: Temp
       className={`
         p-3 border rounded-md cursor-pointer transition-all duration-200
         hover:shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none
-        ${isSelected 
-          ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500' 
+        ${isSelected
+          ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500'
           : 'border-gray-200 hover:border-gray-300 bg-white'
         }
         ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
@@ -463,9 +463,9 @@ function TemplateCard({ template, isSelected, onSelect, disabled = false }: Temp
               <Check className="h-4 w-4 text-blue-600 ml-2 flex-shrink-0" aria-hidden="true" />
             )}
           </div>
-          
+
           <p className="text-xs text-gray-600 mb-2">{template.description}</p>
-          
+
           <div className="flex items-center gap-3 text-xs text-gray-500">
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(template.category)}`}>
               {template.category}

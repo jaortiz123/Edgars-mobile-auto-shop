@@ -10,32 +10,32 @@ export interface CalendarProps {
   className?: string;
 }
 
-export function Calendar({ 
-  selected, 
-  onSelect, 
+export function Calendar({
+  selected,
+  onSelect,
   minDate = new Date(),
   maxDate,
-  className = '' 
+  className = ''
 }: CalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(selected || new Date());
-  
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
   const lastDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
   const firstDayOfWeek = firstDayOfMonth.getDay();
-  
+
   const daysInMonth = lastDayOfMonth.getDate();
   const daysFromPrevMonth = firstDayOfWeek;
-  
+
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
-  
+
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  
+
   const navigateMonth = (direction: 'prev' | 'next') => {
     const newMonth = new Date(currentMonth);
     if (direction === 'prev') {
@@ -45,28 +45,28 @@ export function Calendar({
     }
     setCurrentMonth(newMonth);
   };
-  
+
   const handleDateClick = (day: number) => {
     const selectedDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
     selectedDate.setHours(0, 0, 0, 0);
-    
+
     // Check if date is in valid range
     if (minDate && selectedDate < minDate) return;
     if (maxDate && selectedDate > maxDate) return;
-    
+
     onSelect?.(selectedDate);
   };
-  
+
   const isDateDisabled = (day: number) => {
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
     date.setHours(0, 0, 0, 0);
-    
+
     if (minDate && date < minDate) return true;
     if (maxDate && date > maxDate) return true;
-    
+
     return false;
   };
-  
+
   const isDateSelected = (day: number) => {
     if (!selected) return false;
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
@@ -74,16 +74,16 @@ export function Calendar({
     selected.setHours(0, 0, 0, 0);
     return date.getTime() === selected.getTime();
   };
-  
+
   const isToday = (day: number) => {
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
     date.setHours(0, 0, 0, 0);
     return date.getTime() === today.getTime();
   };
-  
+
   const renderCalendarDays = () => {
     const days = [];
-    
+
     // Previous month's trailing days
     const prevMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 0);
     for (let i = daysFromPrevMonth - 1; i >= 0; i--) {
@@ -98,13 +98,13 @@ export function Calendar({
         </button>
       );
     }
-    
+
     // Current month's days
     for (let day = 1; day <= daysInMonth; day++) {
       const disabled = isDateDisabled(day);
       const selected = isDateSelected(day);
       const isCurrentDay = isToday(day);
-      
+
       days.push(
         <button
           key={day}
@@ -124,10 +124,10 @@ export function Calendar({
         </button>
       );
     }
-    
+
     return days;
   };
-  
+
   return (
     <div className={`bg-ui-surface border border-ui-border rounded-xl p-6 shadow-sm ${className}`}>
       {/* Calendar Header */}
@@ -141,11 +141,11 @@ export function Calendar({
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        
+
         <h3 className="text-lg font-semibold text-text-primary">
           {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
         </h3>
-        
+
         <Button
           variant="ghost"
           size="sm"
@@ -156,7 +156,7 @@ export function Calendar({
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
-      
+
       {/* Day Names */}
       <div className="grid grid-cols-7 gap-1 mb-2">
         {dayNames.map(day => (
@@ -165,7 +165,7 @@ export function Calendar({
           </div>
         ))}
       </div>
-      
+
       {/* Calendar Grid */}
       <div className="grid grid-cols-7 gap-1">
         {renderCalendarDays()}

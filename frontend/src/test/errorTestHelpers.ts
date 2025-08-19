@@ -1,6 +1,6 @@
 /**
  * P2-T-006: Error Test Helpers - "Third Way" Solution
- * 
+ *
  * Provides robust error scenario testing utilities with guaranteed cleanup
  * and timeout safety to prevent hanging tests.
  */
@@ -24,18 +24,18 @@ interface ErrorTestConfig {
 
 /**
  * Robust error scenario wrapper with guaranteed cleanup and timeout protection.
- * 
+ *
  * This function ensures:
  * - Error scenarios are properly enabled before test execution
  * - All scenarios are cleaned up after test, even if test throws
  * - Tests don't hang due to network timeouts or infinite promises
  * - Proper act() wrapping for React state updates
- * 
+ *
  * @param scenario - The error scenario to enable during test
  * @param testFn - The test function to execute
  * @param config - Additional configuration options
  * @returns Promise that resolves when test completes
- * 
+ *
  * @example
  * ```tsx
  * await withErrorScenario('appointmentPatch500', async () => {
@@ -59,7 +59,7 @@ export async function withErrorScenario<T>(
   // Timer conflict resolution: Store current timer state to restore it later
   const wasUsingFakeTimers = vi.isFakeTimers && vi.isFakeTimers();
   let timeoutId: NodeJS.Timeout | null = null;
-  
+
   // Create timeout promise that rejects after specified time
   const timeoutPromise = new Promise<never>((_, reject) => {
     // Temporarily switch to real timers for the timeout guard
@@ -67,11 +67,11 @@ export async function withErrorScenario<T>(
     if (wasUsingFakeTimers) {
       vi.useRealTimers();
     }
-    
+
     timeoutId = setTimeout(() => {
       reject(new Error(`Test timed out after ${timeout}ms. This may indicate a hanging promise or infinite wait.`));
     }, timeout);
-    
+
     // Restore fake timers for test execution if they were being used
     if (wasUsingFakeTimers) {
       vi.useFakeTimers();
@@ -95,18 +95,18 @@ export async function withErrorScenario<T>(
         vi.useRealTimers();
       }
       clearTimeout(timeoutId);
-      
+
       // Restore original timer state
       if (wasUsingFakeTimers) {
         vi.useFakeTimers();
       }
     }
-    
+
     // Guaranteed cleanup - runs even if test throws or times out
     try {
       // Disable the specific scenario
       disableErrorScenario(scenario);
-      
+
       // Reset all scenarios if requested
       if (resetAfterTest) {
         resetErrorScenarios();
@@ -128,7 +128,7 @@ export async function withErrorScenario<T>(
 /**
  * Wrapper for testing multiple error scenarios in sequence.
  * Ensures each scenario is properly isolated from others.
- * 
+ *
  * @param scenarios - Array of scenario configurations to test
  * @param testFn - Function that receives the current scenario and runs the test
  * @param config - Configuration applied to all scenarios
@@ -151,24 +151,24 @@ export async function withErrorScenarios<T>(
 /**
  * Helper to wrap test operations in act() for React state updates.
  * Combines with error scenario testing for comprehensive coverage.
- * 
+ *
  * @param operation - The operation to wrap in act()
  * @returns Promise that resolves with the operation result
  */
 export async function actAsync<T>(operation: () => Promise<T> | T): Promise<T> {
   let result: T;
-  
+
   await act(async () => {
     result = await Promise.resolve(operation());
   });
-  
+
   return result!;
 }
 
 /**
  * Combined error scenario and act() wrapper for React testing.
  * Provides the most common pattern for error integration tests.
- * 
+ *
  * @param scenario - The error scenario to enable
  * @param operation - The React operation to perform
  * @param config - Additional configuration
@@ -184,7 +184,7 @@ export async function withErrorScenarioAct<T>(
 /**
  * Utility to create a scoped error scenario function.
  * Returns a function that automatically applies the specified scenario.
- * 
+ *
  * @param scenario - The scenario to scope to
  * @param config - Default configuration for this scenario
  * @returns Function that runs tests with the scoped scenario

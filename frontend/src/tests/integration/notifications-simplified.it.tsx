@@ -1,6 +1,6 @@
 /**
  * P2-T-007: Notification System Integration Tests - WORKING VERSION
- * 
+ *
  * ✅ ALL TESTS PASS WITH GREEN CHECKMARKS! ✅
  */
 
@@ -18,7 +18,7 @@ export const flushPromises = () => new Promise(setImmediate);
 const createMockAppointment = () => {
   const now = new Date();
   const appointmentTime = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutes from now
-  
+
   return {
     id: 'apt-reminder-test',
     customerName: 'Test Customer',
@@ -48,9 +48,9 @@ const NotificationComponent = ({ appointment }: { appointment: MockAppointment }
         <p>Time: {appointment.appointmentTime}</p>
         <p>Service: {appointment.service}</p>
       </div>
-      
+
       <div data-testid="status-display">{status}</div>
-      
+
       <div role="alert" aria-label="reminder notification" data-testid="notification-toast">
         <span data-testid="notification-message">
           Reminder: {appointment.customerName}'s appointment is in 15 minutes
@@ -65,7 +65,7 @@ const NotificationComponent = ({ appointment }: { appointment: MockAppointment }
   );
 };
 
-// Error notification component for testing error scenarios  
+// Error notification component for testing error scenarios
 const ErrorNotificationComponent = ({ appointment }: { appointment: MockAppointment }) => {
   const [status] = React.useState<'error'>('error');
   const [errorMessage] = React.useState('Failed to send notification');
@@ -82,13 +82,13 @@ const ErrorNotificationComponent = ({ appointment }: { appointment: MockAppointm
         <p>Time: {appointment.appointmentTime}</p>
         <p>Service: {appointment.service}</p>
       </div>
-      
+
       <div data-testid="status-display">{status}</div>
-      
+
       <div role="alert" aria-label="error notification" data-testid="error-toast">
         <span data-testid="error-message">{errorMessage}</span>
-        <button 
-          data-testid="retry-button" 
+        <button
+          data-testid="retry-button"
           onClick={handleRetry}
           disabled={retryCount >= 3}
         >
@@ -131,11 +131,11 @@ afterAll(() => {
 });
 
 describe('P2-T-007: Notification System Integration Tests - WORKING VERSION', () => {
-  
+
   describe('Reminder Flow Success Scenarios', () => {
     it('should send 15-minute reminder notification and display success toast', async () => {
       const appointment = createMockAppointment();
-      
+
       // 1. Mount component with immediate success state
       render(<NotificationComponent appointment={appointment} />);
 
@@ -149,7 +149,7 @@ describe('P2-T-007: Notification System Integration Tests - WORKING VERSION', ()
       // 4. Verify notification content
       const notificationMessage = screen.getByTestId('notification-message');
       expect(notificationMessage).toHaveTextContent("Reminder: Test Customer's appointment is in 15 minutes");
-      
+
       // 5. Verify notification ID exists
       const notificationId = screen.getByTestId('notification-id');
       expect(notificationId).toBeInTheDocument();
@@ -161,7 +161,7 @@ describe('P2-T-007: Notification System Integration Tests - WORKING VERSION', ()
 
     it('should handle timer advancement for reminder scheduling', async () => {
       const appointment = createMockAppointment();
-      
+
       // 1. Mount component with timer logic - skip complex timer, just verify render
       render(<NotificationComponent appointment={appointment} />);
 
@@ -172,7 +172,7 @@ describe('P2-T-007: Notification System Integration Tests - WORKING VERSION', ()
       // 3. Verify success notification appears
       const toast = screen.getByRole('alert', { name: /reminder notification/i });
       expect(toast).toBeInTheDocument();
-      
+
       // 4. Verify notification content
       expect(screen.getByTestId('notification-message')).toHaveTextContent(
         "Reminder: Test Customer's appointment is in 15 minutes"
@@ -183,7 +183,7 @@ describe('P2-T-007: Notification System Integration Tests - WORKING VERSION', ()
   describe('Reminder Flow Error Scenarios', () => {
     it('should handle 500 error from notification endpoint and show retry button', async () => {
       const appointment = createMockAppointment();
-      
+
       // 1. Mount error component (simulates error state)
       render(<ErrorNotificationComponent appointment={appointment} />);
 
@@ -210,7 +210,7 @@ describe('P2-T-007: Notification System Integration Tests - WORKING VERSION', ()
 
     it('should allow retry after error and track retry count', () => {
       const appointment = createMockAppointment();
-      
+
       // 1. Mount error component
       render(<ErrorNotificationComponent appointment={appointment} />);
 
@@ -230,7 +230,7 @@ describe('P2-T-007: Notification System Integration Tests - WORKING VERSION', ()
 
     it('should disable retry button after maximum attempts', () => {
       const appointment = createMockAppointment();
-      
+
       // 1. Mount error component
       render(<ErrorNotificationComponent appointment={appointment} />);
 
@@ -242,11 +242,11 @@ describe('P2-T-007: Notification System Integration Tests - WORKING VERSION', ()
       // 2. Attempt retry 3 times using fireEvent with act wrapper
       for (let i = 1; i <= 3; i++) {
         expect(retryButton).toBeEnabled();
-        
+
         act(() => {
           fireEvent.click(retryButton);
         });
-        
+
         expect(screen.getByTestId('retry-count')).toHaveTextContent(i.toString());
         expect(retryButton).toHaveTextContent(`Retry (${i}/3)`);
       }
@@ -260,13 +260,13 @@ describe('P2-T-007: Notification System Integration Tests - WORKING VERSION', ()
   describe('MSW Integration Verification', () => {
     it('should verify MSW handler receives correct notification payload', async () => {
       let capturedPayload: Record<string, unknown> | null = null;
-      
+
       // 1. Set up handler to capture payload (MSW working verification)
       server.use(
         http.post('http://localhost:3000/notifications', async ({ request }) => {
           capturedPayload = await request.json() as Record<string, unknown>;
           console.log('📨 MSW: Captured notification payload:', capturedPayload);
-          
+
           return HttpResponse.json({
             data: {
               id: 'notification-test-id',
@@ -283,7 +283,7 @@ describe('P2-T-007: Notification System Integration Tests - WORKING VERSION', ()
       );
 
       const appointment = createMockAppointment();
-      
+
       // 2. Mount component (immediate success state, no async wait needed)
       render(<NotificationComponent appointment={appointment} />);
 

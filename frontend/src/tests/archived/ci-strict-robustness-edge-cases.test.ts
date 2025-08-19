@@ -5,11 +5,11 @@
 import { describe, it, expect } from 'vitest'
 
 describe('CI-STRICT-001 Robustness Edge Cases', () => {
-  
+
   it('should handle circular object references safely', () => {
     const circular: Record<string, unknown> = { name: 'test' }
     circular.self = circular
-    
+
     expect(() => {
       console.error('Circular object:', circular)
     }).toThrow(/console\.error:.*Circular Reference/)
@@ -21,7 +21,7 @@ describe('CI-STRICT-001 Robustness Edge Cases', () => {
         throw new Error('toString failed')
       }
     }
-    
+
     expect(() => {
       console.error('Problematic object:', problematic)
     }).toThrow(/console\.error:/)
@@ -44,7 +44,7 @@ describe('CI-STRICT-001 Robustness Edge Cases', () => {
         }
       }
     }
-    
+
     expect(() => {
       console.error('Complex object:', complex)
     }).toThrow(/console\.error:.*Complex object:/)
@@ -60,7 +60,7 @@ describe('CI-STRICT-001 Robustness Edge Cases', () => {
     const largeObject = {
       data: new Array(1000).fill('x'.repeat(100)).map((val, idx) => ({ id: idx, value: val }))
     }
-    
+
     expect(() => {
       console.error(largeObject)
     }).toThrow(/console\.error:/)
@@ -87,7 +87,7 @@ describe('CI-STRICT-001 Robustness Edge Cases', () => {
       [1, 2, 3],
       () => 'function'
     ]
-    
+
     expect(() => {
       console.error('Mixed types:', ...mixed)
     }).toThrow(/console\.error:.*Mixed types:/)
@@ -95,7 +95,7 @@ describe('CI-STRICT-001 Robustness Edge Cases', () => {
 
   it('should handle special characters and unicode', () => {
     const special = '🚀 Special chars: "quotes" \'apostrophes\' \\backslashes\\ \n\t\r'
-    
+
     expect(() => {
       console.error(special)
     }).toThrow(`console.error: ${special}`)
@@ -106,7 +106,7 @@ describe('CI-STRICT-001 Robustness Edge Cases', () => {
       await new Promise(resolve => setTimeout(resolve, 1))
       console.error('Async error')
     }
-    
+
     await expect(asyncTest()).rejects.toThrow('console.error: Async error')
   })
 })

@@ -748,9 +748,7 @@ def identifier(sql):
     for c in sql[1:]:
         if not (c.isalpha() or c.isdecimal() or c in "_$"):
             if c == "\u0000":
-                raise InterfaceError(
-                    "identifier cannot contain the code zero character"
-                )
+                raise InterfaceError("identifier cannot contain the code zero character")
             quote = True
             break
 

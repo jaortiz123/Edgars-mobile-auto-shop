@@ -1,10 +1,10 @@
 /**
  * P2-T-007: Notification System Integration Tests - Complete Implementation
- * 
+ *
  * This file provides the complete implementation that includes both:
  * 1. Reminder notifications (15-minute warning)
- * 2. "Running late" notifications 
- * 
+ * 2. "Running late" notifications
+ *
  * Applies the simplified pattern that works from debug-notification.it.tsx
  */
 
@@ -24,7 +24,7 @@ export const TestAppWrapper = ({ children }: { children: React.ReactNode }) => {
 const createMockAppointment = (minutesFromNow: number = 15) => {
   const now = new Date();
   const appointmentTime = new Date(now.getTime() + minutesFromNow * 60 * 1000);
-  
+
   return {
     id: 'apt-reminder-test',
     customerName: 'Test Customer',
@@ -53,7 +53,7 @@ const ReminderNotificationComponent = ({ appointment }: { appointment: MockAppoi
     try {
       setError(null);
       setLoading(true);
-      
+
       const response = await fetch('/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -102,14 +102,14 @@ const ReminderNotificationComponent = ({ appointment }: { appointment: MockAppoi
         <h3>Appointment: {appointment.customerName}</h3>
         <p>Service: {appointment.service}</p>
       </div>
-      
+
       {loading && <div data-testid="loading">Loading...</div>}
-      
+
       {error && (
         <div data-testid="error-toast" className="error-toast">
           <span data-testid="error-message">{error}</span>
-          <button 
-            data-testid="retry-button" 
+          <button
+            data-testid="retry-button"
             onClick={handleRetry}
             disabled={retryCount >= 3}
           >
@@ -117,7 +117,7 @@ const ReminderNotificationComponent = ({ appointment }: { appointment: MockAppoi
           </button>
         </div>
       )}
-      
+
       {!loading && !error && notificationSent && (
         <div data-testid="reminder-toast" className="reminder-toast">
           <span data-testid="reminder-message">
@@ -146,7 +146,7 @@ const RunningLateNotificationComponent = ({ appointment, delayMinutes = 10 }: { 
     try {
       setError(null);
       setLoading(true);
-      
+
       const response = await fetch('/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -197,14 +197,14 @@ const RunningLateNotificationComponent = ({ appointment, delayMinutes = 10 }: { 
         <p>Service: {appointment.service}</p>
         <p>Delay: {delayMinutes} minutes late</p>
       </div>
-      
+
       {loading && <div data-testid="loading">Loading...</div>}
-      
+
       {error && (
         <div data-testid="error-toast" className="error-toast">
           <span data-testid="error-message">{error}</span>
-          <button 
-            data-testid="retry-button" 
+          <button
+            data-testid="retry-button"
             onClick={handleRetry}
             disabled={retryCount >= 3}
           >
@@ -212,7 +212,7 @@ const RunningLateNotificationComponent = ({ appointment, delayMinutes = 10 }: { 
           </button>
         </div>
       )}
-      
+
       {!loading && !error && notificationSent && (
         <div data-testid="running-late-toast" className="running-late-toast">
           <span data-testid="running-late-message">
@@ -260,7 +260,7 @@ describe('P2-T-007: Notification System Integration Tests - Complete', () => {
   describe('Reminder Flow (15-minute warning)', () => {
     it('should send 15-minute reminder notification successfully', async () => {
       const appointment = createMockAppointment(15);
-      
+
       render(
         <TestAppWrapper>
           <ReminderNotificationComponent appointment={appointment} />
@@ -291,7 +291,7 @@ describe('P2-T-007: Notification System Integration Tests - Complete', () => {
 
     it('should handle timer advancement for 15-minute reminder trigger', async () => {
       const mockAppointment = createMockAppointment(15);
-      
+
       render(
         <TestAppWrapper>
           <ReminderNotificationComponent appointment={mockAppointment} />
@@ -315,7 +315,7 @@ describe('P2-T-007: Notification System Integration Tests - Complete', () => {
     it('should handle reminder notification failures with retry', async () => {
       await withErrorScenario('notificationPost500', async () => {
         const appointment = createMockAppointment(15);
-        
+
         render(
           <TestAppWrapper>
             <ReminderNotificationComponent appointment={appointment} />
@@ -349,7 +349,7 @@ describe('P2-T-007: Notification System Integration Tests - Complete', () => {
   describe('Running Late Flow', () => {
     it('should send running late notification successfully', async () => {
       const appointment = createMockAppointment(0); // Appointment is now
-      
+
       render(
         <TestAppWrapper>
           <RunningLateNotificationComponent appointment={appointment} delayMinutes={10} />
@@ -381,7 +381,7 @@ describe('P2-T-007: Notification System Integration Tests - Complete', () => {
 
     it('should handle different delay amounts for running late notifications', async () => {
       const appointment = createMockAppointment(0);
-      
+
       render(
         <TestAppWrapper>
           <RunningLateNotificationComponent appointment={appointment} delayMinutes={25} />
@@ -403,7 +403,7 @@ describe('P2-T-007: Notification System Integration Tests - Complete', () => {
     it('should handle running late notification failures with retry', async () => {
       await withErrorScenario('notificationPost500', async () => {
         const appointment = createMockAppointment(0);
-        
+
         render(
           <TestAppWrapper>
             <RunningLateNotificationComponent appointment={appointment} delayMinutes={15} />
@@ -444,13 +444,13 @@ describe('P2-T-007: Notification System Integration Tests - Complete', () => {
     it('should verify MSW handler receives correct reminder payload', async () => {
       const appointment = createMockAppointment(15);
       let capturedPayload: any = null;
-      
+
       const { http, HttpResponse } = await import('msw');
       server.use(
         http.post('http://localhost:3000/notifications', async ({ request }) => {
           capturedPayload = await request.json();
           console.log('📨 MSW: Captured reminder payload:', capturedPayload);
-          
+
           return HttpResponse.json({
             data: {
               id: `notification-${Date.now()}`,
@@ -465,7 +465,7 @@ describe('P2-T-007: Notification System Integration Tests - Complete', () => {
           });
         })
       );
-      
+
       render(
         <TestAppWrapper>
           <ReminderNotificationComponent appointment={appointment} />
@@ -487,13 +487,13 @@ describe('P2-T-007: Notification System Integration Tests - Complete', () => {
     it('should verify MSW handler receives correct running late payload', async () => {
       const appointment = createMockAppointment(0);
       let capturedPayload: any = null;
-      
+
       const { http, HttpResponse } = await import('msw');
       server.use(
         http.post('http://localhost:3000/notifications', async ({ request }) => {
           capturedPayload = await request.json();
           console.log('📨 MSW: Captured running late payload:', capturedPayload);
-          
+
           return HttpResponse.json({
             data: {
               id: `notification-${Date.now()}`,
@@ -508,7 +508,7 @@ describe('P2-T-007: Notification System Integration Tests - Complete', () => {
           });
         })
       );
-      
+
       render(
         <TestAppWrapper>
           <RunningLateNotificationComponent appointment={appointment} delayMinutes={20} />

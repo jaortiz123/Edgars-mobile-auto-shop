@@ -56,7 +56,7 @@ wait_for_service() {
     local service=$2
     local max_attempts=30
     local attempt=1
-    
+
     echo -e "${YELLOW}Waiting for $service to be ready...${NC}"
     while [ $attempt -le $max_attempts ]; do
         if [ "$service" = "PostgreSQL" ]; then

@@ -26,7 +26,7 @@ describe('DashboardStats v2 Enhancements', () => {
   it('renders loading skeletons when stats are null', () => {
   // No cards -> stats null path
     render(<DashboardStats />);
-    
+
     // Should show 10 skeleton placeholders for the new tile count
     const skeletons = screen.getAllByTestId('skeleton');
     expect(skeletons).toHaveLength(10);

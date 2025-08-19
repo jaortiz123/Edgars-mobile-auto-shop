@@ -7,5 +7,3 @@
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
-
-

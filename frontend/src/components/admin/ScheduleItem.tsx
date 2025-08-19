@@ -42,11 +42,11 @@ const parseAppointmentTime = (scheduledAt?: string, requestedTime?: string): Dat
 
 export default function ScheduleItem({ appointment, isToday, onClick }: ScheduleItemProps) {
   // Memoize appointment time to prevent recreation on every render
-  const appointmentTime = useMemo(() => 
+  const appointmentTime = useMemo(() =>
     parseAppointmentTime(appointment.scheduled_at, appointment.requested_time),
     [appointment.scheduled_at, appointment.requested_time]
   );
-  
+
   const [minutesUntil, setMinutesUntil] = useState(() => getMinutesUntil(appointmentTime));
 
   // Memoized update function to prevent recreation
@@ -58,7 +58,7 @@ export default function ScheduleItem({ appointment, isToday, onClick }: Schedule
   useEffect(() => {
     // Initial update
     updateMinutesUntil();
-    
+
     const interval = setInterval(updateMinutesUntil, 60000); // Update every minute
 
     return () => clearInterval(interval);
@@ -73,7 +73,7 @@ export default function ScheduleItem({ appointment, isToday, onClick }: Schedule
       return false;
     }
   }, [appointmentTime]);
-  
+
   const isLate = useMemo(() => {
     try {
       return isRunningLate(appointmentTime, 5); // >5 min past
@@ -82,7 +82,7 @@ export default function ScheduleItem({ appointment, isToday, onClick }: Schedule
       return false;
     }
   }, [appointmentTime]);
-  
+
   const isOverdueStatus = useMemo(() => {
     try {
       return isOverdue(appointmentTime, 30); // >30 min past
@@ -167,7 +167,7 @@ export default function ScheduleItem({ appointment, isToday, onClick }: Schedule
       }
       const today = new Date();
       const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-      
+
       if (date.toDateString() === today.toDateString()) {
         return 'Today';
       } else if (date.toDateString() === tomorrow.toDateString()) {
@@ -220,7 +220,7 @@ export default function ScheduleItem({ appointment, isToday, onClick }: Schedule
             </div>
           )}
         </div>
-        
+
         <div className="flex items-center gap-2">
           {/* T3: Time-based urgency badge */}
           {(isSoon || isLate || isOverdueStatus) && (
@@ -229,7 +229,7 @@ export default function ScheduleItem({ appointment, isToday, onClick }: Schedule
               {urgencyInfo.label}
             </span>
           )}
-          
+
           {/* T2: Today highlight indicator */}
           {isToday && !isSoon && !isLate && !isOverdueStatus && (
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
@@ -257,17 +257,17 @@ export default function ScheduleItem({ appointment, isToday, onClick }: Schedule
             </span>
           )}
         </div>
-        
+
         <div className="text-sm text-gray-600">
           {appointment.service || 'Unknown Service'}
         </div>
-        
+
         {appointment.location_address && (
           <div className="text-sm text-gray-500">
             📍 {appointment.location_address}
           </div>
         )}
-        
+
         {appointment.price && (
           <div className="text-sm font-medium text-gray-900">
             ${typeof appointment.price === 'number' ? appointment.price.toFixed(2) : appointment.price}

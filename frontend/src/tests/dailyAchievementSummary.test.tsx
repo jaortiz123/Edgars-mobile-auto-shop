@@ -1,6 +1,6 @@
 /**
  * Sprint 4A-T-002: Daily Achievement Summary Tests
- * 
+ *
  * Unit and integration tests for summary data and display logic
  */
 
@@ -76,7 +76,7 @@ describe('DailyAchievementSummary', () => {
 
     test('calls onClose when close button clicked', async () => {
       const mockOnClose = vi.fn();
-      
+
       render(
         <DailyAchievementSummary
           isOpen={true}
@@ -90,11 +90,11 @@ describe('DailyAchievementSummary', () => {
 
       const user = userEvent.setup();
       await user.click(screen.getByLabelText('Close summary'));
-      
+
       await waitFor(() => {
         expect(markSummaryAsSeen).toHaveBeenCalled();
       });
-      
+
       await waitFor(() => {
         expect(mockOnClose).toHaveBeenCalled();
       });
@@ -102,7 +102,7 @@ describe('DailyAchievementSummary', () => {
 
     test('calls onClose when backdrop clicked', async () => {
       const mockOnClose = jest.fn();
-      
+
       render(
         <DailyAchievementSummary
           isOpen={true}
@@ -116,7 +116,7 @@ describe('DailyAchievementSummary', () => {
 
       const user = userEvent.setup();
       await user.click(screen.getByRole('dialog'));
-      
+
       await waitFor(() => {
         expect(mockOnClose).toHaveBeenCalled();
       });
@@ -187,7 +187,7 @@ describe('DailyAchievementSummary', () => {
   describe('DailyAchievementSummaryCard', () => {
     test('renders dashboard card correctly', () => {
       const mockOnViewDetails = jest.fn();
-      
+
       render(
         <DailyAchievementSummaryCard
           jobsCompleted={mockSummaryData.jobsCompleted}
@@ -207,7 +207,7 @@ describe('DailyAchievementSummary', () => {
 
     test('calls onViewDetails when button clicked', async () => {
       const mockOnViewDetails = jest.fn();
-      
+
       render(
         <DailyAchievementSummaryCard
           jobsCompleted={mockSummaryData.jobsCompleted}

@@ -45,7 +45,7 @@ useEffect(() => {
 }, [appointmentTime]); // ❌ appointmentTime recreated every render
 
 // ✅ AFTER: Performance optimized
-const appointmentTime = useMemo(() => 
+const appointmentTime = useMemo(() =>
   parseAppointmentTime(appointment.scheduled_at, appointment.requested_time),
   [appointment.scheduled_at, appointment.requested_time]
 );
@@ -97,7 +97,7 @@ aria-pressed={activeFilter === 'today' ? 'true' : 'false'} // ❌ Invalid expres
 // ✅ AFTER: Proper ARIA compliance
 aria-pressed={activeFilter === 'today' ? 'true' : 'false'}
 aria-describedby="today-filter-desc"
-role="group" 
+role="group"
 aria-label="Schedule filter options"
 ```
 

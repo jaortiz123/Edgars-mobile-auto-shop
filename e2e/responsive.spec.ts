@@ -10,7 +10,7 @@ test.describe('Mobile Responsive Tests', () => {
 
   test('should load homepage without horizontal scrollbars on mobile', async ({ page, browserName }) => {
     // Only run this test on mobile-chrome project (mobile viewport)
-    test.skip(!page.viewportSize() || page.viewportSize()!.width > 500, 
+    test.skip(!page.viewportSize() || page.viewportSize()!.width > 500,
       'This test is only for mobile viewports');
 
     // Wait for homepage to fully load
@@ -19,9 +19,9 @@ test.describe('Mobile Responsive Tests', () => {
     // Check for horizontal scrollbars
     const bodyScrollWidth = await page.evaluate(() => document.body.scrollWidth);
     const bodyClientWidth = await page.evaluate(() => document.body.clientWidth);
-    
+
     expect(bodyScrollWidth).toBeLessThanOrEqual(bodyClientWidth + 1); // Allow 1px tolerance
-    
+
     // Also check viewport doesn't exceed screen width
     const viewportWidth = page.viewportSize()?.width || 375;
     expect(bodyScrollWidth).toBeLessThanOrEqual(viewportWidth + 1);
@@ -29,7 +29,7 @@ test.describe('Mobile Responsive Tests', () => {
 
   test('should have tappable FAB on mobile', async ({ page, browserName }) => {
     // Only run this test on mobile-chrome project (mobile viewport)
-    test.skip(!page.viewportSize() || page.viewportSize()!.width > 500, 
+    test.skip(!page.viewportSize() || page.viewportSize()!.width > 500,
       'This test is only for mobile viewports');
 
     // Look for FAB (Floating Action Button) - common selectors
@@ -57,7 +57,7 @@ test.describe('Mobile Responsive Tests', () => {
       // Verify FAB is visible and tappable
       await expect(fabLocator).toBeVisible();
       await expect(fabLocator).toBeEnabled();
-      
+
       // Check if FAB has proper touch target size (at least 44x44px)
       const fabBox = await fabLocator.boundingBox();
       if (fabBox) {
@@ -67,7 +67,7 @@ test.describe('Mobile Responsive Tests', () => {
 
       // Test that FAB is clickable/tappable
       await fabLocator.click();
-      
+
       // Wait for any modal or navigation that might occur
       await page.waitForTimeout(1000);
     } else {
@@ -78,7 +78,7 @@ test.describe('Mobile Responsive Tests', () => {
 
   test('should collapse board columns into list view on mobile', async ({ page, browserName }) => {
     // Only run this test on mobile-chrome project (mobile viewport)
-    test.skip(!page.viewportSize() || page.viewportSize()!.width > 500, 
+    test.skip(!page.viewportSize() || page.viewportSize()!.width > 500,
       'This test is only for mobile viewports');
 
     // Look for board/kanban columns
@@ -119,7 +119,7 @@ test.describe('Mobile Responsive Tests', () => {
           // In mobile view, columns should be stacked vertically
           // Second column should be below the first (higher y position)
           expect(secondBox.y).toBeGreaterThan(firstBox.y);
-          
+
           // Columns should not be side by side (similar x positions indicate stacking)
           const xDifference = Math.abs(secondBox.x - firstBox.x);
           expect(xDifference).toBeLessThan(50); // Allow some margin for alignment
@@ -129,7 +129,7 @@ test.describe('Mobile Responsive Tests', () => {
       // Check for alternative list-based layouts
       const listItems = page.locator('[data-testid*="list"], [class*="list"], li, .item');
       const itemCount = await listItems.count();
-      
+
       if (itemCount > 0) {
         // Verify items are displayed as a vertical list
         expect(itemCount).toBeGreaterThan(0);
@@ -142,7 +142,7 @@ test.describe('Mobile Responsive Tests', () => {
 
   test('should not have overlapping elements on mobile', async ({ page, browserName }) => {
     // Only run this test on mobile-chrome project (mobile viewport)
-    test.skip(!page.viewportSize() || page.viewportSize()!.width > 500, 
+    test.skip(!page.viewportSize() || page.viewportSize()!.width > 500,
       'This test is only for mobile viewports');
 
     // Wait for page to be fully loaded
@@ -166,9 +166,9 @@ test.describe('Mobile Responsive Tests', () => {
         .filter(el => {
           const style = window.getComputedStyle(el);
           const rect = el.getBoundingClientRect();
-          return style.display !== 'none' && 
-                 style.visibility !== 'hidden' && 
-                 rect.width > 0 && 
+          return style.display !== 'none' &&
+                 style.visibility !== 'hidden' &&
+                 rect.width > 0 &&
                  rect.height > 0 &&
                  rect.top < window.innerHeight &&
                  rect.left < window.innerWidth;
@@ -188,14 +188,14 @@ test.describe('Mobile Responsive Tests', () => {
       if (await element.count() > 0) {
         // On mobile, navigation might be hidden behind a hamburger menu
         const isVisible = await element.isVisible();
-        
+
         if (isVisible) {
           // If visible, ensure element is within viewport bounds
           const box = await element.boundingBox();
           if (box) {
             const viewportWidth = page.viewportSize()?.width || 375;
             const viewportHeight = page.viewportSize()?.height || 812;
-            
+
             expect(box.x).toBeGreaterThanOrEqual(0);
             expect(box.y).toBeGreaterThanOrEqual(0);
             expect(box.x + box.width).toBeLessThanOrEqual(viewportWidth);
@@ -212,11 +212,11 @@ test.describe('Mobile Responsive Tests', () => {
     const mainContent = page.locator('main, [data-testid="main"], [role="main"], .main-content');
     if (await mainContent.count() > 0) {
       await expect(mainContent).toBeVisible();
-      
+
       const contentBox = await mainContent.boundingBox();
       if (contentBox) {
         const viewportWidth = page.viewportSize()?.width || 375;
-        
+
         // Main content should not extend beyond viewport width
         expect(contentBox.x + contentBox.width).toBeLessThanOrEqual(viewportWidth + 5); // Small tolerance
       }
@@ -225,7 +225,7 @@ test.describe('Mobile Responsive Tests', () => {
 
   test('should maintain usable touch targets on mobile', async ({ page, browserName }) => {
     // Only run this test on mobile-chrome project (mobile viewport)
-    test.skip(!page.viewportSize() || page.viewportSize()!.width > 500, 
+    test.skip(!page.viewportSize() || page.viewportSize()!.width > 500,
       'This test is only for mobile viewports');
 
     // Find all interactive elements
@@ -235,35 +235,35 @@ test.describe('Mobile Responsive Tests', () => {
     if (count > 0) {
       // Check first few interactive elements for proper touch target size
       const maxToCheck = Math.min(count, 10); // Check up to 10 elements for performance
-      
+
       for (let i = 0; i < maxToCheck; i++) {
         const element = interactiveElements.nth(i);
-        
+
         if (await element.isVisible()) {
           const box = await element.boundingBox();
-          
+
           if (box) {
             // Touch targets should be at least 44x44px (iOS) or 48x48px (Android)
             // We'll use 44px as the minimum standard
             const minSize = 44;
-            
+
             if (box.width < minSize || box.height < minSize) {
               // Get element info for debugging
               const tagName = await element.evaluate(el => el.tagName);
               const className = await element.evaluate(el => el.className);
               const textContent = await element.evaluate(el => el.textContent?.slice(0, 50));
-              
+
               console.warn(`Small touch target found: ${tagName}.${className} "${textContent}" - ${box.width}x${box.height}px`);
             }
-            
+
             // At least ensure critical buttons meet minimum size
-            const isButton = await element.evaluate(el => 
-              el.tagName === 'BUTTON' || 
+            const isButton = await element.evaluate(el =>
+              el.tagName === 'BUTTON' ||
               el.getAttribute('role') === 'button' ||
               el.classList.contains('btn') ||
               el.classList.contains('button')
             );
-            
+
             if (isButton) {
               expect(box.width).toBeGreaterThanOrEqual(32); // Relaxed minimum for test stability
               expect(box.height).toBeGreaterThanOrEqual(32);

@@ -1,6 +1,6 @@
 /**
  * Minimal Test Setup - For Diagnosing Silent Hang Issue
- * 
+ *
  * This is a stripped-down version of setup.ts to help isolate the source
  * of the silent hang. We've removed complex plugins and global mocks.
  */
@@ -24,7 +24,7 @@ beforeEach(() => {
 afterEach(() => {
   // Clear all mocks to prevent state leakage
   vi.clearAllMocks();
-  
+
   // Clear any remaining timers if fake timers are active
   try {
     const timerCount = vi.getTimerCount();
