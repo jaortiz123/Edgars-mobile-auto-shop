@@ -195,6 +195,10 @@ class _AsyncLogWorker:
 
 _async_log = _AsyncLogWorker(log)
 
+# In-test capture buffer (not thread safe; only used in pytest single-thread client)
+API_REQUEST_LOG_TEST_BUFFER: list[dict] = []  # noqa: N816 (uppercase to signal constant-style)
+LAST_API_REQUEST_LOG: dict | None = None  # for deterministic test inspection
+
 
 @app.before_request
 def before_request_hook():
@@ -227,18 +231,26 @@ def after_request_hook(resp):
                 actor_id = auth_ctx.get("sub", actor_id)
         except Exception:
             pass
-        _async_log.emit(
-            "info",
-            {
-                "type": "api.request",
-                "method": request.method,
-                "path": request.path,
-                "status": resp.status_code,
-                "ms": dur_ms,
-                "request_id": rid,
-                "actor_id": actor_id,
-            },
-        )
+        payload = {
+            "type": "api.request",
+            "method": request.method,
+            "path": request.path,
+            "status": resp.status_code,
+            "ms": dur_ms,
+            "request_id": rid,
+            "actor_id": actor_id,
+        }
+        # For deterministic tests, also capture synchronously
+        try:
+            API_REQUEST_LOG_TEST_BUFFER.append(payload)
+            # trim to reasonable size
+            if len(API_REQUEST_LOG_TEST_BUFFER) > 2000:
+                del API_REQUEST_LOG_TEST_BUFFER[:1000]
+            global LAST_API_REQUEST_LOG
+            LAST_API_REQUEST_LOG = payload
+        except Exception:
+            pass
+        _async_log.emit("info", payload)
     except Exception:  # pragma: no cover
         pass
     return resp
