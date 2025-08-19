@@ -194,6 +194,353 @@ def _fail(status: int, code: str, detail: str, meta: Optional[Dict] = None):
     )
 
 
+# ----------------------------------------------------------------------------
+# Epic E Phase 2: PATCH edit endpoints (customers, vehicles) with ETag + audit
+# ----------------------------------------------------------------------------
+
+
+def _weak_etag(ts: Optional[str]) -> str:
+    import hashlib
+
+    base = (ts or "0").encode()
+    return 'W/"' + hashlib.sha1(base).hexdigest() + '"'
+
+
+def _strong_etag(kind: str, row: Dict[str, Any], editable_fields: list[str]) -> str:
+    import hashlib
+
+    ts = row.get("ts") or row.get("updated_at") or row.get("created_at") or "0"
+    parts = [kind, str(row.get("id")), str(ts)]
+    for f in sorted(editable_fields):
+        parts.append(f"{f}={row.get(f)}")
+    src = "|".join(parts)
+    return 'W/"' + hashlib.sha1(src.encode("utf-8")).hexdigest() + '"'
+
+
+def _get_customer_row(cur, cid: int):
+    cur.execute(
+        "SELECT id, name, email, phone, is_vip, address, to_char(GREATEST(updated_at, created_at),'YYYY-MM-DD"
+        "T"
+        "HH24:MI:SS.US') AS ts FROM customers WHERE id=%s",
+        (cid,),
+    )
+    return cur.fetchone()
+
+
+def _get_vehicle_row(cur, vid: int):
+    cur.execute(
+        "SELECT id, customer_id, make, model, year, vin, license_plate, to_char(GREATEST(updated_at, created_at),'YYYY-MM-DD"
+        "T"
+        "HH24:MI:SS.US') AS ts FROM vehicles WHERE id=%s",
+        (vid,),
+    )
+    return cur.fetchone()
+
+
+def _normalize_customer_patch(p: Dict[str, Any]) -> Dict[str, Any]:
+    out: Dict[str, Any] = {}
+    if "name" in p and p["name"] is not None:
+        out["name"] = str(p["name"]).strip()
+    if "email" in p and p["email"] is not None:
+        out["email"] = str(p["email"]).strip().lower()
+    if "phone" in p and p["phone"] is not None:
+        out["phone"] = str(p["phone"]).strip()
+    if "address" in p and p["address"] is not None:
+        out["address"] = str(p["address"]).strip()
+    return out
+
+
+def _validate_customer_patch(p: Dict[str, Any]) -> Dict[str, str]:
+    errors: Dict[str, str] = {}
+    if "email" in p and p["email"]:
+        import re
+
+        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", p["email"]):
+            errors["email"] = "invalid"
+    if "name" in p and p["name"] and len(p["name"]) > 120:
+        errors["name"] = "too_long"
+    return errors
+
+
+def _normalize_vehicle_patch(p: Dict[str, Any]) -> Dict[str, Any]:
+    out: Dict[str, Any] = {}
+    if "make" in p and p["make"] is not None:
+        out["make"] = str(p["make"]).strip()
+    if "model" in p and p["model"] is not None:
+        out["model"] = str(p["model"]).strip()
+    if "year" in p and p["year"] is not None:
+        try:
+            out["year"] = int(p["year"])
+        except Exception:
+            out["year"] = p["year"]  # let validation flag
+    if "vin" in p and p["vin"] is not None:
+        out["vin"] = str(p["vin"]).strip().upper()
+    if "license_plate" in p and p["license_plate"] is not None:
+        out["license_plate"] = str(p["license_plate"]).strip().upper()
+    return out
+
+
+def _validate_vehicle_patch(p: Dict[str, Any]) -> Dict[str, str]:
+    errors: Dict[str, str] = {}
+    if "year" in p and isinstance(p["year"], int):
+        if p["year"] < 1980 or p["year"] > datetime.utcnow().year + 1:
+            errors["year"] = "out_of_range"
+    if "vin" in p and p["vin"] and len(p["vin"]) not in (0, 17):
+        errors["vin"] = "length"
+    return errors
+
+
+@app.route("/api/admin/customers/<cid>", methods=["PATCH"])
+def patch_customer(cid: str):  # type: ignore
+    user = require_or_maybe("Advisor")  # Owner/Advisor allowed
+    if not user:
+        resp, status = _fail(HTTPStatus.FORBIDDEN, "FORBIDDEN", "Not authorized")
+        resp.headers["Cache-Control"] = "no-store"
+        return resp, status
+
+    try:
+        cid_int = int(cid)
+    except Exception:
+        resp, status = _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Customer not found")
+        resp.headers["Cache-Control"] = "no-store"
+        return resp, status
+
+    inm = request.headers.get("If-Match")
+    if not inm:
+        resp, status = _fail(HTTPStatus.BAD_REQUEST, "BAD_REQUEST", "If-Match required")
+        resp.headers["Cache-Control"] = "no-store"
+        return resp, status
+
+    conn = db_conn()
+    with conn:
+        with conn.cursor() as cur:
+            row = _get_customer_row(cur, cid_int)
+            if not row:
+                resp, status = _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Customer not found")
+                resp.headers["Cache-Control"] = "no-store"
+                return resp, status
+            current = _strong_etag("customer", row, ["name", "email", "phone", "address"])
+            if inm != current:
+                resp, status = _fail(HTTPStatus.PRECONDITION_FAILED, "CONFLICT", "etag_mismatch")
+                resp.headers["Cache-Control"] = "no-store"
+                return resp, status
+            payload = request.get_json(silent=True) or {}
+            fields = _normalize_customer_patch(
+                {k: payload.get(k) for k in ["name", "email", "phone", "address"] if k in payload}
+            )
+            errors = _validate_customer_patch(fields)
+            if errors:
+                resp, status = _fail(
+                    HTTPStatus.BAD_REQUEST,
+                    "VALIDATION_FAILED",
+                    "validation failed",
+                    meta={"details": errors},
+                )
+                resp.headers["Cache-Control"] = "no-store"
+                return resp, status
+            if not fields:
+                resp, status = _ok(
+                    {
+                        "id": row.get("id"),
+                        "name": row.get("name"),
+                        "email": row.get("email"),
+                        "phone": row.get("phone"),
+                        "address": row.get("address"),
+                    }
+                )
+                resp.headers["ETag"] = current
+                resp.headers["Cache-Control"] = "private, max-age=30"
+                return resp, status
+            # Strip out keys whose value is identical (pure no-op fields)
+            effective = {k: v for k, v in fields.items() if row.get(k) != v}
+            if not effective:  # full no-op
+                resp, status = _ok(
+                    {
+                        "id": row.get("id"),
+                        "name": row.get("name"),
+                        "email": row.get("email"),
+                        "phone": row.get("phone"),
+                        "address": row.get("address"),
+                    }
+                )
+                resp.headers["ETag"] = current
+                resp.headers["Cache-Control"] = "private, max-age=30"
+                return resp, status
+            sets = ", ".join(f"{k}=%s" for k in effective.keys()) + ", updated_at=now()"
+            cur.execute(
+                f"UPDATE customers SET {sets} WHERE id=%s", list(effective.values()) + [cid_int]
+            )
+            row2 = _get_customer_row(cur, cid_int)
+            new_etag = _strong_etag("customer", row2, ["name", "email", "phone", "address"])
+            diff: Dict[str, Dict[str, Any]] = {}
+            for k, new_val in effective.items():
+                old_val = row.get(k)
+                if old_val != new_val:
+                    diff[k] = {"from": old_val, "to": new_val}
+            try:
+                if diff:
+                    cur.execute(
+                        "INSERT INTO customer_audits(customer_id, actor_id, fields_changed) VALUES (%s,%s,%s::jsonb)",
+                        (cid_int, user.get("sub"), json.dumps(diff)),
+                    )
+            except Exception:
+                pass
+            resp, status = _ok(
+                {
+                    "id": row2.get("id"),
+                    "name": row2.get("name"),
+                    "email": row2.get("email"),
+                    "phone": row2.get("phone"),
+                    "address": row2.get("address"),
+                }
+            )
+            resp.headers["ETag"] = new_etag
+            resp.headers["Cache-Control"] = "private, max-age=30"
+            return resp, status
+
+
+@app.route("/api/admin/vehicles/<vid>", methods=["GET"])
+def get_vehicle_basic(vid: str):  # type: ignore
+    user = require_or_maybe("Advisor")
+    if not user:
+        resp, status = _fail(HTTPStatus.FORBIDDEN, "FORBIDDEN", "Not authorized")
+        resp.headers["Cache-Control"] = "no-store"
+        return resp, status
+    try:
+        vid_int = int(vid)
+    except Exception:
+        resp, status = _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Vehicle not found")
+        resp.headers["Cache-Control"] = "no-store"
+        return resp, status
+    conn = db_conn()
+    with conn:
+        with conn.cursor() as cur:
+            row = _get_vehicle_row(cur, vid_int)
+            if not row:
+                resp, status = _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Vehicle not found")
+                resp.headers["Cache-Control"] = "no-store"
+                return resp, status
+            etag = _strong_etag("vehicle", row, ["make", "model", "year", "vin", "license_plate"])
+            resp, status = _ok(
+                {
+                    "id": row.get("id"),
+                    "customer_id": row.get("customer_id"),
+                    "make": row.get("make"),
+                    "model": row.get("model"),
+                    "year": row.get("year"),
+                    "vin": row.get("vin"),
+                    "license_plate": row.get("license_plate"),
+                }
+            )
+            resp.headers["ETag"] = etag
+            resp.headers["Cache-Control"] = "private, max-age=30"
+            return resp, status
+
+
+@app.route("/api/admin/vehicles/<vid>", methods=["PATCH"])
+def patch_vehicle(vid: str):  # type: ignore
+    user = require_or_maybe("Advisor")
+    if not user:
+        resp, status = _fail(HTTPStatus.FORBIDDEN, "FORBIDDEN", "Not authorized")
+        resp.headers["Cache-Control"] = "no-store"
+        return resp, status
+
+    try:
+        vid_int = int(vid)
+    except Exception:
+        resp, status = _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Vehicle not found")
+        resp.headers["Cache-Control"] = "no-store"
+        return resp, status
+
+    inm = request.headers.get("If-Match")
+    if not inm:
+        resp, status = _fail(HTTPStatus.BAD_REQUEST, "BAD_REQUEST", "If-Match required")
+        resp.headers["Cache-Control"] = "no-store"
+        return resp, status
+
+    conn = db_conn()
+    with conn:
+        with conn.cursor() as cur:
+            row = _get_vehicle_row(cur, vid_int)
+            if not row:
+                resp, status = _fail(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Vehicle not found")
+                resp.headers["Cache-Control"] = "no-store"
+                return resp, status
+            current = _strong_etag(
+                "vehicle", row, ["make", "model", "year", "vin", "license_plate"]
+            )
+            if inm != current:
+                resp, status = _fail(HTTPStatus.PRECONDITION_FAILED, "CONFLICT", "etag_mismatch")
+                resp.headers["Cache-Control"] = "no-store"
+                return resp, status
+            payload = request.get_json(silent=True) or {}
+            fields = _normalize_vehicle_patch(
+                {
+                    k: payload.get(k)
+                    for k in ["make", "model", "year", "vin", "license_plate"]
+                    if k in payload
+                }
+            )
+            errors = _validate_vehicle_patch(fields)
+            if errors:
+                resp, status = _fail(
+                    HTTPStatus.BAD_REQUEST,
+                    "VALIDATION_FAILED",
+                    "validation failed",
+                    meta={"details": errors},
+                )
+                resp.headers["Cache-Control"] = "no-store"
+                return resp, status
+            if not fields:
+                resp, status = _ok(
+                    {
+                        "id": row.get("id"),
+                        "make": row.get("make"),
+                        "model": row.get("model"),
+                        "year": row.get("year"),
+                        "vin": row.get("vin"),
+                        "license_plate": row.get("license_plate"),
+                    }
+                )
+                resp.headers["ETag"] = current
+                resp.headers["Cache-Control"] = "private, max-age=30"
+                return resp, status
+            sets = ", ".join(f"{k}=%s" for k in fields.keys()) + ", updated_at=now()"
+            cur.execute(
+                f"UPDATE vehicles SET {sets} WHERE id=%s", list(fields.values()) + [vid_int]
+            )
+            row2 = _get_vehicle_row(cur, vid_int)
+            new_etag = _strong_etag(
+                "vehicle", row2, ["make", "model", "year", "vin", "license_plate"]
+            )
+            diff_v: Dict[str, Dict[str, Any]] = {}
+            for k, new_val in fields.items():
+                old_val = row.get(k)
+                if old_val != new_val:
+                    diff_v[k] = {"from": old_val, "to": new_val}
+            try:
+                if diff_v:
+                    cur.execute(
+                        "INSERT INTO vehicle_audits(vehicle_id, actor_id, fields_changed) VALUES (%s,%s,%s::jsonb)",
+                        (vid_int, user.get("sub"), json.dumps(diff_v)),
+                    )
+            except Exception:
+                pass
+            resp, status = _ok(
+                {
+                    "id": row2.get("id"),
+                    "make": row2.get("make"),
+                    "model": row2.get("model"),
+                    "year": row2.get("year"),
+                    "vin": row2.get("vin"),
+                    "license_plate": row2.get("license_plate"),
+                }
+            )
+            resp.headers["ETag"] = new_etag
+            resp.headers["Cache-Control"] = "private, max-age=30"
+            return resp, status
+
+
 # ---------------------------------------------------------------------------
 # Invoice generation endpoint (Phase 1)
 # ---------------------------------------------------------------------------
@@ -328,6 +675,232 @@ def list_invoices():
     except Exception as ex:  # pragma: no cover
         log.exception("invoice_list_failed")
         return _fail(HTTPStatus.INTERNAL_SERVER_ERROR, "INVOICE_ERROR", str(ex))
+
+
+# ---------------------------------------------------------------------------
+# Epic E Final Phase: Invoice receipt / estimate exports (HTML, PDF) + send stub
+# ---------------------------------------------------------------------------
+
+
+def _render_invoice_html(kind: str, data: Dict[str, Any]) -> str:
+    """Very small server-side HTML render for invoice documents.
+
+    kind: 'receipt' | 'estimate'
+    data: output of invoice_service.fetch_invoice_details
+    Keeping intentionally minimal (no template engine dependency yet). Safe escaping is
+    coarse (replace < & >) given controlled internal data sources.
+    """
+    inv = (data.get("invoice") or {}) if isinstance(data, dict) else {}
+    line_items = data.get("lineItems") or []
+
+    def esc(val: Any) -> str:
+        s = str(val)
+        return s.replace("<", "&lt;").replace(">", "&gt;")
+
+    title = "Invoice Receipt" if kind == "receipt" else "Invoice Estimate"
+    rows = []
+    for li in line_items:
+        rows.append(
+            f"<tr><td>{esc(li.get('name'))}</td><td style='text-align:right'>{esc(li.get('quantity'))}</td><td style='text-align:right'>${(li.get('total_cents') or 0)/100:.2f}</td></tr>"
+        )
+    currency_total = f"${(inv.get('total_cents') or 0)/100:.2f}"
+    status_badge = esc(inv.get("status") or "")
+    return (
+        "<!DOCTYPE html><html><head><meta charset='utf-8'/>"
+        "<title>" + title + "</title>"
+        "<style>body{font-family:system-ui,Arial,sans-serif;margin:16px;}table{border-collapse:collapse;width:100%;}th,td{padding:4px 6px;border-bottom:1px solid #ccc;font-size:14px;}h1{margin:0 0 8px;} .badge{display:inline-block;padding:2px 6px;border:1px solid #333;border-radius:4px;font-size:12px;}</style>"
+        "</head><body>"
+        f"<h1>{title}</h1>"
+        f"<div><strong>ID:</strong> {esc(inv.get('id'))} &nbsp; <span class='badge'>{status_badge}</span></div>"
+        f"<div><strong>Total:</strong> {currency_total}</div>"
+        "<h2>Line Items</h2>"
+        "<table><thead><tr><th style='text-align:left'>Name</th><th style='text-align:right'>Qty</th><th style='text-align:right'>Total</th></tr></thead><tbody>"
+        + (
+            "".join(rows)
+            or "<tr><td colspan='3' style='text-align:center;color:#666'>No items</td></tr>"
+        )
+        + "</tbody></table>"
+        "</body></html>"
+    )
+
+
+def _simple_pdf(text_lines: list[str]) -> bytes:
+    """Generate a very small one-page PDF (ASCII) without external deps.
+
+    Not production-grade but adequate for tests / preview. Multi-line text is
+    laid out with a fixed leading. Coordinates are simplistic.
+    """
+    # Basic PDF objects
+    # 1: catalog, 2: pages, 3: page, 4: font, 5: content
+    # Build content stream
+    y_start = 780
+    leading = 14
+    content_parts = [
+        "BT /F1 12 Tf 50 {} Td ({} ) Tj".format(
+            y_start, text_lines[0].replace("(", "[").replace(")", "]")
+        )
+    ]
+    for idx, line in enumerate(text_lines[1:], start=1):
+        y_offset = y_start - leading * idx
+        safe_line = line.replace("(", "[").replace(")", "]")
+        content_parts.append(f"BT /F1 12 Tf 50 {y_offset} Td ({safe_line} ) Tj")
+    content_stream = "\n".join(content_parts) + "\n"
+    content_bytes = content_stream.encode("utf-8")
+    objects = []
+
+    def add(obj: str):
+        objects.append(obj.encode("utf-8"))
+
+    add("1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n")
+    add("2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj\n")
+    add(
+        "3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources<< /Font<< /F1 4 0 R >> >> /Contents 5 0 R >>endobj\n"
+    )
+    add("4 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj\n")
+    add(f"5 0 obj<< /Length {len(content_bytes)} >>stream\n")
+    objects.append(content_bytes)
+    add("endstream endobj\n")
+    # xref
+    pdf_header = b"%PDF-1.4\n"
+    offsets = [len(pdf_header)]
+    for obj in objects[:-1]:  # compute offsets except last appended after building
+        offsets.append(offsets[-1] + len(obj))
+    body = b"".join(objects)
+    # adjust offsets: we computed sequential but we didn't include previous objects properly; recalc
+    offsets = []
+    cursor = len(pdf_header)
+    body_chunks = []
+    for obj in objects:
+        offsets.append(cursor)
+        body_chunks.append(obj)
+        cursor += len(obj)
+    body = b"".join(body_chunks)
+    xref_start = cursor
+    xref_entries = [b"0000000000 65535 f \n"]
+    for off in offsets:
+        xref_entries.append(f"{off:010d} 00000 n \n".encode("ascii"))
+    # Build xref table (need string formatting, can't format bytes directly)
+    xref_table = f"xref\n0 {len(xref_entries)}\n".encode("ascii") + b"".join(xref_entries)
+    trailer = f"trailer<< /Size {len(xref_entries)} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF".encode(
+        "ascii"
+    )
+    return pdf_header + body + xref_table + trailer
+
+
+@app.route("/api/admin/invoices/<invoice_id>/receipt.html", methods=["GET"])
+def invoice_receipt_html(invoice_id: str):
+    auth = require_or_maybe("Advisor")
+    if not auth:
+        return _fail(HTTPStatus.FORBIDDEN, "FORBIDDEN", "Not authorized")
+    try:
+        data = invoice_service.fetch_invoice_details(invoice_id)
+    except invoice_service.InvoiceError as e:
+        if e.code == "NOT_FOUND":
+            return _fail(HTTPStatus.NOT_FOUND, e.code, e.message)
+        return _fail(HTTPStatus.BAD_REQUEST, e.code, e.message)
+    html = _render_invoice_html("receipt", data)
+    resp = make_response(html, HTTPStatus.OK)
+    resp.headers["Content-Type"] = "text/html; charset=utf-8"
+    resp.headers["Cache-Control"] = "private, max-age=60"
+    return resp
+
+
+@app.route("/api/admin/invoices/<invoice_id>/estimate.html", methods=["GET"])
+def invoice_estimate_html(invoice_id: str):
+    auth = require_or_maybe("Advisor")
+    if not auth:
+        return _fail(HTTPStatus.FORBIDDEN, "FORBIDDEN", "Not authorized")
+    try:
+        data = invoice_service.fetch_invoice_details(invoice_id)
+    except invoice_service.InvoiceError as e:
+        if e.code == "NOT_FOUND":
+            return _fail(HTTPStatus.NOT_FOUND, e.code, e.message)
+        return _fail(HTTPStatus.BAD_REQUEST, e.code, e.message)
+    html = _render_invoice_html("estimate", data)
+    resp = make_response(html, HTTPStatus.OK)
+    resp.headers["Content-Type"] = "text/html; charset=utf-8"
+    resp.headers["Cache-Control"] = "private, max-age=60"
+    return resp
+
+
+@app.route("/api/admin/invoices/<invoice_id>/receipt.pdf", methods=["GET"])
+def invoice_receipt_pdf(invoice_id: str):
+    auth = require_or_maybe("Advisor")
+    if not auth:
+        return _fail(HTTPStatus.FORBIDDEN, "FORBIDDEN", "Not authorized")
+    try:
+        data = invoice_service.fetch_invoice_details(invoice_id)
+    except invoice_service.InvoiceError as e:
+        if e.code == "NOT_FOUND":
+            return _fail(HTTPStatus.NOT_FOUND, e.code, e.message)
+        return _fail(HTTPStatus.BAD_REQUEST, e.code, e.message)
+    inv = data.get("invoice") or {}
+    lines = [
+        f"Receipt Invoice ID: {inv.get('id')}",
+        f"Status: {inv.get('status')}",
+        f"Total: ${(inv.get('total_cents') or 0)/100:.2f}",
+    ]
+    pdf_bytes = _simple_pdf(lines)
+    resp = make_response(pdf_bytes, HTTPStatus.OK)
+    resp.headers["Content-Type"] = "application/pdf"
+    resp.headers["Content-Disposition"] = f"inline; filename=invoice-{inv.get('id')}-receipt.pdf"
+    resp.headers["Cache-Control"] = "private, max-age=60"
+    return resp
+
+
+@app.route("/api/admin/invoices/<invoice_id>/estimate.pdf", methods=["GET"])
+def invoice_estimate_pdf(invoice_id: str):
+    auth = require_or_maybe("Advisor")
+    if not auth:
+        return _fail(HTTPStatus.FORBIDDEN, "FORBIDDEN", "Not authorized")
+    try:
+        data = invoice_service.fetch_invoice_details(invoice_id)
+    except invoice_service.InvoiceError as e:
+        if e.code == "NOT_FOUND":
+            return _fail(HTTPStatus.NOT_FOUND, e.code, e.message)
+        return _fail(HTTPStatus.BAD_REQUEST, e.code, e.message)
+    inv = data.get("invoice") or {}
+    lines = [
+        f"Estimate Invoice ID: {inv.get('id')}",
+        f"Status: {inv.get('status')}",
+        f"Total: ${(inv.get('total_cents') or 0)/100:.2f}",
+    ]
+    pdf_bytes = _simple_pdf(lines)
+    resp = make_response(pdf_bytes, HTTPStatus.OK)
+    resp.headers["Content-Type"] = "application/pdf"
+    resp.headers["Content-Disposition"] = f"inline; filename=invoice-{inv.get('id')}-estimate.pdf"
+    resp.headers["Cache-Control"] = "private, max-age=60"
+    return resp
+
+
+@app.route("/api/admin/invoices/<invoice_id>/send", methods=["POST"])
+def invoice_send_stub(invoice_id: str):
+    """Stub endpoint to 'send' an invoice (receipt or estimate) via email.
+
+    Request JSON optional: { type: 'receipt' | 'estimate', destinationEmail?: str }
+    For now just validates invoice exists and returns 202 with queued stub.
+    """
+    # Role guard (Owner/Advisor) — reuse helper
+    auth = require_or_maybe("Advisor")
+    if not auth:
+        return _fail(HTTPStatus.FORBIDDEN, "FORBIDDEN", "Not authorized")
+    body = request.get_json(silent=True) or {}
+    send_type = (body.get("type") or "receipt").lower()
+    if send_type not in ("receipt", "estimate"):
+        return _fail(HTTPStatus.BAD_REQUEST, "INVALID_TYPE", "Unsupported send type")
+    try:
+        invoice_service.fetch_invoice_details(invoice_id)  # existence check
+    except invoice_service.InvoiceError as e:
+        if e.code == "NOT_FOUND":
+            return _fail(HTTPStatus.NOT_FOUND, e.code, e.message)
+        return _fail(HTTPStatus.BAD_REQUEST, e.code, e.message)
+    # In future: enqueue background job (email/SMS). For now synchronous stub.
+    meta = {
+        "invoice_id": invoice_id,
+        "type": send_type,
+        "queued_at": datetime.utcnow().isoformat() + "Z",
+    }
+    return _ok({"status": "QUEUED", **meta}, HTTPStatus.ACCEPTED)
 
 
 # ---------------------------------------------------------------------------

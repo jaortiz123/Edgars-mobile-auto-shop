@@ -5,6 +5,8 @@ import { fetchCustomerProfile } from '@/lib/customerProfileApi';
 import { money, dtLocal } from '@/utils/format';
 import TimelineRow from '@/components/profile/TimelineRow';
 import { useRoving } from '@/hooks/useRoving';
+import CustomerEditModal from '@/components/edit/CustomerEditModal';
+import type { CustomerProfile } from '@/types/customerProfile';
 
 function useInitialFocus<T extends HTMLElement>() {
   const ref = useRef<T | null>(null);
@@ -123,6 +125,14 @@ export default function CustomerProfilePage() {
       hasInteractedRef.current = true;
     }
     roving.onKeyDown(e);
+    if (e.key === 'Enter' || e.key === ' ') {
+      const list = listRef.current;
+      const activeBtn = list?.querySelector('button[tabindex="0"]') as HTMLButtonElement | null;
+      if (activeBtn) {
+        activeBtn.click();
+        e.preventDefault();
+      }
+    }
   };
 
   // Idle-time prefetch next page (no conditional hook call; effect body guards)
@@ -135,6 +145,26 @@ export default function CustomerProfilePage() {
     const handle: number = w.requestIdleCallback ? w.requestIdleCallback(cb) : window.setTimeout(cb, 300);
     return () => { if (w.cancelIdleCallback) { w.cancelIdleCallback(handle); } else { clearTimeout(handle); } };
   }, [hasNextPage, fetchNextPage]);
+
+  // Modal state & derived profile must be before any early returns (hooks order)
+  const [showEditCustomer, setShowEditCustomer] = useState(false);
+  const profileForModal: CustomerProfile | null = useMemo(() => {
+    const firstPage = (data?.pages && data.pages[0]) as unknown as CustomerProfile | undefined;
+    return firstPage || null;
+  }, [data]);
+  // Attempt to hydrate _etag from a global map (non-critical). Define a narrow interface to avoid any.
+  interface EtMapWin extends Window { __CUSTOMER_PROFILE_ETAG_MAP__?: Map<string, string> }
+  useEffect(() => {
+    if (profileForModal) {
+      const typed = profileForModal as unknown as { _etag?: string };
+      if (typed._etag == null) {
+        try {
+          const potential = (window as EtMapWin).__CUSTOMER_PROFILE_ETAG_MAP__?.get?.(JSON.stringify(['customerProfile', profileForModal.customer.id, null, null, null, false, null]));
+          if (potential) typed._etag = potential;
+        } catch { /* ignore */ }
+      }
+    }
+  }, [profileForModal]);
 
   if (!id) return <div className="p-4">Missing customer id.</div>;
   if (isTestEnv && legacyError) {
@@ -252,10 +282,12 @@ export default function CustomerProfilePage() {
 
       {/* Buttons */}
       <section className="flex gap-2">
-        <button className="px-3 py-2 rounded border" onClick={() => {/* open EditCustomer modal */}}>Edit Customer</button>
+        <button className="px-3 py-2 rounded border" onClick={() => setShowEditCustomer(true)}>Edit Customer</button>
         <button className="px-3 py-2 rounded border" onClick={() => { location.assign(`/admin/appointments/new?customer_id=${id}`); }}>Book Appointment</button>
         {vehicleId && <button className="px-3 py-2 rounded border" onClick={() => {/* already filtered by vehicleId */}}>View Vehicle History</button>}
       </section>
+
+      <CustomerEditModal open={showEditCustomer} onClose={() => setShowEditCustomer(false)} profile={profileForModal} />
     </div>
   );
 }

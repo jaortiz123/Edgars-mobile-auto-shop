@@ -41,6 +41,7 @@ CREATE TABLE vehicles (
     year INTEGER,
     vin TEXT,
     license_plate TEXT,
+    updated_at TIMESTAMP NOT NULL DEFAULT now(),
     created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
@@ -57,8 +58,6 @@ CREATE TABLE service_operations (
     default_price NUMERIC(10,2),
     flags TEXT[] NOT NULL DEFAULT '{}',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    -- Added for packages (Phase 1). Some older tests/schema snapshots may omit this; ensure presence here.
-    is_package BOOLEAN NOT NULL DEFAULT FALSE,
     replaced_by_id TEXT REFERENCES service_operations(id),
     labor_matrix_code TEXT,
     skill_level INT,
@@ -66,35 +65,6 @@ CREATE TABLE service_operations (
     updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_service_operations_category ON service_operations(category);
-
--- Package composition table mirroring baseline migration (legacy service_id naming used in Option B)
-CREATE TABLE package_items (
-    service_id TEXT NOT NULL REFERENCES service_operations(id) ON DELETE CASCADE,
-    child_id   TEXT NOT NULL REFERENCES service_operations(id),
-    qty        NUMERIC(6,2) NOT NULL DEFAULT 1,
-    sort_order INT NOT NULL DEFAULT 0,
-    created_at TIMESTAMP NOT NULL DEFAULT now(),
-    PRIMARY KEY (service_id, child_id),
-    CHECK (qty > 0),
-    CHECK (service_id <> child_id)
-);
-CREATE INDEX idx_package_items_child ON package_items(child_id);
-CREATE INDEX idx_package_items_service_sort ON package_items(service_id, sort_order, child_id);
-
--- Enforce no nested packages in test schema (mirror production forward migration behavior)
-CREATE OR REPLACE FUNCTION prevent_nested_packages() RETURNS trigger AS $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM service_operations so WHERE so.id = NEW.child_id AND so.is_package) THEN
-        RAISE EXCEPTION 'Child service % is a package (nesting not allowed)', NEW.child_id;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_prevent_nested_packages ON package_items;
-CREATE TRIGGER trg_prevent_nested_packages
-    BEFORE INSERT OR UPDATE ON package_items
-    FOR EACH ROW EXECUTE FUNCTION prevent_nested_packages();
 
 -- appointments table
 -- technicians table (new progress tracking)
@@ -170,6 +140,25 @@ CREATE TABLE messages (
     status message_status NOT NULL,
     sent_at TIMESTAMP NOT NULL DEFAULT now()
 );
+
+-- Customer / Vehicle patch audit tables (Epic E Phase 2)
+CREATE TABLE IF NOT EXISTS customer_audits (
+    id BIGSERIAL PRIMARY KEY,
+    customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    actor_id TEXT NOT NULL,
+    fields_changed JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_customer_audits_customer_created ON customer_audits(customer_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS vehicle_audits (
+    id BIGSERIAL PRIMARY KEY,
+    vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+    actor_id TEXT NOT NULL,
+    fields_changed JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_vehicle_audits_vehicle_created ON vehicle_audits(vehicle_id, created_at DESC);
 
 -- Invoicing tables (test subset mirrors production schema logic)
 CREATE TYPE test_invoice_status AS ENUM ('DRAFT','SENT','PARTIALLY_PAID','PAID','VOID');

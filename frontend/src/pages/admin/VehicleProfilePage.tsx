@@ -1,9 +1,10 @@
 import { useParams, useLocation } from 'react-router-dom';
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useState } from 'react';
 import { useVehicleProfileInfinite } from '@/hooks/useVehicleProfile';
 import { dtLocal, money } from '@/utils/format';
 import TimelineRow from '@/components/profile/TimelineRow';
 import { useRoving } from '@/hooks/useRoving';
+import VehicleEditModal, { BasicVehicleForModal } from '@/components/edit/VehicleEditModal';
 
 function useInitialFocus<T extends HTMLElement>() {
   const ref = useRef<T | null>(null);
@@ -43,7 +44,22 @@ export default function VehicleProfilePage() {
   const handleRovingKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { hasInteractedRef.current = true; }
     roving.onKeyDown(e);
+    if (e.key === 'Enter' || e.key === ' ') {
+      const list = listRef.current;
+      const activeBtn = list?.querySelector('button[tabindex="0"]') as HTMLButtonElement | null;
+      if (activeBtn) {
+        activeBtn.click();
+        e.preventDefault();
+      }
+    }
   };
+
+  // Modal state & basic vehicle slice BEFORE early returns
+  const [showEditVehicle, setShowEditVehicle] = useState(false);
+  const vehicleForModal: BasicVehicleForModal | null = useMemo(() => {
+    if (!header) return null;
+    return { id: header.vehicle_id, make: header.make, model: header.model, year: header.year, vin: header.vin, license_plate: header.plate };
+  }, [header]);
 
   if (!id) return <div className="p-4">Missing vehicle id.</div>;
   if (error) return <div className="p-4 text-red-600">{String(error)}</div>;
@@ -120,9 +136,10 @@ export default function VehicleProfilePage() {
 
       {/* Actions */}
       <section className="flex gap-2">
-  <button className="px-3 py-2 rounded border" onClick={() => { window.location.assign(`/admin/appointments/new?vehicle_id=${id}`); }}>Book Appointment</button>
-        <button className="px-3 py-2 rounded border" onClick={() => { /* open edit vehicle */ }}>Edit Vehicle</button>
+        <button className="px-3 py-2 rounded border" onClick={() => { window.location.assign(`/admin/appointments/new?vehicle_id=${id}`); }}>Book Appointment</button>
+        <button className="px-3 py-2 rounded border" onClick={() => setShowEditVehicle(true)}>Edit Vehicle</button>
       </section>
+      <VehicleEditModal open={showEditVehicle} onClose={() => setShowEditVehicle(false)} vehicle={vehicleForModal} />
     </div>
   );
 }

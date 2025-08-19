@@ -62,14 +62,19 @@ describe('VehicleProfile Accessibility', () => {
     renderPage();
   await screen.findByText(/Vehicle Profile/);
   const rows = await screen.findAllByTestId('timeline-row');
-  const firstButton = within(rows[0]).getByRole('button');
+  // Each timeline row now contains the primary row <button> plus a separate invoice actions trigger
+  // with role button when an invoice is present. We specifically want the primary row control which
+  // has a tabindex attribute managed by roving. Filter accordingly.
+  const candidateButtons = within(rows[0]).getAllByRole('button');
+  const firstButton = candidateButtons.find(b => b.hasAttribute('tabindex'))!;
   // Focus the first row to ensure arrow keys are captured
   firstButton.focus();
   expect(firstButton).toHaveFocus();
   // First should be active initially
   expect(firstButton.getAttribute('tabindex')).toBe('0');
   await userEvent.keyboard('{ArrowDown}');
-  const secondButton = within(rows[1]).getByRole('button');
+  const secondCandidates = within(rows[1]).getAllByRole('button');
+  const secondButton = secondCandidates.find(b => b.hasAttribute('tabindex'))!;
   await screen.findByText(/Service History/); // ensure rerender completed
   await new Promise(r => setTimeout(r, 10));
   // Rely on aria-current transferred
