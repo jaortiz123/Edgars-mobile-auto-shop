@@ -31,6 +31,7 @@ import io
 import json
 import logging
 import os
+import queue
 import re
 import sys
 import threading
@@ -96,6 +97,9 @@ app.config.setdefault("PROPAGATE_EXCEPTIONS", False)
 app.config.setdefault("TRAP_HTTP_EXCEPTIONS", False)
 
 REQUEST_ID_HEADER = "X-Request-Id"
+REQUEST_ID_REGEX = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+)
 
 # Setup logging
 log = logging.getLogger("edgar.api")
@@ -156,10 +160,123 @@ _RATE_LOCK = threading.Lock()
 RATE_LIMIT_PER_MINUTE = int(os.getenv("MOVE_RATE_LIMIT_PER_MIN", "60"))
 
 
+class _AsyncLogWorker:
+    def __init__(self, logger: logging.Logger, maxsize: int = 10000):
+        self.logger = logger
+        self.q: queue.Queue[tuple[str, dict]] = queue.Queue(maxsize=maxsize)
+        self.thread = threading.Thread(target=self._run, name="log-worker", daemon=True)
+        self.thread.start()
+
+    def _run(self):  # pragma: no cover - background infra
+        while True:
+            try:
+                level, payload = self.q.get()
+                if level == "__stop__":
+                    break
+                getattr(self.logger, level)(json.dumps(payload, default=str))
+            except Exception:
+                # swallow to avoid cascading failures
+                pass
+
+    def emit(self, level: str, payload: dict):
+        try:
+            self.q.put_nowait((level, payload))
+        except queue.Full:
+            # drop oldest by draining one (circuit breaker style)
+            try:
+                _ = self.q.get_nowait()
+            except Exception:
+                pass
+            try:
+                self.q.put_nowait((level, payload))
+            except Exception:
+                pass
+
+
+_async_log = _AsyncLogWorker(log)
+
+
 @app.before_request
 def before_request_hook():
-    """Ensures a request ID is set for every request."""
-    request.environ["REQUEST_ID"] = str(uuid.uuid4())
+    """Assign or validate request id + start monotonic timer."""
+    rid = request.headers.get(REQUEST_ID_HEADER)
+    if rid and not REQUEST_ID_REGEX.match(rid.lower()):
+        rid = None  # ignore invalid format
+    if not rid:
+        rid = str(uuid.uuid4())
+    request.environ["REQUEST_ID"] = rid
+    request.environ["REQUEST_START_PERF"] = time.perf_counter()
+
+
+@app.after_request
+def after_request_hook(resp):
+    # Always echo request id header
+    rid = request.environ.get("REQUEST_ID")
+    if rid:
+        resp.headers[REQUEST_ID_HEADER] = rid
+    # Structured api.request log
+    try:
+        start = request.environ.get("REQUEST_START_PERF")
+        dur_ms = None
+        if start is not None:
+            dur_ms = round((time.perf_counter() - start) * 1000, 2)
+        actor_id = "anonymous"
+        try:
+            auth_ctx = maybe_auth()
+            if auth_ctx:
+                actor_id = auth_ctx.get("sub", actor_id)
+        except Exception:
+            pass
+        _async_log.emit(
+            "info",
+            {
+                "type": "api.request",
+                "method": request.method,
+                "path": request.path,
+                "status": resp.status_code,
+                "ms": dur_ms,
+                "request_id": rid,
+                "actor_id": actor_id,
+            },
+        )
+    except Exception:  # pragma: no cover
+        pass
+    return resp
+
+
+@app.errorhandler(Exception)
+def global_error_handler(e):  # pragma: no cover - difficult to force all branches
+    # Let HTTPExceptions preserve status code
+    from werkzeug.exceptions import HTTPException
+
+    if isinstance(e, HTTPException):
+        status = e.code or 500
+        detail = getattr(e, "description", "error")
+        code = "INTERNAL" if status >= 500 else "BAD_REQUEST"
+    else:
+        status = 500
+        detail = "internal error"
+        code = "INTERNAL"
+    rid = request.environ.get("REQUEST_ID")
+    _async_log.emit(
+        "error",
+        {
+            "type": "api.error",
+            "method": request.method,
+            "path": request.path,
+            "status": status,
+            "code": code,
+            "message": detail,
+            "request_id": rid,
+        },
+    )
+    # Fallback JSON shape (avoid leaking internals)
+    payload = {
+        "data": None,
+        "errors": [{"status": str(status), "code": code, "detail": detail}],
+        "meta": {"request_id": rid},
+    }
+    return jsonify(payload), status
 
 
 # ----------------------------------------------------------------------------
