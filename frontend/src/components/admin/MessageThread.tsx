@@ -534,18 +534,37 @@ export default function MessageThread({ appointmentId, drawerOpen }: MessageThre
                       <div className="mt-1 text-gray-700 whitespace-pre-wrap">
                         {resolved}
                         <div className="mt-1 flex gap-2">
-                          <button
-                            type="button"
+                          {/* Using span with button semantics to avoid nested <button> elements (outer container is a button) */}
+                          <span
+                            role="button"
+                            tabIndex={0}
                             onClick={(e) => { e.stopPropagation(); handleInsertTemplate(t.id); }}
-                            className="text-[10px] px-2 py-0.5 rounded bg-gray-300 text-gray-800 hover:bg-gray-200"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleInsertTemplate(t.id);
+                              }
+                            }}
+                            aria-label="Insert template"
+                            className="cursor-pointer select-none text-[10px] px-2 py-0.5 rounded bg-gray-300 text-gray-800 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             data-testid={`template-insert-${t.id}`}
-                          >Insert</button>
-                          <button
-                            type="button"
+                          >Insert</span>
+                          <span
+                            role="button"
+                            tabIndex={0}
                             onClick={(e) => { e.stopPropagation(); sendResolvedTemplate(t.id); }}
-                            className="text-[10px] px-2 py-0.5 rounded bg-green-600 text-white hover:bg-green-700"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                sendResolvedTemplate(t.id);
+                              }
+                            }}
+                            aria-label="Insert and send template"
+                            className="cursor-pointer select-none text-[10px] px-2 py-0.5 rounded bg-green-600 text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
                             data-testid={`template-send-${t.id}`}
-                          >Insert & Send</button>
+                          >Insert & Send</span>
                         </div>
                       </div>
                     )}
