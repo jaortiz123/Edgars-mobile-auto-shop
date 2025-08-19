@@ -15,7 +15,7 @@ describe('CI-STRICT-001 Verification', () => {
   });
 
   test('verify console.warn is overridden', () => {
-    // This should throw an error because console.warn is overridden in setup.ts  
+    // This should throw an error because console.warn is overridden in setup.ts
     expect(() => {
       console.warn('Test warning message');
     }).toThrow('console.warn: Test warning message');
@@ -24,7 +24,7 @@ describe('CI-STRICT-001 Verification', () => {
   test('should handle circular objects safely', () => {
     const circular: Record<string, unknown> = { name: 'test' };
     circular.self = circular;
-    
+
     expect(() => {
       console.error('Circular:', circular);
     }).toThrow(/console\.error:/);

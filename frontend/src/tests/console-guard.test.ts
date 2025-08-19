@@ -18,7 +18,7 @@ describe('CI-STRICT-001 Console Guard', () => {
       console.error('Unexpected test error that would normally fail');
       return 'test-result';
     });
-    
+
     expect(result).toBe('test-result');
   });
 
@@ -30,7 +30,7 @@ describe('CI-STRICT-001 Console Guard', () => {
       console.warn('Async warning that should be captured');
       return 'async-result';
     });
-    
+
     expect(result).toBe('async-result');
   });
 });

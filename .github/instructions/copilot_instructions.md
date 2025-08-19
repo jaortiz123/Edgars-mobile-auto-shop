@@ -150,6 +150,3 @@ Otherwise, proceed, open a PR, and clearly state assumptions.
 	•	Docs: docs/API.md, docs/SCHEMA.md, docs/PROJECT_OVERVIEW.md
 	•	CI: .github/workflows/ci.yml
 	•	This file: .github/copilot-instructions.md
-
-
-

@@ -11,15 +11,15 @@ interface TimeSlotDropZoneProps {
   className?: string;
 }
 
-export default function TimeSlotDropZone({ 
-  time, 
-  date, 
-  isAvailable, 
+export default function TimeSlotDropZone({
+  time,
+  date,
+  isAvailable,
   onDropAppointment,
-  className = '' 
+  className = ''
 }: TimeSlotDropZoneProps) {
   const dropRef = useRef<HTMLDivElement>(null);
-  
+
   const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: 'card',
     drop: (item: { id: string; status: string; position: number }) => {
@@ -39,19 +39,19 @@ export default function TimeSlotDropZone({
 
   const getDropZoneClasses = () => {
     const baseClasses = `min-h-[60px] border-2 border-dashed rounded-lg p-3 transition-all duration-200 ${className}`;
-    
+
     if (!isAvailable) {
       return `${baseClasses} border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed`;
     }
-    
+
     if (isOver && canDrop) {
       return `${baseClasses} border-green-500 bg-green-50 shadow-lg scale-105`;
     }
-    
+
     if (canDrop) {
       return `${baseClasses} border-blue-300 bg-blue-50 hover:border-blue-500 hover:bg-blue-100 cursor-pointer`;
     }
-    
+
     return `${baseClasses} border-gray-300 bg-gray-50`;
   };
 
@@ -62,7 +62,7 @@ export default function TimeSlotDropZone({
       role="button"
       tabIndex={isAvailable ? 0 : -1}
       aria-label={
-        isAvailable 
+        isAvailable
           ? `Available time slot at ${time} on ${date}. Drop appointment here to reschedule.`
           : `Time slot at ${time} on ${date} is not available.`
       }
@@ -73,13 +73,13 @@ export default function TimeSlotDropZone({
         <Calendar className="h-4 w-4" />
         <span>{new Date(date).toLocaleDateString()}</span>
       </div>
-      
+
       {isOver && canDrop && (
         <div className="mt-2 text-center text-green-600 font-medium text-xs">
           Drop to reschedule
         </div>
       )}
-      
+
       {!isAvailable && (
         <div className="mt-1 text-center text-gray-500 text-xs">
           Not available

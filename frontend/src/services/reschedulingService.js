@@ -1,9 +1,9 @@
 /**
  * Rescheduling Service for Sprint 3B T3 & T4
- * 
+ *
  * Provides intelligent appointment rescheduling functionality with robust error handling,
  * conflict detection, and optimistic updates.
- * 
+ *
  * Features:
  * - Memory Management: Cached next slot predictions with smart invalidation
  * - Error Handling: Graceful fallbacks, comprehensive error logging
@@ -48,7 +48,7 @@ export async function rescheduleToTimeSlot(appointmentId, newTime, newDate, opti
 
     // Create new datetime
     const newDateTime = createDateTime(sanitizedDate, sanitizedTime);
-    
+
     if (!newDateTime) {
       throw new Error('Invalid date/time combination');
     }
@@ -85,7 +85,7 @@ export async function rescheduleToTimeSlot(appointmentId, newTime, newDate, opti
 
   } catch (error) {
     console.error('Error rescheduling appointment:', error);
-    
+
     const errorMessage = error.message || 'Failed to reschedule appointment';
     toast.error(`❌ ${errorMessage}`, {
       key: `reschedule-error-${appointmentId}`
@@ -156,15 +156,15 @@ export async function quickRescheduleToNext(appointmentId, serviceType, options 
 
     // Reschedule to the found slot
     return await rescheduleToTimeSlot(
-      sanitizedId, 
-      nextSlot.formatted, 
-      nextSlot.date, 
+      sanitizedId,
+      nextSlot.formatted,
+      nextSlot.date,
       { ...options, reason: 'Quick reschedule to next available slot' }
     );
 
   } catch (error) {
     console.error('Error in quick reschedule:', error);
-    
+
     const errorMessage = error.message || 'Failed to find next available slot';
     toast.error(`❌ ${errorMessage}`, {
       key: `quick-reschedule-error-${appointmentId}`
@@ -197,8 +197,8 @@ export async function validateReschedule(appointmentId, newTime, newDate) {
     // Check if time slot is available
     const dateObj = new Date(newDate);
     const timeSlots = await getAvailableSlots('default', dateObj, { maxSlots: 20 });
-    
-    const targetSlot = timeSlots.find(slot => 
+
+    const targetSlot = timeSlots.find(slot =>
       slot.formatted === newTime && slot.available
     );
 
@@ -243,14 +243,14 @@ export async function getSuggestedRescheduleOptions(appointmentId, serviceType, 
   try {
     const suggestions = [];
     const today = new Date();
-    
+
     // Look for slots in the next 3 days
     for (let i = 0; i < 3; i++) {
       const date = new Date(today);
       date.setDate(date.getDate() + i);
-      
+
       const slots = await getAvailableSlots(serviceType, date, { maxSlots: maxOptions });
-      
+
       for (const slot of slots) {
         if (slot.available && suggestions.length < maxOptions) {
           suggestions.push({
@@ -261,7 +261,7 @@ export async function getSuggestedRescheduleOptions(appointmentId, serviceType, 
           });
         }
       }
-      
+
       if (suggestions.length >= maxOptions) break;
     }
 

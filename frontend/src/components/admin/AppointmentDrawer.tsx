@@ -222,7 +222,7 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
 
     const handleTabKey = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return;
-      
+
       const drawer = ref.current;
       if (!drawer) return;
 
@@ -364,9 +364,9 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
             >
               {isDeleting ? 'Deleting…' : 'Delete'}
             </button>
-            <button 
+            <button
               ref={closeButtonRef}
-              aria-label="Close drawer" 
+              aria-label="Close drawer"
               onClick={onClose}
               className="p-1 hover:bg-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
@@ -383,7 +383,7 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
           value={tab}
           onValueChange={setTab}
           tabs={[
-            { value: 'overview', label: 'Overview' }, 
+            { value: 'overview', label: 'Overview' },
             { value: 'services', label: 'Services' },
             { value: 'messages', label: 'Messages' },
             { value: 'history', label: 'History' }
@@ -456,8 +456,8 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
           {tab === 'messages' && id && <MessageThread appointmentId={id} drawerOpen={open} />}
           {tab === 'history' && data?.customer?.id && (
             (import.meta.env.DEV && console.log('[drawer] mounting CustomerHistory', { customerId: data.customer.id, tokenPresent: !!(localStorage.getItem('auth_token')||localStorage.getItem('token')) })) ||
-            <CustomerHistory 
-              customerId={data.customer.id} 
+            <CustomerHistory
+              customerId={data.customer.id}
               onAppointmentClick={(appointmentId) => {
                 // Reuse existing openDrawer functionality by opening in new drawer
                 if (id !== appointmentId) {
@@ -759,17 +759,17 @@ function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime
 }
 
 // Services component wrapped in React.memo to prevent unnecessary re-renders
-const Services = React.memo(function Services({ 
-  data, 
-  isAddingService, 
+const Services = React.memo(function Services({
+  data,
+  isAddingService,
   setIsAddingService,
   working,
   onWorkingChange,
   dirty
-}: { 
-  data: DrawerPayload | null; 
-  isAddingService: boolean; 
-  setIsAddingService: (value: boolean) => void; 
+}: {
+  data: DrawerPayload | null;
+  isAddingService: boolean;
+  setIsAddingService: (value: boolean) => void;
   working: { servicesById: Record<string, AppointmentService>; serviceOrder: string[]; addedTempIds: string[]; deletedIds: string[]; modifiedIds: Set<string>; } | null;
   onWorkingChange: (updater: (prev: { servicesById: Record<string, AppointmentService>; serviceOrder: string[]; addedTempIds: string[]; deletedIds: string[]; modifiedIds: Set<string>; }) => { servicesById: Record<string, AppointmentService>; serviceOrder: string[]; addedTempIds: string[]; deletedIds: string[]; modifiedIds: Set<string>; }) => void;
   dirty: boolean;
@@ -918,32 +918,32 @@ const Services = React.memo(function Services({
     console.log('🔧 HANDLE_ADD_SERVICE: Function called');
     console.log('🔧 HANDLE_ADD_SERVICE: data?.appointment?.id:', data?.appointment?.id);
     console.log('🔧 HANDLE_ADD_SERVICE: newService:', newService);
-    
+
     if (!data?.appointment?.id) {
       console.log('🔧 HANDLE_ADD_SERVICE: Early return - no appointment ID');
       return;
     }
-    
+
     // Validate required fields and numeric inputs
     if (!newService.name.trim()) {
       console.log('🔧 HANDLE_ADD_SERVICE: Early return - no service name');
       return;
     }
-    
+
     // Check if hours is provided and valid
     const hours = newService.estimated_hours.trim();
     if (hours && (isNaN(parseFloat(hours)) || parseFloat(hours) < 0)) {
       console.log('🔧 HANDLE_ADD_SERVICE: Early return - invalid hours:', hours);
       return;
     }
-    
+
     // Check if price is provided and valid
     const price = newService.estimated_price.trim();
     if (price && (isNaN(parseFloat(price)) || parseFloat(price) < 0)) {
       console.log('🔧 HANDLE_ADD_SERVICE: Early return - invalid price:', price);
       return;
     }
-    
+
     console.log('🔧 HANDLE_ADD_SERVICE: All validations passed, about to call API');
     console.log('🔧 HANDLE_ADD_SERVICE: API call parameters:', {
       appointmentId: data.appointment.id,
@@ -988,7 +988,7 @@ const Services = React.memo(function Services({
   // handleDeleteService deprecated (superseded by multi-select deletion workflow)
 
   if (!data) return <div>Loading…</div>;
-  
+
   const baseServices = working ? working.serviceOrder.map(id => working.servicesById[id]).filter(Boolean).filter(s => !!s && !working.deletedIds.includes(s.id)) as AppointmentService[] : [];
   const effectiveServices = baseServices; // staging indicated via addedTempIds list
   // Debug: expose count for tests (non-production impact)
@@ -1066,7 +1066,7 @@ const Services = React.memo(function Services({
               className="flex-1 border rounded px-3 py-2 text-sm"
               aria-label="Search services catalog"
               data-testid="svc-catalog-search"
-              
+
             />
             {searchTerm && (
               <button
@@ -1074,7 +1074,7 @@ const Services = React.memo(function Services({
                 onClick={() => setSearchTerm('')}
                 className="text-xs text-gray-600 underline"
                 data-testid="svc-catalog-clear"
-                
+
               >Clear</button>
             )}
           </div>
@@ -1181,8 +1181,8 @@ const Services = React.memo(function Services({
                 data-testid="add-service-submit-button"
                 type="submit"
                 disabled={
-                  !newService.name.trim() || 
-                  (!!newService.estimated_hours.trim() && (isNaN(parseFloat(newService.estimated_hours)) || parseFloat(newService.estimated_hours) < 0)) || 
+                  !newService.name.trim() ||
+                  (!!newService.estimated_hours.trim() && (isNaN(parseFloat(newService.estimated_hours)) || parseFloat(newService.estimated_hours) < 0)) ||
                   (!!newService.estimated_price.trim() && (isNaN(parseFloat(newService.estimated_price)) || parseFloat(newService.estimated_price) < 0))
                 }
                 className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"

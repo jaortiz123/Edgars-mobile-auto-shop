@@ -16,7 +16,7 @@ export default function NextActionCard({ taskTitle, dueTime, onClick }: NextActi
           <div className="p-sp-2 bg-orange-100 rounded-full">
             <Wrench className="h-4 w-4 text-orange-600" />
           </div>
-          
+
           {/* Content */}
           <div className="flex-1">
             <div className="flex items-center gap-sp-2 mb-sp-1">
@@ -33,7 +33,7 @@ export default function NextActionCard({ taskTitle, dueTime, onClick }: NextActi
             </div>
           </div>
         </div>
-        
+
         {/* Action Indicator */}
         <div className="text-orange-500 text-fs-1 font-medium">
           Action Required →

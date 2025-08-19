@@ -119,4 +119,3 @@
 - Formal analytics/telemetry usage across the app: UNKNOWN; TODO:SEARCH (repo-wide `track` / `analytics` keywords).
 
 - Full list of frontend tests that assert board interactions (drag/drop, keyboard, accessibility): UNKNOWN; TODO:SEARCH (frontend/src/tests/**).
-

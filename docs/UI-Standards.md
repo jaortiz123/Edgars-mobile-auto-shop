@@ -1,13 +1,13 @@
 # UI Standards Guide
 ## Edgar's Mobile Auto Shop Design System
 
-> **Version**: 2.0 - Enhanced with Sprint1A-T-005 improvements  
-> **Last Updated**: August 4, 2025  
+> **Version**: 2.0 - Enhanced with Sprint1A-T-005 improvements
+> **Last Updated**: August 4, 2025
 > **Status**: Active - Full Typography & Spacing System Implemented
 
 This document serves as the **single source of truth** for typography and spacing standards across Edgar's Mobile Auto Shop application. All developers and designers must reference this guide when implementing UI components.
 
-**🎯 Quick Reference**: 
+**🎯 Quick Reference**:
 - [Typography Scale](#typography-system) | [Spacing System](#spacing-system) | [Real Examples](#real-world-examples) | [Cheat Sheet](#utility-class-cheat-sheet)
 
 ## Typography System
@@ -376,20 +376,20 @@ The card design system provides consistent, reusable card components with proper
   <div className="card-content">
     {/* Urgency indicator */}
     <span className="urgency-badge urgent"></span>
-    
+
     {/* Primary information */}
     <div className="flex items-center justify-between gap-sp-1">
       <h3 className="text-fs-3 font-semibold text-gray-900">John Smith</h3>
       <span className="text-fs-0 text-gray-500">⋮</span>
     </div>
-    
+
     {/* Secondary information */}
     <div className="text-fs-1 text-gray-600 mt-sp-1 font-normal">2020 Honda Civic</div>
     <div className="text-fs-1 text-gray-600 mt-sp-1 font-normal">Oil Change, Brake Inspection</div>
-    
+
     {/* Price */}
     <div className="text-fs-2 mt-sp-2 font-medium text-gray-900">$85.00</div>
-    
+
     {/* Urgency status */}
     <div className="urgency-status urgent">
       <span className="urgency-icon urgent"></span>
@@ -725,7 +725,7 @@ This section documents the Smart Today View implemented in Sprint 2B, providing 
 #### ScheduleView
 - **Purpose:** Main container for the smart appointment scheduling interface
 - **Component:** `ScheduleView.tsx`
-- **Features:** 
+- **Features:**
   - Filter toggle integration
   - Smart sorting by urgency priority
   - Statistics dashboard
@@ -814,7 +814,7 @@ This section documents the Smart Today View implemented in Sprint 2B, providing 
 The system employs intelligent sorting based on urgency priority:
 
 1. **Overdue** (>30 min past start) - Priority 4
-2. **Running Late** (>5 min past start) - Priority 3  
+2. **Running Late** (>5 min past start) - Priority 3
 3. **Starting Soon** (≤30 min until start) - Priority 2
 4. **Today** (scheduled for today) - Priority 1
 5. **Normal** (future appointments) - Priority 0
@@ -957,7 +957,7 @@ const renderAppointment = (appointment: any) => {
 // Example: API call with retry logic
 const fetchAppointments = async () => {
   try {
-    const data = await retryWithBackoff(() => 
+    const data = await retryWithBackoff(() =>
       fetch('/api/appointments').then(res => res.json())
     );
     return validateAppointments(data);
@@ -1344,13 +1344,13 @@ const RunningRevenue = ({ amount, isLoading, error }) => {
 const DashboardSidebar = ({ isCollapsed, stats }) => {
   return (
     <div className={`dashboard-sidebar ${isCollapsed ? 'collapsed' : ''}`}>
-      <button 
+      <button
         onClick={toggleSidebar}
         className="p-sp-3 hover:bg-gray-100 rounded-lg transition-colors"
       >
         <Menu className="h-6 w-6" />
       </button>
-      
+
       {!isCollapsed && (
         <div className="space-y-sp-3 p-sp-4">
           {/* Stats Card */}
@@ -1382,7 +1382,7 @@ const DashboardSidebar = ({ isCollapsed, stats }) => {
               </div>
             </CardContent>
           </Card>
-          
+
           {/* Quick Tools */}
           <Card>
             <CardHeader>
@@ -1393,13 +1393,13 @@ const DashboardSidebar = ({ isCollapsed, stats }) => {
             </CardHeader>
             <CardContent className="p-sp-5">
               <div className="grid grid-cols-2 gap-sp-2">
-                <QuickToolButton 
-                  icon="📋" 
+                <QuickToolButton
+                  icon="📋"
                   label="Work Orders"
                   onClick={handleWorkOrders}
                 />
-                <QuickToolButton 
-                  icon="🔧" 
+                <QuickToolButton
+                  icon="🔧"
                   label="Parts Lookup"
                   onClick={handlePartsLookup}
                 />
@@ -1413,7 +1413,7 @@ const DashboardSidebar = ({ isCollapsed, stats }) => {
 };
 
 const QuickToolButton = ({ icon, label, onClick }) => (
-  <button 
+  <button
     onClick={onClick}
     className="p-sp-4 rounded-xl hover:bg-blue-100 transition-colors flex flex-col items-center space-y-sp-2 touch-manipulation"
   >
@@ -1443,14 +1443,14 @@ const Login = () => {
             </Link>
           </p>
         </div>
-        
+
         <form className="mt-sp-8 space-y-sp-6" onSubmit={handleSubmit}>
           {error && (
             <div className="rounded-md bg-red-50 p-sp-4" role="alert">
               <div className="text-fs-1 text-red-800">{error}</div>
             </div>
           )}
-          
+
           <div className="space-y-sp-4">
             <div>
               <label htmlFor="email" className="block text-fs-1 font-medium text-gray-700">
@@ -1466,7 +1466,7 @@ const Login = () => {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            
+
             <div>
               <label htmlFor="password" className="block text-fs-1 font-medium text-gray-700">
                 Password *
@@ -1611,7 +1611,7 @@ const AdminLayout = () => {
 | `p-sp-6` | 3rem | 48px | Major section padding |
 | `p-sp-8` | 4rem | 64px | Hero section padding |
 
-#### Margin Classes  
+#### Margin Classes
 | Class | Size | Pixels | Example Usage |
 |-------|------|--------|---------------|
 | `m-sp-0` | 0 | 0px | Reset margin |
@@ -1622,7 +1622,7 @@ const AdminLayout = () => {
 | `m-sp-6` | 3rem | 48px | Major section separation |
 
 #### Directional Classes
-**Padding:** `pt-sp-*`, `pr-sp-*`, `pb-sp-*`, `pl-sp-*`, `px-sp-*`, `py-sp-*`  
+**Padding:** `pt-sp-*`, `pr-sp-*`, `pb-sp-*`, `pl-sp-*`, `px-sp-*`, `py-sp-*`
 **Margin:** `mt-sp-*`, `mr-sp-*`, `mb-sp-*`, `ml-sp-*`, `mx-sp-*`, `my-sp-*`
 
 #### Gap Classes
@@ -1721,11 +1721,11 @@ describe('Design System Validation', () => {
   it('should use typography scale variables', () => {
     // Validates components use --fs-* variables
   });
-  
+
   it('should use spacing system variables', () => {
-    // Validates components use --sp-* variables  
+    // Validates components use --sp-* variables
   });
-  
+
   it('should not have old Tailwind classes', () => {
     // Ensures migration completeness
   });
@@ -1763,19 +1763,19 @@ Use these CSS selectors to audit components:
 
 ### Design System Files
 - `/src/styles/theme.css` - Core variables and tokens
-- `/src/styles/typography.css` - Typography utilities  
+- `/src/styles/typography.css` - Typography utilities
 - `/src/styles/spacing.css` - Spacing utilities
 - `/frontend/tests/spacing-validation.test.ts` - Automated validation
 
 ### External References
 - [CSS Custom Properties (MDN)](https://developer.mozilla.org/en-US/docs/Web/CSS/--*)
-- [Modular Scale Calculator](https://www.modularscale.com/)  
+- [Modular Scale Calculator](https://www.modularscale.com/)
 - [8-Point Grid System](https://spec.fm/specifics/8-pt-grid)
 - [Tailwind CSS Documentation](https://tailwindcss.com/docs)
 
 ### Team Support
 - **Slack**: #design-system channel for questions
-- **Code Reviews**: Design system compliance checks  
+- **Code Reviews**: Design system compliance checks
 - **Office Hours**: Weekly design system Q&A sessions
 - **Documentation**: Living style guide with interactive examples
 

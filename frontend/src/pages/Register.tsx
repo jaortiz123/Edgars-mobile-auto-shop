@@ -16,11 +16,11 @@ const Register: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (password !== confirmPassword) {
       return;
     }
-    
+
     try {
       await register(email, password);
       showToast({
@@ -83,14 +83,14 @@ const Register: React.FC = () => {
             </Link>
           </p>
         </div>
-        
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="rounded-md bg-red-50 p-4">
               <div className="text-sm text-red-800">{error}</div>
             </div>
           )}
-          
+
           <div className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -108,7 +108,7 @@ const Register: React.FC = () => {
                 placeholder="Enter your email"
               />
             </div>
-            
+
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
@@ -143,7 +143,7 @@ const Register: React.FC = () => {
                   )}
                 </button>
               </div>
-              
+
               {password && (
                 <div className="mt-2">
                   <div className="flex items-center space-x-2">
@@ -166,7 +166,7 @@ const Register: React.FC = () => {
                 </div>
               )}
             </div>
-            
+
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
                 Confirm Password

@@ -287,9 +287,7 @@ def convert_paramstyle(style, query, args):
                     state = INSIDE_DQ
             elif style == "qmark" and c == "?":
                 output_query.append(next(param_idx))
-            elif (
-                style == "numeric" and c == ":" and next_c not in ":=" and prev_c != ":"
-            ):
+            elif style == "numeric" and c == ":" and next_c not in ":=" and prev_c != ":":
                 # Treat : as beginning of parameter name if and only
                 # if it's the only : around
                 # Needed to properly process type conversions
@@ -314,9 +312,7 @@ def convert_paramstyle(style, query, args):
                         state = INSIDE_PN
                         output_query.append(next(param_idx))
                     else:
-                        raise InterfaceError(
-                            "Only %s and %% are supported in the query."
-                        )
+                        raise InterfaceError("Only %s and %% are supported in the query.")
             else:
                 output_query.append(c)
 
@@ -789,9 +785,7 @@ class Connection(CoreConnection):
             xid = self._xid
 
         if xid is None:
-            raise ProgrammingError(
-                "Cannot tpc_rollback() without a TPC prepared transaction!"
-            )
+            raise ProgrammingError("Cannot tpc_rollback() without a TPC prepared transaction!")
 
         try:
             previous_autocommit_mode = self.autocommit

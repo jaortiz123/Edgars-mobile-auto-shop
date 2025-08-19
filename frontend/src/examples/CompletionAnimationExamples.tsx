@@ -1,7 +1,7 @@
 /**
  * Sprint 4A-T-001: Completion Animations Integration Example
- * 
- * This example shows how to integrate completion animations with 
+ *
+ * This example shows how to integrate completion animations with
  * existing Dashboard and StatusBoard components.
  */
 
@@ -30,26 +30,26 @@ export function DashboardCompletionExample() {
     try {
       // Prevent double completion
       if (completingIds.has(appointmentId)) return;
-      
+
       // Start completing state
       setCompletingIds(prev => new Set(prev).add(appointmentId));
-      
+
       // Simulate API call to complete appointment
       await fetch(`/api/appointments/${appointmentId}/complete`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'COMPLETED' })
       });
-      
+
       // Update appointment status (triggers automatic animation)
-      setAppointments(prev => 
-        prev.map(apt => 
-          apt.id === appointmentId 
+      setAppointments(prev =>
+        prev.map(apt =>
+          apt.id === appointmentId
             ? { ...apt, status: 'COMPLETED' }
             : apt
         )
       );
-      
+
     } catch (error) {
       console.error('Failed to complete appointment:', error);
       // Remove from completing state on error
@@ -109,22 +109,22 @@ export function StatusBoardCompletionExample() {
     if (targetColumn === 'COMPLETED') {
       // Move card to completed column
       setColumns(prev => {
-        const sourceColumn = Object.keys(prev).find(col => 
+        const sourceColumn = Object.keys(prev).find(col =>
           prev[col].some(card => card.id === cardId)
         );
-        
+
         if (!sourceColumn) return prev;
-        
+
         const card = prev[sourceColumn].find(c => c.id === cardId);
         if (!card) return prev;
-        
+
         return {
           ...prev,
           [sourceColumn]: prev[sourceColumn].filter(c => c.id !== cardId),
           [targetColumn]: [...prev[targetColumn], { ...card, status: 'COMPLETED' }]
         };
       });
-      
+
       // Animation will automatically trigger when card status becomes 'COMPLETED'
       // Card will be removed from DOM via onCardRemoved callback
     }
@@ -169,7 +169,7 @@ export function ManualAnimationExample() {
 
   return (
     <div>
-      <button 
+      <button
         onClick={(e) => {
           const cardElement = document.querySelector('[data-testid="appointment-card-example"]');
           if (cardElement) {
@@ -179,8 +179,8 @@ export function ManualAnimationExample() {
       >
         Trigger Manual Animation
       </button>
-      
-      <div 
+
+      <div
         data-testid="appointment-card-example"
         className="appointment-card"
         style={{ padding: '1rem', border: '1px solid #ccc', margin: '1rem' }}

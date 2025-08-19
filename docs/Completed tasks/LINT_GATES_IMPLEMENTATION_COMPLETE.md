@@ -96,7 +96,7 @@ cd frontend && npm run lint
 # Command exited with code 1 ✅ (will fail CI)
 ```
 
-#### ✅ Backend flake8 Test  
+#### ✅ Backend flake8 Test
 ```bash
 cd backend && flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 # Found 60 F821 undefined name errors
@@ -121,7 +121,7 @@ frontend-lint ──→ frontend-tests ──→ other jobs
 
 Selected the most critical error types for CI gates:
 - **E9**: Runtime errors (syntax errors)
-- **F63**: Invalid print statements  
+- **F63**: Invalid print statements
 - **F7**: Syntax errors
 - **F82**: Undefined names
 
@@ -130,7 +130,7 @@ These cover the most severe code quality issues that would cause runtime failure
 ### Performance Optimizations
 
 - **npm cache**: Reuses `package-lock.json` cache across jobs
-- **pip cache**: Reuses `requirements.txt` cache across jobs  
+- **pip cache**: Reuses `requirements.txt` cache across jobs
 - **Parallel execution**: Lint jobs can run in parallel
 - **Fail-fast**: Stops pipeline early on lint failures
 

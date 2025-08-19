@@ -602,9 +602,7 @@ class Connection(CoreConnection):
             xid = self._xid
 
         if xid is None:
-            raise ProgrammingError(
-                "Cannot tpc_rollback() without a TPC prepared transaction!"
-            )
+            raise ProgrammingError("Cannot tpc_rollback() without a TPC prepared transaction!")
 
         try:
             previous_autocommit_mode = self.autocommit
@@ -726,9 +724,7 @@ class PreparedStatement:
         self.con = con
         self.operation = operation
         statement, self.make_args = to_statement(operation)
-        self.name_bin, self.row_desc, self.input_funcs = con.prepare_statement(
-            statement, ()
-        )
+        self.name_bin, self.row_desc, self.input_funcs = con.prepare_statement(statement, ())
 
     def run(self, **vals):
         params = make_params(self.con.py_types, self.make_args(vals))

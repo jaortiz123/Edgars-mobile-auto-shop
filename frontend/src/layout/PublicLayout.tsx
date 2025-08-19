@@ -24,7 +24,7 @@ export default function PublicLayout() {
           <Link to="/" className="text-2xl font-black text-primary">
             Edgar's Mobile Auto Shop Repair
           </Link>
-          
+
           {/* Desktop Navigation */}
           <nav className="hidden items-center gap-6 md:flex">
             <a href="tel:555-123-4567" className="text-base font-medium flex items-center gap-2 text-muted-foreground transition-colors hover:text-primary">
@@ -33,7 +33,7 @@ export default function PublicLayout() {
             </a>
             <Link to="/about" className="text-base font-medium text-muted-foreground transition-colors hover:text-primary">About</Link>
             <Link to="/service-areas" className="text-base font-medium text-muted-foreground transition-colors hover:text-primary">Service Areas</Link>
-            
+
             {/* Authentication-dependent navigation */}
             {user ? (
               <UserMenu />
@@ -45,7 +45,7 @@ export default function PublicLayout() {
                 </Button>
               </>
             )}
-            
+
             {/* The dual funnel is now in the main navigation */}
             <Button asLink to="/booking" variant="outline">
               Schedule Service
@@ -66,7 +66,7 @@ export default function PublicLayout() {
           <Outlet />
         </Suspense>
       </main>
-      
+
       {/* FOOTER */}
       <footer className="bg-primary text-primary-foreground">
         <div className="container grid grid-cols-1 md:grid-cols-3 gap-8 py-16 text-center md:text-left">
@@ -102,8 +102,8 @@ export default function PublicLayout() {
 
       {/* ENHANCED: Live Chat / Text Us Widget */}
       <div className="fixed bottom-4 right-4 z-50">
-        <Button 
-            size="lg" 
+        <Button
+            size="lg"
             className="rounded-full h-16 w-16 shadow-2xl bg-accent hover:bg-accent/90 transform transition-transform hover:scale-110"
             onClick={() => {
               const userChoice = window.confirm(
@@ -113,7 +113,7 @@ export default function PublicLayout() {
                 '🚨 Emergency? Click OK for emergency service!\n\n' +
                 'Click OK to call now, or Cancel to text us.'
               );
-              
+
               if (userChoice) {
                 // User chose to call
                 window.open('tel:555-123-4567');
@@ -121,7 +121,7 @@ export default function PublicLayout() {
                 // User chose to text - open SMS on mobile devices
                 const message = encodeURIComponent('Hi! I need help with auto service. Can you assist me?');
                 const smsLink = `sms:555-123-4567?body=${message}`;
-                
+
                 // Try to open SMS app, fallback to showing instructions
                 try {
                   window.open(smsLink);

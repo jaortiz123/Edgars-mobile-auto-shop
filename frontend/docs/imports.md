@@ -22,5 +22,3 @@ Lint rule enforces this policy by banning deep relative imports two+ levels up:
 - Disallowed: `../..*`, `../../..*`
 
 Configuration lives in `eslint.config.js` (`no-restricted-imports`).
-
-

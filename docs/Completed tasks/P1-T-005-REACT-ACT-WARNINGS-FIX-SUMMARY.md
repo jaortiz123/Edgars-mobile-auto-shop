@@ -38,7 +38,7 @@ import testingLibrary from 'eslint-plugin-testing-library'
 
 // Added rules:
 'testing-library/no-unnecessary-act': 'error',
-'testing-library/prefer-user-event': 'error', 
+'testing-library/prefer-user-event': 'error',
 'testing-library/await-async-events': 'error',
 ```
 
@@ -67,7 +67,7 @@ if (message.includes('state update') && message.includes('act(')) {
 ### 1. **Fix Mock Factory Infrastructure Issues**
 Current test failures are due to vi.mock factory issues preventing tests from running:
 ```
-Error: [vitest] There was an error when mocking a module. 
+Error: [vitest] There was an error when mocking a module.
 ReferenceError: Cannot access '__vi_import_3__' before initialization
 ```
 
@@ -80,7 +80,7 @@ ReferenceError: Cannot access '__vi_import_3__' before initialization
 Still need to fix fireEvent usage in additional test files:
 - `services.crud.test.tsx` - 20+ fireEvent calls need act() wrapping
 - `MessageThread.enhanced.test.tsx` - 15+ fireEvent calls
-- `services.crud.enhanced.test.tsx` - 20+ fireEvent calls  
+- `services.crud.enhanced.test.tsx` - 20+ fireEvent calls
 - `sprint3c-reminders.test.tsx` - 5+ fireEvent calls
 
 ### 3. **Verify Zero Act() Warnings Achievement**
@@ -106,13 +106,13 @@ Once mock infrastructure is fixed:
    - Fix import initialization order
    - Ensure centralized mock approach works
 
-### Phase 2: Complete act() Fixes  
+### Phase 2: Complete act() Fixes
 1. **Systematic fireEvent Wrapping**
    ```tsx
    // Pattern for bulk fixes:
    await act(async () => {
      fireEvent.change(input1, { target: { value: 'test1' } });
-     fireEvent.change(input2, { target: { value: 'test2' } });  
+     fireEvent.change(input2, { target: { value: 'test2' } });
      fireEvent.click(submitButton);
    });
    ```
@@ -121,7 +121,7 @@ Once mock infrastructure is fixed:
    ```tsx
    // Modern testing library approach:
    import { userEvent } from '@testing-library/user-event'
-   
+
    const user = userEvent.setup()
    await user.type(input, 'test message')
    await user.click(button)
@@ -135,7 +135,7 @@ Once mock infrastructure is fixed:
 ## 📋 NEXT STEPS
 
 1. **IMMEDIATE**: Fix vi.mock factory infrastructure issues to unblock tests
-2. **SHORT-TERM**: Complete act() wrapping in remaining 40+ fireEvent calls  
+2. **SHORT-TERM**: Complete act() wrapping in remaining 40+ fireEvent calls
 3. **MEDIUM-TERM**: Migrate to userEvent for better testing practices
 4. **LONG-TERM**: Enforce strict console checking in CI pipeline
 
@@ -152,7 +152,7 @@ The implementation includes several architectural improvements:
 
 Once completed, this fix will:
 - ✅ Eliminate all React act() warnings from test output
-- ✅ Reduce test flakiness caused by timing issues  
+- ✅ Reduce test flakiness caused by timing issues
 - ✅ Improve developer experience with cleaner test output
 - ✅ Prevent future act() warnings through ESLint enforcement
 - ✅ Provide CI confidence with automated warning detection

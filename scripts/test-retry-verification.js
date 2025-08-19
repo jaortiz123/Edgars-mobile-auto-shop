@@ -35,7 +35,7 @@ console.log('============================');
 const vitestRetries = (sampleVitestOutput.match(/\(retry x\d+\)/g) || []).length;
 console.log(`Vitest retries detected: ${vitestRetries}`);
 
-// Count retry patterns in Playwright output  
+// Count retry patterns in Playwright output
 const playwrightRetries = (samplePlaywrightOutput.match(/\(retry #\d+\)/g) || []).length;
 console.log(`Playwright retries detected: ${playwrightRetries}`);
 

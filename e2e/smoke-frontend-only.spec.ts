@@ -18,7 +18,7 @@ test.describe('Cross-Browser Smoke Tests (Frontend Only)', () => {
   test('admin interface renders basic UI elements', async ({ page }) => {
     // Navigate to admin login page
     await page.goto('http://localhost:5173/admin/login');
-    
+
     // Check that the login form is present
   await expect(page.getByPlaceholder('Username')).toBeVisible();
   await expect(page.getByPlaceholder('Password')).toBeVisible();
@@ -27,12 +27,12 @@ test.describe('Cross-Browser Smoke Tests (Frontend Only)', () => {
 
   test('public pages navigation works', async ({ page }) => {
     await page.goto('http://localhost:5173');
-    
+
     // Check main navigation links are present
     await expect(page.getByRole('link', { name: /services/i }).or(
       page.getByText('Services')
     )).toBeVisible();
-    
+
     // About link may be hidden in mobile collapsed nav; treat hidden as soft-pass
     const aboutLocator = page.getByRole('link', { name: /about/i }).or(page.getByText('About'));
     try {
@@ -45,7 +45,7 @@ test.describe('Cross-Browser Smoke Tests (Frontend Only)', () => {
         console.warn('About link not found; skipping as non-critical for smoke.');
       }
     }
-    
+
     // Test that the page is interactive
     await expect(page.locator('body')).toBeVisible();
   });

@@ -54,13 +54,13 @@ function AppointmentRow({ appt, showDetails }: { appt: CustomerProfileResponse['
         </td>
       </tr>
       {expanded && (
-        <tr data-testid={`appointment-details-row-${appt.id}`}> 
+        <tr data-testid={`appointment-details-row-${appt.id}`}>
           <td colSpan={5} className="bg-gray-50 px-4 py-3 text-xs space-y-4" data-testid={`appointment-details-${appt.id}`}>
             {!hasDetails && (
               <div className="italic text-gray-500" data-testid={`appt-details-missing-${appt.id}`}>No detailed data loaded for this appointment.</div>
             )}
             {appt.services && appt.services.length > 0 && (
-              <div data-testid={`appt-services-${appt.id}`}> 
+              <div data-testid={`appt-services-${appt.id}`}>
                 <div className="font-semibold mb-1">Services ({appt.services.length})</div>
                 <ul className="list-disc ml-4 space-y-0.5">
                   {appt.services.map((raw: unknown, i: number) => {
@@ -75,7 +75,7 @@ function AppointmentRow({ appt, showDetails }: { appt: CustomerProfileResponse['
               </div>
             )}
             {appt.payments && appt.payments.length > 0 && (
-              <div data-testid={`appt-payments-${appt.id}`}> 
+              <div data-testid={`appt-payments-${appt.id}`}>
                 <div className="font-semibold mb-1">Payments ({appt.payments.length})</div>
                 <ul className="list-disc ml-4 space-y-0.5">
                   {appt.payments.map((raw: unknown, i: number) => {
@@ -90,7 +90,7 @@ function AppointmentRow({ appt, showDetails }: { appt: CustomerProfileResponse['
               </div>
             )}
             {appt.messages && appt.messages.length > 0 && (
-              <div data-testid={`appt-messages-${appt.id}`}> 
+              <div data-testid={`appt-messages-${appt.id}`}>
                 <div className="font-semibold mb-1">Messages ({appt.messages.length})</div>
                 <ul className="list-disc ml-4 space-y-0.5">
                   {appt.messages.map((raw: unknown, i: number) => {

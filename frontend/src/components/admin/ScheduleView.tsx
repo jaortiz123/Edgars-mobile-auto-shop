@@ -38,7 +38,7 @@ const getUrgencyPriority = (time: Date, todayStr: string): number => {
   try {
     const now = new Date();
     const diffMinutes = (time.getTime() - now.getTime()) / (1000 * 60);
-    
+
     if (diffMinutes < -30) return 4; // Overdue
     if (diffMinutes < -5) return 3;  // Running late
     if (diffMinutes <= 30 && diffMinutes > 0) return 2; // Starting soon
@@ -49,10 +49,10 @@ const getUrgencyPriority = (time: Date, todayStr: string): number => {
   }
 };
 
-export default function ScheduleView({ 
-  appointments, 
-  onAppointmentClick, 
-  title = "Schedule View" 
+export default function ScheduleView({
+  appointments,
+  onAppointmentClick,
+  title = "Schedule View"
 }: ScheduleViewProps) {
   const [activeFilter, setActiveFilter] = useState<ScheduleFilter>('today');
 
@@ -84,7 +84,7 @@ export default function ScheduleView({
         try {
           const timeA = parseDate(a.scheduled_at || a.requested_time);
           const timeB = parseDate(b.scheduled_at || b.requested_time);
-          
+
           const priorityA = getUrgencyPriority(timeA, todayStr);
           const priorityB = getUrgencyPriority(timeB, todayStr);
 
@@ -133,7 +133,7 @@ export default function ScheduleView({
   const statistics = useMemo(() => {
     try {
       const now = new Date();
-      
+
       const startingSoon = filteredAppointments.filter(apt => {
         try {
           const time = parseDate(apt.scheduled_at || apt.requested_time);
@@ -300,8 +300,8 @@ export default function ScheduleView({
                 No appointments found
               </h4>
               <p className="text-gray-600">
-                {activeFilter === 'today' 
-                  ? "There are no appointments scheduled for today." 
+                {activeFilter === 'today'
+                  ? "There are no appointments scheduled for today."
                   : "No appointments to display."
                 }
               </p>

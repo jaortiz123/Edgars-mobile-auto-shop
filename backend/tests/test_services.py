@@ -2,6 +2,7 @@
 Tests for Services CRUD endpoints.
 T-017: Backend services API implementation
 """
+
 import pytest
 import json
 from datetime import datetime, timezone, timedelta
@@ -10,25 +11,33 @@ import time
 
 def _create_appt(client):
     """Helper to create a minimally valid appointment returning its id or None if DB unavailable."""
-    future_start = (datetime.now(timezone.utc) + timedelta(minutes=2)).replace(microsecond=0).isoformat().replace('+00:00','Z')
+    future_start = (
+        (datetime.now(timezone.utc) + timedelta(minutes=2))
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
     unique_plate = f"TST{int(time.time()*1000)%100000}"  # avoid vehicle conflict across tests
-    resp = client.post("/api/admin/appointments", json={
-        "status": "SCHEDULED",
-        "start": future_start,
-        "total_amount": 0,
-        "paid_amount": 0,
-        "customer_name": "Test User",
-        "customer_phone": "5550001234",
-        "license_plate": unique_plate,
-        "vehicle_year": 2024,
-        "vehicle_make": "TestMake",
-        "vehicle_model": "TestModel"
-    })
+    resp = client.post(
+        "/api/admin/appointments",
+        json={
+            "status": "SCHEDULED",
+            "start": future_start,
+            "total_amount": 0,
+            "paid_amount": 0,
+            "customer_name": "Test User",
+            "customer_phone": "5550001234",
+            "license_plate": unique_plate,
+            "vehicle_year": 2024,
+            "vehicle_make": "TestMake",
+            "vehicle_model": "TestModel",
+        },
+    )
     if resp.status_code != 201:
         # Print debug so pytest output shows root cause
         try:
-            print('CREATE_APPT_DEBUG_STATUS', resp.status_code)
-            print('CREATE_APPT_DEBUG_BODY', resp.get_data(as_text=True))
+            print("CREATE_APPT_DEBUG_STATUS", resp.status_code)
+            print("CREATE_APPT_DEBUG_BODY", resp.get_data(as_text=True))
         except Exception:
             pass
         return None
@@ -55,27 +64,30 @@ def test_create_service_success_memory_mode(client):
         "notes": "Standard 5W-30 oil",
         "estimated_hours": 0.5,
         "estimated_price": 45.99,
-        "category": "maintenance"
+        "category": "maintenance",
     }
-    
+
     # First create an appointment
     appointment_data = {
         "status": "SCHEDULED",
         # use near-future time to satisfy validation rule (15 min past window)
-        "start": (datetime.now(timezone.utc) + timedelta(minutes=1)).replace(microsecond=0).isoformat().replace('+00:00','Z'),
+        "start": (datetime.now(timezone.utc) + timedelta(minutes=1))
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z"),
         "total_amount": 0,
-        "paid_amount": 0
+        "paid_amount": 0,
     }
-    
+
     appt_resp = client.post("/api/admin/appointments", json=appointment_data)
     if appt_resp.status_code == 201:
         appt_id = appt_resp.get_json()["id"]
-        
+
         resp = client.post(f"/api/appointments/{appt_id}/services", json=service_data)
-        
+
         # In memory mode, DB operations might return service unavailable
         assert resp.status_code in [201, 503]
-        
+
         if resp.status_code == 201:
             data = resp.get_json()
             assert "id" in data
@@ -131,18 +143,18 @@ def test_patch_service_update_and_total(client):
     assert appt_id, "Failed to create appointment"
 
     # Create service
-    create_resp = client.post(f"/api/appointments/{appt_id}/services", json={
-        "name": "Brake Inspection",
-        "estimated_price": 100.0
-    })
+    create_resp = client.post(
+        f"/api/appointments/{appt_id}/services",
+        json={"name": "Brake Inspection", "estimated_price": 100.0},
+    )
     assert create_resp.status_code == 200
     service_id = create_resp.get_json()["id"]
 
     # Patch service (update name + price)
-    patch_resp = client.patch(f"/api/appointments/{appt_id}/services/{service_id}", json={
-        "name": "Brake Service",
-        "estimated_price": 150.0
-    })
+    patch_resp = client.patch(
+        f"/api/appointments/{appt_id}/services/{service_id}",
+        json={"name": "Brake Service", "estimated_price": 150.0},
+    )
     assert patch_resp.status_code == 200
     body = patch_resp.get_json()
     assert body["service"]["name"] == "Brake Service"
@@ -155,10 +167,10 @@ def test_delete_service_and_404_after(client):
     appt_id = _create_appt(client)
     assert appt_id, "Failed to create appointment"
 
-    create_resp = client.post(f"/api/appointments/{appt_id}/services", json={
-        "name": "Tire Rotation",
-        "estimated_price": 60.0
-    })
+    create_resp = client.post(
+        f"/api/appointments/{appt_id}/services",
+        json={"name": "Tire Rotation", "estimated_price": 60.0},
+    )
     assert create_resp.status_code == 200
     service_id = create_resp.get_json()["id"]
 
@@ -180,6 +192,7 @@ def test_delete_nonexistent_service_returns_404(client):
         pytest.skip("DB unavailable for test")
 
     import uuid
+
     missing_id = str(uuid.uuid4())  # well-formed but not present
     del_resp = client.delete(f"/api/appointments/{appt_id}/services/{missing_id}")
     assert del_resp.status_code == 404

@@ -20,11 +20,11 @@ describe('CustomerHistory', () => {
 
   it('renders loading state initially', () => {
     mockGetCustomerHistory.mockImplementation(() => new Promise(() => {})); // Never resolves
-    
+
     render(
-      <CustomerHistory 
-        customerId={customerId} 
-        onAppointmentClick={mockOnAppointmentClick} 
+      <CustomerHistory
+        customerId={customerId}
+        onAppointmentClick={mockOnAppointmentClick}
       />
     );
 
@@ -43,9 +43,9 @@ describe('CustomerHistory', () => {
     });
 
     render(
-      <CustomerHistory 
-        customerId={customerId} 
-        onAppointmentClick={mockOnAppointmentClick} 
+      <CustomerHistory
+        customerId={customerId}
+        onAppointmentClick={mockOnAppointmentClick}
       />
     );
 
@@ -55,18 +55,18 @@ describe('CustomerHistory', () => {
 
   it('renders error state and allows retry', async () => {
     const user = userEvent.setup();
-    
+
     // Temporarily mock console.error to prevent CI-STRICT from throwing
     const originalError = console.error;
     console.error = vi.fn();
-    
+
     // Force API to throw an error
     mockGetCustomerHistory.mockRejectedValue(new Error('Network error'));
 
     render(
-      <CustomerHistory 
-        customerId={customerId} 
-        onAppointmentClick={mockOnAppointmentClick} 
+      <CustomerHistory
+        customerId={customerId}
+        onAppointmentClick={mockOnAppointmentClick}
       />
     );
 
@@ -116,7 +116,7 @@ describe('CustomerHistory', () => {
           },
           {
             id: 'apt-2',
-            status: 'COMPLETED', 
+            status: 'COMPLETED',
             start: '2024-12-20T14:00:00Z',
             total_amount: 180.00,
             paid_amount: 100.00,
@@ -148,9 +148,9 @@ describe('CustomerHistory', () => {
     mockGetCustomerHistory.mockResolvedValue(mockData);
 
     render(
-      <CustomerHistory 
-        customerId={customerId} 
-        onAppointmentClick={mockOnAppointmentClick} 
+      <CustomerHistory
+        customerId={customerId}
+        onAppointmentClick={mockOnAppointmentClick}
       />
     );
 
@@ -192,9 +192,9 @@ describe('CustomerHistory', () => {
     mockGetCustomerHistory.mockResolvedValue(mockData);
 
     render(
-      <CustomerHistory 
-        customerId={customerId} 
-        onAppointmentClick={mockOnAppointmentClick} 
+      <CustomerHistory
+        customerId={customerId}
+        onAppointmentClick={mockOnAppointmentClick}
       />
     );
 
@@ -239,9 +239,9 @@ describe('CustomerHistory', () => {
     mockGetCustomerHistory.mockResolvedValue(mockData);
 
     render(
-      <CustomerHistory 
-        customerId={customerId} 
-        onAppointmentClick={mockOnAppointmentClick} 
+      <CustomerHistory
+        customerId={customerId}
+        onAppointmentClick={mockOnAppointmentClick}
       />
     );
 
@@ -295,9 +295,9 @@ describe('CustomerHistory', () => {
     mockGetCustomerHistory.mockResolvedValue(mockData);
 
     render(
-      <CustomerHistory 
-        customerId={customerId} 
-        onAppointmentClick={mockOnAppointmentClick} 
+      <CustomerHistory
+        customerId={customerId}
+        onAppointmentClick={mockOnAppointmentClick}
       />
     );
 
@@ -341,9 +341,9 @@ describe('CustomerHistory', () => {
     mockGetCustomerHistory.mockResolvedValue(mockData);
 
     render(
-      <CustomerHistory 
-        customerId={customerId} 
-        onAppointmentClick={mockOnAppointmentClick} 
+      <CustomerHistory
+        customerId={customerId}
+        onAppointmentClick={mockOnAppointmentClick}
       />
     );
 

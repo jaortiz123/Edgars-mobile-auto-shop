@@ -11,8 +11,8 @@ interface Props<T extends BaseService = BaseService> {
 
 export default function ServiceCard<T extends BaseService = BaseService>({ service, onSelect, displayPrice = false }: Props<T>) {
   return (
-    <Card 
-      className="card-base flex flex-col h-full cursor-pointer min-h-[320px]" 
+    <Card
+      className="card-base flex flex-col h-full cursor-pointer min-h-[320px]"
       onClick={() => onSelect(service)}
       data-testid={`service-card-${service.id}`}
     >

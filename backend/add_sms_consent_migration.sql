@@ -2,7 +2,7 @@
 -- Adds SMS consent tracking fields to customers table
 
 -- Add SMS consent fields to customers table
-ALTER TABLE customers 
+ALTER TABLE customers
 ADD COLUMN IF NOT EXISTS sms_consent BOOLEAN DEFAULT FALSE,
 ADD COLUMN IF NOT EXISTS sms_consent_date TIMESTAMP NULL,
 ADD COLUMN IF NOT EXISTS sms_consent_ip VARCHAR(45) NULL,
@@ -15,11 +15,11 @@ CREATE INDEX IF NOT EXISTS idx_customers_sms_consent ON customers(sms_consent, s
 
 -- Update existing customers to maintain current SMS behavior (opt them in if they have a phone)
 -- This ensures existing functionality continues to work
-UPDATE customers 
-SET sms_consent = TRUE, 
-    sms_consent_date = created_at 
-WHERE phone IS NOT NULL 
-  AND phone != '' 
+UPDATE customers
+SET sms_consent = TRUE,
+    sms_consent_date = created_at
+WHERE phone IS NOT NULL
+  AND phone != ''
   AND sms_consent IS NULL;
 
 -- Add comments for documentation

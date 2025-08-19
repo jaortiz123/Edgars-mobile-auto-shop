@@ -3,12 +3,15 @@ from datetime import datetime, timezone
 
 # Tests for technician assignment, validation, progress timestamps, and board fields
 
+
 @pytest.fixture
 def tech_id(db_connection):
     # Insert an active technician and return id
     with db_connection:
         with db_connection.cursor() as cur:
-            cur.execute("INSERT INTO technicians (name, initials, is_active) VALUES ('Test Tech', 'TT', true) RETURNING id::text")
+            cur.execute(
+                "INSERT INTO technicians (name, initials, is_active) VALUES ('Test Tech', 'TT', true) RETURNING id::text"
+            )
             return cur.fetchone()["id"]
 
 
@@ -38,7 +41,10 @@ def _create_basic_appt(client, tech_id=None):
 
 def test_create_with_invalid_tech_rejected(client, db_connection):
     # db_connection fixture ensures container + schema present
-    r = client.post("/api/admin/appointments", json={"customer_name": "X", "tech_id": "00000000-0000-0000-0000-000000000000"})
+    r = client.post(
+        "/api/admin/appointments",
+        json={"customer_name": "X", "tech_id": "00000000-0000-0000-0000-000000000000"},
+    )
     assert r.status_code == 400
     j = r.get_json()
     assert any("tech_id" in (e.get("detail") or "") for e in j.get("errors", []))
@@ -48,7 +54,10 @@ def test_assign_invalid_tech_rejected(client, db_connection):
     # Create appt without tech
     appt_id = _create_basic_appt(client)
     # Use admin alias path (no /api) which is present for PATCH
-    r = client.patch(f"/api/admin/appointments/{appt_id}", json={"tech_id": "00000000-0000-0000-0000-000000000000"})
+    r = client.patch(
+        f"/api/admin/appointments/{appt_id}",
+        json={"tech_id": "00000000-0000-0000-0000-000000000000"},
+    )
     assert r.status_code == 400
     j = r.get_json()
     errs = j.get("errors") or []

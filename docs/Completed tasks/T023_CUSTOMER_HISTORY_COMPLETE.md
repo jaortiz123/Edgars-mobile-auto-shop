@@ -25,7 +25,7 @@
 ### Frontend Tests: **8/8 PASSING** ✅
 ```
 ✅ renders without crashing
-✅ displays loading state initially  
+✅ displays loading state initially
 ✅ displays empty state when no appointments
 ✅ displays appointments when data is available
 ✅ displays error state on API failure
@@ -38,7 +38,7 @@
 - ✅ Server running on port 3001
 - ✅ Endpoint accessible at `/api/customers/:id/history`
 - ✅ Authentication working (403 without token)
-- ✅ Authorization working (404 with valid token for non-existent customer)  
+- ✅ Authorization working (404 with valid token for non-existent customer)
 - ✅ Response structure correct with JSON envelope
 - ✅ Error handling properly implemented
 

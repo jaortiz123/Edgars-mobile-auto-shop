@@ -1,7 +1,7 @@
 # PROJECT_OVERVIEW — Edgar’s Mobile Auto Shop
 
-**Date:** 2025-07-25 (PT)  
-**Owner:** Jesus (Edgar’s Admin Overhaul)  
+**Date:** 2025-07-25 (PT)
+**Owner:** Jesus (Edgar’s Admin Overhaul)
 **Status:** In flight — Sprint 1 groundwork
 
 ---
@@ -63,14 +63,14 @@ We deliver value every sprint with **minimal, reversible schema changes**. No he
 
 ## Architecture Snapshot
 
-- **Frontend:** React + TypeScript + Vite + Tailwind.  
-  - Key components: `StatusBoard`, `AppointmentCalendar`, `AppointmentDrawer`, `DashboardStats`.  
-  - State: `AppointmentContext`.  
-- **Backend:** Flask + PostgreSQL.  
-  - Endpoints: board, stats, appointment get/patch; later services/messages/payments/inspections.  
-- **Data:** extend `appointments`; add lite tables `appointment_services`, `messages`, `payments`, `inspection_checklists`, `inspection_items`.  
-- **Auth:** JWT with role claims; RBAC middleware.  
-- **Observability:** p95 latency SLOs + weekly report.  
+- **Frontend:** React + TypeScript + Vite + Tailwind.
+  - Key components: `StatusBoard`, `AppointmentCalendar`, `AppointmentDrawer`, `DashboardStats`.
+  - State: `AppointmentContext`.
+- **Backend:** Flask + PostgreSQL.
+  - Endpoints: board, stats, appointment get/patch; later services/messages/payments/inspections.
+- **Data:** extend `appointments`; add lite tables `appointment_services`, `messages`, `payments`, `inspection_checklists`, `inspection_items`.
+- **Auth:** JWT with role claims; RBAC middleware.
+- **Observability:** p95 latency SLOs + weekly report.
 - **Flags:** `ff.messaging`, `ff.payments`, `ff.inspections`, `ff.command_palette`, `ff.brand_theming`.
 
 ---
@@ -119,33 +119,33 @@ We deliver value every sprint with **minimal, reversible schema changes**. No he
 
 ## Dependencies
 
-- SMS provider with delivery webhooks (HMAC).  
-- Postgres with backup/restore access.  
-- Redis (optional) for stats cache / queues (can defer if not available).  
+- SMS provider with delivery webhooks (HMAC).
+- Postgres with backup/restore access.
+- Redis (optional) for stats cache / queues (can defer if not available).
 
 ---
 
 ## Links
 
-- **API:** `docs/API.md`  
-- **Schema:** `docs/SCHEMA.md`  
-- **Risk Register:** `docs/RISK_REGISTER.md`  
-- **Security Checklist:** `docs/SECURITY_CHECKLIST.md`  
-- **Performance Metrics:** `docs/PERFORMANCE_METRICS.md`  
-- **DR Plan:** `docs/DR_PLAN.md`  
-- **Frontend Playbook:** `docs/FRONTEND_PLAYBOOK.md`  
-- **Appointment Reminders:** `docs/APPOINTMENT_REMINDERS.md`  
-- **Deployment Checklist:** `docs/DEPLOYMENT_CHECKLIST.md`  
+- **API:** `docs/API.md`
+- **Schema:** `docs/SCHEMA.md`
+- **Risk Register:** `docs/RISK_REGISTER.md`
+- **Security Checklist:** `docs/SECURITY_CHECKLIST.md`
+- **Performance Metrics:** `docs/PERFORMANCE_METRICS.md`
+- **DR Plan:** `docs/DR_PLAN.md`
+- **Frontend Playbook:** `docs/FRONTEND_PLAYBOOK.md`
+- **Appointment Reminders:** `docs/APPOINTMENT_REMINDERS.md`
+- **Deployment Checklist:** `docs/DEPLOYMENT_CHECKLIST.md`
 - **Launch Plan:** `docs/LAUNCH_PLAN.md`
 
 ---
 
 ## Glossary
 
-- **Drawer:** Right-side panel used for editing/viewing an appointment.  
-- **Board:** Kanban-lite status view of appointments.  
-- **Quiet hours:** 9pm–8am shop local time; messaging blocked unless Owner override.  
-- **RPO/RTO:** Recovery Point/Time Objectives for backups.  
+- **Drawer:** Right-side panel used for editing/viewing an appointment.
+- **Board:** Kanban-lite status view of appointments.
+- **Quiet hours:** 9pm–8am shop local time; messaging blocked unless Owner override.
+- **RPO/RTO:** Recovery Point/Time Objectives for backups.
 
 ---
 

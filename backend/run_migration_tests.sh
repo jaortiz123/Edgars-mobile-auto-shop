@@ -1,6 +1,6 @@
 #!/bin/bash
 # Migration Verification Test Runner (T-010)
-# 
+#
 # This script demonstrates how to run the automated migration verification tests
 # that ensure the canonical timestamps migration correctly handles the start_ts field.
 

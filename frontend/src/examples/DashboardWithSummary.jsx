@@ -1,6 +1,6 @@
 /**
  * Sprint 4A-T-002: Daily Achievement Summary Integration Example
- * 
+ *
  * Example showing how to integrate the Daily Achievement Summary
  * into an existing dashboard component
  */
@@ -58,7 +58,7 @@ export function DashboardWithSummary() {
       {/* Dashboard Stats Grid */}
       <div className="dashboard-grid">
         {/* Your existing stats components */}
-        
+
         {/* Daily Achievement Summary Card */}
         {summaryData && (
           <DailyAchievementSummaryCard

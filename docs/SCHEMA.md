@@ -15,7 +15,7 @@
       │                         │  └──* payments
       │                         │  └──* messages
       │                         │  └──* inspection_checklists 1───* inspection_items
-      └──* appointments         
+      └──* appointments
 
  users 1───* audit_logs (by user_id)
 

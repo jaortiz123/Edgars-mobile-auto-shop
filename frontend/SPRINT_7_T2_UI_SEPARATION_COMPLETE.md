@@ -50,7 +50,7 @@ Successfully completed the separation of UI (JSX) logic from service files by ex
 ### 🛠️ API Fixes Applied
 
 #### Notification Service Integration
-- Fixed parameter order: `addNotification(type, message)` 
+- Fixed parameter order: `addNotification(type, message)`
 - Corrected service method calls in components
 - Ensured proper notification type constraints
 
@@ -99,7 +99,7 @@ src/
 
 With T2 complete, the codebase is ready for:
 - **T3**: Update Vitest Config
-- **T4**: Create Test Mocks  
+- **T4**: Create Test Mocks
 - **T5**: Refactor Tests
 - **T6**: Integrate CI Coverage
 

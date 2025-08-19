@@ -22,5 +22,3 @@ Test-only variables (not required in Vercel)
   - Where: test setup and specs under `frontend/src/tests/**`
   - Purpose: test harness configuration
   - Type: Test runtime only
-
-

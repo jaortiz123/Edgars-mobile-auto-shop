@@ -13,6 +13,7 @@ fileConfig(config.config_file_name)
 
 # Build DB URL from env if present
 
+
 def db_url_from_env():
     user = os.getenv("POSTGRES_USER", "user")
     pw = os.getenv("POSTGRES_PASSWORD", "password")
@@ -20,6 +21,7 @@ def db_url_from_env():
     port = os.getenv("POSTGRES_PORT", "5432")
     db = os.getenv("POSTGRES_DB", "autoshop")
     return f"postgresql+psycopg2://{user}:{pw}@{host}:{port}/{db}"
+
 
 # allow env override of sqlalchemy.url
 if "sqlalchemy.url" in config.get_section("alembic"):

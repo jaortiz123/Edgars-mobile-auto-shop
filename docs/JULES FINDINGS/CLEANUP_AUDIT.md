@@ -56,7 +56,7 @@ console.error('🔧 API: Error details:', {
 ### Large Commented Code Blocks
 ```javascript
 // File: frontend/src/admin/Dashboard.tsx, Lines 572-581
-/* 
+/*
 {selectedAppointment && (
     <AppointmentDetailModal
     appointment={selectedAppointment}

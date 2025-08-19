@@ -56,10 +56,10 @@ const Profile: React.FC = () => {
       });
       setIsEditing(false);
     } catch (updateError) {
-      const errorMessage = updateError instanceof Error 
-        ? updateError.message 
+      const errorMessage = updateError instanceof Error
+        ? updateError.message
         : 'There was an error updating your profile. Please try again.';
-      
+
       showToast({
         type: 'error',
         title: 'Update failed',
@@ -82,7 +82,7 @@ const Profile: React.FC = () => {
       ...vehicle,
       id: generateTempId()
     };
-    
+
     setFormData(prev => ({
       ...prev,
       vehicles: [...(prev.vehicles || []), newVehicle]
@@ -99,7 +99,7 @@ const Profile: React.FC = () => {
   const handleEditVehicle = useCallback((vehicleId: string, updatedVehicle: Omit<Vehicle, 'id'>) => {
     setFormData(prev => ({
       ...prev,
-      vehicles: (prev.vehicles || []).map(vehicle => 
+      vehicles: (prev.vehicles || []).map(vehicle =>
         vehicle.id === vehicleId ? { ...updatedVehicle, id: vehicleId } : vehicle
       )
     }));
@@ -111,7 +111,7 @@ const Profile: React.FC = () => {
       ...prev,
       vehicles: (prev.vehicles || []).filter(vehicle => vehicle.id !== vehicleId)
     }));
-    
+
     if (vehicleToDelete) {
       showToast({
         type: 'info',
@@ -124,21 +124,21 @@ const Profile: React.FC = () => {
 
   // Memoize tabs to prevent unnecessary re-renders
   const tabs = useMemo(() => [
-    { 
-      id: 'dashboard' as const, 
-      name: 'Dashboard', 
+    {
+      id: 'dashboard' as const,
+      name: 'Dashboard',
       icon: 'M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z',
       ariaLabel: 'Dashboard tab'
     },
-    { 
-      id: 'profile' as const, 
-      name: 'Profile', 
+    {
+      id: 'profile' as const,
+      name: 'Profile',
       icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
       ariaLabel: 'Profile information tab'
     },
-    { 
-      id: 'vehicles' as const, 
-      name: 'Vehicles', 
+    {
+      id: 'vehicles' as const,
+      name: 'Vehicles',
       icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
       ariaLabel: 'My vehicles tab'
     }
@@ -170,8 +170,8 @@ const Profile: React.FC = () => {
                   onClick={() => handleTabChange(tab.id)}
                   className={`
                     flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200
-                    ${activeTab === tab.id 
-                      ? 'border-blue-500 text-blue-600' 
+                    ${activeTab === tab.id
+                      ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }
                   `}

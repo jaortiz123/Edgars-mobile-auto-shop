@@ -1,6 +1,6 @@
 /**
  * Sprint 1B Card Design System - Robust CSS Enhancements
- * 
+ *
  * Performance and accessibility improvements for card components:
  * - GPU-accelerated animations
  * - Optimized shadow calculations
@@ -14,7 +14,7 @@
   background: white;
   border: 1px solid rgba(231, 229, 228, 0.8);
   border-radius: 12px;
-  box-shadow: 
+  box-shadow:
     0 1px 2px 0 rgba(0, 0, 0, 0.05),
     0 1px 3px 0 rgba(0, 0, 0, 0.1);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -22,7 +22,7 @@
 }
 
 .card-base:hover {
-  box-shadow: 
+  box-shadow:
     0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 2px 4px -1px rgba(0, 0, 0, 0.06),
     0 0 0 1px rgba(59, 130, 246, 0.1);
@@ -78,7 +78,7 @@
   border-width: 2px;
   border-style: solid;
   z-index: 10;
-  
+
   /* Performance optimization */
   will-change: transform;
   transform: translateZ(0);
@@ -110,7 +110,7 @@
   border-radius: 50%;
   border: 2px solid #ef4444;
   opacity: 0.6;
-  
+
   /* GPU-accelerated animation */
   animation: urgency-pulse-transform 2s infinite ease-in-out;
   will-change: transform, opacity;
@@ -127,7 +127,7 @@
   border-radius: 50%;
   border: 2px solid #f59e0b;
   opacity: 0.4;
-  
+
   /* GPU-accelerated animation */
   animation: urgency-pulse-transform 3s infinite ease-in-out;
   will-change: transform, opacity;
@@ -157,7 +157,7 @@
   border-radius: 4px;
   margin-top: var(--sp-1);
   transition: all 0.2s ease;
-  
+
   /* Accessibility enhancement */
   position: relative;
 }
@@ -229,7 +229,7 @@
   height: 8px;
   background-color: #10b981;
   border-radius: 50%;
-  
+
   /* GPU-accelerated pulse */
   animation: live-pulse 2s infinite ease-in-out;
   will-change: transform, opacity;
@@ -309,12 +309,12 @@
     border-width: 2px;
     border-color: #000;
   }
-  
+
   .urgency-badge.urgent {
     border-color: #000;
     background-color: #fff;
   }
-  
+
   .urgency-status.urgent {
     border-color: #000;
     color: #000;
@@ -331,16 +331,16 @@
     animation: none;
     transition: none;
   }
-  
+
   .card-base:hover {
     transform: none;
   }
-  
+
   .urgency-badge::before {
     opacity: 0.6;
     transform: scale(1);
   }
-  
+
   .live-indicator {
     opacity: 1;
     transform: translateY(-50%);
@@ -394,7 +394,7 @@
     min-height: 44px; /* Minimum touch target size */
     min-width: 44px;
   }
-  
+
   .appointment-card .opacity-0 {
     opacity: 1; /* Always show buttons on touch devices */
   }
@@ -404,7 +404,7 @@
 .card-overdue {
   background: linear-gradient(135deg, #fef2f2 0%, white 100%);
   border-left: 4px solid #dc2626;
-  box-shadow: 
+  box-shadow:
     0 4px 6px -1px rgba(220, 38, 38, 0.1),
     0 2px 4px -1px rgba(220, 38, 38, 0.06);
 }
@@ -412,7 +412,7 @@
 .card-starting-soon {
   background: linear-gradient(135deg, #fffbeb 0%, white 100%);
   border-left: 4px solid #d97706;
-  box-shadow: 
+  box-shadow:
     0 4px 6px -1px rgba(217, 119, 6, 0.1),
     0 2px 4px -1px rgba(217, 119, 6, 0.06);
 }
@@ -420,7 +420,7 @@
 .card-in-progress {
   background: linear-gradient(135deg, #f0fdf4 0%, white 100%);
   border-left: 4px solid #16a34a;
-  box-shadow: 
+  box-shadow:
     0 4px 6px -1px rgba(22, 163, 74, 0.1),
     0 2px 4px -1px rgba(22, 163, 74, 0.06);
 }
@@ -444,10 +444,9 @@
 }
 
 .floating-element {
-  box-shadow: 
+  box-shadow:
     0 10px 15px -3px rgba(0, 0, 0, 0.1),
     0 4px 6px -2px rgba(0, 0, 0, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(16px);
 }
-

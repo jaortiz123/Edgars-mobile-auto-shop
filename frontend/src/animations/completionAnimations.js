@@ -1,6 +1,6 @@
 /**
  * Sprint 4A-T-001: Completion Animations
- * 
+ *
  * Fade-out + slide-down animations for completed appointment cards
  * with 300ms duration and proper DOM removal using onAnimationEnd
  */
@@ -47,7 +47,7 @@ export function animateCardCompletion(cardElement, onComplete) {
 export function supportsAnimations() {
   const testElement = document.createElement('div');
   const prefixes = ['animation', 'webkitAnimation', 'mozAnimation', 'msAnimation'];
-  
+
   return prefixes.some(prefix => testElement.style[prefix] !== undefined);
 }
 

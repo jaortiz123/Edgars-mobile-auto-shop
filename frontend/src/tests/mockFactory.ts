@@ -1,20 +1,20 @@
 /**
  * Sprint 7 Task 4: Test Mock Factory
  * Centralized reusable mock implementations for comprehensive testing
- * 
+ *
  * Features:
  * - Time utilities comprehensive mocking
  * - API service mock factory with realistic responses
- * - Browser API sophisticated mocking  
+ * - Browser API sophisticated mocking
  * - Performance measurement mocks
  * - Notification system mocks
  * - Cache and storage mocks
  */
 
 import { vi, type MockedFunction } from 'vitest'
-import type { 
-  MockTimeConfig, 
-  MockApiConfig, 
+import type {
+  MockTimeConfig,
+  MockApiConfig,
   TestMockFactoryConfig,
   MockApiRequestParams,
   MockAppointmentData,
@@ -35,8 +35,8 @@ import type {
 export type { TestMockFactoryConfig, MockTimeConfig, MockApiConfig } from '../types/test';
 
 export function createTimeMocks(config: MockTimeConfig = {}) {
-  const { 
-    fixedNow = new Date('2024-01-15T10:00:00Z'), 
+  const {
+    fixedNow = new Date('2024-01-15T10:00:00Z'),
     autoAdvance = false,
     cacheEnabled = true
   } = config;
@@ -151,24 +151,24 @@ export function createTimeMocks(config: MockTimeConfig = {}) {
 // ===============================
 
 export function createApiMocks(config: MockApiConfig = {}) {
-  const { 
-    networkDelay = 100, 
-    failureRate = 0, 
+  const {
+    networkDelay = 100,
+    failureRate = 0,
     enableCaching = true,
-    responseVariations = true 
+    responseVariations = true
   } = config;
 
   const responseCache = new Map<string, Record<string, unknown>>();
   let requestCounter = 0;
 
-  const simulateNetworkDelay = () => 
+  const simulateNetworkDelay = () =>
     new Promise(resolve => setTimeout(resolve, networkDelay + Math.random() * 50));
 
   const shouldFail = () => Math.random() < failureRate;
 
   const generateResponseVariation = <T extends Record<string, unknown>>(baseResponse: T): T => {
     if (!responseVariations) return baseResponse;
-    
+
     return {
       ...baseResponse,
       meta: {
@@ -205,7 +205,7 @@ export function createApiMocks(config: MockApiConfig = {}) {
               paid_amount: 0
             },
             {
-              id: 'apt-2', 
+              id: 'apt-2',
               customer_name: 'Jane Smith',
               service: 'Brake Inspection',
               scheduled_at: '2024-01-15T16:30:00Z',
@@ -231,7 +231,7 @@ export function createApiMocks(config: MockApiConfig = {}) {
 
       return generateResponseVariation({
         success: true,
-        data: { 
+        data: {
           id: `apt-${Date.now()}`,
           ...appointmentData,
           status: 'scheduled',
@@ -247,7 +247,7 @@ export function createApiMocks(config: MockApiConfig = {}) {
 
       return generateResponseVariation({
         success: true,
-        data: { 
+        data: {
           id,
           status,
           updated_at: new Date().toISOString()
@@ -262,7 +262,7 @@ export function createApiMocks(config: MockApiConfig = {}) {
 
       return generateResponseVariation({
         success: true,
-        data: { 
+        data: {
           id,
           scheduled_at: newTime,
           updated_at: new Date().toISOString()
@@ -356,7 +356,7 @@ export function createApiMocks(config: MockApiConfig = {}) {
 }
 
 // ===============================
-// BROWSER API MOCK FACTORY  
+// BROWSER API MOCK FACTORY
 // ===============================
 
 export function createBrowserApiMocks() {
@@ -462,8 +462,8 @@ export function createBrowserApiMocks() {
     // Geolocation API
     geolocation: {
       getCurrentPosition: vi.fn().mockImplementation((
-        success?: (position: MockGeolocationPosition) => void, 
-        error?: (error: MockGeolocationError) => void, 
+        success?: (position: MockGeolocationPosition) => void,
+        error?: (error: MockGeolocationError) => void,
         options?: MockGeolocationOptions
       ) => {
         setTimeout(() => {
@@ -615,7 +615,7 @@ export function createMockFactory(config: TestMockFactoryConfig = {}) {
         global.matchMedia = browserMocks.matchMedia;
         global.localStorage = browserMocks.localStorage as Storage;
         global.performance = { ...global.performance, ...browserMocks.performance };
-        
+
         if (typeof navigator !== 'undefined') {
           (navigator as unknown as Record<string, unknown>).geolocation = browserMocks.geolocation;
         }
@@ -627,7 +627,7 @@ export function createMockFactory(config: TestMockFactoryConfig = {}) {
 // Export a default factory instance for immediate use
 export const mockFactory = createMockFactory();
 
-// Convenience exports for common use cases  
+// Convenience exports for common use cases
 export const timeMocks = mockFactory.time;
 export const apiMocks = mockFactory.api;
 export const browserMocks = mockFactory.browser;

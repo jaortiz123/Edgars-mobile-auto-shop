@@ -5,9 +5,9 @@
  * Typography Scale Tokens
  * Based on 1.25 modular scale (Major Third)
  */
-export type TypographyScale = 
+export type TypographyScale =
   | 'fs-0'  // 12px - Captions, fine print
-  | 'fs-1'  // 14px - Small text, labels  
+  | 'fs-1'  // 14px - Small text, labels
   | 'fs-2'  // 16px - Body text (base)
   | 'fs-3'  // 20px - Small headings, lead text
   | 'fs-4'  // 24px - Medium headings
@@ -17,7 +17,7 @@ export type TypographyScale =
 /**
  * Line Height Tokens
  */
-export type LineHeight = 
+export type LineHeight =
   | 'tight'    // 1.25 - Headings
   | 'normal'   // 1.5 - Body text
   | 'relaxed'; // 1.75 - Large text blocks
@@ -25,7 +25,7 @@ export type LineHeight =
 /**
  * Font Weight Tokens
  */
-export type FontWeight = 
+export type FontWeight =
   | 'normal'    // 400
   | 'medium'    // 500
   | 'semibold'  // 600
@@ -35,7 +35,7 @@ export type FontWeight =
  * Spacing Scale Tokens
  * Based on 8px base unit system
  */
-export type SpacingScale = 
+export type SpacingScale =
   | 'sp-0'  // 0
   | 'sp-1'  // 8px
   | 'sp-2'  // 16px
@@ -48,7 +48,7 @@ export type SpacingScale =
 /**
  * Typography Utilities Class Names
  */
-export type TypographyUtility = 
+export type TypographyUtility =
   | `text-${TypographyScale}`
   | `text-h${1 | 2 | 3 | 4 | 5 | 6}`
   | 'text-body'
@@ -61,7 +61,7 @@ export type TypographyUtility =
 /**
  * Spacing Utilities Class Names
  */
-export type SpacingUtility = 
+export type SpacingUtility =
   | `m-${SpacingScale}`
   | `mt-${SpacingScale}`
   | `mb-${SpacingScale}`

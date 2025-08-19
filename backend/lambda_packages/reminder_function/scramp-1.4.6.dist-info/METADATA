@@ -220,7 +220,7 @@ specified in order to give a reproducible example, but in production you'd omit 
 >>> hash = scram.using(salt=SALT, rounds=ITERATION_COUNT).hash(PASSWORD)
 >>>
 >>> salt, iteration_count, digest = scram.extract_digest_info(hash, 'sha-256')
->>> 
+>>>
 >>> stored_key, server_key = m.make_stored_server_keys(digest)
 >>>
 >>> db[USERNAME] = salt, stored_key, server_key, iteration_count

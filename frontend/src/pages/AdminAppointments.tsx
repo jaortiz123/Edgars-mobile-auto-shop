@@ -7,19 +7,19 @@ import ScheduleView from '../components/admin/ScheduleView';
 import AdvancedFilter from '../components/admin/AdvancedFilter';
 import DataExport from '../components/admin/DataExport';
 import ReportsDropdown from '../components/admin/ReportsDropdown';
-import DailyAchievementSummary, { 
-  DailyAchievementSummaryCard 
+import DailyAchievementSummary, {
+  DailyAchievementSummaryCard
 } from '../components/DailyAchievementSummary/DailyAchievementSummary';
 import { scheduleAutomaticSummary, shouldShowDailySummary } from '../services/summaryService';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { 
-  Calendar, 
-  List, 
-  Filter, 
-  Download, 
-  RefreshCw, 
+import {
+  Calendar,
+  List,
+  Filter,
+  Download,
+  RefreshCw,
   BarChart3,
   Users,
   Clock,
@@ -85,11 +85,11 @@ export default function AdminAppointments() {
   // Auto-refresh appointments every 30 seconds with proper cleanup
   useEffect(() => {
     if (loading) return; // Don't setup interval during initial load
-    
+
     // TEMP: Disabled polling to fix infinite request loop
     console.log('Appointment polling disabled to prevent infinite requests');
     return;
-    
+
     const interval = setInterval(() => {
       console.log('🔄 Auto-refreshing appointments...');
       // Only refresh if we're not already loading to prevent race conditions
@@ -183,7 +183,7 @@ export default function AdminAppointments() {
   };
 
   const toggleAppointmentSelection = (appointmentId: string) => {
-    setSelectedAppointments(prev => 
+    setSelectedAppointments(prev =>
       prev.includes(appointmentId)
         ? prev.filter(id => id !== appointmentId)
         : [...prev, appointmentId]
@@ -193,7 +193,7 @@ export default function AdminAppointments() {
   const selectAllAppointments = () => {
     const filteredAppts = applyFilters(appointments);
     const allIds = filteredAppts.map(apt => apt.id);
-    setSelectedAppointments(prev => 
+    setSelectedAppointments(prev =>
       prev.length === allIds.length ? [] : allIds
     );
   };
@@ -230,7 +230,7 @@ export default function AdminAppointments() {
           <h1 className="text-3xl font-bold text-gray-900">Edgar's Admin Dashboard</h1>
           <p className="text-gray-600 mt-1">Manage appointments, monitor notifications, and view analytics</p>
         </div>
-        
+
         <div className="flex flex-wrap gap-3">
           <Button
             variant="outline"
@@ -241,10 +241,10 @@ export default function AdminAppointments() {
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          
+
           {/* CSV Export Reports (T-024) */}
           <ReportsDropdown ffReports={true} />
-          
+
           <Button
             variant="outline"
             onClick={() => setShowExport(true)}
@@ -425,7 +425,7 @@ export default function AdminAppointments() {
       ) : viewMode === 'calendar' ? (
         <CalendarView />
       ) : viewMode === 'schedule' ? (
-        <ScheduleView 
+        <ScheduleView
           appointments={filteredAppointments}
           title="Smart Today View"
         />
@@ -452,7 +452,7 @@ export default function AdminAppointments() {
               )}
             </div>
           </CardHeader>
-          
+
           <CardContent>
             {filteredAppointments.length === 0 ? (
               <div className="text-center py-12 text-gray-500">

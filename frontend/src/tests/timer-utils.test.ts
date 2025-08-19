@@ -8,7 +8,7 @@ describe('Timer Utilities', () => {
   test('should handle flushPromises correctly', async () => {
     let resolved = false;
     Promise.resolve().then(() => { resolved = true; });
-    
+
     await flushPromises();
     expect(resolved).toBe(true);
   });

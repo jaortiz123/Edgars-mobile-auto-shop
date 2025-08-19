@@ -110,7 +110,7 @@ class OfflineSupportService {
 
     try {
       console.log(`🔄 Sprint 3C: Syncing ${this.state.pendingActions.length} offline actions...`);
-      
+
       const actionsToSync = [...this.state.pendingActions];
       const successful: string[] = [];
       const failed: OfflineAction[] = [];
@@ -122,10 +122,10 @@ class OfflineSupportService {
           console.log(`✅ Synced action: ${action.type}`);
         } catch (error) {
           console.warn(`❌ Failed to sync action: ${action.type}`, error);
-          
+
           // Increment retry count
           action.retryCount++;
-          
+
           // Remove action if max retries exceeded
           if (action.retryCount >= 5) {
             console.warn(`🗑️ Dropping action after 5 failed attempts: ${action.type}`);
@@ -139,10 +139,10 @@ class OfflineSupportService {
       // Update pending actions
       this.state.pendingActions = failed;
       this.state.lastSyncTime = new Date().toISOString();
-      
+
       if (successful.length > 0) {
         console.log(`✅ Sprint 3C: Successfully synced ${successful.length} actions`);
-        
+
         // Notify about successful sync
         this.notifySuccessfulSync(successful.length);
       }
@@ -160,17 +160,17 @@ class OfflineSupportService {
     switch (action.type) {
       case 'mark_arrived':
         return this.syncMarkArrived(action.payload as { appointmentId: string });
-      
+
       case 'notification_read':
         return this.syncNotificationRead(action.payload as { notificationId: string });
-      
+
       case 'reschedule':
         return this.syncReschedule(action.payload as { appointmentId: string; newTime: string });
-      
+
       case 'notification_created':
         // Notifications don't need syncing to server, just local cleanup
         return Promise.resolve();
-      
+
       default:
         throw new Error(`Unknown action type: ${(action as any).type}`);
     }
@@ -237,7 +237,7 @@ class OfflineSupportService {
     };
 
     this.state.pendingActions.push(action);
-    
+
     // Sort by priority and timestamp
     this.state.pendingActions.sort((a, b) => {
       const priorityOrder = { high: 0, normal: 1, low: 2 };
@@ -259,7 +259,7 @@ class OfflineSupportService {
 
   public subscribe(listener: (state: OfflineState) => void): () => void {
     this.listeners.add(listener);
-    
+
     // Return unsubscribe function
     return () => {
       this.listeners.delete(listener);
@@ -270,7 +270,7 @@ class OfflineSupportService {
     if (!this.state.isOnline) {
       return Promise.reject(new Error('Cannot sync while offline'));
     }
-    
+
     return this.attemptSync();
   }
 
@@ -283,12 +283,12 @@ class OfflineSupportService {
   public cleanup(): void {
     window.removeEventListener('online', this.handleOnline);
     window.removeEventListener('offline', this.handleOffline);
-    
+
     if (this.syncTimer) {
       clearInterval(this.syncTimer);
       this.syncTimer = null;
     }
-    
+
     this.listeners.clear();
   }
 }
@@ -327,7 +327,7 @@ export async function markArrivedWithOfflineSupport(appointmentId: string): Prom
   } else {
     // Queue action for when back online
     offlineService.addAction('mark_arrived', { appointmentId }, 'high');
-    
+
     // Show offline notification
     const { addNotification } = await import('@/services/notificationService');
     addNotification(
@@ -354,7 +354,7 @@ export async function rescheduleWithOfflineSupport(
   } else {
     // Queue action for when back online
     offlineService.addAction('reschedule', { appointmentId, newTime }, 'normal');
-    
+
     // Show offline notification
     const { addNotification } = await import('@/services/notificationService');
     addNotification(
@@ -375,8 +375,8 @@ export function OfflineStatusIndicator() {
 
   return (
     <div className={`fixed top-4 right-4 z-50 px-3 py-2 rounded-lg text-sm font-medium ${
-      !isOnline 
-        ? 'bg-red-100 text-red-800 border border-red-200' 
+      !isOnline
+        ? 'bg-red-100 text-red-800 border border-red-200'
         : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
     }`}>
       <div className="flex items-center space-x-2">

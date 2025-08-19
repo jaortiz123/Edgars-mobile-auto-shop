@@ -3,11 +3,24 @@ import pytest
 
 
 def _state(status: str, subtotal: int = 5000, paid: int = 0) -> il.InvoiceState:
-    item = il.LineItem(position=0, name="Svc", quantity=1, unit_price_cents=subtotal,
-                       line_subtotal_cents=subtotal, tax_rate_basis_points=0, tax_cents=0,
-                       total_cents=subtotal, service_operation_id=None)
-    totals = il.InvoiceTotals(subtotal_cents=subtotal, tax_cents=0, total_cents=subtotal,
-                              amount_paid_cents=paid, amount_due_cents=subtotal - paid)
+    item = il.LineItem(
+        position=0,
+        name="Svc",
+        quantity=1,
+        unit_price_cents=subtotal,
+        line_subtotal_cents=subtotal,
+        tax_rate_basis_points=0,
+        tax_cents=0,
+        total_cents=subtotal,
+        service_operation_id=None,
+    )
+    totals = il.InvoiceTotals(
+        subtotal_cents=subtotal,
+        tax_cents=0,
+        total_cents=subtotal,
+        amount_paid_cents=paid,
+        amount_due_cents=subtotal - paid,
+    )
     return il.InvoiceState(status=status, line_items=[item], totals=totals)
 
 

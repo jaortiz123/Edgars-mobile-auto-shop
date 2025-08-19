@@ -147,19 +147,19 @@ describe('Enhanced Services CRUD in AppointmentDrawer - userEvent Migration', ()
     const nameField = screen.getByLabelText('Service Name *');
     await user.clear(nameField);
     await user.type(nameField, 'Brake Inspection');
-    
+
     const notesField = screen.getByLabelText('Notes');
     await user.clear(notesField);
     await user.type(notesField, 'Complete brake system check');
-    
+
     const hoursField = screen.getByLabelText('Hours');
     await user.clear(hoursField);
     await user.type(hoursField, '0.5');
-    
+
     const priceField = screen.getByLabelText('Price ($)');
     await user.clear(priceField);
     await user.type(priceField, '85.00');
-    
+
     const categoryField = screen.getByLabelText('Category');
     await user.clear(categoryField);
     await user.type(categoryField, 'Inspection');
@@ -365,7 +365,7 @@ describe('Enhanced Services CRUD in AppointmentDrawer - userEvent Migration', ()
 
     // Enter invalid hours using userEvent
     await user.type(screen.getByLabelText('Service Name *'), 'Test Service');
-    
+
     const hoursField = screen.getByLabelText('Hours');
     await user.clear(hoursField);
     await user.type(hoursField, 'invalid');
@@ -437,7 +437,7 @@ describe('Enhanced Services CRUD in AppointmentDrawer - userEvent Migration', ()
     // Enter initial data
     const nameField = screen.getByLabelText('Service Name *');
     await user.type(nameField, 'Initial Service');
-    
+
     // Clear and re-enter using userEvent
     await user.clear(nameField);
     await user.type(nameField, 'Final Service Name');
@@ -458,7 +458,7 @@ describe('Enhanced Services CRUD in AppointmentDrawer - userEvent Migration', ()
     // Test tab navigation using userEvent
     await user.tab();
     await user.tab();
-    
+
     // Switch to Services tab with keyboard
     const servicesTab = screen.getByRole('tab', { name: 'Services' });
     await user.click(servicesTab);

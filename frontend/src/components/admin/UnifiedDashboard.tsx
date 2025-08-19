@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { AppointmentFormModal } from './AppointmentFormModal';
-import { 
+import {
   Calendar,
   Clock,
   Users,
@@ -182,7 +182,7 @@ export function UnifiedDashboard() {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
       const newAppointment: Appointment = {
         id: Date.now().toString(),
         customer: data.customerName,
@@ -208,13 +208,13 @@ export function UnifiedDashboard() {
   };
 
   const handleStartJob = (appointmentId: string) => {
-    setAppointments(prev => prev.map(apt => 
+    setAppointments(prev => prev.map(apt =>
       apt.id === appointmentId ? { ...apt, status: 'in-progress' as const } : apt
     ));
   };
 
   const handleCompleteJob = (appointmentId: string) => {
-    setAppointments(prev => prev.map(apt => 
+    setAppointments(prev => prev.map(apt =>
       apt.id === appointmentId ? { ...apt, status: 'completed' as const } : apt
     ));
   };

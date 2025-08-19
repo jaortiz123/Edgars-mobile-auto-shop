@@ -1,6 +1,6 @@
 /**
  * Phase 2 Task 1: Integration Test for renderWithProviders Helper
- * 
+ *
  * Validates that the renderWithProviders helper function works correctly
  * and can render the full application with all providers.
  */

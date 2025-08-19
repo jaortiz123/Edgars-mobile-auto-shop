@@ -79,7 +79,7 @@ export const SMSConsentManager: React.FC<SMSConsentManagerProps> = ({
             {isUpdating ? 'Updating...' : (smsConsent ? 'Opt Out' : 'Opt In')}
           </Button>
         </div>
-        
+
         <div className="text-xs text-gray-600 space-y-2">
           <p>
             {smsConsent ? (
@@ -96,7 +96,7 @@ export const SMSConsentManager: React.FC<SMSConsentManagerProps> = ({
               </>
             )}
           </p>
-          
+
           <div className="border-t pt-2 mt-2">
             <p className="font-medium">How to manage SMS notifications:</p>
             <ul className="list-disc list-inside space-y-1 mt-1">

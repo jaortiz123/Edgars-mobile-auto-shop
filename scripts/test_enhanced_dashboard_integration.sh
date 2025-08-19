@@ -92,7 +92,7 @@ cd frontend
 if command -v npm >/dev/null 2>&1; then
     echo "Installing dependencies..."
     npm install --silent > /dev/null 2>&1
-    
+
     echo "Running TypeScript check..."
     if npm run type-check > /dev/null 2>&1; then
         echo "✅ TypeScript compilation successful"
@@ -117,7 +117,7 @@ if command -v npm >/dev/null 2>&1; then
     echo "Running production build..."
     if npm run build > /dev/null 2>&1; then
         echo "✅ Production build successful"
-        
+
         # Check build size
         if [ -d "dist" ]; then
             BUILD_SIZE=$(du -sh dist 2>/dev/null | cut -f1)

@@ -555,13 +555,13 @@
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 0.5rem;
   }
-  
+
   .quick-add-slot-button {
     padding: 0.5rem;
     min-height: 60px;
     font-size: 0.8125rem;
   }
-  
+
   .quick-add-slot-time {
     font-size: 0.875rem;
   }
@@ -625,7 +625,7 @@
   .quick-add-slot-button {
     border-width: 3px;
   }
-  
+
   .quick-add-slot-button.selected {
     border-width: 4px;
   }

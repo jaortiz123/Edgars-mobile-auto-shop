@@ -340,7 +340,7 @@
 .admin-neobrutal.nb-density-compact .nb-card { padding: var(--sp-1-5) var(--sp-1-5) var(--sp-1-5); gap: var(--sp-1-5); }
 
 /* ================= Dashboard Title ================= */
-.admin-neobrutal .nb-dashboard-title { 
+.admin-neobrutal .nb-dashboard-title {
   font-size: clamp(2.65rem, 4.6vw, 3.35rem);
   font-weight: 900;
   letter-spacing: 1px;
@@ -430,5 +430,3 @@
 .admin-neobrutal .nb-column[data-column="ready"] .nb-column-header::after { background: var(--color-invoice); }
 .admin-neobrutal .nb-column[data-column="COMPLETED"] .nb-column-header::after,
 .admin-neobrutal .nb-column[data-column="completed"] .nb-column-header::after { background: var(--color-steel); }
-
-

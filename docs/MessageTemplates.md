@@ -18,7 +18,7 @@ Stored in `frontend/src/data/messageTemplates.json` (bundled at build time):
   "label": "Vehicle Ready (SMS)",   // human readable
   "channel": "sms",                 // 'sms' | 'email' | 'any'
   "category": "Status Updates",     // optional grouping
-  "body": "Good news! Your vehicle service is complete and ready for pickup." 
+  "body": "Good news! Your vehicle service is complete and ready for pickup."
 }
 ```
 

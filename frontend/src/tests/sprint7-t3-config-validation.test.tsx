@@ -79,19 +79,19 @@ describe('Sprint 7 T3: Enhanced Vitest Configuration', () => {
   describe('Performance and Testing Environment', () => {
     it('loads test environment within acceptable time', () => {
       const startTime = Date.now()
-      
+
       // Simple component to test environment load
       const component = () => (
         <div data-testid="perf-test">
           Performance Test Component
         </div>
       )
-      
+
       render(component())
-      
+
       const endTime = Date.now()
       const duration = endTime - startTime
-      
+
       // Environment should load reasonably quickly
       expect(duration).toBeLessThan(200)
     })

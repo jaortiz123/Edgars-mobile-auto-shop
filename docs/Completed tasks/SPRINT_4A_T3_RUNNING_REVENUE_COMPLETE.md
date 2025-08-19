@@ -180,7 +180,7 @@ unpaidAmount = sum(appointments where paymentStatus === 'unpaid')
 ### **Configuration**
 ```typescript
 const POLLING_INTERVAL = 30000; // 30 seconds
-const CACHE_DURATION = 60000;   // 1 minute  
+const CACHE_DURATION = 60000;   // 1 minute
 const API_BASE = process.env.NODE_ENV === 'development' ? 'http://localhost:5001' : '';
 ```
 
@@ -191,7 +191,7 @@ const API_BASE = process.env.NODE_ENV === 'development' ? 'http://localhost:5001
 - Real-time updates as appointments complete
 - Professional currency formatting with separators
 
-### ✅ **Real-time Updates**  
+### ✅ **Real-time Updates**
 - Updates within 1 minute of revenue changes
 - No page refresh required
 - Smooth animations without UI flickering
@@ -213,7 +213,7 @@ const API_BASE = process.env.NODE_ENV === 'development' ? 'http://localhost:5001
 The **Running Revenue Total** feature has been successfully implemented and integrated into Edgar's Mobile Auto Shop dashboard. The implementation provides:
 
 - **Real-time revenue tracking** with 30-second update intervals
-- **Professional UI components** with multiple variants and responsive design  
+- **Professional UI components** with multiple variants and responsive design
 - **Robust architecture** with error handling, caching, and performance optimizations
 - **Comprehensive testing** with Storybook stories and TypeScript safety
 - **Seamless integration** into the existing dashboard header layout

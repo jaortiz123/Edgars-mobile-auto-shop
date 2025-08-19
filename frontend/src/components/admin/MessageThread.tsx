@@ -34,7 +34,7 @@ export default function MessageThread({ appointmentId, drawerOpen }: MessageThre
   // Load messages function
   const loadMessages = useCallback(async () => {
     if (!appointmentId) return;
-    
+
     try {
       setLoading(true);
       const fetchedMessages = await api.getAppointmentMessages(appointmentId);
@@ -555,7 +555,7 @@ export default function MessageThread({ appointmentId, drawerOpen }: MessageThre
             })}
           </div>
         )}
-        
+
         <div className="flex gap-2">
           <textarea
             ref={textareaRef}
@@ -577,7 +577,7 @@ export default function MessageThread({ appointmentId, drawerOpen }: MessageThre
             {sending ? 'Sending...' : 'Send'}
           </button>
         </div>
-        
+
         <div className="text-xs text-gray-500 mt-1">
           Press Enter to send, Shift+Enter for new line
         </div>

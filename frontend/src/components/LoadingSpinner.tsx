@@ -6,19 +6,19 @@ interface LoadingSpinnerProps {
   ariaLabel?: string;
 }
 
-export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ 
-  size = 'md', 
+export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
+  size = 'md',
   className = '',
   ariaLabel = 'Loading'
 }) => {
   const sizeClasses = {
     sm: 'w-4 h-4',
-    md: 'w-6 h-6', 
+    md: 'w-6 h-6',
     lg: 'w-8 h-8'
   };
 
   return (
-    <div 
+    <div
       className={`${sizeClasses[size]} ${className}`}
       role="status"
       aria-label={ariaLabel}
@@ -51,7 +51,7 @@ export const LoadingButton: React.FC<LoadingButtonProps> = ({
   ariaLabel
 }) => {
   const isDisabled = loading || disabled;
-  
+
   return (
     <button
       type={type}
@@ -67,10 +67,10 @@ export const LoadingButton: React.FC<LoadingButtonProps> = ({
       aria-busy={loading ? "true" : "false"}
     >
       {loading && (
-        <LoadingSpinner 
-          size="sm" 
-          className="mr-2" 
-          ariaLabel={loadingText || 'Processing'} 
+        <LoadingSpinner
+          size="sm"
+          className="mr-2"
+          ariaLabel={loadingText || 'Processing'}
         />
       )}
       <span className={loading ? 'opacity-75' : ''}>
@@ -100,7 +100,7 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
     <div className={`relative ${className}`}>
       {children}
       {isLoading && (
-        <div 
+        <div
           className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10"
           role="status"
           aria-live="polite"

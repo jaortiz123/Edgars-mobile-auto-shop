@@ -28,7 +28,7 @@ export default function DashboardStats() {
   );
 
   // Calculate progress percentage for Jobs today vs booked
-  const progressPercentage = stats.totals?.today_booked && stats.totals.today_booked > 0 
+  const progressPercentage = stats.totals?.today_booked && stats.totals.today_booked > 0
     ? Math.round((stats.totals.today_completed / stats.totals.today_booked) * 100)
     : 0;
 
@@ -42,13 +42,13 @@ export default function DashboardStats() {
     { label: 'No-Show', value: stats.noShow, testid: 'kpi-noshow' },
     { label: 'Unpaid $', value: `$${stats.unpaidTotal.toFixed(2)}`, testid: 'kpi-unpaid' },
     // NEW v2 METRICS
-    { 
-      label: 'Avg Cycle Time', 
-      value: stats.totals?.avg_cycle_formatted || 'N/A', 
-      testid: 'kpi-avg-cycle' 
+    {
+      label: 'Avg Cycle Time',
+      value: stats.totals?.avg_cycle_formatted || 'N/A',
+      testid: 'kpi-avg-cycle'
     },
-    { 
-      label: 'Jobs Today vs Booked', 
+    {
+      label: 'Jobs Today vs Booked',
       value: `${stats.totals?.today_completed || 0}/${stats.totals?.today_booked || 0}`,
       progress: progressPercentage,
       testid: 'kpi-jobs-progress'

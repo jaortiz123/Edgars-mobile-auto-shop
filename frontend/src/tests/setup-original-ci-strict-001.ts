@@ -15,23 +15,23 @@ const allowedConsoleErrors: RegExp[] = [
   // AppointmentContext errors during test scenarios
   /AppointmentContext: Error in refreshBoard/,
   /Failed to send message/,
-  
+
   // React act() warnings (handled separately but listed for awareness)
   /Warning: An update to .* inside a test was not wrapped in act/,
-  
+
   // Network/API errors in test scenarios
   /Network request failed/,
   /API error:/,
   /Failed to fetch/,
-  
+
   // Authentication errors during negative testing
   /Authentication failed/,
   /Unauthorized access/,
-  
+
   // Form validation errors (expected in negative tests)
   /Validation error:/,
   /Invalid form data/,
-  
+
   // Mock-related debug messages that shouldn't fail tests
   /🔧 DIRECT MOCK:/,
   /MOCK FACTORY:/
@@ -61,13 +61,13 @@ let globalConsoleSpy: ConsoleSpyState | null = null;
  */
 function safeArgsToString(args: unknown[]): string {
   const seen = new WeakSet<object>();
-  
+
   const safeArgs = args.map((arg) => {
     if (arg === null) return 'null';
     if (arg === undefined) return 'undefined';
     if (typeof arg === 'string') return arg;
     if (typeof arg === 'number' || typeof arg === 'boolean') return String(arg);
-    
+
     if (typeof arg === 'object' && arg !== null) {
       try {
         return JSON.stringify(arg, (key, value) => {
@@ -85,14 +85,14 @@ function safeArgsToString(args: unknown[]): string {
         }
       }
     }
-    
+
     try {
       return String(arg);
     } catch {
       return `[${typeof arg}]`;
     }
   });
-  
+
   return safeArgs.join(' ');
 }
 
@@ -102,22 +102,22 @@ function safeArgsToString(args: unknown[]): string {
 function setupStrictConsole(): void {
   const originalError = console.error;
   const originalWarn = console.warn;
-  
+
   // Create spies that track calls but allow them through to original console
   const errorSpy = vi.spyOn(console, 'error');
   const warnSpy = vi.spyOn(console, 'warn');
-  
+
   // Override console.error with strict checking
   console.error = (...args: unknown[]) => {
     try {
       const message = safeArgsToString(args);
-      
+
       // If this is an allowed pattern, log it normally and continue
       if (isAllowedConsoleMessage(message)) {
         originalError(...args);
         return;
       }
-      
+
       // For disallowed patterns, throw an error to fail the test
       const error = new Error(`console.error: [CI-STRICT-001] Unexpected error: ${message}`);
       if (Error.captureStackTrace) {
@@ -130,18 +130,18 @@ function setupStrictConsole(): void {
       throw new Error(`console.error: [CI-STRICT-001 Processing Error: ${errorMessage}]`);
     }
   };
-  
+
   // Override console.warn with strict checking
   console.warn = (...args: unknown[]) => {
     try {
       const message = safeArgsToString(args);
-      
+
       // If this is an allowed pattern, log it normally and continue
       if (isAllowedConsoleMessage(message)) {
         originalWarn(...args);
         return;
       }
-      
+
       // For disallowed patterns, throw an error to fail the test
       const error = new Error(`console.warn: [CI-STRICT-001] Unexpected warning: ${message}`);
       if (Error.captureStackTrace) {
@@ -154,7 +154,7 @@ function setupStrictConsole(): void {
       throw new Error(`console.warn: [CI-STRICT-001 Processing Error: ${errorMessage}]`);
     }
   };
-  
+
   globalConsoleSpy = {
     errorSpy,
     warnSpy,
@@ -171,16 +171,16 @@ export async function withConsoleErrorSpy<T>(testFn: () => T | Promise<T>): Prom
   if (!globalConsoleSpy) {
     throw new Error('Console spy not initialized. Make sure setupStrictConsole() was called.');
   }
-  
+
   const { originalError, originalWarn } = globalConsoleSpy;
-  
+
   // Temporarily replace console methods with non-throwing versions
   const tempErrorSpy = vi.fn(originalError);
   const tempWarnSpy = vi.fn(originalWarn);
-  
+
   console.error = tempErrorSpy;
   console.warn = tempWarnSpy;
-  
+
   try {
     const result = await Promise.resolve(testFn());
     return result;
@@ -224,13 +224,13 @@ export async function flushPromises(): Promise<void> {
 export async function advanceAllTimers(): Promise<void> {
   // Run all pending timers
   vi.runOnlyPendingTimers();
-  
+
   // Flush any promises that were scheduled by the timers
   await flushPromises();
-  
+
   // Run any additional timers that might have been scheduled
   vi.runOnlyPendingTimers();
-  
+
   // Final flush for good measure
   await flushPromises();
 }
@@ -268,7 +268,7 @@ expect.extend(toHaveNoViolations)
  */
 beforeAll(() => {
   setupStrictConsole();
-  
+
   // Store references for backward compatibility
   const globals = globalThis as typeof globalThis & {
     __originalConsole?: {
@@ -276,7 +276,7 @@ beforeAll(() => {
       warn: typeof console.warn;
     };
   };
-  
+
   if (globalConsoleSpy) {
     globals.__originalConsole = {
       error: globalConsoleSpy.originalError,
@@ -309,42 +309,42 @@ afterEach(() => {
       throw error;
     }
   }
-  
+
   // 2. Verify no unexpected console errors occurred (unless explicitly allowed)
   if (globalConsoleSpy) {
     const { errorSpy, warnSpy } = globalConsoleSpy;
-    
+
     // Check for any console.error calls that weren't handled
     const errorCalls = errorSpy.mock.calls;
     const warnCalls = warnSpy.mock.calls;
-    
+
     // Filter out allowed messages from the calls
     const unexpectedErrors = errorCalls.filter(call => {
       const message = safeArgsToString(call);
       return !isAllowedConsoleMessage(message);
     });
-    
+
     const unexpectedWarnings = warnCalls.filter(call => {
       const message = safeArgsToString(call);
       return !isAllowedConsoleMessage(message);
     });
-    
+
     // Clear spy call history for next test
     errorSpy.mockClear();
     warnSpy.mockClear();
-    
+
     // Fail if unexpected console messages were found
     if (unexpectedErrors.length > 0) {
       const messages = unexpectedErrors.map(call => safeArgsToString(call)).join('\n  - ');
       throw new Error(`[SAFETY-NET-002] Unexpected console.error calls detected:\n  - ${messages}\n\nUse withConsoleErrorSpy() for tests that expect errors, or add patterns to allowedConsoleErrors.`);
     }
-    
+
     if (unexpectedWarnings.length > 0) {
       const messages = unexpectedWarnings.map(call => safeArgsToString(call)).join('\n  - ');
       throw new Error(`[SAFETY-NET-002] Unexpected console.warn calls detected:\n  - ${messages}\n\nUse withConsoleErrorSpy() for tests that expect warnings, or add patterns to allowedConsoleErrors.`);
     }
   }
-  
+
   // 3. Ensure all mocks are properly reset (redundant safety check)
   vi.clearAllMocks();
 });

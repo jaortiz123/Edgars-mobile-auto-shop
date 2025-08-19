@@ -42,7 +42,7 @@ export const CalendarView: React.FC = () => {
     // TEMP: Disabled polling to fix infinite request loop
     console.log('Calendar polling disabled to prevent infinite requests');
     return;
-    
+
     const interval = setInterval(() => {
       if (!loading) {
         console.log('🔄 Auto-refreshing calendar appointments...');
@@ -104,14 +104,14 @@ export const CalendarView: React.FC = () => {
 
   const filterAppointments = (appointments: Appointment[]) => {
     return appointments.filter(apt => {
-      const matchesSearch = 
+      const matchesSearch =
         apt.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         apt.service.toLowerCase().includes(searchTerm.toLowerCase()) ||
         apt.customer_phone?.includes(searchTerm) ||
         apt.location_address?.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       const matchesStatus = statusFilter === 'all' || apt.status === statusFilter;
-      
+
       return matchesSearch && matchesStatus;
     });
   };
@@ -119,25 +119,25 @@ export const CalendarView: React.FC = () => {
   const generateCalendarDays = (): CalendarDay[] => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    
+
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay());
-    
+
     const days: CalendarDay[] = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     for (let i = 0; i < 42; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
-      
+
       const dayAppointments = filterAppointments(appointments).filter(apt => {
         const aptDate = new Date(apt.scheduled_at);
         return aptDate.toDateString() === date.toDateString();
       });
-      
+
       days.push({
         date: new Date(date),
         appointments: dayAppointments,
@@ -145,13 +145,13 @@ export const CalendarView: React.FC = () => {
         isToday: date.getTime() === today.getTime()
       });
     }
-    
+
     return days;
   };
 
   const navigateDate = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate);
-    
+
     switch (viewMode) {
       case 'day':
         newDate.setDate(newDate.getDate() + (direction === 'next' ? 1 : -1));
@@ -163,7 +163,7 @@ export const CalendarView: React.FC = () => {
         newDate.setMonth(newDate.getMonth() + (direction === 'next' ? 1 : -1));
         break;
     }
-    
+
     setCurrentDate(newDate);
   };
 
@@ -173,16 +173,16 @@ export const CalendarView: React.FC = () => {
       month: 'long',
       day: viewMode === 'day' ? 'numeric' : undefined
     });
-    
+
     if (viewMode === 'week') {
       const weekStart = new Date(currentDate);
       weekStart.setDate(currentDate.getDate() - currentDate.getDay());
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekStart.getDate() + 6);
-      
+
       return `${weekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}`;
     }
-    
+
     return formatter.format(currentDate);
   };
 
@@ -197,7 +197,7 @@ export const CalendarView: React.FC = () => {
   };
 
   const toggleAppointmentSelection = (appointmentId: string) => {
-    setSelectedAppointments(prev => 
+    setSelectedAppointments(prev =>
       prev.includes(appointmentId)
         ? prev.filter(id => id !== appointmentId)
         : [...prev, appointmentId]
@@ -208,7 +208,7 @@ export const CalendarView: React.FC = () => {
     const appointmentsToExport = selectedAppointments.length > 0
       ? appointments.filter(apt => selectedAppointments.includes(apt.id))
       : filterAppointments(appointments);
-    
+
     const csvData = [
       ['Customer Name', 'Service', 'Date', 'Time', 'Status', 'Phone', 'Address', 'Notes'],
       ...appointmentsToExport.map(apt => [
@@ -222,11 +222,11 @@ export const CalendarView: React.FC = () => {
         apt.notes || ''
       ])
     ];
-    
-    const csvContent = csvData.map(row => 
+
+    const csvContent = csvData.map(row =>
       row.map(field => `"${field}"`).join(',')
     ).join('\n');
-    
+
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -257,7 +257,7 @@ export const CalendarView: React.FC = () => {
               <Calendar className="h-6 w-6 text-blue-600" />
               <CardTitle>Appointment Calendar</CardTitle>
             </div>
-            
+
             <div className="flex flex-wrap items-center gap-2">
               {/* View Mode Selector */}
               <div className="flex border rounded-lg">
@@ -273,7 +273,7 @@ export const CalendarView: React.FC = () => {
                   </Button>
                 ))}
               </div>
-              
+
               {/* Export Button */}
               <Button
                 variant="outline"
@@ -286,7 +286,7 @@ export const CalendarView: React.FC = () => {
               </Button>
             </div>
           </div>
-          
+
           {/* Search and Filter Controls */}
           <div className="flex flex-col sm:flex-row gap-4 mt-4">
             <div className="flex-1 relative">
@@ -299,7 +299,7 @@ export const CalendarView: React.FC = () => {
                 className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-gray-600" />
               <select
@@ -331,9 +331,9 @@ export const CalendarView: React.FC = () => {
               <ChevronLeft className="h-4 w-4" />
               Previous
             </Button>
-            
+
             <h2 className="text-xl font-semibold">{getDateRangeText()}</h2>
-            
+
             <Button
               variant="outline"
               size="sm"
@@ -345,7 +345,7 @@ export const CalendarView: React.FC = () => {
             </Button>
           </div>
         </CardHeader>
-        
+
         <CardContent>
           {viewMode === 'month' && (
             <div className="grid grid-cols-7 gap-1">
@@ -355,7 +355,7 @@ export const CalendarView: React.FC = () => {
                   {day}
                 </div>
               ))}
-              
+
               {/* Calendar days */}
               {generateCalendarDays().map((day, index) => (
                 <div
@@ -367,7 +367,7 @@ export const CalendarView: React.FC = () => {
                   <div className="font-medium mb-1">
                     {day.date.getDate()}
                   </div>
-                  
+
                   <div className="space-y-1">
                     {day.appointments.slice(0, 2).map(apt => (
                       <div
@@ -386,7 +386,7 @@ export const CalendarView: React.FC = () => {
                         </Badge>
                       </div>
                     ))}
-                    
+
                     {day.appointments.length > 2 && (
                       <div className="text-xs text-gray-500 text-center">
                         +{day.appointments.length - 2} more
@@ -397,13 +397,13 @@ export const CalendarView: React.FC = () => {
               ))}
             </div>
           )}
-          
+
           {viewMode === 'week' && (
             <div className="space-y-4">
               <p className="text-gray-600">Week view implementation coming soon...</p>
             </div>
           )}
-          
+
           {viewMode === 'day' && (
             <div className="space-y-4">
               <p className="text-gray-600">Day view implementation coming soon...</p>
@@ -411,7 +411,7 @@ export const CalendarView: React.FC = () => {
           )}
         </CardContent>
       </Card>
-      
+
       {/* Selection Summary */}
       {selectedAppointments.length > 0 && (
         <Card>

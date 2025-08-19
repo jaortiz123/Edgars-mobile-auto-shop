@@ -14,9 +14,9 @@ This task successfully implements cross-browser smoke tests using Playwright to 
 ### 2. Config with projects: chromium, firefox, webkit ✅
 - **File**: `playwright.config.ts` (updated)
 - **File**: `playwright-smoke.config.ts` (new, dedicated config)
-- **Projects**: 
+- **Projects**:
   - chromium (Desktop Chrome)
-  - firefox (Desktop Firefox)  
+  - firefox (Desktop Firefox)
   - webkit (Desktop Safari)
 
 ### 3. Write smoke spec ✅
