@@ -97,6 +97,8 @@ app.config.setdefault("PROPAGATE_EXCEPTIONS", False)
 app.config.setdefault("TRAP_HTTP_EXCEPTIONS", False)
 
 REQUEST_ID_HEADER = "X-Request-Id"
+# Canonical form enforced: lowercase UUIDv4. Regex only matches lowercase so we
+# always lowercase inbound header before validation and generation.
 REQUEST_ID_REGEX = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
 )
@@ -161,28 +163,85 @@ RATE_LIMIT_PER_MINUTE = int(os.getenv("MOVE_RATE_LIMIT_PER_MIN", "60"))
 
 
 class _AsyncLogWorker:
-    def __init__(self, logger: logging.Logger, maxsize: int = 10000):
+    """Asynchronous, buffered logger with circuit breaker semantics.
+
+    Goals:
+      * Never block request path (non-blocking queue put, drop oldest if full).
+      * Use monotonic clock for breaker timing / internal metrics.
+      * Circuit breaker: if consecutive backend logging failures exceed a
+        threshold, open breaker for a cool-down window (drop logs fast).
+      * Provide lightweight stats for test assertions & ops introspection.
+    """
+
+    QUEUE_MAX = int(os.getenv("LOG_QUEUE_MAX", "10000"))
+    FAIL_THRESHOLD = int(os.getenv("LOG_CIRCUIT_FAIL_THRESHOLD", "50"))
+    COOLDOWN_SEC = float(os.getenv("LOG_CIRCUIT_COOLDOWN_SECONDS", "2.0"))
+
+    def __init__(self, logger: logging.Logger, maxsize: int | None = None):
         self.logger = logger
-        self.q: queue.Queue[tuple[str, dict]] = queue.Queue(maxsize=maxsize)
+        self.q: queue.Queue[tuple[str, dict]] = queue.Queue(maxsize=maxsize or self.QUEUE_MAX)
+        self._lock = threading.Lock()
+        # Metrics
+        self.emitted_count = 0
+        self.dropped_full_count = 0
+        self.failure_count = 0  # consecutive failures
+        self.breaker_trip_count = 0
+        self.breaker_open_until: float | None = None
         self.thread = threading.Thread(target=self._run, name="log-worker", daemon=True)
         self.thread.start()
 
+    # ---------------- Internal helpers -----------------
+    def _breaker_open(self) -> bool:
+        if self.breaker_open_until is None:
+            return False
+        if time.monotonic() >= self.breaker_open_until:
+            # Cooldown elapsed; close breaker
+            self.breaker_open_until = None
+            self.failure_count = 0
+            return False
+        return True
+
+    def _trip_breaker(self):
+        self.breaker_trip_count += 1
+        self.breaker_open_until = time.monotonic() + self.COOLDOWN_SEC
+
+    # ---------------- Worker loop -----------------
     def _run(self):  # pragma: no cover - background infra
         while True:
             try:
                 level, payload = self.q.get()
                 if level == "__stop__":
                     break
-                getattr(self.logger, level)(json.dumps(payload, default=str))
+                if self._breaker_open():
+                    # Drop silently while breaker open
+                    continue
+                try:
+                    getattr(self.logger, level)(json.dumps(payload, default=str))
+                    with self._lock:
+                        self.emitted_count += 1
+                        self.failure_count = 0  # reset on success
+                except Exception:
+                    # Count failure & maybe trip breaker
+                    with self._lock:
+                        self.failure_count += 1
+                        if self.failure_count >= self.FAIL_THRESHOLD and not self._breaker_open():
+                            self._trip_breaker()
+                    # swallow exception so logging never raises
+                    continue
             except Exception:
-                # swallow to avoid cascading failures
+                # Absolute last-resort swallow (unexpected queue failure etc.)
                 pass
 
+    # ---------------- Public API -----------------
     def emit(self, level: str, payload: dict):
+        # Fast path: if breaker open, drop immediately
+        if self._breaker_open():
+            return
         try:
             self.q.put_nowait((level, payload))
         except queue.Full:
-            # drop oldest by draining one (circuit breaker style)
+            # Drop oldest then retry once (circuit breaker style). If still
+            # full, increment dropped metric.
             try:
                 _ = self.q.get_nowait()
             except Exception:
@@ -190,10 +249,35 @@ class _AsyncLogWorker:
             try:
                 self.q.put_nowait((level, payload))
             except Exception:
-                pass
+                with self._lock:
+                    self.dropped_full_count += 1
+
+    def stats(self) -> dict:
+        with self._lock:
+            return {
+                "emitted": self.emitted_count,
+                "dropped_full": self.dropped_full_count,
+                "consecutive_failures": self.failure_count,
+                "breaker_open": self._breaker_open(),
+                "breaker_trip_count": self.breaker_trip_count,
+                "queue_size": self.q.qsize(),
+                "queue_max": self.q.maxsize,
+            }
+
+    def stop(self):  # pragma: no cover - only for clean shutdown scenarios
+        try:
+            self.q.put_nowait(("__stop__", {}))
+        except Exception:
+            pass
 
 
 _async_log = _AsyncLogWorker(log)
+
+
+def get_log_worker_stats() -> dict:
+    """Expose async logger stats (used in future tests / diagnostics)."""
+    return _async_log.stats()
+
 
 # In-test capture buffer (not thread safe; only used in pytest single-thread client)
 API_REQUEST_LOG_TEST_BUFFER: list[dict] = []  # noqa: N816 (uppercase to signal constant-style)
@@ -202,13 +286,20 @@ LAST_API_REQUEST_LOG: dict | None = None  # for deterministic test inspection
 
 @app.before_request
 def before_request_hook():
-    """Assign or validate request id + start monotonic timer."""
+    """Assign or validate request id + start monotonic timer.
+
+    Enforces canonical lowercase UUIDv4 format. Inbound header (if valid) is
+    lowercased; otherwise a new UUID is generated.
+    """
     rid = request.headers.get(REQUEST_ID_HEADER)
-    if rid and not REQUEST_ID_REGEX.match(rid.lower()):
-        rid = None  # ignore invalid format
+    if rid:
+        rid = rid.strip().lower()
+        if not REQUEST_ID_REGEX.match(rid):
+            rid = None
     if not rid:
-        rid = str(uuid.uuid4())
+        rid = str(uuid.uuid4()).lower()
     request.environ["REQUEST_ID"] = rid
+    # Monotonic perf counter (immune to wall-clock changes) for duration
     request.environ["REQUEST_START_PERF"] = time.perf_counter()
 
 
