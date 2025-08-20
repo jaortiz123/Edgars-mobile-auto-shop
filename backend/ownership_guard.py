@@ -17,21 +17,26 @@ Design:
 
 from __future__ import annotations
 
+# NOTE: Avoid importing local_server at module import time to prevent a circular
+# import (local_server imports vehicle_ownership_required). We lazily resolve the
+# reference the first time any guard logic executes.
+import importlib
 from functools import wraps
 from typing import Any, Callable, Optional
 
 from flask import request
 
-# Import server module in both package and script contexts (pytest sometimes
-# imports backend.local_server, other times local_server directly). We perform
-# this once at module import and re‑use inside the decorator to avoid repeated
-# fragile relative imports that previously triggered
-# "attempted relative import with no known parent package" when the app was
-# executed as a top‑level module.
-try:  # pragma: no cover - dual import path resilience
-    from . import local_server as srv  # type: ignore
-except Exception:  # pragma: no cover
-    import local_server as srv  # type: ignore
+_srv: Any | None = None
+
+
+def _get_srv():  # pragma: no cover - trivial
+    global _srv
+    if _srv is None:
+        try:
+            _srv = importlib.import_module("backend.local_server")
+        except Exception:
+            _srv = importlib.import_module("local_server")
+    return _srv
 
 
 def vehicle_belongs_to_customer(vehicle_id: str, customer_id: str) -> bool:
@@ -58,6 +63,7 @@ def vehicle_belongs_to_customer(vehicle_id: str, customer_id: str) -> bool:
         vid_int = None
         by_plate = True
 
+    srv = _get_srv()
     conn = srv.db_conn()
     try:
         with conn.cursor() as cur:  # RealDictCursor ok; only need existence check
@@ -104,6 +110,7 @@ def vehicle_ownership_required(
         @wraps(fn)
         def wrapper(*args, **kwargs):
             # Role enforcement first; unauthorized => 403 (do not leak ownership info)
+            srv = _get_srv()
             auth = srv.require_or_maybe(require_role)
             if not auth:
                 return srv._error(403, "forbidden", "Not authorized")
