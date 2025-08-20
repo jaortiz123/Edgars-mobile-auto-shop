@@ -73,9 +73,7 @@ def test_create_appointment_rejects_invalid_primary_operation_id(client, monkeyp
     # Accept generic envelope
     msg = None
     if "error" in j:
-        msg = j["error"]
-    elif "errors" in j and j["errors"]:
-        msg = j["errors"][0].get("detail") or j["errors"][0].get("code")
+        msg = j["error"].get("message") or j["error"].get("code")
     assert msg and "primary_operation_id" in msg.lower()
 
 

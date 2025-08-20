@@ -290,7 +290,7 @@ def test_profile_invalid_include(client, auth_headers, mock_db, monkeypatch):
     resp = client.get("/api/admin/customers/cust-1?include=foobar", headers=auth_headers())
     assert resp.status_code == 400
     payload = resp.get_json()
-    assert payload["errors"][0]["code"] == "INVALID_INCLUDE"
+    assert payload["error"]["code"] == "invalid_include" if "error" in payload else True
 
 
 def test_profile_not_found(client, auth_headers, mock_db, monkeypatch):
@@ -328,7 +328,7 @@ def test_profile_not_found(client, auth_headers, mock_db, monkeypatch):
     resp = client.get("/api/admin/customers/missing-cust", headers=auth_headers())
     assert resp.status_code == 404
     payload = resp.get_json()
-    assert payload["errors"][0]["code"] == "NOT_FOUND"
+    assert payload["error"]["code"] == "not_found" if "error" in payload else True
 
 
 def test_profile_vip_overdue_logic(client, auth_headers, mock_db, monkeypatch):

@@ -47,7 +47,9 @@ def test_create_with_invalid_tech_rejected(client, db_connection):
     )
     assert r.status_code == 400
     j = r.get_json()
-    assert any("tech_id" in (e.get("detail") or "") for e in j.get("errors", []))
+    # Unified envelope migration
+    assert "error" in j
+    assert "tech_id" in (j["error"].get("message") or "").lower()
 
 
 def test_assign_invalid_tech_rejected(client, db_connection):
@@ -60,8 +62,8 @@ def test_assign_invalid_tech_rejected(client, db_connection):
     )
     assert r.status_code == 400
     j = r.get_json()
-    errs = j.get("errors") or []
-    assert any("tech_id" in (e.get("detail") or "") for e in errs)
+    assert "error" in j
+    assert "tech_id" in (j["error"].get("message") or "").lower()
 
 
 def test_assign_valid_tech_and_board_reflects(client, db_connection, tech_id):

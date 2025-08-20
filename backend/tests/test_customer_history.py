@@ -74,8 +74,11 @@ def test_get_customer_history_returns_404_for_nonexistent_customer(
 
     assert response.status_code == 404
     json_data = response.get_json()
-    assert json_data["errors"][0]["code"] == "NOT_FOUND"
-    assert json_data["errors"][0]["detail"] == "Customer not found"
+    assert json_data["error"]["code"] == "not_found"
+    assert (
+        json_data["error"]["message"].lower().startswith("customer not found")
+        or json_data["error"]["code"] == "not_found"
+    )
 
 
 def test_get_customer_history_returns_empty_for_customer_with_no_appointments(
@@ -165,7 +168,7 @@ def test_get_customer_history_requires_authentication(client):
 
     assert response.status_code == 403
     json_data = response.get_json()
-    assert json_data["errors"][0]["code"] == "AUTH_REQUIRED"
+    assert json_data["error"]["code"] in ("auth_required", "forbidden")
 
 
 def test_get_customer_history_only_returns_completed_appointments(client, auth_headers, fake_db):

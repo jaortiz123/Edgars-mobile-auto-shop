@@ -8,8 +8,7 @@ def test_404_returns_json_envelope(client):
     j = r.get_json()
     # JSON envelope structure
     assert j.get("data") is None
-    assert isinstance(j.get("errors"), list)
-    assert j["errors"][0]["code"] == "NOT_FOUND"
+    assert "error" in j and j["error"]["code"] == "not_found"
     assert "request_id" in j.get("meta", {})
 
 
@@ -19,6 +18,5 @@ def test_method_not_allowed_returns_json_envelope(client):
     assert r.status_code == 405
     j = r.get_json()
     assert j.get("data") is None
-    assert isinstance(j.get("errors"), list)
-    assert j["errors"][0]["code"] == "METHOD_NOT_ALLOWED"
+    assert "error" in j and j["error"]["code"] == "method_not_allowed"
     assert "request_id" in j.get("meta", {})

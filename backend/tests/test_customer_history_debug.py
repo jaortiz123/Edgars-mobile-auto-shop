@@ -23,7 +23,7 @@ def test_get_customer_history_requires_authentication(client):
 
     assert response.status_code == 403
     json_data = response.get_json()
-    assert json_data["errors"][0]["code"] == "AUTH_REQUIRED"
+    assert json_data["error"]["code"] == "auth_required"
 
 
 print("test_get_customer_history_requires_authentication function defined")

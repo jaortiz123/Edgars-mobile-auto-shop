@@ -73,7 +73,15 @@ class _FakeCursor:
         if sql.startswith("INSERT INTO vehicles"):
             self.conn._vid += 1
             vid = self.conn._vid
-            (customer_id,) = params
+            # Tests sometimes call with only (customer_id,) relying on literal plate
+            # embedded in the SQL, other times pass (customer_id, plate). Support both.
+            if len(params) == 1:
+                customer_id = params[0]
+                plate = f"PLT{vid:04d}"
+            elif len(params) >= 2:
+                customer_id, plate = params[0], params[1]
+            else:  # defensive
+                raise ValueError("INSERT INTO vehicles requires at least customer_id param")
             now = _now_ts()
             self.conn.vehicles[vid] = {
                 "id": vid,
@@ -82,7 +90,7 @@ class _FakeCursor:
                 "model": "F150",
                 "year": 2020,
                 "vin": "1FTFW1E50LFAAAAAA",
-                "license_plate": "ABC123",
+                "license_plate": plate,
                 "created_at": now,
                 "updated_at": now,
             }
@@ -206,6 +214,20 @@ class _FakeCursor:
             rows = [r for r in self.conn.vehicle_audits if r["vehicle_id"] == vehicle_id]
             rows.sort(key=lambda r: r["created_at"], reverse=True)
             self._result_one = {"fields_changed": rows[0]["fields_changed"]} if rows else None
+            return
+        # Ownership guard support
+        if sql.startswith("SELECT 1 FROM vehicles WHERE id"):
+            vid, cid = params
+            row = self.conn.vehicles.get(vid)
+            self._result_one = (1,) if row and row.get("customer_id") == cid else None
+            return
+        if sql.startswith("SELECT customer_id FROM vehicles WHERE id"):
+            (vid,) = params
+            row = self.conn.vehicles.get(vid)
+            if row:
+                self._result_one = (row["customer_id"],)
+            else:
+                self._result_one = None
             return
 
     def fetchone(self):

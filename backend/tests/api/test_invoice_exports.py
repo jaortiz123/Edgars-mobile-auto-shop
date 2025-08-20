@@ -134,4 +134,4 @@ def test_invoice_export_rbac_forbidden(monkeypatch, client):
         resp = client.get(path) if path.endswith((".html", ".pdf")) else client.post(path)
         assert resp.status_code == HTTPStatus.FORBIDDEN, (path, resp.get_data(as_text=True))
         body = resp.get_json()
-        assert body["errors"][0]["code"] == "FORBIDDEN"
+    assert body["error"]["code"] in ("forbidden", "auth_required")

@@ -83,7 +83,7 @@ def test_generate_invoice_endpoint(client, pg_container):  # reuse client fixtur
     resp2 = client.post(f"/api/admin/appointments/{appt_id}/invoice")
     data2 = resp2.get_json()
     assert resp2.status_code == 409, data2
-    assert data2["errors"][0]["code"] == "ALREADY_EXISTS"
+    assert data2["error"]["code"] == "already_exists"
 
 
 def test_generate_invoice_zero_services(pg_container):
@@ -110,4 +110,4 @@ def test_generate_invoice_not_found_endpoint(client, pg_container):
     resp = client.post(f"/api/admin/appointments/{missing_id}/invoice")
     data = resp.get_json()
     assert resp.status_code == 404, data
-    assert data["errors"][0]["code"] in ("NOT_FOUND", "NOT_FOUND_APPOINTMENT")
+    assert data["error"]["code"] in ("not_found", "not_found_appointment")

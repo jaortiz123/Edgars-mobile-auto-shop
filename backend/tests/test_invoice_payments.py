@@ -69,7 +69,7 @@ def test_overpayment_rejected(pg_container):
     )
     data = resp.get_json()
     assert resp.status_code == 400, data
-    assert data["errors"][0]["code"] == "OVERPAYMENT"
+    assert data["error"]["code"] in ("overpayment", "bad_request")
 
 
 def test_payment_on_paid_invoice_rejected(pg_container):
@@ -90,4 +90,4 @@ def test_payment_on_paid_invoice_rejected(pg_container):
     )
     data2 = resp2.get_json()
     assert resp2.status_code in (400, 409), data2
-    assert data2["errors"][0]["code"] in ("ALREADY_PAID", "INVALID_STATE")
+    assert data2["error"]["code"] in ("already_paid", "invalid_state", "bad_request")

@@ -38,9 +38,9 @@ def test_create_conflict_same_tech(client, db_connection, future_start):
     r2 = client.post("/api/admin/appointments", json=payload2)
     assert r2.status_code == HTTPStatus.CONFLICT, r2.data
     body = r2.get_json()
-    assert body and body.get("errors"), body
-    err = body["errors"][0]
-    assert err["code"] == "CONFLICT"
+    assert body and body.get("error"), body
+    err = body["error"]
+    assert err["code"] == "conflict"
 
 
 def test_edit_conflict_same_tech(client, db_connection, future_start):
@@ -77,7 +77,7 @@ def test_edit_conflict_same_tech(client, db_connection, future_start):
     rPatch = client.patch(f"/api/admin/appointments/{idB}", json=patch_payload)
     assert rPatch.status_code == HTTPStatus.CONFLICT, rPatch.data
     body = rPatch.get_json()
-    assert body and body["errors"][0]["code"] == "CONFLICT"
+    assert body and body["error"]["code"] == "conflict"
 
 
 def test_create_validation_error_paid_exceeds_total(client, db_connection, future_start):
@@ -92,7 +92,7 @@ def test_create_validation_error_paid_exceeds_total(client, db_connection, futur
     r = client.post("/api/admin/appointments", json=payload)
     assert r.status_code == HTTPStatus.BAD_REQUEST, r.data
     body = r.get_json()
-    assert body and body["errors"][0]["code"] == "VALIDATION_FAILED"
+    assert body and body["error"]["code"] == "validation_failed"
 
 
 def test_edit_validation_error_paid_exceeds_total(client, db_connection, future_start):
@@ -114,4 +114,4 @@ def test_edit_validation_error_paid_exceeds_total(client, db_connection, future_
     r_patch = client.patch(f"/api/admin/appointments/{appt_id}", json=patch_payload)
     assert r_patch.status_code == HTTPStatus.BAD_REQUEST, r_patch.data
     body = r_patch.get_json()
-    assert body and body["errors"][0]["code"] == "VALIDATION_FAILED"
+    assert body and body["error"]["code"] == "validation_failed"

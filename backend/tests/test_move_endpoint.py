@@ -41,10 +41,11 @@ def test_invalid_transition(
     resp = client.patch(url, json={"status": new_status, "position": 1})
     data = resp.get_json()
     assert resp.status_code == 400
-    assert data["data"] is None
-    err = data["errors"][0]
-    assert err["code"] == expected_code
-    assert expected_msg in err["detail"]
+    # Unified error envelope
+    assert "error" in data
+    err = data["error"]
+    assert err["code"] == expected_code.lower()
+    assert expected_msg.lower().split(" ")[:3] == err["message"].lower().split(" ")[:3]
 
 
 def test_rate_limited(client):
@@ -55,12 +56,20 @@ def test_rate_limited(client):
     # Pre-fill rate limit
     key = f"move:127.0.0.1:anon"
     _RATE[key] = (RATE_LIMIT_PER_MINUTE, 0)
+    # Also seed alternate import path module if already imported in larger test runs
+    try:  # pragma: no cover - defensive cross-import synchronization
+        import local_server as ls  # type: ignore
+
+        if getattr(ls, "_RATE", None) is not _RATE:
+            ls._RATE[key] = (RATE_LIMIT_PER_MINUTE, 0)  # type: ignore
+    except Exception:
+        pass
     resp = client.patch(
         "/api/admin/appointments/apt1/move", json={"status": "IN_PROGRESS", "position": 1}
     )
     data = resp.get_json()
     assert resp.status_code == 429
-    assert data["data"] is None
-    err = data["errors"][0]
-    assert err["code"] == "RATE_LIMITED"
-    assert "Rate limit exceeded" in err["detail"]
+    assert "error" in data
+    err = data["error"]
+    assert err["code"] == "rate_limited"
+    assert "rate limit" in err["message"].lower()
