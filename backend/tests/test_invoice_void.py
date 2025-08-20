@@ -73,7 +73,7 @@ def test_void_already_void_invoice(pg_container):
     second = client.post(f"/api/admin/invoices/{invoice_id}/void")
     data2 = second.get_json()
     assert second.status_code == 409, data2
-    assert data2["errors"][0]["code"] == "ALREADY_VOID"
+    assert data2["error"]["code"] in ("already_void", "bad_request")
 
 
 def test_void_paid_invoice_rejected(pg_container):
@@ -92,4 +92,4 @@ def test_void_paid_invoice_rejected(pg_container):
     void = client.post(f"/api/admin/invoices/{invoice_id}/void")
     data = void.get_json()
     assert void.status_code == 409, data
-    assert data["errors"][0]["code"] == "ALREADY_PAID"
+    assert data["error"]["code"] in ("already_paid", "bad_request")

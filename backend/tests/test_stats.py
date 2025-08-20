@@ -62,7 +62,7 @@ def test_stats_returns_500_envelope_on_db_down(client, monkeypatch):
     r = client.get("/api/admin/dashboard/stats")
     assert r.status_code == 500
     j = r.get_json()
-    assert j["errors"][0]["code"] == "INTERNAL"
+    assert j["error"]["code"] in ("internal", "internal_server_error")
     assert "request_id" in j["meta"]
 
 

@@ -18,7 +18,7 @@ def test_get_admin_appointments(client):
     assert "data" in j
     assert "appointments" in j["data"]
     assert "nextCursor" in j["data"]
-    assert j["errors"] is None
+    assert "errors" not in j
     assert "request_id" in j["meta"]
 
 
@@ -31,7 +31,7 @@ def test_get_admin_appointments_with_filters(client):
     assert "data" in j
     assert "appointments" in j["data"]
     assert len(j["data"]["appointments"]) <= 10
-    assert j["errors"] is None
+    assert "errors" not in j
     assert "request_id" in j["meta"]
 
 

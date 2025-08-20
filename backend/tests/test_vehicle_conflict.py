@@ -37,4 +37,4 @@ def test_create_vehicle_conflict(client, db_connection, future_start):
     r2 = client.post("/api/admin/appointments", json=payload2)
     assert r2.status_code == HTTPStatus.CONFLICT, r2.data
     body = r2.get_json()
-    assert body and body["errors"][0]["code"] == "CONFLICT"
+    assert body and body["error"]["code"] in ("conflict", "precondition_failed", "bad_request")

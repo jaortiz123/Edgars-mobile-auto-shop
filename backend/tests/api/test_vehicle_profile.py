@@ -36,7 +36,7 @@ def _create_vehicle_and_appointments(client, plate: str, count: int = 3):
             vehicle_id = (
                 appt_payload.get("appointment", {}).get("vehicle_id")
                 or appt_payload.get("vehicle", {}).get("id")
-                or plate  # fallback to license plate string (visits endpoint expects plate in path in legacy form)
+                or plate  # fallback to license plate string (legacy form)
             )
         svc = client.post(
             f"/api/appointments/{appt_id}/services",
@@ -94,22 +94,22 @@ def test_vehicle_profile_cursor_precedence_over_dates(client):
     vehicle_id, _ = _create_vehicle_and_appointments(client, "VPROF4", 4)
     first = client.get(f"/api/admin/vehicles/{vehicle_id}/profile?page_size=2")
     cur = first.get_json()["data"]["timeline"]["next_cursor"]
-    # supply date filters and cursor; expect cursor to drive pagination (no 400)
     second = client.get(
         f"/api/admin/vehicles/{vehicle_id}/profile?page_size=2&cursor={cur}&from=2000-01-01&to=1999-01-01"
     )
     assert second.status_code == HTTPStatus.OK
 
 
-# RBAC test placeholder: If DEV_NO_AUTH=false in env, we'd craft a request without Authorization header and expect 403.
-# Given test harness sets DEV_NO_AUTH implicitly (default true), full RBAC negative may need a dedicated fixture to disable bypass.
+# RBAC negative: disable dev bypass and ensure no token results in 403 (before 404)
+
+
 def test_vehicle_profile_rbac_forbidden(client):
     import local_server as srv
 
     prev = srv.DEV_NO_AUTH
     try:
         srv.DEV_NO_AUTH = False
-        resp = client.get("/api/admin/vehicles/999999/profile")
+        resp = client.get("/api/admin/vehicles/999999/profile", headers={"X-Test-NoAuth": "1"})
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.get_data(as_text=True)
     finally:
         srv.DEV_NO_AUTH = prev

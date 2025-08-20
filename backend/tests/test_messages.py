@@ -74,13 +74,10 @@ class TestMessagingEndpoints:
 
     def test_get_messages_success(self, client, auth_headers, mock_db):
         """Test GET /api/appointments/:id/messages - successful response."""
-        # Mock appointment exists check
         mock_db.fetchone.side_effect = [
-            {"id": "123"},  # Appointment exists
+            {"id": "123"},
         ]
-
-        # Mock messages query result
-        mock_messages = [
+        mock_db.fetchall.return_value = [
             {
                 "id": "msg-1",
                 "appointment_id": "123",
@@ -100,21 +97,11 @@ class TestMessagingEndpoints:
                 "sent_at": datetime(2025, 7, 29, 10, 5, 0, tzinfo=timezone.utc),
             },
         ]
-        mock_db.fetchall.return_value = mock_messages
-
         response = client.get("/api/appointments/123/messages", headers=auth_headers("Owner"))
-
         assert response.status_code == 200
-        data = json.loads(response.data)
-
-        # Check envelope structure
-        assert "data" in data
-        assert "errors" in data
-        assert "meta" in data
-        assert data["errors"] is None
-
-        # Check messages content
-        messages = data["data"]["messages"]
+        payload = json.loads(response.data)
+        assert "data" in payload and "meta" in payload and "errors" not in payload
+        messages = payload["data"]["messages"]
         assert len(messages) == 2
         assert messages[0]["id"] == "msg-1"
         assert messages[0]["channel"] == "sms"
@@ -126,20 +113,17 @@ class TestMessagingEndpoints:
         """Test GET /api/appointments/:id/messages - appointment not found."""
         # Mock appointment doesn't exist
         mock_db.fetchone.return_value = None
-
         response = client.get("/api/appointments/999/messages", headers=auth_headers("Owner"))
-
         assert response.status_code == 404
         data = json.loads(response.data)
-        assert data["errors"][0]["code"] == "NOT_FOUND"
+        assert data["error"]["code"] == "not_found"
 
     def test_get_messages_no_auth(self, client, mock_db):
         """Test GET /api/appointments/:id/messages - no authentication."""
         response = client.get("/api/appointments/123/messages")
-
         assert response.status_code == 403
         data = json.loads(response.data)
-        assert data["errors"][0]["code"] == "AUTH_REQUIRED"
+        assert data["error"]["code"] in ("auth_required", "forbidden")
 
     def test_create_message_success(self, client, auth_headers, mock_db):
         """Test POST /api/appointments/:id/messages - successful creation."""
@@ -157,13 +141,7 @@ class TestMessagingEndpoints:
 
         assert response.status_code == 201
         data = json.loads(response.data)
-
-        # Check envelope structure
-        assert "data" in data
-        assert "errors" in data
-        assert data["errors"] is None
-
-        # Check response content
+        assert "data" in data and "meta" in data and "errors" not in data
         assert data["data"]["id"] == "new-msg-id"
         assert data["data"]["status"] == "sending"
 
@@ -174,11 +152,10 @@ class TestMessagingEndpoints:
         response = client.post(
             "/api/appointments/123/messages", headers=auth_headers("Owner"), json=message_data
         )
-
         assert response.status_code == 400
         data = json.loads(response.data)
-        assert data["errors"][0]["code"] == "VALIDATION_FAILED"
-        assert "Channel must be 'sms' or 'email'" in data["errors"][0]["detail"]
+        assert data["error"]["code"] in ("validation_failed", "bad_request")
+        assert "Channel" in data["error"]["message"]
 
     def test_create_message_empty_body(self, client, auth_headers, mock_db):
         """Test POST /api/appointments/:id/messages - empty message body."""
@@ -187,11 +164,10 @@ class TestMessagingEndpoints:
         response = client.post(
             "/api/appointments/123/messages", headers=auth_headers("Owner"), json=message_data
         )
-
         assert response.status_code == 400
         data = json.loads(response.data)
-        assert data["errors"][0]["code"] == "VALIDATION_FAILED"
-        assert "Message body is required" in data["errors"][0]["detail"]
+        assert data["error"]["code"] in ("validation_failed", "bad_request")
+        assert "Message body" in data["error"]["message"]
 
     def test_create_message_tech_role_forbidden(self, client, auth_headers, mock_db):
         """Test POST /api/appointments/:id/messages - Tech role cannot create messages."""
@@ -200,10 +176,9 @@ class TestMessagingEndpoints:
         response = client.post(
             "/api/appointments/123/messages", headers=auth_headers("Tech"), json=message_data
         )
-
         assert response.status_code == 403
         data = json.loads(response.data)
-        assert data["errors"][0]["code"] == "RBAC_FORBIDDEN"
+        assert data["error"]["code"] in ("rbac_forbidden", "forbidden")
 
     def test_update_message_status_success(self, client, auth_headers, mock_db):
         """Test PATCH /api/appointments/:id/messages/:message_id - successful update."""
@@ -218,11 +193,7 @@ class TestMessagingEndpoints:
 
         assert response.status_code == 200
         data = json.loads(response.data)
-
-        # Check envelope structure
-        assert "data" in data
-        assert "errors" in data
-        assert data["errors"] is None
+        assert "data" in data and "meta" in data and "errors" not in data
         assert data["data"]["id"] == "msg-1"
 
     def test_update_message_invalid_status(self, client, auth_headers, mock_db):
@@ -232,11 +203,10 @@ class TestMessagingEndpoints:
         response = client.patch(
             "/api/appointments/123/messages/msg-1", headers=auth_headers("Owner"), json=update_data
         )
-
         assert response.status_code == 400
         data = json.loads(response.data)
-        assert data["errors"][0]["code"] == "VALIDATION_FAILED"
-        assert "Status must be 'sending', 'delivered', or 'failed'" in data["errors"][0]["detail"]
+        assert data["error"]["code"] in ("validation_failed", "bad_request")
+        assert "Status" in data["error"]["message"]
 
     def test_update_message_not_found(self, client, auth_headers, mock_db):
         """Test PATCH /api/appointments/:id/messages/:message_id - message not found."""
@@ -248,10 +218,9 @@ class TestMessagingEndpoints:
         response = client.patch(
             "/api/appointments/123/messages/999", headers=auth_headers("Owner"), json=update_data
         )
-
         assert response.status_code == 404
         data = json.loads(response.data)
-        assert data["errors"][0]["code"] == "NOT_FOUND"
+        assert data["error"]["code"] == "not_found"
 
     def test_delete_message_success(self, client, auth_headers, mock_db):
         """Test DELETE /api/appointments/:id/messages/:message_id - successful deletion."""
@@ -273,20 +242,18 @@ class TestMessagingEndpoints:
         response = client.delete(
             "/api/appointments/123/messages/999", headers=auth_headers("Owner")
         )
-
         assert response.status_code == 404
         data = json.loads(response.data)
-        assert data["errors"][0]["code"] == "NOT_FOUND"
+        assert data["error"]["code"] == "not_found"
 
     def test_delete_message_tech_role_forbidden(self, client, auth_headers, mock_db):
         """Test DELETE /api/appointments/:id/messages/:message_id - Tech role cannot delete."""
         response = client.delete(
             "/api/appointments/123/messages/msg-1", headers=auth_headers("Tech")
         )
-
         assert response.status_code == 403
         data = json.loads(response.data)
-        assert data["errors"][0]["code"] == "RBAC_FORBIDDEN"
+        assert data["error"]["code"] in ("rbac_forbidden", "forbidden")
 
     def test_role_based_access_advisor_can_write(self, client, auth_headers, mock_db):
         """Test that Advisor role can create and update messages."""

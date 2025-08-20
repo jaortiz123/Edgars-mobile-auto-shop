@@ -18,7 +18,7 @@ def test_get_admin_appointments_returns_empty_list_if_no_db(client, monkeypatch)
     assert j.get("data") is not None
     assert j["data"]["appointments"] == []
     assert j["data"]["nextCursor"] is None
-    assert j.get("errors") is None
+    assert "errors" not in j
     assert "request_id" in j.get("meta", {})
 
 
@@ -74,7 +74,7 @@ def test_get_admin_appointments_orders_by_start_ts_asc_id_asc(client, monkeypatc
 
     # Verify JSON envelope structure
     assert j.get("data") is not None
-    assert j.get("errors") is None
+    assert "errors" not in j
     assert "request_id" in j.get("meta", {})
 
     # Verify appointments are returned in correct order
@@ -109,11 +109,8 @@ def test_get_admin_appointments_rejects_limit_over_200(client, monkeypatch):
 
     # Verify JSON envelope structure
     assert j.get("data") is None
-    assert isinstance(j.get("errors"), list)
-    assert len(j["errors"]) == 1
-    assert j["errors"][0]["status"] == "400"
-    assert j["errors"][0]["code"] == "BAD_REQUEST"
-    assert "limit must be between 1 and 200" in j["errors"][0]["detail"]
+    assert "error" in j and j["error"]["code"] == "bad_request"
+    assert "limit must be between 1 and 200" in j["error"]["message"].lower()
     assert "request_id" in j.get("meta", {})
 
 
@@ -130,11 +127,8 @@ def test_get_admin_appointments_rejects_cursor_plus_offset(client, monkeypatch):
 
     # Verify JSON envelope structure
     assert j.get("data") is None
-    assert isinstance(j.get("errors"), list)
-    assert len(j["errors"]) == 1
-    assert j["errors"][0]["status"] == "400"
-    assert j["errors"][0]["code"] == "BAD_REQUEST"
-    assert "cannot use both cursor and offset parameters together" in j["errors"][0]["detail"]
+    assert "error" in j and j["error"]["code"] == "bad_request"
+    assert "cannot use both cursor and offset" in j["error"]["message"].lower()
     assert "request_id" in j.get("meta", {})
 
 
@@ -203,9 +197,9 @@ def test_get_admin_appointments_invalid_from_date_format_returns_400(client):
     r = client.get("/api/admin/appointments?from=invalid-date")
     assert r.status_code == 400
     j = r.get_json()
-    assert j.get("errors") is not None
-    assert len(j["errors"]) > 0
-    assert "Invalid 'from' date format" in j["errors"][0].get("detail", "")
+    assert "error" in j
+    assert j["error"]["code"] == "bad_request"
+    assert "invalid 'from' date format" in j["error"]["message"].lower()
 
 
 def test_get_admin_appointments_invalid_to_date_format_returns_400(client):
@@ -213,9 +207,9 @@ def test_get_admin_appointments_invalid_to_date_format_returns_400(client):
     r = client.get("/api/admin/appointments?to=not-a-date")
     assert r.status_code == 400
     j = r.get_json()
-    assert j.get("errors") is not None
-    assert len(j["errors"]) > 0
-    assert "Invalid 'to' date format" in j["errors"][0].get("detail", "")
+    assert "error" in j
+    assert j["error"]["code"] == "bad_request"
+    assert "invalid 'to' date format" in j["error"]["message"].lower()
 
 
 def test_get_admin_appointments_malformed_date_formats_return_400(client):
@@ -367,6 +361,6 @@ def test_get_admin_appointments_cursor_offset_conflict_returns_400(client):
     r = client.get("/api/admin/appointments?cursor=some-cursor&offset=10")
     assert r.status_code == 400
     j = r.get_json()
-    assert j.get("errors") is not None
-    assert len(j["errors"]) > 0
-    assert "cannot use both cursor and offset" in j["errors"][0].get("detail", "").lower()
+    assert "error" in j
+    assert j["error"]["code"] == "bad_request"
+    assert "cannot use both cursor and offset" in j["error"]["message"].lower()

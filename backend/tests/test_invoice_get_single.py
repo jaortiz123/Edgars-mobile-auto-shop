@@ -50,4 +50,4 @@ def test_get_invoice_not_found(pg_container):
     resp = client.get("/api/admin/invoices/does-not-exist")
     data = resp.get_json()
     assert resp.status_code == 404, data
-    assert data["errors"][0]["code"] == "NOT_FOUND"
+    assert data["error"]["code"] == "not_found"
