@@ -52,6 +52,12 @@ DEV_NO_AUTH = os.getenv("DEV_NO_AUTH", "true").lower() == "true"
 if os.getenv("PYTEST_CURRENT_TEST"):
     DEV_NO_AUTH = False
 
+# ---------------------------------------------------------------------------
+# Performance instrumentation constants
+# ---------------------------------------------------------------------------
+PROCESS_START_TIME = time.time()
+COLD_START_SECONDS = 120  # < 120s uptime => cold start classification
+
 # Create app early so hooks can reference it safely
 app = Flask(__name__)
 
@@ -218,7 +224,7 @@ RATE_LIMIT_PER_MINUTE = 60
 try:
     from backend.rate_state import _RATE, _RATE_LOCK  # type: ignore
 except Exception:  # pragma: no cover
-    from rate_state import _RATE, _RATE_LOCK  # fallback when executed directly
+    from rate_state import _RATE, _RATE_LOCK  # type: ignore  # fallback when executed directly
 
 
 class RateLimited(Exception):
@@ -278,7 +284,21 @@ def before_request_hook():
         rid = str(uuid.uuid4()).lower()
     request.environ["REQUEST_ID"] = rid
     # Monotonic perf counter (immune to wall-clock changes) for duration
+    # Record handler start (high resolution monotonic)
     request.environ["REQUEST_START_PERF"] = time.perf_counter()
+    # Mark whether first byte has been written yet (for first-byte latency measurement)
+    request.environ["FIRST_BYTE_TS"] = None
+    # Pre-compute cold/warm classification (process uptime <120s => cold)
+    proc_uptime = time.time() - PROCESS_START_TIME
+    request.environ["START_TYPE"] = "cold" if proc_uptime < COLD_START_SECONDS else "warm"
+
+
+@app.after_request
+def _mark_first_byte(resp):  # pragma: no cover - simple timestamp setter
+    # Set FIRST_BYTE_TS the first time after_request runs (Flask builds full response before sending)
+    if request.environ.get("FIRST_BYTE_TS") is None:
+        request.environ["FIRST_BYTE_TS"] = time.perf_counter()
+    return resp
 
 
 @app.after_request
@@ -291,8 +311,11 @@ def after_request_hook(resp):
     try:
         start = request.environ.get("REQUEST_START_PERF")
         dur_ms = None
+        first_byte = request.environ.get("FIRST_BYTE_TS")
+        start_type = request.environ.get("START_TYPE") or "warm"
         if start is not None:
-            dur_ms = round((time.perf_counter() - start) * 1000, 2)
+            end_ref = first_byte if isinstance(first_byte, (int, float)) else time.perf_counter()
+            dur_ms = round((end_ref - start) * 1000, 2)
         actor_id = "anonymous"
         try:
             auth_ctx = maybe_auth()
@@ -306,6 +329,7 @@ def after_request_hook(resp):
             "path": request.path,
             "status": resp.status_code,
             "ms": dur_ms,
+            "start_type": start_type,
             "request_id": rid,
             "actor_id": actor_id,
         }
