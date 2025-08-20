@@ -34,6 +34,7 @@ const MessageThreadHarness = lazy(() => import('./pages/e2e/MessageThreadHarness
 const BoardHarness = lazy(() => import('./pages/e2e/BoardHarness'));
 const InvoicesPage = lazy(() => import('./pages/admin/InvoicesPage'));
 const InvoiceDetailPage = lazy(() => import('./pages/admin/InvoiceDetailPage'));
+const CacheEfficiencyPage = lazy(() => import('./pages/admin/CacheEfficiencyPage'));
 
 // --- React Query Client ---
 export default function App() {
@@ -84,6 +85,7 @@ export default function App() {
               <Route path="templates" element={<MessageTemplatesPage />} />
               <Route path="invoices" element={<InvoicesPage />} />
               <Route path="invoices/:id" element={<InvoiceDetailPage />} />
+              <Route path="cache-efficiency" element={<OwnerRoute><CacheEfficiencyPage /></OwnerRoute>} />
               {/* Future admin routes can be added here, e.g., <Route path="users" element={<Users />} /> */}
             </Route>
 
