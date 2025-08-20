@@ -363,6 +363,56 @@ def _req_id() -> str:
     return request.environ.get("REQUEST_ID", "N/A")
 
 
+@app.get("/api/admin/metrics/304-efficiency")
+def metrics_304_efficiency():
+    """Compute 304 efficiency for key cacheable GET routes over recent log buffer.
+
+    Since we do not persist logs long-term yet, this derives percentages from the
+    in-memory API_REQUEST_LOG_TEST_BUFFER (best-effort, bounded). Once a durable
+    store is available, replace this with a 7-day query. For now it provides
+    immediate feedback for development / CI.
+    """
+    # Define route templates of interest (simplified patterns)
+    tracked = [
+        "/api/customer/profile",  # example canonicalized path
+        "/api/vehicle/profile",  # example canonicalized path
+    ]
+    counts: dict[str, dict[str, int]] = {r: {"total": 0, "hits_304": 0} for r in tracked}
+    # Iterate over buffered logs (in reverse for recency weighting not required here)
+    for rec in API_REQUEST_LOG_TEST_BUFFER[-2000:]:  # limit scanning cost
+        try:
+            if rec.get("type") != "api.request":
+                continue
+            method = rec.get("method")
+            if method != "GET":
+                continue
+            path = rec.get("path") or ""
+            status = int(rec.get("status") or 0)
+            # Match simple prefixes to map to template (placeholder logic)
+            template = None
+            if "/customer" in path and "profile" in path:
+                template = "/api/customer/profile"
+            elif "/vehicles" in path and "profile" in path:
+                template = "/api/vehicle/profile"
+            if template and template in counts:
+                counts[template]["total"] += 1
+                if status == 304:
+                    counts[template]["hits_304"] += 1
+        except Exception:
+            continue
+    result = {}
+    for tpl, c in counts.items():
+        total = c["total"]
+        hits = c["hits_304"]
+        pct = (hits / total * 100.0) if total else None
+        result[tpl] = {
+            "total": total,
+            "hits_304": hits,
+            "efficiency_pct": round(pct, 2) if pct is not None else None,
+        }
+    return jsonify({"routes": result})
+
+
 def _ok(data: Any, status: int = HTTPStatus.OK):
     """Build final success envelope without legacy errors key."""
     if status == HTTPStatus.NO_CONTENT:
