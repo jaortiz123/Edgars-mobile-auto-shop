@@ -27,6 +27,7 @@ Exit Codes:
 from __future__ import annotations
 
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -90,7 +91,30 @@ def apply_file(conn, path: Path):
     with conn.cursor() as cur:
         print(f"🔧 Applying {path.name} ...", flush=True)
         with open(path, encoding="utf-8") as f:
-            sql = f.read()
+            raw_sql = f.read()
+
+        # Treat empty or comment-only files as no-op migrations (useful for documenting removed steps)
+        def _strip_comments(s: str) -> str:
+            # Remove /* */ block comments
+            s = re.sub(r"/\*.*?\*/", "", s, flags=re.DOTALL)
+            # Remove -- line comments
+            s = re.sub(r"--.*", "", s)
+            return s
+
+        effective_sql = _strip_comments(raw_sql).strip()
+        if not effective_sql:
+            # Mark as applied (idempotent) without executing an empty statement
+            cur.execute(
+                "INSERT INTO migration_sql_history (filename, applied_at) VALUES (%s, %s) ON CONFLICT (filename) DO NOTHING",
+                (path.name, datetime.now(timezone.utc)),
+            )
+            conn.commit()
+            print(
+                f"➡️  Skipped empty / no-op migration {path.name} (recorded as applied).", flush=True
+            )
+            return
+
+        sql = raw_sql
         try:
             cur.execute("BEGIN;")
             cur.execute(sql)
