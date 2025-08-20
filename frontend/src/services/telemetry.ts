@@ -64,30 +64,34 @@ const SSN_REGEX = /\b\d{3}-\d{2}-\d{4}\b/; // US SSN pattern
 const JWT_REGEX = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/; // rough JWT
 const CC_LIKE_REGEX = /\b(?:\d[ -]?){13,16}\b/; // simplistic credit card like sequence
 
-// Exact key matches (normalized to lower-case)
-const PII_KEY_EXACT = new Set([
-  'email','phone','name','full_name','first_name','last_name','username','user_name',
-  'address','street','city','state','zip','postal_code','ip','ip_address',
-  'token','auth_token','session_token','password','pwd','ssn'
-]);
-// Pattern based key detection (lowercase test)
-const PII_KEY_PATTERNS: RegExp[] = [
-  /email/, /phone/, /name$/, /_name$/, /address/, /ip(_address)?$/, /token/, /pass(word)?/, /ssn/
-];
+// Stricter key-based redaction (case-insensitive, exact match ONLY for these identity keys)
+// We keep a secondary set for other obviously sensitive security credentials explicitly (tokens/passwords/etc.)
+const IDENTITY_KEY_EXACT = new Set(['email','phone','name','full_name']);
+const SENSITIVE_KEY_EXACT = new Set(['token','auth_token','session_token','password','pwd','ssn','ip','ip_address']);
 
 function isPiiKey(key: string): boolean {
   const k = key.toLowerCase();
-  if (PII_KEY_EXACT.has(k)) return true;
-  return PII_KEY_PATTERNS.some(r => r.test(k));
+  if (IDENTITY_KEY_EXACT.has(k)) return true; // new stricter identity rule
+  if (SENSITIVE_KEY_EXACT.has(k)) return true; // retain existing security-sensitive keys
+  return false; // no partial / pattern matches (prevents username being redacted etc.)
 }
 
+// Extended value detection.
 function isPiiValue(str: string): boolean {
+  // Existing full-string matches
   if (EMAIL_REGEX.test(str)) return true;
   if (PHONE_REGEX.test(str)) return true;
   if (IPV4_REGEX.test(str)) return true;
   if (SSN_REGEX.test(str)) return true;
   if (JWT_REGEX.test(str) && str.split('.').length === 3) return true;
   if (CC_LIKE_REGEX.test(str.replace(/[- ]/g, ''))) return true;
+  // New substring scan for email / E.164 phone references inside free-form text
+  // Email substring
+  const EMAIL_SUBSTRING = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+  if (EMAIL_SUBSTRING.test(str)) return true;
+  // E.164 (require leading + and at least 8 total digits for heuristic)
+  const E164_SUBSTRING = /\+[1-9]\d{7,14}(?!\d)/; // up to 15 digits
+  if (E164_SUBSTRING.test(str)) return true;
   return false;
 }
 
@@ -110,10 +114,12 @@ export function setLastRequestId(rid?: string){ lastRequestId = rid; }
 function nowIso(){ return new Date().toISOString(); }
 
 function cloneAndRedact(obj: unknown): unknown {
-  // Primitive / null path
   if (obj === null || obj === undefined) return obj;
   if (typeof obj !== 'object') {
-    if (typeof obj === 'string' && isPiiValue(obj)) return '[REDACTED]';
+    if (typeof obj === 'string') {
+      // If entire string is PII classify OR contains PII substrings, replace whole value (simpler guarantee)
+      if (isPiiValue(obj)) return '[REDACTED]';
+    }
     return obj;
   }
   // Array path – redact each element
@@ -149,7 +155,13 @@ class TelemetryClient {
 
   track(event: string, payload: Record<string, unknown> = {}){
     const redacted = cloneAndRedact(payload) as Record<string, unknown>;
-    const sized = applySizeGuard(redacted, this.cfg);
+    // Oversize preflight (Phase C – network protection)
+  const preflight = preflightSizeProcess(redacted);
+    if (preflight.dropped) {
+      incCounter('telemetry.drop_oversize');
+      return; // silently drop
+    }
+    const sized = applySizeGuard(preflight.payload, this.cfg);
     const base: TelemetryEventBase = {
       event,
       ts_iso: nowIso(),
@@ -294,6 +306,94 @@ export function _test_reset(){ // resets singleton so a fresh instance reloads f
 }
 export function _test_updateConfig(p: Partial<TelemetryConfig>){ getTelemetry()._testUpdateConfig(p); }
 export function _test_snapshot_full(){ return getTelemetry()._testSnapshot(); }
+export function _test_getCounters(){ return { ...counters }; }
+// Test helper: reset internal counters (for isolated assertions)
+export function _test_resetCounters(){ for (const k of Object.keys(counters)) delete counters[k]; }
+
+// ---- Oversize Preflight (16KB soft truncate, 64KB hard drop) ----
+const SOFT_LIMIT_BYTES = 16 * 1024; // 16KB
+const HARD_LIMIT_BYTES = 64 * 1024; // 64KB
+
+interface PreflightResult { payload: Record<string, unknown>; dropped: boolean; }
+
+function approximateSize(obj: unknown): number {
+  try { return JSON.stringify(obj).length; } catch { return Infinity; }
+}
+
+function preflightSizeProcess(payloadIn: Record<string, unknown>): PreflightResult {
+  const payload = payloadIn; // operate on cloned redacted object (already cloned upstream)
+  let size = approximateSize(payload);
+  if (size > HARD_LIMIT_BYTES) {
+    // Immediate hard drop (don't waste cycles shrinking something far beyond limit)
+    return { payload, dropped: true };
+  }
+  if (size <= SOFT_LIMIT_BYTES) return { payload, dropped: false };
+  // Truncation strategy: iteratively shrink largest string/array values until <= soft limit or no progress.
+  // We mutate in-place to avoid extra allocations; mark a hint flag for introspection.
+  (payload as Record<string, unknown>)._oversize_truncated = true;
+  const MAX_PASSES = 40;
+  let passes = 0;
+  // changed flag removed (kept logic simple); we rely on size delta for progress
+  while (size > SOFT_LIMIT_BYTES && passes < MAX_PASSES) {
+    passes++;
+    // Collect top-level entries sized (deep). For nested large fields, we descend to find candidates as well.
+    const candidates: { parent: Record<string, unknown>|unknown[]; key: string|number; kind: 'str'|'arr'|'obj'; est: number; val: unknown }[] = [];
+  const visit = (parent: Record<string, unknown>|unknown[] , key: string|number, val: unknown, depth: number) => {
+      if (depth > 4) return; // bound traversal for performance
+      if (typeof val === 'string') {
+        if (val.length > 64) {
+          candidates.push({ parent, key, kind: 'str', est: val.length, val });
+        }
+      } else if (Array.isArray(val)) {
+        if (val.length > 8) candidates.push({ parent, key, kind: 'arr', est: val.length, val });
+        // look at first few elements for deep strings
+        for (let i=0;i<Math.min(val.length, 5);i++) visit(val, i, val[i], depth+1);
+      } else if (val && typeof val === 'object') {
+        const keys = Object.keys(val);
+        if (keys.length > 12) candidates.push({ parent, key, kind: 'obj', est: keys.length, val });
+  for (const k of keys.slice(0, 15)) visit(val as Record<string, unknown>, k, (val as Record<string, unknown>)[k], depth+1);
+      }
+    };
+    for (const [k,v] of Object.entries(payload)) visit(payload, k, v, 0);
+  if (!candidates.length) break;
+    candidates.sort((a,b)=>b.est-a.est);
+    const target = candidates[0];
+    if (target.kind === 'str' && typeof target.val === 'string') {
+      const original = target.val;
+      const reduced = original.slice(0, Math.max(32, Math.floor(original.length/2))) + '…';
+      if (Array.isArray(target.parent)) {
+        (target.parent as unknown[])[target.key as number] = reduced;
+      } else {
+        (target.parent as Record<string, unknown>)[target.key as string] = reduced;
+      }
+    } else if (target.kind === 'arr' && Array.isArray(target.val)) {
+      const arr = target.val;
+      const newArr = arr.slice(0, Math.max(4, Math.ceil(arr.length/2)));
+      if (Array.isArray(target.parent)) {
+        (target.parent as unknown[])[target.key as number] = newArr;
+      } else {
+        (target.parent as Record<string, unknown>)[target.key as string] = newArr;
+      }
+    } else if (target.kind === 'obj' && target.val && typeof target.val === 'object') {
+      // Remove roughly half of keys (largest objects likely heavy)
+      const o = target.val as Record<string, unknown>;
+      const keys = Object.keys(o);
+      if (keys.length > 1) {
+        const remove = keys.slice(Math.ceil(keys.length/2));
+  for (const rk of remove) delete o[rk];
+      }
+    }
+    const newSize = approximateSize(payload);
+    if (newSize >= size) break; // no progress
+    size = newSize;
+  }
+  // If still > soft we keep (applySizeGuard will further reduce to 4KB event cap)
+  return { payload, dropped: false };
+}
+
+// ---- Internal counters ----
+const counters: Record<string, number> = {};
+function incCounter(name: string){ counters[name] = (counters[name] || 0) + 1; }
 
 // Size guard helper (after export section to keep file cohesive)
 function applySizeGuard(raw: Record<string, unknown>, cfg: TelemetryConfig): Record<string, unknown> {
