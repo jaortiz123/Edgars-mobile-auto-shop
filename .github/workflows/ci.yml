@@ -161,6 +161,20 @@ jobs:
           name: backend-coverage
           fail_ci_if_error: false
 
+      - name: Database bloat check (Phase D guardrail)
+        # Runs after backend tests & coverage to enforce bloat thresholds early.
+        # Uses live stats (no simulation) against ephemeral CI Postgres.
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: test_user
+          PGPASSWORD: test_password
+          PGDATABASE: test_autoshop
+        run: |
+          echo "🔎 Running database bloat check (Phase D guardrail)..."
+          python check_db_bloat.py
+          echo "✅ Bloat check completed"
+
   # No-DB Smoke Tests (T-006) - Sprint 6 Exit Criteria #1
   no-db-smoke-tests:
     runs-on: ubuntu-latest
