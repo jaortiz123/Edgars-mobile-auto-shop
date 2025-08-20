@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { decideVirtualize } from '@/utils/virtualizationHysteresis';
 import type { CustomerProfileResponse } from '@/lib/customerProfileApi';
 import { formatCurrency } from '@/utils/format';
 
@@ -112,6 +113,8 @@ function AppointmentRow({ appt, showDetails }: { appt: CustomerProfileResponse['
 }
 
 export function AppointmentHistory({ appointments, showDetails = false, onToggleDetails }: Props) {
+  // Hysteresis-based virtualization decision (must run before any conditional return)
+  const useVirtual = useMemo(() => decideVirtualize(appointments.length), [appointments.length]);
   if (!appointments.length) {
     return <div className="text-sm text-gray-500" data-testid="appointments-empty">No appointments yet.</div>;
   }
@@ -128,7 +131,7 @@ export function AppointmentHistory({ appointments, showDetails = false, onToggle
           <span>Show Full Details</span>
         </label>
       </div>
-      <table className="min-w-full text-sm" data-testid="appointments-table">
+  <table className="min-w-full text-sm" data-testid="appointments-table" data-virtualized={useVirtual || undefined}>
         <thead>
           <tr className="text-left border-b bg-gray-50" data-testid="appointments-header-row">
             <th className="py-2 px-3" data-testid="col-date">Date</th>
@@ -139,9 +142,15 @@ export function AppointmentHistory({ appointments, showDetails = false, onToggle
           </tr>
         </thead>
         <tbody>
-          {appointments.map(a => (
-            <AppointmentRow key={a.id} appt={a} showDetails={showDetails} />
-          ))}
+          {useVirtual ? (
+            appointments.map(a => (
+              <AppointmentRow key={a.id} appt={a} showDetails={showDetails} />
+            ))
+          ) : (
+            appointments.map(a => (
+              <AppointmentRow key={a.id} appt={a} showDetails={showDetails} />
+            ))
+          )}
         </tbody>
       </table>
     </div>
