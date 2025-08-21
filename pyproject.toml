@@ -56,11 +56,6 @@ ignore = [
 
 [tool.black]
 line-length = 100
-extend-exclude = '''
-(
-  backend/(asn1crypto|dateutil|pg8000|libs|scramp|six\.py|lambda_packages)
-)
-'''
 
 [tool.setuptools]
 packages = ["catalog_seed"]

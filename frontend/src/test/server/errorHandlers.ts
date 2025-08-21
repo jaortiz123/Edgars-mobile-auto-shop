@@ -227,17 +227,6 @@ export const notification500Handlers = [
   notificationPostApi500Handler,
   notificationPost500HandlerLocal,
   notificationPostApi500HandlerLocal,
-  http.post('*/notifications', async () => {
-    console.log('🚨 MSW: (wildcard) Simulating 500 error for POST */notifications');
-    return HttpResponse.json(
-      {
-        data: null,
-        errors: [{ status: '500', code: 'NOTIFICATION_ERROR', detail: 'Failed to send notification' }],
-        meta: { request_id: generateRequestId() }
-      },
-      { status: 500 }
-    );
-  }),
 ];
 
 /**

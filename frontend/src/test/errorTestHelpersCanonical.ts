@@ -7,8 +7,7 @@
 
 import { vi } from 'vitest';
 import type { RequestHandler } from 'msw';
-// Use centralized host-agnostic server (tests/server/server)
-import { server } from '../tests/server/server';
+import { server } from './server/mswServer';
 import {
   appointment500Handlers,
   unauthorizedHandlers,

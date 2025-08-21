@@ -618,11 +618,12 @@ function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime
 
       if (Object.keys(payload).length === 0) {
         toast.push({ kind: 'info', text: 'Nothing to save' });
+        setSavingVeh(false);
         return;
       }
-
-      await api.patchAppointment(apptId, payload);
-      // Refresh drawer data so UI reflects latest vehicle linkage
+      // Perform save
+      await api.patchAppointment(apptId, payload as Record<string, unknown>);
+      // Refresh drawer core fields (best effort)
       try {
         const fresh = await api.getDrawer(apptId);
         setVeh({
@@ -657,7 +658,7 @@ function Overview({ data, onEditTime }: { data: DrawerPayload | null; onEditTime
     }
   };
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-customer-id={data?.customer?.id && /^(?:\d+)$/.test(String(data.customer.id)) ? String(data.customer.id) : undefined}>
       <div className="grid grid-cols-2 gap-3">
         <Info label="Status" value={a.status} />
         <Info label="Start" value={formatInShopTZ(a.start, 'datetime')} />

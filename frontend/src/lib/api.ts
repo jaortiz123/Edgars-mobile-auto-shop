@@ -505,14 +505,7 @@ export async function getCustomerHistory(customerId: string): Promise<CustomerHi
     console.log('[history] GET start', { customerId, url });
   }
   try {
-    // Explicitly attach Authorization header (defensive: some envs reported missing token on interceptor path-only endpoints)
-    let authHeader: Record<string,string> | undefined;
-    try {
-      const t = localStorage.getItem('auth_token') || localStorage.getItem('token');
-      if (import.meta.env.DEV) console.log('[history] token lookup', { present: !!t });
-      if (t) authHeader = { Authorization: `Bearer ${t}` };
-    } catch { /* ignore */ }
-    const resp = await http.get<CustomerHistoryResponse>(url, authHeader ? { headers: authHeader } : undefined);
+  const resp = await http.get<CustomerHistoryResponse>(url);
     if (import.meta.env.DEV) {
       const appts = resp.data?.data?.pastAppointments;
       console.log('[history] GET ok', {

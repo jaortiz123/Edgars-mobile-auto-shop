@@ -23,6 +23,44 @@ const DASHBOARD = 'http://localhost:5173/admin/dashboard';
 // Order matters: start most stripped (disable all) then turn features back on.
 test('StatusBoard smoke: dashboard renders board grid', async ({ page }) => {
   await stubCustomerProfile(page);
+  // Capture console output for diagnostics (Firefox NetworkError investigation)
+  page.on('console', msg => {
+    // eslint-disable-next-line no-console
+    console.log(`[BROWSER][${msg.type()}]`, msg.text());
+  });
+  // === TEMPORARY DIAGNOSTIC NETWORK LOGGING (remove after root cause identified) ===
+  const reqStart = new Map<string, number>();
+  function now() { return Date.now(); }
+  page.on('request', req => {
+    const url = req.url();
+    if (url.includes('/api/')) {
+      reqStart.set(req.url()+req.method(), now());
+      // eslint-disable-next-line no-console
+      console.log(`[API REQ] ${req.method()} ${url}`);
+    }
+  });
+  page.on('response', async resp => {
+    const req = resp.request();
+    const url = req.url();
+    if (url.includes('/api/')) {
+      const key = req.url()+req.method();
+      const started = reqStart.get(key);
+      const dur = started ? (now() - started) : undefined;
+      // eslint-disable-next-line no-console
+      console.log(`[API RES] ${resp.status()} ${req.method()} ${url}${dur!==undefined ? ` (${dur}ms)` : ''}`);
+    }
+  });
+  page.on('requestfailed', req => {
+    const url = req.url();
+    if (url.includes('/api/')) {
+      const key = req.url()+req.method();
+      const started = reqStart.get(key);
+      const dur = started ? (now() - started) : undefined;
+      // eslint-disable-next-line no-console
+      console.log(`[API FAIL] ${req.failure()?.errorText || 'unknown-error'} ${req.method()} ${url}${dur!==undefined ? ` (${dur}ms)` : ''}`);
+    }
+  });
+  // ============================================================================
   // Stub board API with a minimal deterministic dataset to avoid backend dependency timing
   await page.route('**/admin/appointments/board**', route => {
   // eslint-disable-next-line no-console

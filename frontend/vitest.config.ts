@@ -32,7 +32,7 @@ export default defineConfig({
     testTimeout: 10000,
     hookTimeout: 10000,
     // Pre-setup ensures act flag is set before React loads.
-  setupFiles: ['src/tests/preActEnv.ts','src/tests/jest.setup.ts'],
+    setupFiles: ['src/tests/preActEnv.ts','src/tests/setup.ts'],
 
     // ✅ Globals are needed for libraries like testing-library
     globals: true,

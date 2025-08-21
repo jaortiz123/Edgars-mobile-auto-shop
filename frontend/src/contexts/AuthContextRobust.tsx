@@ -96,22 +96,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       if (authService.isLoggedIn()) {
-        const decoded = authService.parseToken();
+        interface DecodedMaybeAdvisor { sub: string; email?: string; role?: string; [k: string]: unknown }
+        const decoded = authService.parseToken() as DecodedMaybeAdvisor | null;
         if (decoded) {
-          const profile = await authService.getProfile();
-          dispatch({
-            type: 'SET_USER',
-            payload: {
-              id: decoded.sub,
-              email: decoded.email || profile.email,
-              profile
-            }
-          });
+          if (decoded.role === 'Advisor') {
+            dispatch({
+              type: 'SET_USER',
+              payload: {
+                id: decoded.sub,
+                email: decoded.email || 'advisor@example.com',
+                profile: { email: decoded.email || 'advisor@example.com' } as ProfileData
+              }
+            });
+          } else {
+            const profile = await authService.getProfile();
+            dispatch({
+              type: 'SET_USER',
+              payload: {
+                id: decoded.sub,
+                email: decoded.email || profile.email,
+                profile
+              }
+            });
+          }
         }
       }
     } catch (error) {
       console.warn('Failed to initialize auth:', error);
-      authService.clearToken();
+      // Do not clear token if it's an Advisor token (admin dashboard usage) – allow downstream admin APIs to function.
+      try {
+        const decoded = authService.parseToken() as { role?: string } | null;
+        if (!decoded || decoded.role !== 'Advisor') {
+          authService.clearToken();
+        }
+      } catch { /* ignore */ }
     } finally {
       dispatch({ type: 'SET_INITIALIZED', payload: true });
     }

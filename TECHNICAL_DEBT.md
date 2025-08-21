@@ -4,6 +4,23 @@ This document tracks known technical debt in the project to be addressed in futu
 
 ## Backend
 
+### 0. Implement Role-Aware Admin vs. Customer Authentication
+
+* **Issue**: Frontend currently always calls `/api/customers/profile` using a token obtained from an advisor/admin login during E2E setup. The backend `legacy_customer_profile` endpoint is customer-centric; admin/advisor tokens do not map cleanly to a customer identity, causing either misleading 404s (before) or token-clearing 401s (after attempted hardening). This mismatch cascades into test flakiness when authService interprets 401 as session expiry and clears the token, breaking subsequent protected UI flows.
+* **Proposed Changes**:
+  1. Introduce `/api/admin/profile` returning administrator identity & role claims (id/email/permissions) without requiring a customer record.
+  2. Update `authService.getProfile()` to:
+     * Parse JWT role; if role != `customer`, call `/api/admin/profile` instead of `/api/customers/profile`.
+     * Only clear token on 401 if the request was made to its role-appropriate profile endpoint (avoid clearing on role mismatch).
+     * Treat 404 from the customer endpoint (legacy tokens) as soft-miss and retain token, logging a warning.
+  3. Add lightweight backend handler `@app.route('/api/admin/profile')` that validates token, returns `{ id, email, role, issuedAt, expiresAt }` and 401 on invalid/expired token.
+  4. Adjust E2E global setup to assert the correct profile endpoint based on role to tighten readiness (admin tokens -> admin endpoint; customer tokens -> customer endpoint).
+  5. Add Playwright regression test ensuring admin dashboard initialization never triggers token clear due to calling the wrong profile endpoint.
+* **Benefits**: Eliminates ambiguous 404/401 noise, prevents unnecessary token clearing, simplifies readiness logic, and sets foundation for future RBAC enhancements (e.g., technician limited UI).
+* **Risks / Mitigations**: Minor addition of new endpoint—guard with existing auth validation; ensure no PII leakage; add unit test for role branch logic in `authService`.
+* **Success Criteria**: E2E suite runs without any `/api/customers/profile` calls when using admin token; no token-clear warnings; dedicated admin profile test passes.
+
+
 ### 1. Batch Endpoint for Adding Appointment Services
 
 * **Issue**: The current implementation for adding services to an appointment (`AppointmentDrawer.tsx`) sends one `POST` request per new service sequentially.

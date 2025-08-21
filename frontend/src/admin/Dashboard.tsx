@@ -119,7 +119,7 @@ interface ApiAppointmentResponse {
 export function Dashboard() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const triggerRefresh = () => setRefreshTrigger(r => r + 1);
-  const [isRefreshing, setRefreshing] = useState(false);
+  const [isRefreshing, setRefreshing] = useState(false); // retained for potential future auto-refresh logic
   const [view, setView] = useState<ViewMode>(getViewMode());
   const [loading, setLoading] = useState(true);
   // Dashboard state
@@ -153,6 +153,8 @@ export function Dashboard() {
     setRefreshingRef.current = setRefreshing;
   }, [setRefreshing]);
 
+  const [error, setError] = useState<string | null>(null);
+  // Core data load function — stable reference; internal logic avoids changing closure deps.
   const loadDashboardData = useCallback(async (options?: { soft?: boolean }) => {
     // Prevent rapid successive calls
     if (loadingRef.current) {
@@ -173,7 +175,8 @@ export function Dashboard() {
    const isSoft = !!options?.soft;
    const prevScrollY = window.scrollY;
    loadingRef.current = true;
-   if (!isSoft) setLoading(true);
+  if (!isSoft) setLoading(true);
+  setError(null); // reset previous error on fresh attempt
    setRefreshingRef.current(true);
      let fetchedApts: UIAppointment[] = [];
      try {
@@ -231,9 +234,11 @@ export function Dashboard() {
            };
          });
        }
-     } catch (err) {
-      console.error('❌ Dashboard API error', err);
-      // Still proceed to show empty dashboard instead of hanging
+  } catch (err) {
+   console.error('❌ Dashboard API error', err);
+   // Single assignment to error state (prevents render loops)
+   setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+   // Proceed to show empty dashboard instead of hanging
   } finally {
       clearTimeout(safetyTimer);
       console.log("🔄 Setting appointments");
@@ -275,13 +280,14 @@ export function Dashboard() {
          }
        }
      }
-  }, []); // Stable function - no dependencies needed
+  }, []);
 
   useEffect(() => {
-    // Only load once on mount, then rely on refresh triggers
+    // Only load once on mount (empty dep array) – loadDashboardData has stable identity
     console.log("🎯 Initial dashboard load triggered");
     loadDashboardData();
-  }, [loadDashboardData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Handle refresh triggers separately
   useEffect(() => {
@@ -295,14 +301,7 @@ export function Dashboard() {
   // Auto-refresh appointments disabled to prevent infinite requests
   useEffect(() => {
     console.log("⏰ Auto-refresh disabled to prevent infinite requests");
-    // const interval = setInterval(() => {
-    //   if (isOnline() && !loadingRef.current && !isRefreshing) {
-    //     console.log("⏰ Auto-refresh triggered");
-    //     loadDashboardData();
-    //   }
-    // }, 120000); // 2 minutes instead of 30 seconds
-    // return () => clearInterval(interval);
-  }, [isRefreshing]); // Remove loadDashboardData dependency
+  }, []); // no dependency to avoid firing repeatedly when isRefreshing toggles
 
   // Schedule notifications for today's appointments
   useEffect(() => {
@@ -554,6 +553,19 @@ export function Dashboard() {
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-500 mx-auto mb-sp-3"></div>
           <p className="text-fs-3 font-medium text-gray-600">Loading your dashboard...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-sp-6 max-w-xl mx-auto text-center space-y-sp-3">
+        <h2 className="text-fs-4 font-bold text-red-600">Dashboard failed to load</h2>
+        <p className="text-gray-700">{error}</p>
+        <button
+          onClick={() => loadDashboardData()}
+          className="px-sp-4 py-sp-2 rounded-md bg-orange-500 text-white font-medium hover:bg-orange-600"
+        >Retry</button>
       </div>
     );
   }
