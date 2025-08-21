@@ -6,7 +6,7 @@ import { stubCustomerProfile } from './utils/stubAuthProfile';
 // Fails clearly if 403 or network error occurs.
 
 test.describe('Appointment Drawer History Tab', () => {
-  test('loads history data without 403 using real login', async ({ page, request }) => {
+  test('loads history data without 403 (pre-seeded advisor token)', async ({ page }) => {
     // Temporary: skip on very narrow mobile viewports until dedicated mobile interaction path is added
     const vp = page.viewportSize();
     if (vp && vp.width < 600) {
@@ -14,17 +14,7 @@ test.describe('Appointment Drawer History Tab', () => {
     }
   // 1. Stub profile endpoint early to avoid CORS noise / auth init failures
   await stubCustomerProfile(page);
-  // 2. Perform real login to obtain token via existing API (mirrors admin-login.spec.ts approach)
-    const loginRes = await request.post('http://localhost:3001/api/admin/login', {
-      data: { username: 'advisor', password: 'dev' },
-      headers: { 'Content-Type': 'application/json' }
-    });
-    expect(loginRes.status(), 'login status').toBe(200);
-    const body = await loginRes.json();
-    const token = body?.data?.token;
-    expect(token, 'jwt token present').toBeTruthy();
-
-  // 3. With storageState applied globally, just prime origin to load state into context
+  // 2. With storageState applied globally (advisor token), just prime origin to load state into context
   await page.goto('http://localhost:5173/');
 
     // Capture history-related console logs for diagnostics
@@ -58,23 +48,22 @@ test.describe('Appointment Drawer History Tab', () => {
     const responses: { url: string; status: number }[] = [];
     page.on('response', r => { if (r.url().includes('/api/')) responses.push({ url: r.url(), status: r.status() }); });
 
-    // Wait for either drawer DOM marker or appointment API
-    let customerId: string | null = null;
-    const maybeResponse = await Promise.race([
-      page.waitForResponse(r => r.url().includes('/api/appointments/') && r.request().method() === 'GET', { timeout: 8000 }).catch(() => null),
-      page.getByTestId('drawer-open').waitFor({ timeout: 8000 }).then(() => null).catch(() => null)
-    ]);
-    if (maybeResponse) {
-      try {
-        const json = await maybeResponse.json();
-        customerId = json?.data?.customer?.id || null;
-      } catch { /* ignore */ }
-    }
-    if (!customerId) {
-      // Attempt to read customer id from DOM attribute if rendered (assumes data-customer-id may exist in implementation)
-      customerId = await page.getByTestId('drawer-open').getAttribute('data-customer-id');
-    }
-    expect(customerId, `customer id resolved (responses observed: ${responses.map(r=>r.status+':'+r.url).join(', ')})`).toBeTruthy();
+    // Deterministically wait for drawer and enforce numeric customer id to avoid silent fallback cascade
+    const drawerEl = page.getByTestId('drawer-open');
+    await drawerEl.waitFor({ timeout: 10000 });
+    const customerId = await page.waitForFunction(() => {
+      const el = document.querySelector('[data-testid="drawer-open"]');
+      const cid = el?.getAttribute('data-customer-id') || '';
+      if (!cid) return null; // keep waiting
+      // Fail fast if fallback synthetic id surfaces
+      if (!/^\d+$/.test(cid)) {
+        // Throw inside page context to bubble up
+        throw new Error(`Non-numeric customer id encountered: ${cid}`);
+      }
+      return cid;
+    }, { timeout: 12000 });
+    const resolvedCustomerId = (await customerId.jsonValue()) as string;
+    expect(/^\d+$/.test(resolvedCustomerId), `numeric customer id resolved (responses: ${responses.map(r=>r.status+':'+r.url).join(', ')})`).toBeTruthy();
 
     // Drawer should open
     const drawer = page.getByTestId('drawer-open');
@@ -82,19 +71,42 @@ test.describe('Appointment Drawer History Tab', () => {
 
     // 6. Switch to History tab
     // Attach request listeners for diagnostics before clicking History
-    const historyRequests: string[] = [];
+    const historyRequests: { method: string; url: string; auth?: string }[] = [];
     page.on('request', r => {
       if (r.url().includes('/customers/') && r.url().includes('/history')) {
-        historyRequests.push(`${r.method()} ${r.url()}`);
+        // Capture (truncated) Authorization header for diagnostics
+        try {
+          const auth = r.headers()['authorization'];
+          historyRequests.push({ method: r.method(), url: r.url(), auth: auth ? `${auth.slice(0,25)}…` : undefined });
+        } catch {
+          historyRequests.push({ method: r.method(), url: r.url() });
+        }
       }
     });
 
     const historyTab = page.getByRole('tab', { name: /history/i });
+    // Debug: log derived customer id and token presence before history fetch
+    await page.evaluate(() => {
+      const cid = document.querySelector('[data-testid="drawer-open"]')?.getAttribute('data-customer-id');
+      // eslint-disable-next-line no-console
+      console.log('[e2e][debug] pre-history click', { customerId: cid, tokenPresent: !!(localStorage.getItem('auth_token') || localStorage.getItem('token')) });
+    });
     await historyTab.click();
 
   // Wait for history network call referencing this customer id
   // Loosen pattern: just inclusion of customers/{id}/history path anywhere in URL
-  const historyNetwork = await page.waitForResponse(r => r.url().includes(`/customers/${customerId}/history`) && r.request().method() === 'GET', { timeout: 8000 }).catch(() => null);
+  const historyNetwork = await page.waitForResponse(r => r.url().includes(`/customers/${resolvedCustomerId}/history`) && r.request().method() === 'GET', { timeout: 8000 }).catch(() => null);
+
+  if (!historyNetwork) {
+    // eslint-disable-next-line no-console
+    console.log('[e2e][debug] history network response not captured; observed requests:', historyRequests);
+  } else {
+    try {
+      const req = historyNetwork.request();
+      // eslint-disable-next-line no-console
+      console.log('[e2e][debug] history response status', historyNetwork.status(), 'auth hdr present?', !!req.headers()['authorization']);
+    } catch { /* ignore */ }
+  }
 
   // 7. Assert that no auth error is displayed (retry logic would produce banner)
   const errorBanner = drawer.getByText(/failed to load customer history/i);
@@ -125,7 +137,7 @@ test.describe('Appointment Drawer History Tab', () => {
         console.log('DEBUG auth_token present?', !!localStorage.getItem('auth_token'));
       });
     }
-    expect(historyNetwork, `history network response captured via UI flow. Seen requests: ${historyRequests.join(', ')}`).not.toBeNull();
+  expect(historyNetwork, `history network response captured via UI flow. Seen requests: ${historyRequests.map(r=>`${r.method} ${r.url}${r.auth?` auth=${r.auth}`:''}`).join(', ')}`).not.toBeNull();
     if (historyNetwork) expect(historyNetwork.status(), 'history endpoint status').toBe(200);
 
     // Attach history logs if any

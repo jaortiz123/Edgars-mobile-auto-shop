@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { server } from '../../test/server/mswServer';
 import { withErrorScenario } from '../../test/errorTestHelpersCanonical';
 
@@ -64,8 +64,24 @@ export const DebugNotificationComponent = () => {
 };
 
 describe('Debug Notification Tests', () => {
-  // Centralized server lifecycle handled in jest.setup.ts; only per-test resets needed if we add handlers
-  beforeEach(() => server.resetHandlers());
+  beforeAll(() => {
+    console.log('🚀 Starting MSW server for debug tests...');
+    server.listen({ onUnhandledRequest: 'error' });
+    console.log('🌐 MSW enabled for debug tests');
+  });
+
+  afterAll(() => {
+    console.log('🛑 Stopping MSW server...');
+    server.close();
+  });
+
+  beforeEach(() => {
+    server.resetHandlers();
+  });
+
+  afterEach(() => {
+    server.resetHandlers();
+  });
 
   it('should display error message when notification fails', async () => {
     await withErrorScenario('notificationPost500', async () => {

@@ -24,6 +24,14 @@ test('debug admin dashboard', async ({ page }) => {
   // Wait briefly to reproduce the white-screen
   await page.waitForTimeout(3000);
 
+  // Assert a key API call includes CORS header to guard against future regression.
+  // We pick technicians endpoint (expected during dashboard load).
+  const resp = await page.request.fetch('http://localhost:3001/api/admin/technicians', {
+    headers: { 'Origin': 'http://localhost:5173' }
+  });
+  const allowOrigin = resp.headers()['access-control-allow-origin'];
+  expect(allowOrigin).toBe('http://localhost:5173');
+
   // Ensure output dir
   try { fs.mkdirSync('e2e-report', { recursive: true }); } catch {}
 

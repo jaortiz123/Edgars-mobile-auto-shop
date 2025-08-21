@@ -103,12 +103,18 @@ export async function createAppointment(appointmentData: AppointmentPayload): Pr
  * @returns The admin appointments response with proper structure.
  */
 export async function getAdminAppointments(): Promise<{ appointments: AdminAppointment[] }> {
+  // DEBUG: trace invocation in E2E to diagnose Firefox NetworkError
+  console.log('[apiService.getAdminAppointments] invoked', {
+    API_BASE_URL,
+    location: typeof window !== 'undefined' ? window.location.href : 'no-window'
+  });
   const response = await fetch(`${API_BASE_URL}/api/admin/appointments`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
     },
   });
+  console.log('[apiService.getAdminAppointments] fetch completed', { ok: response.ok, status: response.status });
   if (!response.ok) {
     let errorMessage = 'Failed to fetch admin appointments.';
     try {
@@ -117,9 +123,11 @@ export async function getAdminAppointments(): Promise<{ appointments: AdminAppoi
     } catch {
       errorMessage = await response.text();
     }
+  console.log('[apiService.getAdminAppointments] non-ok response', { errorMessage });
     throw new Error(errorMessage);
   }
   const data = await response.json();
+  console.log('[apiService.getAdminAppointments] parsed JSON', { keys: Object.keys(data || {}) });
   // Return the data.appointments from the admin endpoint response structure
   return { appointments: data.data?.appointments || [] };
 }

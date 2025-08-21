@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { attachNetworkLogger } from './utils/networkLogger';
 import { stubCustomerProfile } from './utils/stubAuthProfile';
 
 // E2E: Quick Add modal -> search & select services -> schedule appointment
@@ -14,6 +15,7 @@ async function openQuickAdd(page: Page) {
 test.describe('Quick Add Appointment', () => {
   test('user creates appointment selecting two services', async ({ page }) => {
     await stubCustomerProfile(page);
+  attachNetworkLogger(page); // TEMP diagnostic instrumentation
     await page.route(/\/api\/admin\/service-operations.*/, async route => {
       const json = [
         { id: 'svc-1', name: 'Oil Change', default_price: 49.99, category: 'Maintenance' },

@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
-import { AuthProvider } from './contexts/AuthContextRobust';
-import { ToastProvider } from './components/ui/Toast';
+// Removed duplicate AuthProvider and ToastProvider wrappers (provided at root in main.tsx)
 import ProtectedRoute from './components/ProtectedRoute';
 
 // --- Layouts ---
@@ -39,9 +38,7 @@ const CacheEfficiencyPage = lazy(() => import('./pages/admin/CacheEfficiencyPage
 // --- React Query Client ---
 export default function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-          <BrowserRouter>
+      <BrowserRouter>
           <Routes>
             {/* === Public Routes === */}
             {/* The PublicLayout now provides the Suspense boundary for all its children. */}
@@ -100,7 +97,5 @@ export default function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-      </ToastProvider>
-    </AuthProvider>
   );
 }

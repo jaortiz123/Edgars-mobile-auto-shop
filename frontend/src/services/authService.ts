@@ -1,6 +1,7 @@
 import { jwtDecode } from 'jwt-decode';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+// Use unified API base; prefer VITE_API_BASE_URL (aligns with axios client) then fallback.
+const API_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 export interface DecodedToken {
   sub: string;
@@ -111,7 +112,7 @@ export const authService = {
       throw new ValidationError('Password is required');
     }
 
-    const response = await makeApiCall(`${API_URL}/customers/login`, {
+  const response = await makeApiCall(`${API_URL}/customers/login`, {
       method: 'POST',
       body: JSON.stringify({ email: email.trim(), password }),
     });
@@ -141,7 +142,7 @@ export const authService = {
       throw new ValidationError('Password must be at least 8 characters long');
     }
 
-    const response = await makeApiCall(`${API_URL}/customers/register`, {
+  const response = await makeApiCall(`${API_URL}/customers/register`, {
       method: 'POST',
       body: JSON.stringify({ email: email.trim(), password }),
     });
@@ -156,7 +157,7 @@ export const authService = {
     const token = this.getToken();
     if (!token) throw new AuthError('No authentication token');
 
-    const response = await makeApiCall(`${API_URL}/customers/profile`, {
+  const response = await makeApiCall(`${API_URL}/customers/profile`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -184,7 +185,7 @@ export const authService = {
       throw new ValidationError('Email cannot be empty');
     }
 
-    const response = await makeApiCall(`${API_URL}/customers/profile`, {
+  const response = await makeApiCall(`${API_URL}/customers/profile`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -213,7 +214,9 @@ export const authService = {
 
   setToken(token: string): void {
     try {
-      const decodeFn: any = (typeof (jwtDecode as any) === 'function') ? jwtDecode : (jwtDecode as any)?.default || null;
+  // Narrow unknown jwtDecode module shape instead of using any
+  const maybeFn: unknown = (jwtDecode as unknown as { default?: unknown })?.default || jwtDecode;
+  const decodeFn = (typeof maybeFn === 'function' ? maybeFn : null) as ((t: string) => unknown) | null;
       if (!decodeFn) throw new AuthError('Invalid token format');
       const decoded = decodeFn(token) as DecodedToken;
       if (!decoded || !decoded.exp || (decoded.exp * 1000) <= Date.now()) {
@@ -240,20 +243,21 @@ export const authService = {
     if (!token) return null;
     try {
       // jwtDecode may be exported as a named or default export depending on bundler
-      const decodeFn: any = (typeof (jwtDecode as any) === 'function') ? jwtDecode : (jwtDecode as any)?.default || null;
+  const maybeFn2: unknown = (jwtDecode as unknown as { default?: unknown })?.default || jwtDecode;
+  const decodeFn = (typeof maybeFn2 === 'function' ? maybeFn2 : null) as ((t: string) => unknown) | null;
       if (!decodeFn) throw new Error('jwtDecode unavailable');
 
       const decoded = decodeFn(token) as DecodedToken;
       // Validate token structure
       if (!decoded || !decoded.sub || !decoded.exp) {
         // remove the raw token directly to avoid calling methods that may be mocked differently in tests
-        try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
+  try { localStorage.removeItem(TOKEN_KEY); } catch { /* non-fatal */ }
         return null;
       }
       return decoded;
     } catch (error) {
       console.warn('Failed to parse token:', error);
-      try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
+  try { localStorage.removeItem(TOKEN_KEY); } catch { /* non-fatal */ }
       return null;
     }
   },

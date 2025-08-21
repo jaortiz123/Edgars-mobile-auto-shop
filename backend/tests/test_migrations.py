@@ -31,6 +31,7 @@ import pytest
 import tempfile
 import os
 from sqlalchemy import create_engine, text
+from contextlib import suppress
 
 
 def test_canonical_timestamps_migration_handles_start_ts_nulls():
@@ -48,18 +49,23 @@ def test_canonical_timestamps_migration_handles_start_ts_nulls():
     because the actual migration is designed for PostgreSQL syntax and would require
     a more complex setup to run Alembic migrations against SQLite.
     """
-    # Create temporary SQLite database file path
+    import tempfile
+    import os
+    from sqlalchemy import create_engine, text
+
+    # Create temp file DB so we can have multiple connections if needed
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_db:
         db_path = tmp_db.name
-    sqlite_url = f"sqlite:///{db_path}"
+    url = f"sqlite:///{db_path}"
+    engine = create_engine(url)
 
-    engine = create_engine(sqlite_url)
     try:
-        # Pre-migration schema & seed data
         with engine.begin() as conn:
+            # Pre-migration schema
             conn.execute(
                 text(
-                    """CREATE TABLE appointments (
+                    """
+                CREATE TABLE appointments (
                     id INTEGER PRIMARY KEY,
                     customer_id INTEGER,
                     vehicle_id INTEGER,
@@ -79,10 +85,12 @@ def test_canonical_timestamps_migration_handles_start_ts_nulls():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     deleted_at TIMESTAMP
-                )"""
+                )
+            """
                 )
             )
 
+            # Insert scenarios
             conn.execute(
                 text(
                     "INSERT INTO appointments (id, start, \"end\", notes) VALUES (1, '2025-07-29 10:00:00', '2025-07-29 11:00:00', 'Has start/end fields')"
@@ -111,13 +119,15 @@ def test_canonical_timestamps_migration_handles_start_ts_nulls():
 
             assert conn.execute(text("SELECT COUNT(*) FROM appointments")).scalar() == 5
 
-        # Migration simulation
-        with engine.begin() as conn:
+            # Migration: add columns
             conn.execute(text("ALTER TABLE appointments ADD COLUMN start_ts TIMESTAMP"))
             conn.execute(text("ALTER TABLE appointments ADD COLUMN end_ts TIMESTAMP"))
+
+            # Backfill start_ts
             conn.execute(
                 text(
-                    """UPDATE appointments
+                    """
+                UPDATE appointments
                 SET start_ts = COALESCE(
                     start_ts,
                     start,
@@ -126,47 +136,52 @@ def test_canonical_timestamps_migration_handles_start_ts_nulls():
                         WHEN scheduled_date IS NOT NULL THEN datetime(scheduled_date || ' 00:00:00')
                         ELSE NULL
                     END
-                )"""
+                )
+            """
                 )
             )
+
+            # Backfill end_ts where start_ts exists
             conn.execute(
                 text(
-                    """UPDATE appointments
-                SET end_ts = COALESCE(
-                    end_ts,
-                    "end",
-                    datetime(start_ts, '+1 hour')
-                )
-                WHERE start_ts IS NOT NULL"""
+                    """
+                UPDATE appointments
+                SET end_ts = COALESCE(end_ts, "end", datetime(start_ts, '+1 hour'))
+                WHERE start_ts IS NOT NULL
+            """
                 )
             )
+
+            # Index simulation
             conn.execute(text("CREATE INDEX ix_appointments_start_ts ON appointments (start_ts)"))
 
-        # Verification
-        with engine.connect() as conn:
-            null_start_ts_count = conn.execute(
+            # Assertions within same transaction (data visible)
+            null_count = conn.execute(
                 text("SELECT COUNT(*) FROM appointments WHERE start_ts IS NULL")
             ).scalar()
-            assert null_start_ts_count == 1
+            assert null_count == 1, f"Expected 1 NULL start_ts row, found {null_count}"
+
             rows = conn.execute(
-                text("SELECT id, start_ts FROM appointments ORDER BY id")
+                text(
+                    "SELECT id, start, scheduled_date, scheduled_time, start_ts FROM appointments ORDER BY id"
+                )
             ).fetchall()
-            # id 4 should be only NULL
-            assert [r[0] for r in rows if r[1] is None] == [4]
-            # index exists
-            assert (
-                conn.execute(
-                    text(
-                        "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='ix_appointments_start_ts'"
-                    )
-                ).scalar()
-                == 1
-            )
+            # Case validations
+            assert rows[0][4] is not None
+            assert rows[1][4] is not None
+            assert rows[2][4] is not None
+            assert rows[3][4] is None
+            assert rows[4][4] is not None
+
+            # Index exists
+            assert conn.execute(
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='index' AND name='ix_appointments_start_ts'"
+                )
+            ).fetchone()
     finally:
-        try:
+        with suppress(Exception):
             os.unlink(db_path)
-        except OSError:
-            pass
 
 
 def test_migration_verification_sql_helper():

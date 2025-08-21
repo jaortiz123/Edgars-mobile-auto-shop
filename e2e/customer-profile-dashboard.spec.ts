@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { attachNetworkLogger } from './utils/networkLogger';
 import { stubCustomerProfile } from './utils/stubAuthProfile';
 import crypto from 'crypto';
 
@@ -47,6 +48,7 @@ function signJwtHS256(payload: Record<string, any>, secret: string) {
 test.describe('Customer Profile Dashboard end-to-end', () => {
   test('Login -> Create -> Search -> Open Profile -> Verify @customer-dashboard', async ({ page, request }) => {
   await stubCustomerProfile(page);
+  attachNetworkLogger(page); // TEMP diagnostic instrumentation
   await ensureLoggedIn(page);
 
     // Create an appointment (which implicitly creates customer + vehicle if new)
