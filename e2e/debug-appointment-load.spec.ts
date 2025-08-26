@@ -1,0 +1,206 @@
+import { test, expect } from '@playwright/test';
+
+test.describe('Debug Appointment L    // Find appointment cards using a broader selector
+    const appointmentCards = await page.locator('[data-testid^="appointment-card"], [data-testid^="apt-card"], [data-appointment-id]');
+    const cardCount = await appointmentCards.count();
+    console.log(`Found ${cardCount} appointment cards`);
+
+    if (cardCount > 0) {
+      // Get details about the first card
+      const firstCard = appointmentCards.first();
+      const appointmentTestId = await firstCard.getAttribute('data-testid');
+      const appointmentDataId = await firstCard.getAttribute('data-appointment-id');
+      const cardText = await firstCard.textContent();
+
+      console.log(`First card details:`, {
+        testId: appointmentTestId,
+        dataId: appointmentDataId,
+        text: cardText?.slice(0, 100)
+      });
+
+      // Extract appointment ID from either attribute
+      let actualId = appointmentTestId?.replace(/^(appointment-card-|apt-card-)/, '');
+      if (!actualId) {
+        actualId = appointmentDataId;
+      }
+
+      if (actualId) {, () => {
+  test('capture failing appointment load request', async ({ page }) => {
+    // Arrays to capture network activity
+    const networkRequests: Array<{ url: string; timestamp: string }> = [];
+    const networkResponses: Array<{ url: string; status: number; timestamp: string; body?: any }> = [];
+    const failedRequests: Array<{ url: string; error: string; timestamp: string }> = [];
+
+    // Monitor all network requests
+    page.on('request', (request) => {
+      networkRequests.push({
+        url: request.url(),
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    // Monitor all network responses
+    page.on('response', async (response) => {
+      let body = null;
+      try {
+        // Only capture response body for API calls to avoid large payloads
+        if (response.url().includes('/api/')) {
+          body = await response.text();
+        }
+      } catch (e) {
+        // Ignore errors when reading response body
+      }
+
+      networkResponses.push({
+        url: response.url(),
+        status: response.status(),
+        timestamp: new Date().toISOString(),
+        body
+      });
+    });
+
+    // Monitor failed requests
+    page.on('requestfailed', (request) => {
+      failedRequests.push({
+        url: request.url(),
+        error: request.failure()?.errorText || 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    // Navigate to admin dashboard
+    await page.goto('/admin/dashboard');
+    await page.waitForLoadState('networkidle');
+
+    // Wait for the status board to load
+    await page.waitForSelector('.nb-board-grid', { timeout: 10000 });
+
+    // Create a test appointment first through the API to have something to open
+    await page.evaluate(async () => {
+      try {
+        const response = await fetch('/api/admin/appointments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            customer_name: 'Test Customer for Debug',
+            vehicle: '2023 Test Vehicle',
+            services_summary: 'Debug Test Service',
+            status: 'SCHEDULED',
+            start: new Date().toISOString(),
+            position: 1
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Created test appointment:', data);
+          return data;
+        }
+      } catch (e) {
+        console.log('Failed to create test appointment:', e);
+      }
+      return null;
+    });
+
+    // Wait a bit for the board to refresh with new appointment
+    await page.waitForTimeout(1000);
+
+    // Find appointment cards
+    const appointmentCards = await page.locator('[data-testid^="appointment-card"], [data-testid^="apt-card"]');
+    const cardCount = await appointmentCards.count();
+    console.log(`Found ${cardCount} appointment cards`);
+
+    if (cardCount > 0) {
+      // Intercept the specific appointment GET request and make it fail
+      const firstCard = appointmentCards.first();
+      const appointmentId = await firstCard.getAttribute('data-testid');
+      const actualId = appointmentId?.replace(/^(appointment-card-|apt-card-)/, '');
+
+      if (actualId) {
+        console.log(`Intercepting requests for appointment ${actualId}`);
+
+        // Intercept both possible appointment API endpoints to ensure we catch the request
+        await page.route(`**/api/admin/appointments/${actualId}`, async (route) => {
+          console.log(`Intercepted GET request for /api/admin/appointments/${actualId} - returning 500 error`);
+          await route.fulfill({
+            status: 500,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              error: 'Failed to load appointment',
+              message: 'Database connection failed',
+              code: 'DB_CONNECTION_ERROR'
+            })
+          });
+        });
+
+        await page.route(`**/api/appointments/${actualId}`, async (route) => {
+          console.log(`Intercepted GET request for /api/appointments/${actualId} - returning 500 error`);
+          await route.fulfill({
+            status: 500,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              error: 'Failed to load appointment',
+              message: 'Database connection failed',
+              code: 'DB_CONNECTION_ERROR'
+            })
+          });
+        });
+
+        // Try to open the appointment drawer
+        console.log(`Clicking on appointment card ${actualId}`);
+        await firstCard.click();
+
+        // Wait for drawer to appear and check for error
+        await page.waitForTimeout(2000);
+
+        // Check if error banner appeared
+        const errorBanner = page.locator('[data-testid="error-banner"], .error-banner, .alert-error');
+        const hasError = await errorBanner.count() > 0;
+
+        if (hasError) {
+          const errorText = await errorBanner.first().textContent();
+          console.log(`Error banner found: ${errorText}`);
+        } else {
+          console.log('No error banner found');
+        }
+
+        // Check if drawer opened successfully or showed error
+        const drawer = page.locator('[data-testid="appointment-drawer"], .drawer, [role="dialog"]');
+        const drawerVisible = await drawer.count() > 0;
+        console.log(`Appointment drawer visible: ${drawerVisible}`);
+
+        if (drawerVisible) {
+          // Look for "Failed to load" text in the drawer
+          const failedText = await drawer.locator('text=/failed to load/i').count();
+          console.log(`"Failed to load" text found in drawer: ${failedText > 0}`);
+        }
+      }
+    } else {
+      console.log('No appointment cards found to test with');
+    }
+
+    // Log all captured network activity
+    console.log('\n=== FAILED NETWORK REQUESTS ===');
+    failedRequests.forEach((req, i) => {
+      console.log(`${i + 1}. FAILED ${req.url} - ${req.error} at ${req.timestamp}`);
+    });
+
+    console.log('\n=== API NETWORK RESPONSES ===');
+    networkResponses
+      .filter(res => res.url.includes('/api/'))
+      .forEach((res, i) => {
+        console.log(`${i + 1}. ${res.status} ${res.url} at ${res.timestamp}`);
+        if (res.status >= 400 && res.body) {
+          console.log(`   Response body: ${res.body}`);
+        }
+      });
+
+    console.log('\n=== ALL NETWORK REQUESTS ===');
+    networkRequests
+      .filter(req => req.url.includes('/api/'))
+      .forEach((req, i) => {
+        console.log(`${i + 1}. ${req.url} at ${req.timestamp}`);
+      });
+  });
+});

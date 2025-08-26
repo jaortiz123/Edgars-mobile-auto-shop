@@ -1,4 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { http } from '@/lib/api';
+import type { AxiosResponseHeaders } from 'axios';
 import { useConflictManager } from '@/conflict/ConflictProvider';
 
 export interface BasicVehicle {
@@ -19,6 +21,13 @@ interface MutationResult { json: ApiResponse; etag?: string; aborted?: boolean }
 // Query key chosen; adjust to match whichever component consumes base vehicle info.
 function vehicleBasicKey(id: string | number) { return ['vehicleBasic', String(id)] as const; }
 
+function getHeader(headers: AxiosResponseHeaders | Record<string, string> | undefined, key: string): string | undefined {
+  if (!headers) return undefined;
+  const lower = key.toLowerCase();
+  const val = (headers as Record<string, string>)[lower];
+  return typeof val === 'string' ? val : undefined;
+}
+
 export function useOptimisticVehicleEdit(vehicleId: string) {
   const qc = useQueryClient();
   const key = vehicleBasicKey(vehicleId);
@@ -27,15 +36,11 @@ export function useOptimisticVehicleEdit(vehicleId: string) {
   mutationFn: async (patch: VehiclePatch): Promise<MutationResult> => {
       const existing = qc.getQueryData<BasicVehicle>(key);
       const etag = existing?._etag || existing?.etag;
-      const res = await fetch(`/api/admin/vehicles/${vehicleId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...(etag ? { 'If-Match': etag } : {}) },
-        body: JSON.stringify(patch),
-      });
+      const res = await http.patch(`/admin/vehicles/${vehicleId}`, patch, { headers: { ...(etag ? { 'If-Match': etag } : {}) } });
       if (res.status === 412) {
-        const latestRes = await fetch(`/api/admin/vehicles/${vehicleId}`);
-        const latestJson = latestRes.ok ? await latestRes.json() : null;
-        const latestData = latestJson && latestJson.data ? latestJson.data : latestJson;
+        const latestRes = await http.get(`/admin/vehicles/${vehicleId}`);
+        const latestJson = latestRes.data || null;
+        const latestData = latestJson && (latestJson as Record<string, unknown>).data ? (latestJson as Record<string, unknown>).data : latestJson;
         const choice = await openConflict({
           kind: 'vehicle',
           id: vehicleId,
@@ -52,26 +57,22 @@ export function useOptimisticVehicleEdit(vehicleId: string) {
         });
         if (choice === 'discard') {
           if (latestData) {
-            qc.setQueryData(key, { ...(existing || {}), ...latestData, _etag: latestRes.headers.get('ETag') || existing?._etag });
+            const etagHdr = getHeader(latestRes.headers as unknown as Record<string, string>, 'ETag');
+            qc.setQueryData(key, { ...(existing || {}), ...latestData, _etag: etagHdr || existing?._etag });
           }
-          return { json: { data: { id: vehicleId } as BasicVehicle }, etag: latestRes.headers.get('ETag') || undefined, aborted: true };
+          const etagHdr = getHeader(latestRes.headers as unknown as Record<string, string>, 'ETag');
+          return { json: { data: { id: vehicleId } as BasicVehicle }, etag: etagHdr, aborted: true };
         }
         if (choice === 'overwrite') {
-          const retryRes = await fetch(`/api/admin/vehicles/${vehicleId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(patch),
-          });
-          if (!retryRes.ok) throw Object.assign(new Error(`HTTP ${retryRes.status}`), { status: retryRes.status });
-          const retryJson: ApiResponse = await retryRes.json();
-          const retryEtag = retryRes.headers.get('ETag') || undefined;
+          const retryRes = await http.patch(`/admin/vehicles/${vehicleId}`, patch);
+          const retryJson: ApiResponse = retryRes.data as ApiResponse;
+          const retryEtag = getHeader(retryRes.headers as unknown as Record<string, string>, 'ETag');
       return { json: retryJson, etag: retryEtag };
         }
         throw Object.assign(new Error('Conflict unresolved'), { status: 412, handled: true });
       }
-      if (!res.ok) throw Object.assign(new Error(`HTTP ${res.status}`), { status: res.status });
-      const json: ApiResponse = await res.json();
-      const newEtag = res.headers.get('ETag') || undefined;
+      const json: ApiResponse = res.data as ApiResponse;
+      const newEtag = getHeader(res.headers as unknown as Record<string, string>, 'ETag');
     return { json, etag: newEtag };
     },
     onMutate: async (patch) => {

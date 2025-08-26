@@ -44,30 +44,15 @@ export async function fetchTodaysRevenue(): Promise<RevenueData> {
   try {
     const today = new Date().toISOString().split('T')[0];
 
-    // Get dashboard stats for basic revenue info
-    const statsResponse = await fetch('/api/admin/dashboard/stats', {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-      }
-    });
+  // Get dashboard stats for basic revenue info
+  const { data: stats } = await (await import('@/lib/api')).http.get('/admin/dashboard/stats');
 
-    if (!statsResponse.ok) {
-      throw new Error(`Stats API failed: ${statsResponse.status}`);
-    }
-
-    const stats = await statsResponse.json();
-
-    // Get completed appointments for accurate revenue calculation
-    const appointmentsResponse = await fetch(`/api/admin/appointments?from=${today}T00:00:00Z&to=${today}T23:59:59Z&status=COMPLETED`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-      }
-    });
+  // Get completed appointments for accurate revenue calculation
+  const { data: appointmentsData } = await (await import('@/lib/api')).http.get(`/admin/appointments`, { params: { from: `${today}T00:00:00Z`, to: `${today}T23:59:59Z`, status: 'COMPLETED' } });
 
     let completedRevenue = 0;
-    if (appointmentsResponse.ok) {
-      const appointmentsData = await appointmentsResponse.json();
-      const completedAppointments = appointmentsData.appointments || [];
+    if (appointmentsData) {
+      const completedAppointments = (appointmentsData.appointments || appointmentsData.data?.appointments) || [];
 
       // Calculate total revenue from completed appointments
       completedRevenue = completedAppointments.reduce((total: number, appointment: AppointmentData) => {

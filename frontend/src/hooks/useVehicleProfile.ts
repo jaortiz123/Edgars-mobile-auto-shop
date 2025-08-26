@@ -1,5 +1,6 @@
 import { useInfiniteQuery, QueryKey, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
+import { http } from '@/lib/api';
 
 export interface VehicleProfilePageMeta {
   next_cursor?: string | null;
@@ -65,7 +66,7 @@ async function fetchVehicleProfile(vehicleId: string, opts: { cursor?: string; p
   const url = buildVehicleProfileUrl(vehicleId, opts);
   const headers: Record<string,string> = {};
   if (opts.etag) headers['If-None-Match'] = opts.etag;
-  const res = await fetch(url, { headers });
+  const res = await http.get(url, { headers, validateStatus: (s) => (s >= 200 && s < 300) || s === 304 });
   if (res.status === 304) {
     // Not modified: reuse existing first-page data so UI doesn't flicker/clear
     if (opts.existingFirst) {
@@ -74,9 +75,11 @@ async function fetchVehicleProfile(vehicleId: string, opts: { cursor?: string; p
     // Fallback (shouldn't normally happen): empty timeline shell
     return { json: { header: null, stats: null, timeline: [], page: { next_cursor: opts.cursor }, etag: opts.etag || null }, etag: opts.etag || null };
   }
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const etag = res.headers.get('ETag');
-  const json = await res.json() as VehicleProfileResponse;
+  const etag = (res.headers['etag'] || res.headers['ETag'] || null) as string | null;
+  const payload = res.data as unknown;
+  const json = (payload && typeof payload === 'object' && 'data' in (payload as Record<string, unknown>))
+    ? (payload as { data: VehicleProfileResponse }).data
+    : (payload as VehicleProfileResponse);
   return { json: { ...json, etag }, etag };
 }
 

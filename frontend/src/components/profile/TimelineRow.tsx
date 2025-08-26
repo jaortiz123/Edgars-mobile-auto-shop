@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { http } from '@/lib/api';
 import { toast } from '@/lib/toast';
 
 // Narrow toast typing locally without using any
@@ -88,11 +89,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({ id, date, status, serv
     if (!email || sending) return;
     setSending(true);
     try {
-      const resp = await fetch(`${baseUrl}/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'receipt', destinationEmail: email })
-      });
+      const resp = await http.post(`${baseUrl}/send`, { type: 'receipt', destinationEmail: email });
       if (resp.status === 202) {
         // unified toast APIs (tests mock .success/.error)
         if (toastApi.success) {

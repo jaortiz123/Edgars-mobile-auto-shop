@@ -39,7 +39,9 @@ export async function getTechnicians(): Promise<Technician[]> {
 export const toStatus = (s: string): AppointmentStatus =>
   (s || '').toUpperCase().replace('-', '_').replace('NO_SHOW', 'NO_SHOW') as AppointmentStatus;
 
-const BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+// Use a relative base to leverage Vite's dev proxy and avoid CORS in development.
+// In production, the frontend is typically served behind the same origin as the API gateway.
+const BASE = '/api';
 
 console.log('🔧 api.ts: BASE URL configuration:', {
   'import.meta.env.VITE_API_BASE_URL': import.meta.env.VITE_API_BASE_URL,
@@ -47,10 +49,11 @@ console.log('🔧 api.ts: BASE URL configuration:', {
   'resolved BASE': BASE
 });
 
-const http = axios.create({
+export const http = axios.create({
   baseURL: BASE,
   timeout: 10000,
-  withCredentials: true,
+  // We rely on Bearer tokens, not cookies, so disable credential cookies to simplify CORS.
+  withCredentials: false,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -84,6 +87,16 @@ http.interceptors.response.use(
       const err = (d as { errors: Array<{ detail?: string; code?: string }> }).errors[0];
       return Promise.reject(new Error(err.detail || err.code || 'Request failed'));
     }
+
+    // Check for JSON error response with both error and message fields
+    if (d && typeof d === 'object' && 'error' in d && 'message' in d) {
+      const errorData = d as { error?: string; message?: string };
+      // Use the more detailed message field if available, fallback to error field
+      const errorMessage = errorData.message || errorData.error || 'Request failed';
+      return Promise.reject(new Error(errorMessage));
+    }
+
+    // Fallback for other error formats
     const msg = (d && typeof d === 'object' && 'error' in d ? (d as { error?: string }).error : undefined)
       || e.message || 'Request failed';
     return Promise.reject(new Error(msg));

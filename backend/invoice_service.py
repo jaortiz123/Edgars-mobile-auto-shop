@@ -71,19 +71,40 @@ def generate_invoice_for_appointment(appt_id: str) -> Dict[str, Any]:
                 cur.execute("SELECT id FROM invoices WHERE appointment_id = %s", (appt_id,))
                 existing = cur.fetchone()
                 try:
-                    domain.validate_appointment_for_invoicing(appt.get("status"), bool(existing))
+                    status_val = appt.get("status")
+                    # Normalize some legacy statuses e.g., lowercase 'completed' to COMPLETED
+                    if isinstance(status_val, str) and status_val.lower() == "completed":
+                        status_val = "COMPLETED"
+                    domain.validate_appointment_for_invoicing(status_val, bool(existing))
                 except domain.DomainError as e:
                     raise InvoiceError(e.code, e.message)
 
                 # Load services (persistence)
-                cur.execute(
-                    """
-                    SELECT id::text, name, COALESCE(estimated_price,0) AS estimated_price,
-                           COALESCE(estimated_hours,0) AS estimated_hours, service_operation_id::text
-                    FROM appointment_services WHERE appointment_id = %s ORDER BY created_at, id
-                    """,
-                    (appt_id,),
-                )
+                # Some older dev schemas may not have service_operation_id on appointment_services.
+                # Fall back to a compatible SELECT when that column is missing.
+                try:
+                    cur.execute(
+                        """
+                        SELECT id::text, name, COALESCE(estimated_price,0) AS estimated_price,
+                               COALESCE(estimated_hours,0) AS estimated_hours, service_operation_id::text
+                        FROM appointment_services WHERE appointment_id = %s ORDER BY created_at, id
+                        """,
+                        (appt_id,),
+                    )
+                except Exception as e:
+                    msg = str(e).lower()
+                    if "service_operation_id" in msg and "appointment_services" in msg:
+                        # Fallback: omit column and project a NULL for service_operation_id
+                        cur.execute(
+                            """
+                            SELECT id::text, name, COALESCE(estimated_price,0) AS estimated_price,
+                                   COALESCE(estimated_hours,0) AS estimated_hours, NULL::text AS service_operation_id
+                            FROM appointment_services WHERE appointment_id = %s ORDER BY created_at, id
+                            """,
+                            (appt_id,),
+                        )
+                    else:
+                        raise
                 services = cur.fetchall() or []
 
                 # Domain line items + state (IDs for persistence added below)
@@ -310,14 +331,28 @@ def record_payment_for_invoice(
                 # Insert payment (payments table references appointment_id in current schema)
                 appt_id = inv_row["appointment_id"]
                 amount_decimal = amount_cents / 100.0  # NUMERIC dollars for existing schema
-                cur.execute(
-                    """
-                    INSERT INTO payments (appointment_id, amount, method, note, created_at)
-                    VALUES (%s, %s, %s, %s, COALESCE(%s, now()))
-                    RETURNING id::text, appointment_id::text, amount, method::text, note, created_at
-                    """,
-                    (appt_id, amount_decimal, method, note, received_at),
-                )
+                try:
+                    cur.execute(
+                        """
+                        INSERT INTO payments (appointment_id, amount, method, note, created_at)
+                        VALUES (%s, %s, %s, %s, COALESCE(%s, now()))
+                        RETURNING id::text, appointment_id::text, amount, method::text, note, created_at
+                        """,
+                        (appt_id, amount_decimal, method, note, received_at),
+                    )
+                except Exception as e:
+                    # Fallback for older schemas where amount may be stored as integer cents
+                    if 'column "amount" is of type integer' in str(e).lower():
+                        cur.execute(
+                            """
+                            INSERT INTO payments (appointment_id, amount, method, note, created_at)
+                            VALUES (%s, %s, %s, %s, COALESCE(%s, now()))
+                            RETURNING id::text, appointment_id::text, amount, method::text, note, created_at
+                            """,
+                            (appt_id, int(amount_cents), method, note, received_at),
+                        )
+                    else:
+                        raise
                 payment = cur.fetchone()
                 new_state = pay_result.new_state
                 set_paid_at = ", paid_at = now()" if new_state.status == "PAID" else ""

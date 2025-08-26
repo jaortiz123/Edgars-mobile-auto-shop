@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
+import { http } from '@/lib/api';
 
 interface SMSConsentManagerProps {
   customerPhone?: string;
@@ -20,18 +21,12 @@ export const SMSConsentManager: React.FC<SMSConsentManagerProps> = ({
     setIsUpdating(true);
     try {
       // Call API to update SMS consent
-      const response = await fetch('/api/customers/sms-consent', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          sms_consent: !smsConsent,
-          phone: customerPhone
-        })
+      const response = await http.put('/customers/sms-consent', {
+        sms_consent: !smsConsent,
+        phone: customerPhone,
       });
 
-      if (response.ok) {
+      if (response.status >= 200 && response.status < 300) {
         onConsentChange?.(!smsConsent);
       }
     } catch (error) {

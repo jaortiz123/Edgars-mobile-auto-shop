@@ -8,6 +8,19 @@ import { Tabs } from '@/components/ui/Tabs';
 import * as api from '@/lib/api';
 import { generateInvoice } from '@/services/apiService';
 import type { RichAppointmentResponse } from '@/lib/api';
+
+// Helper function to extract detailed error messages from API responses
+const getDetailedErrorMessage = (error: unknown): string => {
+  // Extract error message from the processed error
+  if (error && typeof error === 'object' && 'message' in error) {
+    const errorMessage = (error as Error).message;
+    return `Failed to load appointment. Reason: ${errorMessage}`;
+  }
+
+  // Fallback to standard error message
+  const message = (error as Error)?.message || 'Unknown error occurred';
+  return `Failed to load appointment. Reason: ${message}`;
+};
 import type { DrawerPayload, AppointmentService } from '@/types/models';
 import MessageThread from './MessageThread';
 import CustomerHistory from './CustomerHistory';
@@ -143,7 +156,7 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
       const timeoutId = setTimeout(() => {
         if (cancelled) return;
         console.warn('⏰ Drawer load timed out');
-        setError('Failed to load appointment');
+        setError(getDetailedErrorMessage('Request timeout'));
         const fallbackData: DrawerPayload = {
           appointment: {
             id: id || 'fallback-id',
@@ -166,7 +179,7 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
       // Fire both legacy drawer (for existing dependent UI) and rich fetch (for edit form wiring)
       api.getDrawer(id)
         .then(result => { if (!cancelled) setData(result); })
-        .catch(err => { if (!cancelled) { console.warn('[drawer] legacy drawer load failed', err); setError('Failed to load appointment'); } });
+        .catch(err => { if (!cancelled) { console.warn('[drawer] legacy drawer load failed', err); setError(getDetailedErrorMessage(err)); } });
       // Rich fetch
       setRichLoading(true);
       api.getAppointment(id)
@@ -178,7 +191,7 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
         .catch(err => {
           if (cancelled) return;
             console.error('[AppointmentDrawer] Failed to load rich appointment', err);
-            setRichError((err as Error)?.message || 'Failed to load appointment details');
+            setRichError(getDetailedErrorMessage(err));
         })
         .finally(()=>{ if (!cancelled) setRichLoading(false); });
 

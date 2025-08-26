@@ -59,6 +59,12 @@ test.describe('Analytics Dashboard - zero state', () => {
 
     await page.goto('/admin/analytics');
 
+    // Wait for the page to be fully loaded before checking visibility
+    await page.waitForLoadState('networkidle');
+
+    // Add debugging for mobile viewport issues
+    await page.waitForTimeout(1000); // Give React time to settle
+
     // Expect heading or zero-state indicator
     const heading = page.getByRole('heading', { name: /Messaging Analytics/i });
     const zeroState = page.getByTestId('analytics-empty'); // based on component conditional

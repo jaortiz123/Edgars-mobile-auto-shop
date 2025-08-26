@@ -1,10 +1,5 @@
-// Centralized API service for backend communication
-
-// --- Environment Variable Guard Clause ---
-// Ensures the application fails fast with a clear error during development
-// if the API endpoint URL is not configured.
-// Prefer explicit endpoint when provided; otherwise rely on Vite dev proxy by using relative '/api'
-const API_BASE_URL: string = import.meta.env.VITE_API_ENDPOINT_URL || '';
+// Centralized API service built on top of the shared axios client in lib/api.
+import { http } from '@/lib/api';
 
 // --- Reusable Type Definition ---
 // Defines the shape of the data payload for creating an appointment.
@@ -62,31 +57,8 @@ export async function createAppointment(appointmentData: AppointmentPayload): Pr
     ...appointmentData,
   };
 
-  const response = await fetch(`${API_BASE_URL}/api/admin/appointments`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(backendPayload),
-  });
-
-  // --- Hardened Error Handling ---
-  // If the response is not successful, attempt to parse the error as JSON first.
-  if (!response.ok) {
-    let errorMessage = 'Failed to create appointment due to an unknown server error.';
-    try {
-      // Attempt to parse a structured error message from the API.
-      const errorBody = await response.json();
-      errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
-    } catch {
-      // If the body isn't JSON, fall back to the raw text response.
-      errorMessage = await response.text();
-    }
-    throw new Error(errorMessage);
-  }
-
-  // If successful, return the parsed JSON response from the server.
-  return response.json();
+  const { data } = await http.post('/admin/appointments', backendPayload);
+  return data;
 }
 
 /**
@@ -103,33 +75,8 @@ export async function createAppointment(appointmentData: AppointmentPayload): Pr
  * @returns The admin appointments response with proper structure.
  */
 export async function getAdminAppointments(): Promise<{ appointments: AdminAppointment[] }> {
-  // DEBUG: trace invocation in E2E to diagnose Firefox NetworkError
-  console.log('[apiService.getAdminAppointments] invoked', {
-    API_BASE_URL,
-    location: typeof window !== 'undefined' ? window.location.href : 'no-window'
-  });
-  const response = await fetch(`${API_BASE_URL}/api/admin/appointments`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-  console.log('[apiService.getAdminAppointments] fetch completed', { ok: response.ok, status: response.status });
-  if (!response.ok) {
-    let errorMessage = 'Failed to fetch admin appointments.';
-    try {
-      const errorBody = await response.json();
-      errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
-    } catch {
-      errorMessage = await response.text();
-    }
-  console.log('[apiService.getAdminAppointments] non-ok response', { errorMessage });
-    throw new Error(errorMessage);
-  }
-  const data = await response.json();
-  console.log('[apiService.getAdminAppointments] parsed JSON', { keys: Object.keys(data || {}) });
-  // Return the data.appointments from the admin endpoint response structure
-  return { appointments: data.data?.appointments || [] };
+  const { data } = await http.get('/admin/appointments');
+  return { appointments: data?.data?.appointments || data?.appointments || [] };
 }
 
 /**
@@ -137,24 +84,8 @@ export async function getAdminAppointments(): Promise<{ appointments: AdminAppoi
  * @returns An array of today's appointments.
  */
 export async function getAdminAppointmentsToday(): Promise<AdminAppointment[]> {
-  const response = await fetch(`${API_BASE_URL}/api/admin/appointments/today`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-  if (!response.ok) {
-    let errorMessage = 'Failed to fetch today\'s appointments.';
-    try {
-      const errorBody = await response.json();
-      errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
-    } catch {
-      errorMessage = await response.text();
-    }
-    throw new Error(errorMessage);
-  }
-  const data = await response.json();
-  return data.appointments || [];
+  const { data } = await http.get('/admin/appointments/today');
+  return data?.appointments || data?.data?.appointments || [];
 }
 
 /**
@@ -164,24 +95,8 @@ export async function getAdminAppointmentsToday(): Promise<AdminAppointment[]> {
  * @returns The updated appointment or success message.
  */
 export async function updateAppointment(id: string, updateData: Partial<AdminAppointment>): Promise<{ message: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/admin/appointments/${id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(updateData),
-  });
-  if (!response.ok) {
-    let errorMessage = 'Failed to update appointment.';
-    try {
-      const errorBody = await response.json();
-      errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
-    } catch {
-      errorMessage = await response.text();
-    }
-    throw new Error(errorMessage);
-  }
-  return response.json();
+  const { data } = await http.put(`/admin/appointments/${id}`, updateData);
+  return data;
 }
 
 // ---------------------------------------------------------------------------
@@ -224,20 +139,9 @@ export async function fetchInvoices(params: { page?: number; pageSize?: number; 
   if (params.status) query.set('status', params.status);
   if (params.customerId) query.set('customerId', params.customerId);
   const qs = query.toString();
-  const url = `${API_BASE_URL}/api/admin/invoices${qs ? `?${qs}` : ''}`;
-  const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
-  if (!response.ok) {
-    let errorMessage = 'Failed to fetch invoices.';
-    try {
-      const errorBody = await response.json();
-      errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
-    } catch {
-      errorMessage = await response.text();
-    }
-    throw new Error(errorMessage);
-  }
-  const data = await response.json();
-  return data.data as InvoiceListResponse;
+  const url = `/admin/invoices${qs ? `?${qs}` : ''}`;
+  const { data } = await http.get(url);
+  return (data?.data || data) as InvoiceListResponse;
 }
 
 // Single invoice detail response shape
@@ -251,23 +155,8 @@ export interface InvoiceDetailResponse {
 
 /** Fetch a single invoice with line items and payments */
 export async function fetchInvoice(id: string): Promise<InvoiceDetailResponse> {
-  const url = `${API_BASE_URL}/api/admin/invoices/${id}`;
-  // Temporary debug logging to diagnose MSW handler mismatch in InvoiceDetailPage tests
-  console.log('[fetchInvoice] requesting', url, 'BASE=', API_BASE_URL);
-  const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
-  console.log('[fetchInvoice] response status', response.status, 'ok', response.ok);
-  if (!response.ok) {
-    let errorMessage = 'Failed to fetch invoice.';
-    try {
-      const errorBody = await response.json();
-      errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
-    } catch {
-      errorMessage = await response.text();
-    }
-    throw new Error(errorMessage);
-  }
-  const data = await response.json();
-  return data.data as InvoiceDetailResponse;
+  const { data } = await http.get(`/admin/invoices/${id}`);
+  return (data?.data || data) as InvoiceDetailResponse;
 }
 
 // Record payment payload and response types
@@ -282,23 +171,8 @@ export async function recordInvoicePayment(invoiceId: string, payload: RecordPay
     receivedAt: payload.receivedDate,
     note: payload.note,
   };
-  const response = await fetch(`${API_BASE_URL}/api/admin/invoices/${invoiceId}/payments`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) {
-    let errorMessage = 'Failed to record payment.';
-    try {
-      const errorBody = await response.json();
-      errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
-    } catch {
-      errorMessage = await response.text();
-    }
-    throw new Error(errorMessage);
-  }
-  const data = await response.json();
-  return data.data as RecordPaymentResponse;
+  const { data } = await http.post(`/admin/invoices/${invoiceId}/payments`, body);
+  return (data?.data || data) as RecordPaymentResponse;
 }
 
 // Void invoice response type (reuse InvoiceSummary shape)
@@ -306,40 +180,12 @@ export interface VoidInvoiceResponse { invoice: InvoiceSummary }
 
 /** Void an invoice */
 export async function voidInvoice(invoiceId: string): Promise<VoidInvoiceResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/admin/invoices/${invoiceId}/void`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  });
-  if (!response.ok) {
-    let errorMessage = 'Failed to void invoice.';
-    try {
-      const errorBody = await response.json();
-      errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
-    } catch {
-      errorMessage = await response.text();
-    }
-    throw new Error(errorMessage);
-  }
-  const data = await response.json();
-  return data.data as VoidInvoiceResponse;
+  const { data } = await http.post(`/admin/invoices/${invoiceId}/void`);
+  return (data?.data || data) as VoidInvoiceResponse;
 }
 
 /** Generate an invoice for a COMPLETED appointment (idempotent server-side) */
 export async function generateInvoice(appointmentId: string): Promise<GenerateInvoiceResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/admin/appointments/${appointmentId}/invoice`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  });
-  if (!response.ok) {
-    let errorMessage = 'Failed to generate invoice.';
-    try {
-      const errorBody = await response.json();
-      errorMessage = errorBody.error || errorBody.message || JSON.stringify(errorBody);
-    } catch {
-      errorMessage = await response.text();
-    }
-    throw new Error(errorMessage);
-  }
-  const data = await response.json();
-  return data.data as GenerateInvoiceResponse;
+  const { data } = await http.post(`/admin/appointments/${appointmentId}/invoice`);
+  return (data?.data || data) as GenerateInvoiceResponse;
 }

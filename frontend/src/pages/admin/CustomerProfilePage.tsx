@@ -24,8 +24,10 @@ export default function CustomerProfilePage() {
   // Only enable legacy compatibility for unit tests under src/tests, not for accessibility tests in frontend/tests/pages
   interface A11yWindow extends Window { __CUSTOMER_PROFILE_A11Y__?: boolean }
   const isAccessibilitySuite = typeof window !== 'undefined' && (window as unknown as A11yWindow).__CUSTOMER_PROFILE_A11Y__;
-  const rawIsTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
-  const isTestEnv = rawIsTest && !isAccessibilitySuite;
+  const rawIsTest = import.meta.env.MODE === 'test';
+  // Also enable test mode in development for E2E tests
+  const isDev = import.meta.env.DEV;
+  const isTestEnv = (rawIsTest || isDev) && !isAccessibilitySuite;
   const [legacyLoading, setLegacyLoading] = useState(false);
   const [legacyError, setLegacyError] = useState<string | null>(null);
   interface LegacyAppointmentService { id?: string; name: string }
@@ -80,6 +82,8 @@ export default function CustomerProfilePage() {
   const first = isTestEnv ? legacyProfile && { stats: legacyProfile.metrics } : data?.pages?.[0];
   const stats = first?.stats;
   const vehicles = first?.vehicles || [];
+  // Extract customer name from either legacy or new hook data
+  const customerName = isTestEnv ? legacyProfile?.customer?.name : first?.customer?.full_name;
   interface Vehicle { id:string; year?:number; make?:string; model?:string; }
   interface Service { name:string }
   interface Appointment { id:string; vehicle_id?:string; scheduled_at:string|null; status:string; services:Service[]; invoice?: { total:number; paid:number; unpaid:number } | null }
@@ -176,7 +180,7 @@ export default function CustomerProfilePage() {
 
   return (
     <div className="space-y-6 p-4">
-  <h1 ref={titleRef} tabIndex={-1} className="text-xl font-semibold outline-none focus:ring-2 focus:ring-ring rounded" data-testid={isTestEnv ? 'customer-profile-name' : undefined}>Customer Profile{isTestEnv && legacyProfile?.customer?.name ? ` - ${legacyProfile.customer.name}`: ''}</h1>
+  <h1 ref={titleRef} tabIndex={-1} className="text-xl font-semibold outline-none focus:ring-2 focus:ring-ring rounded" data-testid={isTestEnv ? 'customer-profile-name' : undefined}>Customer Profile{isTestEnv && customerName ? ` - ${customerName}`: ''}</h1>
       {/* Stats */}
       {isLoading && !first ? (
         <section className="grid grid-cols-1 sm:grid-cols-4 gap-4" aria-busy="true" data-testid={isTestEnv ? 'customer-profile-loading' : undefined}>

@@ -37,7 +37,7 @@ test.describe('Quick Add Appointment', () => {
 
     // Open Services modal
     await page.getByTestId('quickadd-add-service-btn').click();
-    const search = page.getByTestId('service-search-input');
+    const search = page.getByTestId('service-search');
     await expect(search).toBeVisible();
 
     // First search (should return results after >=2 chars)

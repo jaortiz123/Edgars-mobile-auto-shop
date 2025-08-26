@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { http } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -24,26 +25,28 @@ export const NotificationTracker: React.FC<NotificationTrackerProps> = ({ appoin
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'sent' | 'failed' | 'pending'>('all');
 
-  useEffect(() => {
-    fetchNotifications();
-  }, [appointmentId, filter]);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (appointmentId) params.append('appointment_id', appointmentId);
       if (filter !== 'all') params.append('status', filter);
 
-      const response = await fetch(`/api/admin/notifications?${params}`);
-      const data = await response.json();
-      setNotifications(data.notifications || []);
+  const { data } = await http.get(`/admin/notifications?${params}`);
+      const list = (data as { notifications?: NotificationRecord[]; data?: { notifications?: NotificationRecord[] } }).notifications
+        || (data as { data?: { notifications?: NotificationRecord[] } }).data?.notifications
+        || [];
+      setNotifications(list);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [appointmentId, filter]);
+
+  useEffect(() => {
+    void fetchNotifications();
+  }, [appointmentId, filter, fetchNotifications]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -74,9 +77,7 @@ export const NotificationTracker: React.FC<NotificationTrackerProps> = ({ appoin
 
   const retryNotification = async (appointmentId: string) => {
     try {
-      await fetch(`/api/admin/notifications/${appointmentId}/retry`, {
-        method: 'POST',
-      });
+      await http.post(`/admin/notifications/${appointmentId}/retry`);
       fetchNotifications(); // Refresh the list
     } catch (error) {
       console.error('Failed to retry notification:', error);
