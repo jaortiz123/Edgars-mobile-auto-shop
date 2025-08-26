@@ -120,10 +120,7 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
       for (const s of bundleQuery.data.services) svcMap[s.id] = s;
   setWorking({ servicesById: svcMap, serviceOrder: bundleQuery.data.services.map(s=>s.id), addedTempIds: [], deletedIds: [], modifiedIds: new Set() });
     }
-    // Touch working to avoid unused variable lint until integrated
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    working;
-  }, [bundleQuery.data, id, working]);
+  }, [bundleQuery.data, id]);
   const memoizedSetIsAddingService = useCallback((v: boolean)=>setIsAddingService(v), []);
 
   const handleDelete = useCallback(async () => {
@@ -185,13 +182,11 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
       api.getAppointment(id)
         .then(full => {
           if (cancelled) return;
-          console.log('[AppointmentDrawer] Loaded rich appointment', full);
           setRich(full);
         })
         .catch(err => {
           if (cancelled) return;
-            console.error('[AppointmentDrawer] Failed to load rich appointment', err);
-            setRichError(getDetailedErrorMessage(err));
+          setRichError(getDetailedErrorMessage(err));
         })
         .finally(()=>{ if (!cancelled) setRichLoading(false); });
 
@@ -277,11 +272,7 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
       </div>
     );
   }
-  // Dev log to ensure rich state referenced
-  if (import.meta.env?.DEV && rich && (rich as any)._logged_once !== true) { // eslint-disable-line @typescript-eslint/no-explicit-any
-    try { console.log('[AppointmentDrawer] rich appointment loaded (debug)', { id: rich.appointment?.id, serviceCount: rich.services?.length }); } catch { /* ignore */ }
-    (rich as any)._logged_once = true; // eslint-disable-line @typescript-eslint/no-explicit-any
-  }
+  // Rich state is loaded and available for form usage
 
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
@@ -929,12 +920,7 @@ const Services = React.memo(function Services({
   const isModifiedSaved = (s: AppointmentService) => Boolean(working && working.modifiedIds.has(s.id) && !working.addedTempIds.includes(s.id));
 
   const handleAddService = async () => {
-    console.log('🔧 HANDLE_ADD_SERVICE: Function called');
-    console.log('🔧 HANDLE_ADD_SERVICE: data?.appointment?.id:', data?.appointment?.id);
-    console.log('🔧 HANDLE_ADD_SERVICE: newService:', newService);
-
     if (!data?.appointment?.id) {
-      console.log('🔧 HANDLE_ADD_SERVICE: Early return - no appointment ID');
       return;
     }
 

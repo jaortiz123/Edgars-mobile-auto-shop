@@ -43,12 +43,6 @@ export const toStatus = (s: string): AppointmentStatus =>
 // In production, the frontend is typically served behind the same origin as the API gateway.
 const BASE = '/api';
 
-console.log('🔧 api.ts: BASE URL configuration:', {
-  'import.meta.env.VITE_API_BASE_URL': import.meta.env.VITE_API_BASE_URL,
-  'process.env.VITE_API_BASE_URL': globalThis.process?.env?.VITE_API_BASE_URL,
-  'resolved BASE': BASE
-});
-
 export const http = axios.create({
   baseURL: BASE,
   timeout: 10000,
@@ -323,21 +317,11 @@ export async function createAppointmentService(
   appointmentId: string,
   service: Partial<AppointmentService>
 ): Promise<{ service: AppointmentService; appointment_total: number }> {
-  console.log('🔧 API: createAppointmentService called with:', { appointmentId, service });
-  console.log('🔧 API: baseURL configured as:', http.defaults.baseURL);
-
-  // Create the service - backend returns just {id: serviceId}
-  console.log('🔧 API: About to make POST request to /appointments/' + appointmentId + '/services');
-  console.log('🔧 API: Full URL will be:', http.defaults.baseURL + '/appointments/' + appointmentId + '/services');
-
   try {
     const resp = await http.post<{ id: string }>(
       `/appointments/${appointmentId}/services`,
       service
     );
-    console.log('🔧 API: POST request completed successfully, response:', resp.data);
-    console.log('🔧 API: Response status:', resp.status);
-    console.log('🔧 API: Response headers:', resp.headers);
 
     // Refetch all services to get the complete service object and updated total
     console.log('🔧 API: About to refetch all services');
