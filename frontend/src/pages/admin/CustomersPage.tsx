@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CustomerCard, { CustomerVehicleInfo } from '@/components/admin/CustomerCard';
 import FilterChips, { CustomerFilter } from '@/components/admin/FilterChips';
 import SortDropdown, { CustomerSort } from '@/components/admin/SortDropdown';
-import { fetchRecentCustomers, RecentCustomerRecord } from '@/lib/api';
+import { fetchRecentCustomers, RecentCustomerRecord, http } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE_URL = import.meta.env.VITE_API_ENDPOINT_URL || '';
+// Use centralized axios client with relative base '/api'
 
 type SearchItem = {
   vehicleId: string;
@@ -30,9 +30,8 @@ async function searchCustomers(q: string, filter: CustomerFilter, sortBy: Custom
   const params = new URLSearchParams({ q: q.trim(), limit: '25' });
   if (filter && filter !== 'all') params.append('filter', filter);
   if (sortBy && sortBy !== 'relevance') params.append('sortBy', sortBy);
-  const res = await fetch(`${API_BASE_URL}/api/admin/customers/search?${params.toString()}`, { signal: controller.signal });
-  const json = await res.json();
-  return json.data?.items || [];
+  const { data } = await http.get(`/admin/customers/search?${params.toString()}`, { signal: controller.signal as unknown as AbortSignal });
+  return data?.data?.items || data?.items || [];
 }
 
 

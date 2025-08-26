@@ -6,6 +6,7 @@ import { InvoiceHeader } from './InvoiceHeader';
 import { InvoiceLineItemsTable } from './InvoiceLineItemsTable';
 import { InvoicePaymentsList } from './InvoicePaymentsList';
 import ServiceCatalogModal, { ServiceOperation } from '@/components/appointments/ServiceCatalogModal';
+import { http } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { Button } from '../../components/ui/Button';
 import { RecordPaymentModal } from './RecordPaymentModal';
@@ -191,13 +192,8 @@ export default function InvoiceDetailPage() {
           if (op.is_package) {
             (async () => {
               try {
-                const resp = await fetch(`/api/admin/invoices/${id}/add-package`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ package_id: op.id })
-                });
-                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                const json = await resp.json();
+                const resp = await http.post(`/admin/invoices/${id}/add-package`, { package_id: op.id });
+                const json = resp.data;
                 // Shape expected: { added_line_items: [...], package_name, added_subtotal_cents }
                 const added = (json.added_line_items || json.data?.added_line_items || []) as NormalizedLineItem[];
                 if (added.length) {

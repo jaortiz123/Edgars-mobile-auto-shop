@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { http } from '@/lib/api';
 import { useConflictManager } from '@/conflict/ConflictProvider';
 import type { CustomerProfile } from '@/types/customerProfile';
+import type { AxiosResponseHeaders } from 'axios';
 
 interface EditCustomerPatch { full_name?: string; phone?: string | null; email?: string | null; address?: string | null }
 interface EditCustomerPayload { id: string; patch: EditCustomerPatch }
@@ -9,6 +11,14 @@ interface MutationResult { json: ApiResponse; etag?: string; aborted?: boolean }
 // Extend locally to optionally include address on customer (backend may introduce later)
 interface CustomerWithOptionalAddress extends CustomerProfile { customer: CustomerProfile['customer'] & { address?: string | null } }
 type AugmentedCustomerProfile = CustomerWithOptionalAddress & { _etag?: string; etag?: string };
+
+function getHeader(headers: AxiosResponseHeaders | Record<string, string> | undefined, key: string): string | undefined {
+  if (!headers) return undefined;
+  // Axios in browser exposes a plain object with lowercase header keys
+  const lower = key.toLowerCase();
+  const val = (headers as Record<string, string>)[lower];
+  return typeof val === 'string' ? val : undefined;
+}
 
 // The "useCustomerProfile" hook uses a 7‑segment key: ['customerProfile', id, vehicleId, from, to, includeInvoices, limitAppointments]
 // To remain interoperable we align to that shape with default null/false placeholders so optimistic updates reflect in consumers.
@@ -29,16 +39,12 @@ export function useOptimisticCustomerEdit(profileId: string) {
       if (input.patch.phone !== undefined) body.phone = input.patch.phone;
       if (input.patch.email !== undefined) body.email = input.patch.email;
       if (input.patch.address !== undefined) body.address = input.patch.address;
-      const res = await fetch(`/api/admin/customers/${input.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...(etag ? { 'If-Match': etag } : {}) },
-        body: JSON.stringify(body),
-      });
-      if (res.status === 412) {
+      const res = await http.patch(`/admin/customers/${input.id}`, body, { headers: { ...(etag ? { 'If-Match': etag } : {}) } });
+  if (res.status === 412) {
         // Fetch latest server version for diff (GET fresh)
-        const latestRes = await fetch(`/api/admin/customers/${input.id}`);
-        const latestJson = latestRes.ok ? await latestRes.json() : null;
-        const latestData = latestJson && latestJson.data ? latestJson.data : latestJson;
+        const latestRes = await http.get(`/admin/customers/${input.id}`);
+        const latestJson = latestRes.data || null;
+        const latestData = latestJson && (latestJson as Record<string, unknown>).data ? (latestJson as Record<string, unknown>).data : latestJson;
         const choice = await openConflict({
           kind: 'customer',
           id: input.id,
@@ -53,28 +59,24 @@ export function useOptimisticCustomerEdit(profileId: string) {
         });
         if (choice === 'discard') {
           if (latestData) {
-            qc.setQueryData(queryKey, { ...(existing || {}), customer: { ...(existing?.customer || {}), full_name: latestData.name ?? latestData.full_name, phone: latestData.phone, email: latestData.email }, _etag: latestRes.headers.get('ETag') || existing?._etag });
+            const etagHdr = getHeader(latestRes.headers as unknown as Record<string, string>, 'ETag');
+            qc.setQueryData(queryKey, { ...(existing || {}), customer: { ...(existing?.customer || {}), full_name: (latestData as { name?: string; full_name?: string }).name ?? (latestData as { full_name?: string }).full_name, phone: (latestData as { phone?: string | null }).phone, email: (latestData as { email?: string | null }).email }, _etag: etagHdr || existing?._etag });
           }
-          return { json: { data: { id: input.id } }, etag: latestRes.headers.get('ETag') || undefined, aborted: true };
+          const etagHdr = getHeader(latestRes.headers as unknown as Record<string, string>, 'ETag');
+          return { json: { data: { id: input.id } }, etag: etagHdr, aborted: true };
         }
         if (choice === 'overwrite') {
           // Retry without If-Match (force overwrite)
-          const retryRes = await fetch(`/api/admin/customers/${input.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-          });
-          if (!retryRes.ok) throw Object.assign(new Error(`HTTP ${retryRes.status}`), { status: retryRes.status });
-          const retryJson: ApiResponse = await retryRes.json();
-          const retryEtag = retryRes.headers.get('ETag') || undefined;
+          const retryRes = await http.patch(`/admin/customers/${input.id}`, body);
+          const retryJson: ApiResponse = retryRes.data as ApiResponse;
+          const retryEtag = getHeader(retryRes.headers as unknown as Record<string, string>, 'ETag');
           return { json: retryJson, etag: retryEtag };
         }
         throw Object.assign(new Error('Conflict unresolved'), { status: 412, handled: true });
       }
-      if (!res.ok) throw Object.assign(new Error(`HTTP ${res.status}`), { status: res.status });
-      const json: ApiResponse = await res.json();
-      const newEtag = res.headers.get('ETag') || undefined;
-      return { json, etag: newEtag };
+  const json: ApiResponse = (res.data as ApiResponse);
+  const newEtag = getHeader(res.headers as unknown as Record<string, string>, 'ETag');
+  return { json, etag: newEtag };
     },
     onMutate: async (input) => {
       await qc.cancelQueries({ queryKey });

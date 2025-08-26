@@ -1,6 +1,18 @@
 #!/bin/bash
 echo "🛑 Stopping Edgar's Auto Shop development environment..."
 
+# Docker compose helper - prefers modern "docker compose" with fallback
+compose() {
+    if docker compose version >/dev/null 2>&1; then
+        docker compose "$@"
+    elif command -v docker-compose >/dev/null 2>&1; then
+        docker-compose "$@"
+    else
+        echo "Compose not found; skipping container stop"
+        return 127
+    fi
+}
+
 # Stop frontend and backend processes
 if pgrep -f "vite" > /dev/null; then
     echo "Stopping frontend..."
@@ -14,6 +26,6 @@ fi
 
 # Stop Docker services
 echo "Stopping database services..."
-docker-compose stop db redis
+compose stop db redis
 
 echo "✅ All services stopped"

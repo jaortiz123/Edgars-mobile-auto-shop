@@ -51,8 +51,8 @@ export default function AdminLayout() {
 
   return (
   <div className="admin-neobrutal overlay-faint flex min-h-screen">
-      {/* Sidebar */}
-  <aside className="w-64 nb-surface bg-white/85 backdrop-blur-sm">
+      {/* Sidebar - Hidden on mobile, shown on desktop */}
+  <aside className="hidden md:block w-64 nb-surface bg-white/85 backdrop-blur-sm">
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="px-sp-6 py-sp-4 nb-border border-b">
@@ -101,6 +101,29 @@ export default function AdminLayout() {
       {/* Main content */}
   <main className="flex-1 overflow-auto bg-transparent">
         <CardPreferencesProvider>
+          {/* Mobile navigation header */}
+          <div className="md:hidden px-sp-4 py-sp-3 nb-border border-b bg-white/95 backdrop-blur-sm">
+            <h1 className="text-fs-2 font-bold">Edgar's Admin</h1>
+            <nav className="flex mt-2 gap-1 overflow-x-auto">
+              {navigation.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`
+                    flex items-center px-sp-2 py-sp-1 text-fs-0 font-medium rounded whitespace-nowrap transition-all nb-border border
+                    ${item.current
+                      ? 'nb-link-active'
+                      : 'nb-surface hover:nb-shadow'
+                    }
+                  `}
+                >
+                  <item.icon className="mr-1 h-4 w-4 flex-shrink-0" />
+                  {item.name}
+                </Link>
+              ))}
+            </nav>
+          </div>
+
           <div className="px-sp-8 py-sp-6">
             <Suspense fallback={<div className="p-sp-2 text-fs-0 opacity-70">Loading admin module…</div>}>
               <Outlet />

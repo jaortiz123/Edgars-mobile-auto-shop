@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
-import { Download, FileSpreadsheet, DollarSign, Calendar, Filter, ChevronDown, AlertTriangle } from 'lucide-react';
+import { Download, FileSpreadsheet, DollarSign, Filter, ChevronDown, AlertTriangle } from 'lucide-react';
+import { http } from '@/lib/api';
 
 interface ReportsDropdownProps {
   /** Feature flag to show/hide the reports functionality */
@@ -35,47 +35,32 @@ export const ReportsDropdown: React.FC<ReportsDropdownProps> = ({
 
     try {
       // Build query parameters
-      const params = new URLSearchParams();
-      if (exportOptions.from) params.append('from', exportOptions.from);
-      if (exportOptions.to) params.append('to', exportOptions.to);
-      if (type === 'appointments' && exportOptions.status) {
-        params.append('status', exportOptions.status);
-      }
+      const params: Record<string, string> = {};
+      if (exportOptions.from) params.from = exportOptions.from;
+      if (exportOptions.to) params.to = exportOptions.to;
+      if (type === 'appointments' && exportOptions.status) params.status = exportOptions.status;
 
       const endpoint = type === 'appointments'
-        ? `/api/admin/reports/appointments.csv`
-        : `/api/admin/reports/payments.csv`;
+        ? `/admin/reports/appointments.csv`
+        : `/admin/reports/payments.csv`;
 
-      const url = params.toString() ? `${endpoint}?${params}` : endpoint;
+      const response = await http.get(endpoint, { params, responseType: 'blob', validateStatus: s => (s >= 200 && s < 300) || s === 429 || s === 403 });
 
-      // Get the auth token from localStorage or wherever it's stored
-      const token = localStorage.getItem('authToken'); // Adjust based on your auth implementation
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 429) {
-          throw new Error('Export rate limit exceeded. Please wait before trying again.');
-        } else if (response.status === 403) {
-          throw new Error('You do not have permission to export data.');
-        } else {
-          throw new Error(`Export failed: ${response.statusText}`);
-        }
+      if (response.status === 429) {
+        throw new Error('Export rate limit exceeded. Please wait before trying again.');
+      }
+      if (response.status === 403) {
+        throw new Error('You do not have permission to export data.');
       }
 
       // Get filename from Content-Disposition header or use default
-      const contentDisposition = response.headers.get('Content-Disposition');
-      const filename = contentDisposition?.match(/filename="(.+)"/)?.[1] ||
-        `${type}_export_${new Date().toISOString().split('T')[0]}.csv`;
+      const hdrs = response.headers as Record<string, string | undefined>;
+      const cd = hdrs['content-disposition'] || hdrs['Content-Disposition'];
+      const match = cd ? /filename="?([^";]+)"?/i.exec(cd) : null;
+      const filename = (match && match[1]) || `${type}_export_${new Date().toISOString().split('T')[0]}.csv`;
 
       // Download the file
-      const blob = await response.blob();
+      const blob = new Blob([response.data], { type: 'text/csv' });
       const downloadUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
@@ -108,14 +93,20 @@ export const ReportsDropdown: React.FC<ReportsDropdownProps> = ({
       case 'today':
         return { from: today, to: today };
       case 'week':
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        return { from: formatDateForInput(weekAgo), to: today };
+        {
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          return { from: formatDateForInput(weekAgo), to: today };
+        }
       case 'month':
-        const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-        return { from: formatDateForInput(monthAgo), to: today };
+        {
+          const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+          return { from: formatDateForInput(monthAgo), to: today };
+        }
       case 'quarter':
-        const quarterAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
-        return { from: formatDateForInput(quarterAgo), to: today };
+        {
+          const quarterAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+          return { from: formatDateForInput(quarterAgo), to: today };
+        }
       default:
         return {};
     }
@@ -207,17 +198,17 @@ export const ReportsDropdown: React.FC<ReportsDropdownProps> = ({
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Quick Date Ranges</label>
                     <div className="grid grid-cols-2 gap-2">
-                      {[
+                      {([
                         { key: 'today', label: 'Today' },
                         { key: 'week', label: 'Last 7 days' },
                         { key: 'month', label: 'Last 30 days' },
                         { key: 'quarter', label: 'Last 90 days' }
-                      ].map(({ key, label }) => (
+                      ] as Array<{ key: 'today' | 'week' | 'month' | 'quarter'; label: string }>).map(({ key, label }) => (
                         <Button
                           key={key}
                           variant="outline"
                           size="sm"
-                          onClick={() => applyDatePreset(key as any)}
+                          onClick={() => applyDatePreset(key)}
                           className="text-xs"
                         >
                           {label}
@@ -235,6 +226,8 @@ export const ReportsDropdown: React.FC<ReportsDropdownProps> = ({
                         value={exportOptions.from || ''}
                         onChange={(e) => setExportOptions(prev => ({ ...prev, from: e.target.value }))}
                         className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                        placeholder="From date"
+                        aria-label="From date input"
                       />
                     </div>
                     <div>
@@ -244,6 +237,8 @@ export const ReportsDropdown: React.FC<ReportsDropdownProps> = ({
                         value={exportOptions.to || ''}
                         onChange={(e) => setExportOptions(prev => ({ ...prev, to: e.target.value }))}
                         className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                        placeholder="To date"
+                        aria-label="To date input"
                       />
                     </div>
                   </div>
@@ -255,6 +250,7 @@ export const ReportsDropdown: React.FC<ReportsDropdownProps> = ({
                       value={exportOptions.status || ''}
                       onChange={(e) => setExportOptions(prev => ({ ...prev, status: e.target.value }))}
                       className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                      aria-label="Status filter"
                     >
                       <option value="">All Statuses</option>
                       <option value="SCHEDULED">Scheduled</option>

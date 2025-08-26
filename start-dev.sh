@@ -2,7 +2,7 @@
 # Edgar's Auto Shop - One-command startup script
 # This script starts all services needed for development
 
-set -e
+set -Eeuo pipefail
 
 # Always run from the repo root (the directory of this script)
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
@@ -50,6 +50,18 @@ port_in_use() {
     lsof -ti:$1 >/dev/null 2>&1
 }
 
+# Docker compose helper - prefers modern "docker compose" with fallback to "docker-compose"
+compose() {
+    if docker compose version >/dev/null 2>&1; then
+        docker compose "$@"
+    elif command -v docker-compose >/dev/null 2>&1; then
+        docker-compose "$@"
+    else
+        echo "❌ docker compose not found" >&2
+        return 127
+    fi
+}
+
 # Wait for service to be ready
 wait_for_service() {
     local url=$1
@@ -61,15 +73,25 @@ wait_for_service() {
     while [ $attempt -le $max_attempts ]; do
         if [ "$service" = "PostgreSQL" ]; then
             # Special check for PostgreSQL using docker exec
-            if docker-compose exec -T db pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; then
+            if compose exec -T db pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; then
                 echo -e "${GREEN}✅ $service is ready!${NC}"
                 return 0
             fi
         else
-            # HTTP service check
-            if curl -s $url >/dev/null 2>&1; then
-                echo -e "${GREEN}✅ $service is ready!${NC}"
-                return 0
+            # Prefer a strict health check when URL ends with /health
+            if [[ "$url" == *"/health"* ]]; then
+                res="$(curl -fsS "$url" 2>/dev/null || true)"
+                if echo "$res" | grep -q '"status"[[:space:]]*:[[:space:]]*"ok"'; then
+                    echo -e "${GREEN}✅ $service is ready!${NC}"
+                    return 0
+                fi
+            else
+                # Generic readiness: HTTP 2xx/3xx
+                code="$(curl -s -o /dev/null -w "%{http_code}" "$url" || echo 000)"
+                if [[ "$code" =~ ^2|3 ]]; then
+                    echo -e "${GREEN}✅ $service is ready!${NC}"
+                    return 0
+                fi
             fi
         fi
         echo -n "."
@@ -88,8 +110,10 @@ if ! command_exists docker; then
     exit 1
 fi
 
-if ! command_exists docker-compose; then
+# Check for docker compose (either form)
+if ! docker compose version >/dev/null 2>&1 && ! command_exists docker-compose; then
     echo -e "${RED}❌ Docker Compose is not installed${NC}"
+    echo -e "${YELLOW}Install with: docker plugin install compose (for Docker 20.10+)${NC}"
     exit 1
 fi
 
@@ -110,29 +134,57 @@ export POSTGRES_USER="${POSTGRES_USER:-user}"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-password}"
 export POSTGRES_DB="${POSTGRES_DB:-autoshop}"
 
-# Start Docker if not running
+#############################################
+# Ensure Docker daemon is running (with timeout)
+#############################################
 echo -e "${BLUE}🐳 Checking Docker...${NC}"
 if ! docker info >/dev/null 2>&1; then
-    echo -e "${YELLOW}Starting Docker Desktop...${NC}"
-    open -a Docker
-    echo -e "${YELLOW}Waiting for Docker to start...${NC}"
+    echo -e "${YELLOW}Attempting to start Docker Desktop...${NC}"
+    # Try to launch Docker Desktop (macOS). No-op elsewhere
+    open -a Docker >/dev/null 2>&1 || true
+
+    # Timeout (default 120s) can be overridden for CI/testing via DOCKER_STARTUP_TIMEOUT
+    DOCKER_STARTUP_TIMEOUT="${DOCKER_STARTUP_TIMEOUT:-120}"
+    if ! [[ "$DOCKER_STARTUP_TIMEOUT" =~ ^[0-9]+$ ]]; then
+      DOCKER_STARTUP_TIMEOUT=120
+    fi
+
+    echo -e "${YELLOW}Waiting for Docker daemon to become available (timeout: ${DOCKER_STARTUP_TIMEOUT}s)...${NC}"
+    echo -e "${YELLOW}If Docker Desktop doesn't start automatically, please open it manually.${NC}"
+    start_time=$(date +%s)
+    attempt=0
     while ! docker info >/dev/null 2>&1; do
         sleep 2
-        echo -n "."
+        attempt=$((attempt + 1))
+        now=$(date +%s)
+        elapsed=$((now - start_time))
+
+        # Show progress every 10 seconds
+        if [ $((elapsed % 10)) -eq 0 ] && [ $elapsed -gt 0 ]; then
+            echo -e "${YELLOW}Still waiting for Docker daemon... (${elapsed}/${DOCKER_STARTUP_TIMEOUT}s)${NC}"
+        fi
+
+        if [ "$elapsed" -ge "$DOCKER_STARTUP_TIMEOUT" ]; then
+            echo -e "${RED}❌ ERROR: Docker daemon failed to start within ${DOCKER_STARTUP_TIMEOUT}s.${NC}"
+            echo -e "${RED}   Please open Docker Desktop manually and try again.${NC}"
+            exit 1
+        fi
     done
     echo -e "${GREEN}✅ Docker is running${NC}"
 fi
 
 # Start database and Redis services
 echo -e "${BLUE}🗄️ Starting database services...${NC}"
-docker-compose up -d db redis
+compose up -d db redis
 
 # Wait for database to be ready
 wait_for_service "postgresql" "PostgreSQL" || exit 1
 
-# Run raw SQL migrations (idempotent) before starting backend
-echo -e "${BLUE}🧱 Applying raw SQL migrations (idempotent)...${NC}"
-python3 backend/run_sql_migrations.py || { echo -e "${RED}❌ Raw SQL migrations failed${NC}"; exit 1; }
+# Run raw SQL migrations (idempotent) before starting backend - only if the script exists
+if [ -f "backend/run_sql_migrations.py" ]; then
+    echo -e "${BLUE}🧱 Applying raw SQL migrations (idempotent)...${NC}"
+    python3 backend/run_sql_migrations.py || { echo -e "${RED}❌ Raw SQL migrations failed${NC}"; exit 1; }
+fi
 
 # Kill any existing backend processes on port 3001
 if port_in_use 3001; then
@@ -141,13 +193,13 @@ if port_in_use 3001; then
     sleep 2
 fi
 
-# Start backend with correct configuration
+# Start backend with correct configuration (from backend directory)
 echo -e "${BLUE}⚙️ Starting backend server...${NC}"
 cd backend
 if [ "$MONITOR" = true ]; then
   HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true POSTGRES_HOST=localhost POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD} POSTGRES_DB=${POSTGRES_DB} python3 local_server.py &
 else
-  nohup env HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true POSTGRES_HOST=localhost POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD} POSTGRES_DB=${POSTGRES_DB} python3 local_server.py >> server.log 2>&1 &
+  nohup env HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true POSTGRES_HOST=localhost POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD} POSTGRES_DB=${POSTGRES_DB} python3 local_server.py >> ../server.log 2>&1 &
 fi
 BACKEND_PID=$!
 cd ..
@@ -196,10 +248,22 @@ echo ""
 echo -e "${YELLOW}📝 To stop all services, press Ctrl+C or run: ./stop-dev.sh${NC}"
 echo -e "${YELLOW}📝 Logs are available in the terminal where each service was started${NC}"
 
-# Create stop script
+# Create stop script with compose helper
 cat > stop-dev.sh << 'EOF'
 #!/bin/bash
 echo "🛑 Stopping Edgar's Auto Shop development environment..."
+
+# Docker compose helper - prefers modern "docker compose" with fallback
+compose() {
+    if docker compose version >/dev/null 2>&1; then
+        docker compose "$@"
+    elif command -v docker-compose >/dev/null 2>&1; then
+        docker-compose "$@"
+    else
+        echo "Compose not found; skipping container stop"
+        return 127
+    fi
+}
 
 # Stop frontend and backend processes
 if pgrep -f "vite" > /dev/null; then
@@ -214,7 +278,7 @@ fi
 
 # Stop Docker services
 echo "Stopping database services..."
-docker-compose stop db redis
+compose stop db redis
 
 echo "✅ All services stopped"
 EOF
@@ -224,8 +288,8 @@ chmod +x stop-dev.sh
 # If in non-interactive mode, skip monitoring and exit cleanly
 if [ "$MONITOR" != true ]; then
   echo -e "${BLUE}ℹ️ Non-interactive mode: skipping monitoring. Use ./stop-dev.sh to stop services.${NC}"
-  echo -e "${BLUE}ℹ️ Backend logs: backend/server.log${NC}"
-  echo -e "${BLUE}ℹ️ Frontend logs: frontend.dev.log (repo root)${NC}"
+  echo -e "${BLUE}ℹ️ Backend logs: server.log${NC}"
+  echo -e "${BLUE}ℹ️ Frontend logs: frontend.dev.log${NC}"
   exit 0
 fi
 

@@ -475,7 +475,7 @@ const QuickAddModal = ({
     activeLookupRef.current = { controller, requestId };
     const debounceTimer = setTimeout(async () => {
       try {
-        const resp = await fetch(`/api/customers/lookup?phone=${encodeURIComponent(rawPhone)}`, { signal: controller.signal });
+        const resp = await import('../../lib/api').then(m => m.http.get(`/customers/lookup`, { params: { phone: rawPhone }, signal: controller.signal, validateStatus: s => (s >= 200 && s < 300) || s === 404 }));
         if (activeLookupRef.current.requestId !== requestId) {
           return; // stale
         }
@@ -492,12 +492,12 @@ const QuickAddModal = ({
           lastLookupAppliedRef.current = { phone: rawPhone, name: '' };
           return;
         }
-        if (!resp.ok) {
+  if (resp.status < 200 || resp.status >= 300) {
           setLookupStatus('error');
           setLookupError('Lookup failed');
           return;
         }
-        const data = await resp.json();
+  const data = resp.data;
         // Shape: { customer: {...}, vehicles: [...] }
         const { customer, vehicles } = data || {};
         setLookupVehicles(Array.isArray(vehicles) ? vehicles : []);

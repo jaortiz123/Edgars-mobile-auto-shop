@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { Calendar, ChevronLeft, ChevronRight, Filter, Download, Search } from 'lucide-react';
+import { http } from '@/lib/api';
 
 interface Appointment {
   id: string;
@@ -56,12 +57,28 @@ export const CalendarView: React.FC = () => {
   const fetchAppointments = async () => {
     setLoading(true);
     try {
-      // Fetch real appointments from backend
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/admin/appointments/today`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data && Array.isArray(data.data.appointments)) {
-          const realAppointments: Appointment[] = data.data.appointments.map((apt: any) => ({
+      // Fetch real appointments from backend via centralized client
+      const response = await http.get('/admin/appointments/today');
+      if (response.status >= 200 && response.status < 300) {
+  const payload = response.data as unknown;
+  type Envelope = { data?: { appointments?: unknown } };
+  const isEnvelope = (v: unknown): v is Envelope => !!v && typeof v === 'object' && 'data' in (v as Record<string, unknown>);
+  const inner = isEnvelope(payload) ? (payload as Envelope).data?.appointments : payload;
+  const items = Array.isArray(inner) ? inner : [];
+        if (Array.isArray(items)) {
+          type RawAppt = {
+            id: string | number;
+            customer_name?: string;
+            service_id?: string | number;
+            scheduled_at?: string;
+            scheduled_date?: string;
+            scheduled_time?: string;
+            status?: string;
+            customer_phone?: string;
+            location_address?: string;
+            notes?: string;
+          };
+          const realAppointments: Appointment[] = (items as RawAppt[]).map((apt) => ({
             id: apt.id.toString(),
             customer_name: apt.customer_name || 'Unknown Customer',
             service: `Service ${apt.service_id || 'N/A'}`,
@@ -73,7 +90,7 @@ export const CalendarView: React.FC = () => {
           }));
           setAppointments(realAppointments);
         } else {
-          console.warn('Invalid appointments data structure:', data);
+          console.warn('Invalid appointments data structure:', payload);
           setAppointments([]);
         }
       } else {
@@ -121,7 +138,7 @@ export const CalendarView: React.FC = () => {
     const month = currentDate.getMonth();
 
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
+  // const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay());
 
@@ -186,15 +203,7 @@ export const CalendarView: React.FC = () => {
     return formatter.format(currentDate);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed': return 'success';
-      case 'pending': return 'warning';
-      case 'completed': return 'secondary';
-      case 'cancelled': return 'destructive';
-      default: return 'default';
-    }
-  };
+  // Map status to badge variant is inlined at render to avoid unused helper warnings
 
   const toggleAppointmentSelection = (appointmentId: string) => {
     setSelectedAppointments(prev =>
@@ -297,15 +306,17 @@ export const CalendarView: React.FC = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                aria-label="Search appointments"
               />
             </div>
 
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-600" />
+              <Filter className="h-4 w-4 text-gray-600" aria-hidden="true" />
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                aria-label="Status filter"
               >
                 <option value="all">All Status</option>
                 <option value="pending">Pending</option>
@@ -381,7 +392,7 @@ export const CalendarView: React.FC = () => {
                       >
                         <div className="font-medium truncate">{apt.customer_name}</div>
                         <div className="text-gray-600 truncate">{apt.service}</div>
-                        <Badge variant={getStatusColor(apt.status) as any} className="text-xs">
+                        <Badge variant={apt.status === 'confirmed' ? 'success' : apt.status === 'completed' ? 'success' : apt.status === 'cancelled' ? 'destructive' : 'secondary'} className="text-xs">
                           {apt.status}
                         </Badge>
                       </div>

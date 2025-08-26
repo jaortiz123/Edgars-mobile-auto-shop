@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { http } from '@/lib/api';
 
 export interface CustomerSearchResultVehicle {
   vehicleId: string;
@@ -22,14 +23,16 @@ interface Props {
   label?: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_ENDPOINT_URL || '';
-
 async function searchCustomersRaw(q: string): Promise<CustomerSearchResult[]> {
   if (!q.trim()) return [];
   const params = new URLSearchParams({ q: q.trim(), limit: '10' });
-  const res = await fetch(`${API_BASE_URL}/api/admin/customers/search?${params.toString()}`);
-  const json = await res.json();
-  const items: Array<{ customerId: string; name: string; phone?: string; email?: string; vehicleId: string; plate?: string; vehicle?: string; visitsCount?: number; lastVisit?: string | null; }> = json.data?.items || [];
+  const { data } = await http.get(`/admin/customers/search?${params.toString()}`);
+  // Accept envelope or direct form
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const items: Array<{ customerId: string; name: string; phone?: string; email?: string; vehicleId: string; plate?: string; vehicle?: string; visitsCount?: number; lastVisit?: string | null; }> = (data && typeof data === 'object' && (data as any).data?.items)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ? (data as any).data.items
+    : Array.isArray(data) ? data : [];
   const grouped: Record<string, CustomerSearchResult> = {};
   for (const it of items) {
     if (!grouped[it.customerId]) grouped[it.customerId] = { customerId: it.customerId, name: it.name, phone: it.phone, email: it.email, vehicles: [] };

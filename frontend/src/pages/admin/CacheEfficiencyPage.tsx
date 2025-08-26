@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { http } from '@/lib/api';
 
 interface EfficiencyRow {
   total: number;
@@ -17,10 +18,8 @@ export default function CacheEfficiencyPage() {
     async function load() {
       try {
         setLoading(true);
-        const res = await fetch('/api/admin/metrics/304-efficiency');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        if (!cancelled) setData(json);
+  const { data } = await http.get('/admin/metrics/304-efficiency');
+  if (!cancelled) setData(data as ApiResponse);
   } catch (e) {
         if (!cancelled) setError((e as Error).message || 'Failed to load');
       } finally {
