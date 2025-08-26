@@ -357,8 +357,9 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
                 }
               }}
               className="px-2 py-1 rounded bg-green-600 text-white disabled:opacity-50"
+              title="Save service changes (additions, edits, deletions)"
             >
-              {savingWorking ? 'Saving…' : 'Save'}
+              {savingWorking ? 'Saving Services…' : 'Save Services'}
             </button>
             <button
               onClick={handleDelete}
