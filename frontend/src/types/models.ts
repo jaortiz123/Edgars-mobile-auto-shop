@@ -107,6 +107,7 @@ export interface BoardCard {
   headline?: string; // derived display title if provided
   // Raw identifiers from backend for Phase 1 linkage
   primaryOperationId?: string | null;
+  primaryOperationName?: string | null; // Service name from LEFT JOIN to service_operations
   serviceCategory?: string | null;
   // Technician + progress tracking (new backend fields)
   techInitials?: string | null; // e.g. "ED"
