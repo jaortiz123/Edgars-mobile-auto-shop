@@ -405,8 +405,9 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ mode, initial, appoin
           type="submit"
           className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-60"
           disabled={disabled || submitting || !values.customerId}
+          title="Save appointment details (time, customer, vehicle, status)"
         >
-          {submitting ? 'Saving…' : 'Save'}
+          {submitting ? 'Saving Details…' : 'Save Details'}
         </button>
       </div>
   </form>
