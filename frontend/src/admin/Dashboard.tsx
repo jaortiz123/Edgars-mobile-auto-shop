@@ -603,7 +603,7 @@ export function Dashboard() {
                   // Using the filtered list here hid future/week items when the
                   // dashboard filter was set to "Today".
                   appointments={appointments}
-                  initialDate={nextAppointment?.dateTime}
+                  initialDate={undefined} // Always start with today's date to avoid confusion
                   onAppointmentClick={(apt) => openDrawer(apt.id)}
                   onAddAppointment={handleAddAppointment}
                   onStartJob={handleStartJob}
