@@ -88,14 +88,17 @@ export const EnhancedAppointmentCard = ({ card, onOpen, isFirst }: { card: Board
     }
   }
 
-  const headline = useMemo(() => {
+    const headline = useMemo(() => {
     if (card.headline) return card.headline;
+    // Use primaryOperationName from backend (via LEFT JOIN service_operations)
+    if (card.primaryOperationName) return card.primaryOperationName;
     if (card.primaryOperation) {
       const def = byId[card.primaryOperation.serviceId];
       return resolveHeadline(card.primaryOperation, def, card.servicesSummary, (card.additionalOperations || []).length);
     }
-    return card.servicesSummary || `Service #${card.id.slice(-4)}`;
-  }, [card.headline, card.primaryOperation, card.servicesSummary, card.id, byId, card.additionalOperations]);
+    if (card.servicesSummary) return card.servicesSummary;
+    return `Service #${card.id.slice(-4)}`;
+  }, [card.headline, card.primaryOperationName, card.primaryOperation, card.servicesSummary, card.id, card.additionalOperations, byId]);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const [{ isDragging }, drag] = useDrag(() => ({
