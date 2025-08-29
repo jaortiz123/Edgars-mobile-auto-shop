@@ -65,6 +65,9 @@ def test_profile_basic(client, db_connection):
     assert data["stats"]["lifetime_spend"] == pytest.approx(105.00)
     assert data["stats"]["unpaid_balance"] == pytest.approx(5.00)
     assert data["stats"]["total_visits"] == 1
+    assert "avg_ticket" in data["stats"]
+    assert data["stats"]["avg_ticket"] == pytest.approx(105.00)  # Only one completed visit
+    assert "last_service_at" in data["stats"]
     assert len(data["vehicles"]) == 1
     assert len(data["appointments"]) == 1
     appt = data["appointments"][0]
@@ -291,7 +294,8 @@ def test_cursor_pagination_flow(client, db_connection):
     )
     assert r1.status_code == 200
     page1 = r1.get_json()
-    assert page1["page"]["returned"] == 3
+    assert page1["page"]["page_size"] == 3
+    assert len(page1["appointments"]) == 3
     next_cursor = page1["page"]["next_cursor"]
     assert next_cursor
     ids_page1 = [a["id"] for a in page1["appointments"]]
@@ -351,6 +355,87 @@ def test_cursor_precedence_over_dates(client, db_connection):
     )
     page2 = r2.get_json()
     assert page2["appointments"], "cursor should override from date restrictions"
+
+
+@pytest.mark.usefixtures("db_connection")
+def test_profile_stats_edge_cases(client, db_connection):
+    """Test edge cases for new stats fields: avg_ticket and last_service_at"""
+    with db_connection:
+        with db_connection.cursor() as cur:
+            # Customer with no completed visits (should have null last_service_at, 0 avg_ticket)
+            cur.execute(
+                "INSERT INTO customers(id,name,email) VALUES(9001,'No Visits Customer','novists@example.com')"
+            )
+            # Customer with completed visits but no invoices
+            cur.execute(
+                "INSERT INTO customers(id,name,email) VALUES(9002,'No Invoice Customer','noinvoice@example.com')"
+            )
+            cur.execute(
+                "INSERT INTO vehicles(id,customer_id,year,make,model,license_plate) VALUES(9101,9002,2020,'Honda','Civic','NIV123')"
+            )
+            cur.execute(
+                """
+                INSERT INTO appointments(id, customer_id, vehicle_id, status, start_ts, completed_at, total_amount, paid_amount)
+                VALUES (9201,9002,9101,'COMPLETED', NOW() - INTERVAL '5 days', NOW() - INTERVAL '5 days', 75.00, 75.00)
+                """
+            )
+            # Customer with multiple completed visits and invoices for avg_ticket calculation
+            cur.execute(
+                "INSERT INTO customers(id,name,email) VALUES(9003,'Multi Visit Customer','multi@example.com')"
+            )
+            cur.execute(
+                "INSERT INTO vehicles(id,customer_id,year,make,model,license_plate) VALUES(9102,9003,2021,'Toyota','Camry','MVC123')"
+            )
+            # First appointment with invoice
+            cur.execute(
+                """
+                INSERT INTO appointments(id, customer_id, vehicle_id, status, start_ts, completed_at, total_amount, paid_amount)
+                VALUES (9301,9003,9102,'COMPLETED', NOW() - INTERVAL '10 days', NOW() - INTERVAL '10 days', 100.00, 100.00)
+                """
+            )
+            cur.execute(
+                """
+                INSERT INTO invoices(id, customer_id, appointment_id, status, subtotal_cents, tax_cents, total_cents, amount_paid_cents, amount_due_cents)
+                VALUES('inv9301',9003,9301,'PAID',9000,1000,10000,10000,0)
+                """
+            )
+            # Second appointment with invoice
+            cur.execute(
+                """
+                INSERT INTO appointments(id, customer_id, vehicle_id, status, start_ts, completed_at, total_amount, paid_amount)
+                VALUES (9302,9003,9102,'COMPLETED', NOW() - INTERVAL '5 days', NOW() - INTERVAL '5 days', 150.00, 150.00)
+                """
+            )
+            cur.execute(
+                """
+                INSERT INTO invoices(id, customer_id, appointment_id, status, subtotal_cents, tax_cents, total_cents, amount_paid_cents, amount_due_cents)
+                VALUES('inv9302',9003,9302,'PAID',13500,1500,15000,15000,0)
+                """
+            )
+
+    # Test customer with no visits
+    r1 = client.get("/api/admin/customers/9001/profile", headers=auth_headers())
+    assert r1.status_code == 200
+    data1 = r1.get_json()
+    assert data1["stats"]["total_visits"] == 0
+    assert data1["stats"]["last_service_at"] is None
+    assert data1["stats"]["avg_ticket"] == 0.00
+
+    # Test customer with visits but no invoices
+    r2 = client.get("/api/admin/customers/9002/profile", headers=auth_headers())
+    assert r2.status_code == 200
+    data2 = r2.get_json()
+    assert data2["stats"]["total_visits"] == 1
+    assert data2["stats"]["last_service_at"] is not None
+    assert data2["stats"]["avg_ticket"] == 0.00  # No invoices
+
+    # Test customer with multiple visits and invoices
+    r3 = client.get("/api/admin/customers/9003/profile", headers=auth_headers())
+    assert r3.status_code == 200
+    data3 = r3.get_json()
+    assert data3["stats"]["total_visits"] == 2
+    assert data3["stats"]["last_service_at"] is not None
+    assert data3["stats"]["avg_ticket"] == pytest.approx(125.00)  # (100 + 150) / 2
 
 
 @pytest.mark.usefixtures("db_connection")

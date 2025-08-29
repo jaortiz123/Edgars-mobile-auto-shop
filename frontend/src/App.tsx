@@ -75,6 +75,7 @@ export default function App() {
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="appointments" element={<AdminAppointments />} />
+              <Route path="appointments/new" element={<AdminAppointments />} />
               <Route path="analytics" element={<OwnerRoute><AnalyticsDashboardPage /></OwnerRoute>} />
               <Route path="customers" element={<CustomersPage />} />
               <Route path="customers/:id" element={<CustomerProfilePage />} />

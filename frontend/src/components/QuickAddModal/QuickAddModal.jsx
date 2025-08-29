@@ -24,7 +24,6 @@ import { formatDate, getRelativeDate } from '../../utils/dateUtils';
 import './QuickAddModal.css';
 // Inventory catalog (shared with full scheduler)
 // Using TS modules from JS is fine in Vite
-import vehicleCatalogSeed from '@/data/vehicleCatalog';
 import buildCatalogFromRaw from '@/data/vehicleCatalogFromRaw';
 
 /**
@@ -92,10 +91,45 @@ const QuickAddModal = ({
 
   // ===== Derived data (vehicle catalog & times) =====
   const vehicleCatalog = useMemo(() => {
-    try { return buildCatalogFromRaw(vehicleCatalogSeed); } catch { return { years: [], makes: {}, models: {} }; }
+    try {
+      const rawCatalog = buildCatalogFromRaw();
+      // Transform array of makes into the expected structure
+      const years = new Set();
+      const makes = {};
+      const models = {};
+
+      rawCatalog.forEach(make => {
+        makes[make.name] = true;
+        models[make.name] = [];
+
+        make.models.forEach(model => {
+          models[make.name].push(model.name);
+
+          // Add years to the set based on the model's range
+          const startYear = model.startYear || 1990;
+          const endYear = model.endYear || new Date().getFullYear();
+
+          for (let year = startYear; year <= endYear; year++) {
+            years.add(year);
+          }
+        });
+
+        // Remove duplicates from models
+        models[make.name] = [...new Set(models[make.name])];
+      });
+
+      return {
+        years: Array.from(years).sort((a, b) => b - a), // Sort descending (newest first)
+        makes: Object.keys(makes).sort(),
+        models
+      };
+    } catch (error) {
+      console.error('Error building vehicle catalog:', error);
+      return { years: [], makes: [], models: {} };
+    }
   }, []);
   const vehicleYears = vehicleCatalog.years || [];
-  const makeOptions = useMemo(() => Object.keys(vehicleCatalog.makes || {}), [vehicleCatalog]);
+  const makeOptions = vehicleCatalog.makes || [];
   const filteredModels = useMemo(() => vehicleCatalog.models?.[formData.vehicleMake] || [], [vehicleCatalog, formData.vehicleMake]);
   const timeSlots = useMemo(() => [
     '8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM',
