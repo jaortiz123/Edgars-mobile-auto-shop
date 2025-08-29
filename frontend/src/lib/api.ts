@@ -82,7 +82,14 @@ http.interceptors.response.use(
       return Promise.reject(new Error(err.detail || err.code || 'Request failed'));
     }
 
-    // Check for JSON error response with both error and message fields
+    // Check for nested error object with message field (backend format)
+    if (d && typeof d === 'object' && 'error' in d && typeof (d as any).error === 'object') {
+      const errorObj = (d as { error: { message?: string; code?: string } }).error;
+      const errorMessage = errorObj.message || errorObj.code || 'Request failed';
+      return Promise.reject(new Error(errorMessage));
+    }
+
+    // Check for JSON error response with both error and message fields at top level
     if (d && typeof d === 'object' && 'error' in d && 'message' in d) {
       const errorData = d as { error?: string; message?: string };
       // Use the more detailed message field if available, fallback to error field

@@ -6,6 +6,8 @@ export type ProfileStats = {
   unpaid_balance: Money;
   total_visits: number;
   last_visit_at: string | null; // ISO UTC
+  avg_ticket: Money;
+  last_service_at: string | null; // ISO UTC
 };
 
 export type Vehicle = {
@@ -36,7 +38,16 @@ export type Appointment = {
 export type PageMeta = { next_cursor?: string | null; page_size: number; has_more: boolean };
 
 export type CustomerProfile = {
-  customer: { id: string; full_name: string; phone?: string | null; email?: string | null; created_at: string; tags?: string[] };
+  customer: {
+    id: string;
+    full_name: string;
+    phone?: string | null;
+    email?: string | null;
+    created_at: string;
+    tags?: string[];
+    notes?: string | null;
+    sms_consent?: boolean;
+  };
   stats: ProfileStats;
   vehicles: Vehicle[];
   appointments: Appointment[];

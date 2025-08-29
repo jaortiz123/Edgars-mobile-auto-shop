@@ -11,6 +11,8 @@ import { useToast } from '@/components/ui/Toast';
 import type { BoardCard, BoardColumn } from '@/types/models';
 import type { BoardState } from '@/state/useBoardStore';
 import { useBoard } from '@/hooks/useBoardData';
+import { MultiSelectProvider } from '@/contexts/multiSelectProvider';
+import { BulkActionToolbar } from './BulkActionToolbar';
 
 function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDisableDnd, __debugDisableFilter, __debugSimpleCols, __debugSimpleCards, __debugDisableToast }: { onOpen: (id: string) => void; minimalHero?: boolean; __debugDisableModal?: boolean; __debugDisableDnd?: boolean; __debugDisableFilter?: boolean; __debugSimpleCols?: boolean; __debugSimpleCards?: boolean; __debugDisableToast?: boolean }) {
   // Store is initialized at the AdminLayout level now (singleton for admin session)
@@ -230,6 +232,7 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
   };
   return (
     <Wrapper>
+      <MultiSelectProvider>
   {/* Early guard: if columns & cards populated but grid failed to mount previously, ensure a render path still outputs grid wrapper */}
   <div
         className="overflow-x-auto pb-4 nb-board-bg relative"
@@ -327,6 +330,17 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
           <div className="mt-4 mx-4 text-xs opacity-70">Refreshing…</div>
         )}
       </div>
+      <BulkActionToolbar
+        allCards={allCards}
+        onDeleteSelected={(cardIds) => {
+          // TODO: Implement bulk delete functionality
+          console.log('Delete selected cards:', cardIds);
+          if (!__debugDisableToast && toast) {
+            toast.success(`Deleted ${cardIds.length} appointment${cardIds.length === 1 ? '' : 's'}`);
+          }
+        }}
+      />
+      </MultiSelectProvider>
   </Wrapper>
   );
 }

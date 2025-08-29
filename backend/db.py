@@ -53,9 +53,10 @@ class CompatCursor(psycopg2.extras.RealDictCursor):
 def _build_dsn() -> Optional[str]:
     host = os.getenv("POSTGRES_HOST", "localhost")
     port = os.getenv("POSTGRES_PORT", "5432")
-    db = os.getenv("POSTGRES_DB", "postgres")
-    user = os.getenv("POSTGRES_USER", "postgres")
-    pwd = os.getenv("POSTGRES_PASSWORD", "postgres")
+    db = os.getenv("POSTGRES_DB", "edgar_db")  # Use edgar_db to match our test DB
+    # Use app_user for RLS compliance (non-superuser without BYPASSRLS)
+    user = os.getenv("POSTGRES_USER", "app_user")
+    pwd = os.getenv("POSTGRES_PASSWORD", "app_password")
     return f"dbname={db} user={user} password={pwd} host={host} port={port}"
 
 
@@ -93,9 +94,10 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     host = os.getenv("POSTGRES_HOST", "localhost")
     port = os.getenv("POSTGRES_PORT", "5432")
-    db = os.getenv("POSTGRES_DB", "postgres")
-    user = os.getenv("POSTGRES_USER", "postgres")
-    pwd = os.getenv("POSTGRES_PASSWORD", "postgres")
+    db = os.getenv("POSTGRES_DB", "edgar_db")  # Use edgar_db to match our test DB
+    # Use app_user for RLS compliance (non-superuser without BYPASSRLS)
+    user = os.getenv("POSTGRES_USER", "app_user")
+    pwd = os.getenv("POSTGRES_PASSWORD", "app_password")
     DATABASE_URL = f"postgresql+psycopg2://{user}:{pwd}@{host}:{port}/{db}"
 
 engine = create_engine(

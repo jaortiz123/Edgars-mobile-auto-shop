@@ -39,7 +39,8 @@ MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 
 
 def connect():
-    database_url = os.getenv("DATABASE_URL")
+    # Check for migration-specific database URL first, then fall back to general DATABASE_URL
+    database_url = os.getenv("MIGRATIONS_DATABASE_URL") or os.getenv("DATABASE_URL")
     if database_url:
         # Rely on libpq parsing (psycopg2 accepts DATABASE_URL via dsn)
         return psycopg2.connect(database_url, cursor_factory=RealDictCursor)
@@ -73,10 +74,10 @@ def get_applied(cur) -> set[str]:
 
 
 def discover_sql_files() -> list[Path]:
-    files = []
+    files: list[Path] = []
     if not MIGRATIONS_DIR.exists():
         return files
-    for p in sorted(MIGRATIONS_DIR.iterdir()):
+    for p in MIGRATIONS_DIR.iterdir():
         if (
             p.is_file()
             and p.suffix == ".sql"
@@ -84,7 +85,13 @@ def discover_sql_files() -> list[Path]:
             and not p.name.startswith(".")
         ):
             files.append(p)
-    return files
+
+    # Custom sort: run date-prefixed files (e.g. 20250814_...) BEFORE generic ones (e.g. 01_*)
+    def _key(path: Path):
+        name = path.name
+        return (0 if name[:4].isdigit() and name.startswith("20") else 1, name)
+
+    return sorted(files, key=_key)
 
 
 def apply_file(conn, path: Path):

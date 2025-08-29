@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { resolveHeadline } from '@/types/serviceCatalog';
 import { useMinuteNow, formatElapsed } from '@/hooks/useMinuteNow';
 import QuickAssignTech from './QuickAssignTech';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 
 const formatRelativeDate = (iso?: string | null) => {
   if (!iso) return '';
@@ -76,6 +77,7 @@ export const EnhancedAppointmentCard = ({ card, onOpen, isFirst }: { card: Board
   const { enabled, order } = useCardPreferences();
   const { byId } = useServiceCatalog();
   const { isLoading: opsLoading } = useServiceOperations();
+  const { isCardSelected, toggleCardSelection, isSelectionMode, enterSelectionMode } = useMultiSelect();
   const now = useMinuteNow();
   const elapsed = card.startedAt && !card.completedAt ? formatElapsed(card.startedAt, now) : null;
   const minutesRunning = card.startedAt && !card.completedAt ? Math.floor((now - new Date(card.startedAt).getTime()) / 60000) : null;
@@ -87,6 +89,8 @@ export const EnhancedAppointmentCard = ({ card, onOpen, isFirst }: { card: Board
       elapsedClasses = 'bg-amber-100 text-amber-800 border border-amber-300';
     }
   }
+
+  const isSelected = isCardSelected(card.id);
 
     const headline = useMemo(() => {
     if (card.headline) return card.headline;
@@ -108,14 +112,69 @@ export const EnhancedAppointmentCard = ({ card, onOpen, isFirst }: { card: Board
   }), [card]);
   drag(cardRef);
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (e.detail === 2) { // Double click
+      if (onOpen) {
+        onOpen(card.id);
+      }
+    } else if (e.shiftKey || e.metaKey || isSelectionMode) {
+      // Shift/Cmd click or we're in selection mode - toggle selection
+      toggleCardSelection(card.id);
+      if (!isSelectionMode) {
+        enterSelectionMode();
+      }
+    } else if (onOpen) {
+      onOpen(card.id);
+    }
+  };
+
+  const handleLongPress = () => {
+    // Long press to enter selection mode (useful for mobile)
+    if (!isSelectionMode) {
+      enterSelectionMode();
+      toggleCardSelection(card.id);
+    }
+  };
+
   return (
     <div
       ref={cardRef}
-      className={`group relative nb-card card-base transition-opacity ${isDragging ? 'opacity-80' : 'opacity-100'}`}
+      className={`group relative nb-card card-base transition-all duration-200 cursor-pointer select-none ${
+        isDragging ? 'opacity-80' : 'opacity-100'
+      } ${
+        isSelected ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-200' : ''
+      } ${
+        isSelectionMode ? 'hover:ring-2 hover:ring-blue-300' : ''
+      }`}
       data-status={(card.status || '').toLowerCase()}
       data-testid={`apt-card-${card.id}`}
       data-first-card={isFirst ? '1' : undefined}
+      data-selected={isSelected ? '1' : undefined}
+      onClick={handleCardClick}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        handleLongPress();
+      }}
     >
+      {/* Selection indicator */}
+      {isSelectionMode && (
+        <div className="absolute top-2 left-2 z-10">
+          <div
+            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+              isSelected
+                ? 'bg-blue-500 border-blue-500 text-white'
+                : 'bg-white border-gray-300 hover:border-blue-400'
+            }`}
+          >
+            {isSelected && (
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            )}
+          </div>
+        </div>
+      )}
+
       {card.startedAt && !card.completedAt && <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-green-400 to-green-600 rounded-t" />}
       {card.completedAt && <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-indigo-400 to-indigo-600 rounded-t" />}
 

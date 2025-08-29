@@ -1,5 +1,4 @@
 import { useQuery, QueryKey } from '@tanstack/react-query';
-import { http } from '@/lib/api';
 import type { CustomerProfile } from '@/types/customerProfile';
 
 const etagCache = new Map<string, string>();
@@ -14,7 +13,7 @@ function buildUrl(id: string, opts: { vehicleId?: string; from?: string; to?: st
   if (opts.to) qs.set('to', opts.to);
   if (opts.includeInvoices) qs.set('include_invoices', 'true');
   if (opts.limitAppointments) qs.set('limit_appointments', String(opts.limitAppointments));
-  return `/admin/customers/${id}/profile${qs.toString() ? `?${qs}` : ''}`;
+  return `/api/admin/customers/${id}/profile${qs.toString() ? `?${qs}` : ''}`;
 }
 
 export function useCustomerProfile(id: string, opts: { vehicleId?: string; from?: string; to?: string; includeInvoices?: boolean; limitAppointments?: number } = {}) {
@@ -26,20 +25,20 @@ export function useCustomerProfile(id: string, opts: { vehicleId?: string; from?
       const cacheKey = keyStr(queryKey);
       const url = buildUrl(id, opts);
       const et = etagCache.get(cacheKey);
-    const r = await http.get(url, { signal: signal as unknown as AbortSignal, headers: et ? { 'If-None-Match': et } : {} });
-    if (r.status === 304) {
+      const r = await fetch(url, { signal, headers: et ? { 'If-None-Match': et } : {} });
+      if (r.status === 304) {
         const cached = dataCache.get(cacheKey);
         if (cached) return cached;
+        // Defensive: if no cached data, fall through to fetch fresh
       }
-    if (r.status < 200 || r.status >= 300) throw new Error(`HTTP ${r.status}`);
-  const raw = r.data as unknown;
-  const data: CustomerProfile = (raw && (raw as Record<string, unknown>)['data']) ? (raw as { data: CustomerProfile }).data : (raw as CustomerProfile);
-    const newEt = (r.headers as Record<string, string>)?.['etag'] || undefined;
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = (await r.json()) as CustomerProfile;
+      const newEt = r.headers.get('ETag') || undefined;
       if (newEt) etagCache.set(cacheKey, newEt);
       dataCache.set(cacheKey, data);
       return data;
     },
-  placeholderData: (prev) => prev, // maintain previous while refetching
-  staleTime: 30_000,
+    placeholderData: (prev) => prev,
+    staleTime: 30_000,
   });
 }

@@ -129,10 +129,25 @@ fi
 
 echo -e "${GREEN}✅ All prerequisites are available${NC}"
 
-# Provide default Postgres credentials if not supplied by user env
-export POSTGRES_USER="${POSTGRES_USER:-user}"
-export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-password}"
-export POSTGRES_DB="${POSTGRES_DB:-autoshop}"
+# Load environment files if present (without failing if missing)
+# Allows keeping secrets locally in .env or .env.local, both are gitignored.
+if [ -f .env ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source .env
+    set +a
+fi
+if [ -f .env.local ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source .env.local
+    set +a
+fi
+
+# Provide default Postgres credentials if not supplied by user env (align with existing volume)
+export POSTGRES_USER="${POSTGRES_USER:-postgres}"
+export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-postgres}"
+export POSTGRES_DB="${POSTGRES_DB:-edgar_db}"
 
 #############################################
 # Ensure Docker daemon is running (with timeout)
@@ -182,8 +197,15 @@ wait_for_service "postgresql" "PostgreSQL" || exit 1
 
 # Run raw SQL migrations (idempotent) before starting backend - only if the script exists
 if [ -f "backend/run_sql_migrations.py" ]; then
-    echo -e "${BLUE}🧱 Applying raw SQL migrations (idempotent)...${NC}"
-    python3 backend/run_sql_migrations.py || { echo -e "${RED}❌ Raw SQL migrations failed${NC}"; exit 1; }
+        echo -e "${BLUE}🧱 Applying raw SQL migrations (idempotent)...${NC}"
+        if [ "${MIGRATIONS_USE_REMOTE_DB:-false}" = true ]; then
+            # Use MIGRATIONS_DATABASE_URL if set, otherwise fall back to DATABASE_URL/POSTGRES_*
+            python3 backend/run_sql_migrations.py || { echo -e "${RED}❌ Raw SQL migrations failed${NC}"; exit 1; }
+        else
+            # Force migrations against local docker Postgres regardless of .env
+            LOCAL_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}"
+            env MIGRATIONS_DATABASE_URL="$LOCAL_URL" python3 backend/run_sql_migrations.py || { echo -e "${RED}❌ Raw SQL migrations failed${NC}"; exit 1; }
+        fi
 fi
 
 # Kill any existing backend processes on port 3001
@@ -196,10 +218,21 @@ fi
 # Start backend with correct configuration (from backend directory)
 echo -e "${BLUE}⚙️ Starting backend server...${NC}"
 cd backend
-if [ "$MONITOR" = true ]; then
-  HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true POSTGRES_HOST=localhost POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD} POSTGRES_DB=${POSTGRES_DB} python3 local_server.py &
+LOCAL_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}"
+if [ "${USE_REMOTE_DB:-false}" = true ]; then
+    # Use DATABASE_URL/POSTGRES_* from env as-is (remote)
+    if [ "$MONITOR" = true ]; then
+        HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true python3 local_server.py &
+    else
+        nohup env HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true python3 local_server.py >> ../server.log 2>&1 &
+    fi
 else
-  nohup env HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true POSTGRES_HOST=localhost POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD} POSTGRES_DB=${POSTGRES_DB} python3 local_server.py >> ../server.log 2>&1 &
+    # Force local DB for backend by overriding DATABASE_URL
+    if [ "$MONITOR" = true ]; then
+        HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true DATABASE_URL="$LOCAL_URL" python3 local_server.py &
+    else
+        nohup env HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true DATABASE_URL="$LOCAL_URL" python3 local_server.py >> ../server.log 2>&1 &
+    fi
 fi
 BACKEND_PID=$!
 cd ..
