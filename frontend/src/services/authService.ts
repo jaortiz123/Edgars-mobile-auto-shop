@@ -1,5 +1,3 @@
-import { jwtDecode } from 'jwt-decode';
-
 // Use unified API base; prefer VITE_API_BASE_URL (aligns with axios client) then fallback.
 const API_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -51,8 +49,6 @@ export class ValidationError extends Error {
     this.name = 'ValidationError';
   }
 }
-
-const TOKEN_KEY = 'auth_token';
 
 // Helper function for robust API calls
 const makeApiCall = async (url: string, options: RequestInit = {}): Promise<Response> => {
@@ -151,9 +147,6 @@ export const authService = {
   },
 
   async getProfile(): Promise<ProfileData> {
-    const token = this.getToken();
-    if (!token) throw new AuthError('No authentication token');
-
   const response = await makeApiCall(`${API_URL}/customers/profile`, {
       method: 'GET',
       // Cookie-based auth; include credentials
@@ -173,9 +166,6 @@ export const authService = {
   },
 
   async updateProfile(profileData: Partial<ProfileData>): Promise<void> {
-    const token = this.getToken();
-    if (!token) throw new AuthError('No authentication token');
-
     // Input validation
     if (profileData.email && !profileData.email.trim()) {
       throw new ValidationError('Email cannot be empty');
@@ -211,11 +201,6 @@ export const authService = {
     // No-op; server should clear cookies on logout endpoint
   },
 
-  parseToken(): DecodedToken | null {
-    // Deprecated with cookie-based auth
-    return null;
-  },
-
   isLoggedIn(): boolean {
     // Frontend no longer inspects tokens; rely on server profile checks
     return false;
@@ -223,13 +208,7 @@ export const authService = {
 
   // Method to refresh token before expiration
   shouldRefreshToken(): boolean {
-    const decoded = this.parseToken();
-    if (!decoded) return false;
-
-    const expirationTime = decoded.exp * 1000;
-    const currentTime = Date.now();
-    const refreshThreshold = 5 * 60 * 1000; // 5 minutes
-
-    return expirationTime - currentTime < refreshThreshold;
+    // Cookie-based auth with short-lived access + refresh rotation handled server-side.
+    return false;
   }
 };

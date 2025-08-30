@@ -29,11 +29,7 @@ export async function fetchTodaysRevenue() {
     const today = new Date().toISOString().split('T')[0];
 
     // Get dashboard stats for basic revenue info
-    const statsResponse = await fetch('/api/admin/dashboard/stats', {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-      }
-    });
+    const statsResponse = await fetch('/api/admin/dashboard/stats');
 
     if (!statsResponse.ok) {
       throw new Error(`Stats API failed: ${statsResponse.status}`);
@@ -42,11 +38,7 @@ export async function fetchTodaysRevenue() {
     const stats = await statsResponse.json();
 
     // Get completed appointments for accurate revenue calculation
-    const appointmentsResponse = await fetch(`/api/admin/appointments?from=${today}T00:00:00Z&to=${today}T23:59:59Z&status=COMPLETED`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-      }
-    });
+    const appointmentsResponse = await fetch(`/api/admin/appointments?from=${today}T00:00:00Z&to=${today}T23:59:59Z&status=COMPLETED`);
 
     let completedRevenue = 0;
     if (appointmentsResponse.ok) {

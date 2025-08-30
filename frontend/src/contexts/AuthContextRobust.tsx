@@ -112,13 +112,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error) {
       console.warn('Failed to initialize auth:', error);
-      // Do not clear token if it's an Advisor token (admin dashboard usage) – allow downstream admin APIs to function.
-      try {
-        const decoded = authService.parseToken() as { role?: string } | null;
-        if (!decoded || decoded.role !== 'Advisor') {
-          authService.clearToken();
-        }
-      } catch { /* ignore */ }
     } finally {
       dispatch({ type: 'SET_INITIALIZED', payload: true });
     }
