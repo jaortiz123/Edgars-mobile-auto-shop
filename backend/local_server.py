@@ -108,6 +108,7 @@ import io
 import json
 import logging
 import os
+import os as _os_mod_for_csrf
 import queue
 import re
 import sys
@@ -968,31 +969,99 @@ def _normalize_and_shortcircuit_options():  # pragma: no cover infra convenience
 
 @app.before_request
 def _resolve_tenant_context():
-    """Resolve tenant context from X-Tenant-Id header for tenant isolation.
-
-    This middleware ensures that tenant context is available for RLS-based
-    tenant isolation in database operations.
-    """
+    """Resolve tenant context and enforce customer membership for authenticated requests."""
     try:
-        # Extract tenant ID from X-Tenant-Id header
         tenant_header = request.headers.get("X-Tenant-Id")
-        if tenant_header:
-            # Basic validation - accept both UUID format and text format (like t1, t2)
+
+        # Parse auth payload if present (don't hard-fail)
+        try:
+            auth_payload = maybe_auth(None)
+        except Exception:
+            auth_payload = None
+
+        conn, use_memory, err = safe_conn()
+        if err:
+            g.tenant_id = None
+            return None
+
+        def _resolve_header_to_tenant_id(cur, value: str | None) -> str | None:
+            if not value:
+                return None
             import re
 
             uuid_pattern = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-            text_pattern = r"^[a-zA-Z0-9_-]{1,50}$"
-
-            if re.match(uuid_pattern, tenant_header, re.IGNORECASE) or re.match(
-                text_pattern, tenant_header
-            ):
-                g.tenant_id = tenant_header
-                app.logger.debug(f"Tenant context set: {tenant_header[:8]}...")
+            if re.match(uuid_pattern, value, re.IGNORECASE):
+                cur.execute("SELECT id::text FROM tenants WHERE id = %s::uuid", (value,))
             else:
-                app.logger.warning(f"Invalid tenant ID format: {tenant_header[:8]}...")
-        else:
-            # No tenant header provided - endpoints that need tenant isolation will fail
-            g.tenant_id = None
+                cur.execute("SELECT id::text FROM tenants WHERE slug = %s", (value,))
+            row = cur.fetchone()
+            return row[0] if row else None
+
+        resolved_tenant: str | None = None
+        with conn:
+            with conn.cursor() as cur:
+                # 1) If header provided, resolve to canonical UUID
+                resolved_tenant = (
+                    _resolve_header_to_tenant_id(cur, tenant_header) if tenant_header else None
+                )
+
+                # 2) If no header and authenticated customer, fall back to first membership
+                if not resolved_tenant and auth_payload and auth_payload.get("role") == "Customer":
+                    try:
+                        user_id = int(str(auth_payload.get("sub")))
+                        cur.execute(
+                            "SELECT tenant_id::text FROM user_tenant_memberships WHERE user_id = %s ORDER BY tenant_id LIMIT 1",
+                            (user_id,),
+                        )
+                        r = cur.fetchone()
+                        if r:
+                            resolved_tenant = r[0]
+                    except Exception:
+                        pass
+
+                # 3) For authenticated users with header, enforce membership
+                role = (auth_payload or {}).get("role") if auth_payload else None
+                if (
+                    auth_payload
+                    and tenant_header
+                    and role in {"Customer", "Advisor", "Owner", "Accountant"}
+                ):
+                    try:
+                        user_sub = str(auth_payload.get("sub"))
+                    except Exception:
+                        return _error(HTTPStatus.FORBIDDEN, "forbidden", "invalid_user_id")
+
+                    # If header didn't resolve to a known tenant, deny
+                    if not resolved_tenant:
+                        return _error(HTTPStatus.FORBIDDEN, "forbidden", "tenant_not_found")
+
+                    if role == "Customer":
+                        # numeric id stored in JWT for customers
+                        try:
+                            user_id_int = int(user_sub)
+                        except Exception:
+                            return _error(HTTPStatus.FORBIDDEN, "forbidden", "invalid_user_id")
+                        cur.execute(
+                            "SELECT 1 FROM user_tenant_memberships WHERE user_id = %s AND tenant_id = %s::uuid",
+                            (user_id_int, resolved_tenant),
+                        )
+                        if not cur.fetchone():
+                            return _error(HTTPStatus.FORBIDDEN, "forbidden", "tenant_access_denied")
+                    else:
+                        # staff membership check
+                        cur.execute(
+                            "SELECT 1 FROM staff_tenant_memberships WHERE staff_id = %s AND tenant_id = %s::uuid",
+                            (user_sub, resolved_tenant),
+                        )
+                        if not cur.fetchone():
+                            return _error(HTTPStatus.FORBIDDEN, "forbidden", "tenant_access_denied")
+
+        g.tenant_id = resolved_tenant
+        try:
+            if g.tenant_id:
+                app.logger.debug(f"Tenant context set: {str(g.tenant_id)[:8]}...")
+        except Exception:
+            pass
     except Exception as e:
         app.logger.error(f"Error resolving tenant context: {e}")
         g.tenant_id = None
@@ -2676,6 +2745,13 @@ def admin_login():
     In production integrate with real user store.
     """
     body = request.get_json(silent=True) or {}
+    # Rate limit login attempts (per-IP + username)
+    try:
+        remote = request.remote_addr or "127.0.0.1"
+        user_key = (body.get("username") or "").strip().lower() or "anon"
+        rate_limit(f"auth_admin_login:{remote}:{user_key}", limit=10, window=300)
+    except Exception:
+        pass
     username = (body.get("username") or "").strip()
     password = (body.get("password") or "").strip()
     if not username or not password:
@@ -2690,7 +2766,85 @@ def admin_login():
     token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
     if isinstance(token, bytes):  # PyJWT<2 returns bytes
         token = token.decode("utf-8")
-    return _ok({"token": token, "user": {"username": username, "role": role}})
+    resp, status = _ok({"token": token, "user": {"username": username, "role": role}})
+    try:
+        resp.set_cookie(
+            "__Host_access_token",
+            token,
+            max_age=8 * 3600,
+            httponly=True,
+            secure=False,
+            samesite="Lax",
+            path="/",
+        )
+        xsrf = _os_mod_for_csrf.urandom(16).hex()
+        resp.set_cookie(
+            "XSRF-TOKEN",
+            xsrf,
+            max_age=8 * 3600,
+            httponly=False,
+            secure=False,
+            samesite="Lax",
+            path="/",
+        )
+    except Exception:
+        pass
+    return resp, status
+
+
+# ----------------------------------------------------------------------------
+# Logout (clear auth + CSRF cookies)
+# ----------------------------------------------------------------------------
+@app.route("/api/logout", methods=["POST"])  # primary endpoint
+@app.route("/api/auth/logout", methods=["POST"])  # backward-compat alias
+def logout():
+    """Clear authentication cookies to terminate the session.
+
+    Clears:
+      - __Host_access_token (httpOnly)
+      - __Host_refresh_token (if present)
+      - XSRF-TOKEN (non-httpOnly, used for CSRF header mirroring)
+    """
+    resp = make_response("")
+    resp.status_code = 204
+    try:
+        # Access token (httpOnly)
+        resp.set_cookie(
+            "__Host_access_token",
+            "",
+            expires=0,
+            httponly=True,
+            secure=False,
+            samesite="Lax",
+            path="/",
+        )
+        # Refresh token if present
+        try:
+            resp.set_cookie(
+                "__Host_refresh_token",
+                "",
+                expires=0,
+                httponly=True,
+                secure=False,
+                samesite="Lax",
+                path="/",
+            )
+        except Exception:
+            pass
+        # CSRF token (readable by JS to mirror in header)
+        resp.set_cookie(
+            "XSRF-TOKEN",
+            "",
+            expires=0,
+            httponly=False,
+            secure=False,
+            samesite="Lax",
+            path="/",
+        )
+    except Exception:
+        # Cookie operations should never crash logout; return 204 regardless
+        pass
+    return resp
 
 
 # ----------------------------------------------------------------------------
@@ -2749,6 +2903,13 @@ def customer_register():
     On conflict (email already registered) returns 409.
     """
     body = request.get_json(silent=True) or {}
+    # Rate limit registration attempts per-IP and email
+    try:
+        remote = request.remote_addr or "127.0.0.1"
+        email_key = (body.get("email") or "").strip().lower() or "anon"
+        rate_limit(f"auth_register:{remote}:{email_key}", limit=10, window=300)
+    except Exception:
+        pass
     email = (body.get("email") or "").strip().lower()
     password = body.get("password") or ""
     name = (body.get("name") or email.split("@")[0] or "Customer").strip()
@@ -2768,31 +2929,137 @@ def customer_register():
         )
     with conn:  # autocommit context
         with conn.cursor() as cur:
+            # Resolve target tenant for this registration
+            tenant_header = request.headers.get("X-Tenant-Id")
+            tenant_id_val = None
+            if tenant_header:
+                # Accept UUID or slug
+                import re
+
+                uuid_pattern = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                if re.match(uuid_pattern, tenant_header, re.IGNORECASE):
+                    cur.execute(
+                        "SELECT id::text FROM tenants WHERE id = %s::uuid", (tenant_header,)
+                    )
+                else:
+                    cur.execute("SELECT id::text FROM tenants WHERE slug = %s", (tenant_header,))
+                r = cur.fetchone()
+                if not r:
+                    return _error(HTTPStatus.BAD_REQUEST, "invalid_request", "Invalid tenant")
+                tenant_id_val = r[0]
+            else:
+                # Fallback to default tenant created by migration, then any existing
+                cur.execute(
+                    "SELECT id::text FROM tenants WHERE id = '00000000-0000-0000-0000-000000000001'::uuid"
+                )
+                r = cur.fetchone()
+                if r:
+                    tenant_id_val = r[0]
+                else:
+                    cur.execute("SELECT id::text FROM tenants ORDER BY created_at ASC LIMIT 1")
+                    r2 = cur.fetchone()
+                    tenant_id_val = r2[0] if r2 else None
+
             _ensure_customer_auth_table(cur)
             # Check for existing auth row
             cur.execute("SELECT 1 FROM customer_auth WHERE email=%s", (email,))
             if cur.fetchone():
                 return _error(HTTPStatus.CONFLICT, "already_exists", "Email already registered")
             # Insert customer
-            cur.execute(
-                "INSERT INTO customers(name,email,phone) VALUES (%s,%s,%s) RETURNING id",
-                (name, email, None),
-            )
+            if tenant_id_val:
+                cur.execute(
+                    "INSERT INTO customers(name,email,phone,tenant_id) VALUES (%s,%s,%s,%s::uuid) RETURNING id",
+                    (name, email, None, tenant_id_val),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO customers(name,email,phone) VALUES (%s,%s,%s) RETURNING id",
+                    (name, email, None),
+                )
             cust_id = cur.fetchone()["id"]
+            # Store bcrypt by default; keep salt column for legacy compatibility (unused for bcrypt)
             salt = uuid.uuid4().hex
-            pw_hash = _hash_password(password, salt)
+            try:
+                from backend.app.security.passwords import hash_password as _bcrypt_hash
+
+                pw_hash = _bcrypt_hash(password)
+            except Exception:
+                pw_hash = _hash_password(password, salt)
             cur.execute(
                 "INSERT INTO customer_auth(customer_id,email,password_hash,salt) VALUES (%s,%s,%s,%s)",
                 (cust_id, email, pw_hash, salt),
             )
+            # Insert membership link
+            if tenant_id_val:
+                cur.execute(
+                    "INSERT INTO user_tenant_memberships(user_id, tenant_id, role) VALUES (%s,%s::uuid,'Customer') ON CONFLICT DO NOTHING",
+                    (cust_id, tenant_id_val),
+                )
     token = _issue_customer_token(cust_id)
     return _ok({"token": token, "customer": {"id": cust_id, "email": email, "name": name}})
+
+
+# ----------------------------------------------------------------------------
+# Admin helper to seed staff↔tenant membership (test/dev only)
+# ----------------------------------------------------------------------------
+@app.route("/api/admin/staff/memberships", methods=["POST"])
+def add_staff_membership():
+    """Create staff membership in a tenant (DEV/TEST helper).
+
+    Expected JSON: { staff_id: str, tenant_id: str (uuid or slug), role?: str }
+    Requires a valid Owner/Advisor token; membership enforcement is skipped unless header is present.
+    """
+    # Auth (accept Owner or Advisor)
+    try:
+        require_auth_role("Advisor")
+    except Exception:
+        return _error(HTTPStatus.FORBIDDEN, "forbidden", "auth_required")
+
+    body = request.get_json(silent=True) or {}
+    staff_id = (body.get("staff_id") or "").strip()
+    tenant_in = (body.get("tenant_id") or "").strip()
+    role = (body.get("role") or "Advisor").strip() or "Advisor"
+    if not staff_id or not tenant_in:
+        return _error(HTTPStatus.BAD_REQUEST, "invalid_request", "staff_id and tenant_id required")
+
+    conn, use_memory, err = safe_conn()
+    if err or use_memory:
+        return _error(HTTPStatus.SERVICE_UNAVAILABLE, "unavailable", "database unavailable")
+
+    def _resolve_tenant(cur, value: str) -> str | None:
+        import re
+
+        uuid_pattern = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        if re.match(uuid_pattern, value, re.IGNORECASE):
+            cur.execute("SELECT id::text FROM tenants WHERE id = %s::uuid", (value,))
+        else:
+            cur.execute("SELECT id::text FROM tenants WHERE slug = %s", (value,))
+        r = cur.fetchone()
+        return r[0] if r else None
+
+    with conn:
+        with conn.cursor() as cur:
+            tenant_resolved = _resolve_tenant(cur, tenant_in)
+            if not tenant_resolved:
+                return _error(HTTPStatus.BAD_REQUEST, "invalid_request", "tenant not found")
+            cur.execute(
+                "INSERT INTO staff_tenant_memberships(staff_id, tenant_id, role) VALUES (%s,%s::uuid,%s) ON CONFLICT DO NOTHING",
+                (staff_id, tenant_resolved, role),
+            )
+    return _ok({"staff_id": staff_id, "tenant_id": tenant_in, "role": role})
 
 
 @app.route("/api/customers/login", methods=["POST"])
 def customer_login():
     """Authenticate existing customer and return JWT."""
     body = request.get_json(silent=True) or {}
+    # Rate limit login attempts per-IP and email
+    try:
+        remote = request.remote_addr or "127.0.0.1"
+        email_key = (body.get("email") or "").strip().lower() or "anon"
+        rate_limit(f"auth_customer_login:{remote}:{email_key}", limit=10, window=300)
+    except Exception:
+        pass
     email = (body.get("email") or "").strip().lower()
     password = body.get("password") or ""
     if not email or not password:
@@ -2817,13 +3084,52 @@ def customer_login():
             row = cur.fetchone()
     if not row:
         return _error(HTTPStatus.UNAUTHORIZED, "invalid_credentials", "Invalid email or password")
-    expected = _hash_password(password, row["salt"])
-    if expected != row["password_hash"]:
+    try:
+        from backend.app.security.passwords import hash_password as _bcrypt_hash
+        from backend.app.security.passwords import verify_password_with_salt
+
+        ok, needs_migration = verify_password_with_salt(password, row["password_hash"], row["salt"])
+    except Exception:
+        ok, needs_migration = False, False
+    if not ok:
         return _error(HTTPStatus.UNAUTHORIZED, "invalid_credentials", "Invalid email or password")
+    if needs_migration:
+        try:
+            with conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE customer_auth SET password_hash=%s WHERE customer_id=%s",
+                        (_bcrypt_hash(password), row["customer_id"]),
+                    )
+        except Exception:
+            pass
     cust_id = row["customer_id"]
     name = row.get("name")
     token = _issue_customer_token(cust_id)
-    return _ok({"token": token, "customer": {"id": cust_id, "email": email, "name": name}})
+    resp, status = _ok({"token": token, "customer": {"id": cust_id, "email": email, "name": name}})
+    try:
+        resp.set_cookie(
+            "__Host_access_token",
+            token,
+            max_age=8 * 3600,
+            httponly=True,
+            secure=False,
+            samesite="Lax",
+            path="/",
+        )
+        xsrf = _os_mod_for_csrf.urandom(16).hex()
+        resp.set_cookie(
+            "XSRF-TOKEN",
+            xsrf,
+            max_age=8 * 3600,
+            httponly=False,
+            secure=False,
+            samesite="Lax",
+            path="/",
+        )
+    except Exception:
+        pass
+    return resp, status
 
 
 def utcnow() -> datetime:
@@ -9637,3 +9943,37 @@ if __name__ == "__main__":  # pragma: no cover - manual run convenience
     log.info("Starting development server host=%s port=%s", host, port)
     use_reloader = os.getenv("FLASK_RELOAD", "0") in ("1", "true", "True")
     app.run(host=host, port=port, debug=debug, use_reloader=use_reloader)
+
+
+@app.route("/api/csrf-token", methods=["GET"])
+def get_csrf_token():
+    token = _os_mod_for_csrf.urandom(16).hex()
+    resp, status = _ok({"csrfToken": token})
+    try:
+        resp.set_cookie(
+            "XSRF-TOKEN",
+            token,
+            max_age=8 * 3600,
+            httponly=False,
+            secure=False,
+            samesite="Lax",
+            path="/",
+        )
+    except Exception:
+        pass
+    return resp, status
+
+
+@app.before_request
+def _csrf_protect():
+    try:
+        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            if request.cookies.get("__Host_access_token"):
+                header = request.headers.get("X-CSRF-Token")
+                cookie = request.cookies.get("XSRF-TOKEN")
+                if not header or not cookie or header != cookie:
+                    return _error(
+                        HTTPStatus.FORBIDDEN, "forbidden", "CSRF token invalid or missing"
+                    )
+    except Exception:
+        return None

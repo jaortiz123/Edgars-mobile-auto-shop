@@ -122,12 +122,9 @@ export const authService = {
       throw new AuthError(error.message || 'Login failed', response.status);
     }
 
-    const data: LoginResponse = await response.json();
-    if (!data.token) {
-      throw new AuthError('Invalid response: missing token');
-    }
-
-    this.setToken(data.token);
+    // Cookies are set by server; we don't persist tokens client-side anymore
+    // Keep parsing response for compatibility but do not store tokens
+    await response.json().catch(() => ({}));
   },
 
   async register(email: string, password: string): Promise<void> {
@@ -159,9 +156,8 @@ export const authService = {
 
   const response = await makeApiCall(`${API_URL}/customers/profile`, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      },
+      // Cookie-based auth; include credentials
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -187,9 +183,8 @@ export const authService = {
 
   const response = await makeApiCall(`${API_URL}/customers/profile`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      },
+      // Cookie-based auth; include credentials
+      credentials: 'include',
       body: JSON.stringify(profileData),
     });
 
@@ -204,74 +199,26 @@ export const authService = {
   },
 
   getToken(): string | null {
-    try {
-      return localStorage.getItem(TOKEN_KEY);
-    } catch (error) {
-      console.warn('Failed to access localStorage:', error);
-      return null;
-    }
+    // Deprecated with cookie-based auth; retain for backward compatibility
+    return null;
   },
 
-  setToken(token: string): void {
-    try {
-  // Narrow unknown jwtDecode module shape instead of using any
-  const maybeFn: unknown = (jwtDecode as unknown as { default?: unknown })?.default || jwtDecode;
-  const decodeFn = (typeof maybeFn === 'function' ? maybeFn : null) as ((t: string) => unknown) | null;
-      if (!decodeFn) throw new AuthError('Invalid token format');
-      const decoded = decodeFn(token) as DecodedToken;
-      if (!decoded || !decoded.exp || (decoded.exp * 1000) <= Date.now()) {
-        throw new AuthError('Invalid or expired token');
-      }
-      localStorage.setItem(TOKEN_KEY, token);
-    } catch (error) {
-      if (error instanceof AuthError) throw error;
-      console.warn('Failed to store token:', error);
-      throw new AuthError('Invalid token format');
-    }
+  setToken(_token: string): void {
+    // No-op under cookie-based auth
   },
 
   clearToken(): void {
-    try {
-      localStorage.removeItem(TOKEN_KEY);
-    } catch (error) {
-      console.warn('Failed to clear token:', error);
-    }
+    // No-op; server should clear cookies on logout endpoint
   },
 
   parseToken(): DecodedToken | null {
-    const token = this.getToken();
-    if (!token) return null;
-    try {
-      // jwtDecode may be exported as a named or default export depending on bundler
-  const maybeFn2: unknown = (jwtDecode as unknown as { default?: unknown })?.default || jwtDecode;
-  const decodeFn = (typeof maybeFn2 === 'function' ? maybeFn2 : null) as ((t: string) => unknown) | null;
-      if (!decodeFn) throw new Error('jwtDecode unavailable');
-
-      const decoded = decodeFn(token) as DecodedToken;
-      // Validate token structure
-      if (!decoded || !decoded.sub || !decoded.exp) {
-        // remove the raw token directly to avoid calling methods that may be mocked differently in tests
-  try { localStorage.removeItem(TOKEN_KEY); } catch { /* non-fatal */ }
-        return null;
-      }
-      return decoded;
-    } catch (error) {
-      console.warn('Failed to parse token:', error);
-  try { localStorage.removeItem(TOKEN_KEY); } catch { /* non-fatal */ }
-      return null;
-    }
+    // Deprecated with cookie-based auth
+    return null;
   },
 
   isLoggedIn(): boolean {
-    const decoded = this.parseToken();
-    if (!decoded) return false;
-
-    // Check if token is expired (with 30 second buffer)
-    const expirationTime = decoded.exp * 1000;
-    const currentTime = Date.now();
-    const bufferTime = 30 * 1000; // 30 seconds
-
-    return expirationTime > (currentTime + bufferTime);
+    // Frontend no longer inspects tokens; rely on server profile checks
+    return false;
   },
 
   // Method to refresh token before expiration

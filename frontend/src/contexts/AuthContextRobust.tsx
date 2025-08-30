@@ -1,5 +1,6 @@
 import React, { createContext, useReducer, useCallback, useEffect, useMemo, useRef } from 'react';
 import { authService, AuthError, NetworkError, ValidationError } from '../services/authService';
+import { logout as apiLogout } from '@/lib/api';
 import type { ProfileData } from '../services/authService';
 
 interface User {
@@ -61,7 +62,7 @@ interface AuthContextType {
   isInitialized: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateProfile: (profileData: ProfileData) => Promise<void>;
   clearError: () => void;
 }
@@ -95,31 +96,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initializeRef.current = true;
 
     try {
-      if (authService.isLoggedIn()) {
-        interface DecodedMaybeAdvisor { sub: string; email?: string; role?: string; [k: string]: unknown }
-        const decoded = authService.parseToken() as DecodedMaybeAdvisor | null;
-        if (decoded) {
-          if (decoded.role === 'Advisor') {
-            dispatch({
-              type: 'SET_USER',
-              payload: {
-                id: decoded.sub,
-                email: decoded.email || 'advisor@example.com',
-                profile: { email: decoded.email || 'advisor@example.com' } as ProfileData
-              }
-            });
-          } else {
-            const profile = await authService.getProfile();
-            dispatch({
-              type: 'SET_USER',
-              payload: {
-                id: decoded.sub,
-                email: decoded.email || profile.email,
-                profile
-              }
-            });
+      // Cookie-based session: try fetching profile; if it succeeds, we are logged in
+      try {
+        const profile = await authService.getProfile();
+        dispatch({
+          type: 'SET_USER',
+          payload: {
+            id: profile.email,
+            email: profile.email,
+            profile
           }
-        }
+        });
+      } catch {
+        // Not logged in; leave as initialized=false
       }
     } catch (error) {
       console.warn('Failed to initialize auth:', error);
@@ -165,19 +154,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       await authService.login(email, password);
-      const decoded = authService.parseToken();
-
-      if (decoded) {
-        const profile = await authService.getProfile();
-        dispatch({
-          type: 'SET_USER',
-          payload: {
-            id: decoded.sub,
-            email: decoded.email || profile.email,
-            profile
-          }
-        });
-      }
+      const profile = await authService.getProfile();
+      dispatch({
+        type: 'SET_USER',
+        payload: {
+          id: profile.email,
+          email: profile.email,
+          profile
+        }
+      });
     } catch (error) {
       const errorMessage = handleAuthError(error);
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
@@ -204,10 +189,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [login, handleAuthError]);
 
-  const logout = useCallback(() => {
-    authService.clearToken();
-    dispatch({ type: 'SET_USER', payload: null });
-    dispatch({ type: 'SET_ERROR', payload: null });
+  const logout = useCallback(async () => {
+    try {
+      // Call backend to clear cookies; axios will include X-CSRF-Token header
+      await apiLogout();
+    } catch (e) {
+      // Non-fatal; proceed with local state reset
+      if (import.meta.env.DEV) {
+        console.warn('[auth] logout API failed', e);
+      }
+    } finally {
+      authService.clearToken();
+      dispatch({ type: 'SET_USER', payload: null });
+      dispatch({ type: 'SET_ERROR', payload: null });
+    }
   }, []);
 
   const updateProfile = useCallback(async (profileData: ProfileData) => {
