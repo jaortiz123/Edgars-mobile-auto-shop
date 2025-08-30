@@ -196,16 +196,19 @@ compose up -d db redis
 wait_for_service "postgresql" "PostgreSQL" || exit 1
 
 # Run raw SQL migrations (idempotent) before starting backend - only if the script exists
-if [ -f "backend/run_sql_migrations.py" ]; then
+# TEMPORARILY DISABLED FOR DEVELOPMENT ENVIRONMENT STABILIZATION
+if [ "${ENABLE_MIGRATIONS:-true}" = true ] && [ -f "backend/run_sql_migrations.py" ]; then
         echo -e "${BLUE}🧱 Applying raw SQL migrations (idempotent)...${NC}"
         if [ "${MIGRATIONS_USE_REMOTE_DB:-false}" = true ]; then
             # Use MIGRATIONS_DATABASE_URL if set, otherwise fall back to DATABASE_URL/POSTGRES_*
             python3 backend/run_sql_migrations.py || { echo -e "${RED}❌ Raw SQL migrations failed${NC}"; exit 1; }
         else
             # Force migrations against local docker Postgres regardless of .env
-            LOCAL_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}"
+            LOCAL_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}?sslmode=disable"
             env MIGRATIONS_DATABASE_URL="$LOCAL_URL" python3 backend/run_sql_migrations.py || { echo -e "${RED}❌ Raw SQL migrations failed${NC}"; exit 1; }
         fi
+else
+    echo -e "${YELLOW}⚠️ Skipping migrations (set ENABLE_MIGRATIONS=true to run)${NC}"
 fi
 
 # Kill any existing backend processes on port 3001
