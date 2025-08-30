@@ -223,3 +223,87 @@ jobs:
         with:
           name: backend-image
           path: backend-image.tar
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      STAGING_S3_BUCKET: ${{ secrets.STAGING_S3_BUCKET }}
+      STAGING_CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.STAGING_CLOUDFRONT_DISTRIBUTION_ID }}
+      STAGING_ECR_REPOSITORY: ${{ secrets.STAGING_ECR_REPOSITORY }}
+      STAGING_ECS_CLUSTER: ${{ secrets.STAGING_ECS_CLUSTER }}
+      STAGING_ECS_SERVICE: ${{ secrets.STAGING_ECS_SERVICE }}
+      STAGING_ECS_TASK_FAMILY: ${{ secrets.STAGING_ECS_TASK_FAMILY }}
+      STAGING_ECS_CONTAINER_NAME: ${{ secrets.STAGING_ECS_CONTAINER_NAME }}
+      STAGING_HEALTHCHECK_URL: ${{ secrets.STAGING_HEALTHCHECK_URL }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend-dist
+
+      - name: Download backend image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-image
+          path: .
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Load and push backend image to ECR
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          set -euo pipefail
+          docker load -i backend-image.tar
+          docker tag mobile-autoshop-backend:${{ github.sha }} "$REGISTRY/${STAGING_ECR_REPOSITORY}:${{ github.sha }}"
+          docker push "$REGISTRY/${STAGING_ECR_REPOSITORY}:${{ github.sha }}"
+
+      - name: Update ECS task definition and deploy
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          set -euo pipefail
+          IMAGE_URI="$REGISTRY/${STAGING_ECR_REPOSITORY}:${{ github.sha }}"
+          # Fetch current task definition
+          aws ecs describe-task-definition --task-definition "$STAGING_ECS_TASK_FAMILY" --query 'taskDefinition' --output json > td.json
+          # Strip read-only fields and update image for target container name
+          jq --arg IMG "$IMAGE_URI" --arg NAME "$STAGING_ECS_CONTAINER_NAME" '
+            del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.deregisteredAt,.registeredBy)
+            | .containerDefinitions = (.containerDefinitions | map(if .name == $NAME then .image = $IMG | . else . end))
+          ' td.json > td-new.json
+          NEW_TD_ARN=$(aws ecs register-task-definition --cli-input-json file://td-new.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "New task definition: $NEW_TD_ARN"
+          aws ecs update-service --cluster "$STAGING_ECS_CLUSTER" --service "$STAGING_ECS_SERVICE" --task-definition "$NEW_TD_ARN" --force-new-deployment > /dev/null
+          echo "Waiting for service to stabilize..."
+          aws ecs wait services-stable --cluster "$STAGING_ECS_CLUSTER" --services "$STAGING_ECS_SERVICE"
+
+      - name: Deploy frontend to S3 (staging)
+        run: |
+          aws s3 sync frontend-dist "s3://${STAGING_S3_BUCKET}" --delete
+
+      - name: Invalidate CloudFront cache (staging)
+        if: env.STAGING_CLOUDFRONT_DISTRIBUTION_ID != ''
+        run: |
+          aws cloudfront create-invalidation --distribution-id "$STAGING_CLOUDFRONT_DISTRIBUTION_ID" --paths '/*'
+
+      - name: Post-deploy smoke test
+        run: |
+          echo "Pinging staging health endpoint: ${STAGING_HEALTHCHECK_URL}"
+          curl -f -sS "${STAGING_HEALTHCHECK_URL}" -o /dev/null
