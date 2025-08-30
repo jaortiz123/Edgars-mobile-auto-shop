@@ -5,6 +5,32 @@ locals {
   env = var.env
 }
 
+# Database master password management
+# 1) Allow an optional override via variable (sensitive)
+# 2) Otherwise, generate a strong random password compatible with RDS
+variable "db_master_password" {
+  description = "Master password for the RDS instance. If unset, a strong random password will be generated."
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
+resource "random_password" "db_master_password" {
+  length           = 32
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}"
+  min_upper        = 1
+  min_lower        = 1
+  min_numeric      = 1
+  min_special      = 1
+}
+
+locals {
+  db_master_password = (
+    var.db_master_password != null && var.db_master_password != ""
+  ) ? var.db_master_password : random_password.db_master_password.result
+}
+
 # Data sources for AWS context
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
@@ -92,7 +118,7 @@ resource "aws_secretsmanager_secret_version" "db_credentials_version" {
   secret_id = aws_secretsmanager_secret.db_credentials.id
   secret_string = jsonencode({
     username = aws_db_instance.edgar_db.username,
-    password = aws_db_instance.edgar_db.password,
+    password = local.db_master_password,
     engine   = aws_db_instance.edgar_db.engine,
     host     = aws_db_instance.edgar_db.address,
     port     = aws_db_instance.edgar_db.port,
@@ -117,7 +143,8 @@ resource "aws_db_instance" "edgar_db" {
   instance_class        = "db.t3.micro"
   db_name               = "edgarautoshop"
   username              = "edgaradmin" # Define the username directly here.
-  password              = "a-very-secure-password-that-you-will-change" # Define the password directly here.
+  # Password sourced from sensitive variable or generated random_password
+  password              = local.db_master_password
   db_subnet_group_name  = aws_db_subnet_group.edgar_db_subnets.name
   vpc_security_group_ids = [aws_security_group.db_sg.id]
   skip_final_snapshot   = true

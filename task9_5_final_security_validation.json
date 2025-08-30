@@ -1,0 +1,49 @@
+{
+  "all_endpoints_secured": [
+    {
+      "endpoint": "/api/admin/appointments",
+      "method": "GET",
+      "description": "All Appointments Access - FIXED",
+      "status_code": 403
+    },
+    {
+      "endpoint": "/api/admin/customers/12345/visits",
+      "method": "GET",
+      "description": "Customer History Access - FIXED",
+      "status_code": 403
+    },
+    {
+      "endpoint": "/api/admin/dashboard/stats",
+      "method": "GET",
+      "description": "Business Metrics Access - FIXED",
+      "status_code": 403
+    },
+    {
+      "endpoint": "/api/admin/customers/12345",
+      "method": "GET",
+      "description": "Customer PII Access - FIXED",
+      "status_code": 403
+    },
+    {
+      "endpoint": "/api/admin/service-packages",
+      "method": "GET",
+      "description": "Service Data Access - FIXED",
+      "status_code": 403
+    },
+    {
+      "endpoint": "/api/admin/vehicles",
+      "method": "POST",
+      "description": "Vehicle Registration - VERIFIED",
+      "status_code": 403
+    },
+    {
+      "endpoint": "/api/admin/vehicles/12345",
+      "method": "GET",
+      "description": "Vehicle Data Access - VERIFIED",
+      "status_code": 403
+    }
+  ],
+  "remaining_vulnerabilities": [],
+  "test_errors": [],
+  "total_tested": 7
+}

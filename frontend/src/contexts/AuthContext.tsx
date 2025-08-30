@@ -29,32 +29,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const t = localStorage.getItem('auth.token');
-    if (t) {
-      setTokenState(t);
-      // TODO: hit /me endpoint when available
-    }
+    // No need to check localStorage for tokens - they are now httpOnly cookies
+    // The server will handle authentication via cookies automatically
+    // TODO: hit /me endpoint to check current auth status when available
   }, []);
 
   const setToken = useCallback((t: string | null) => {
     setTokenState(t);
-    if (t) localStorage.setItem('auth.token', t);
-    else localStorage.removeItem('auth.token');
+    // No localStorage needed - tokens are now httpOnly cookies managed by server
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     setLoading(true);
+    setError(null);
     try {
-      // TODO: call backend when auth is ready
-      console.log('Login attempt:', { email, password: password.replace(/./g, '*') });
-      setUser({ id: 'local', email });
-      setToken('dev-token');
+      const response = await fetch('/api/customers/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Include httpOnly cookies
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Login failed');
+      }
+
+      const data = await response.json();
+      setUser({ id: data.customer_id, email, name: data.name });
+      // No token in localStorage - using httpOnly cookies
+      setToken(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+      throw err;
     } finally {
       setLoading(false);
     }
   }, [setToken]);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include', // Include httpOnly cookies to clear them
+      });
+    } catch (err) {
+      console.warn('Logout API call failed:', err);
+      // Continue with local logout even if API fails
+    }
+
     setUser(null);
     setToken(null);
     setError(null);
@@ -64,12 +89,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      // TODO: call backend when auth is ready
-      console.log('Register attempt:', { email, password: password.replace(/./g, '*'), name });
-      setUser({ id: 'local', email, name });
-      setToken('dev-token');
+      const response = await fetch('/api/customers/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Include httpOnly cookies
+        body: JSON.stringify({
+          email,
+          password,
+          name: name || '',
+          phone: '' // Add required phone field with empty default
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Registration failed');
+      }
+
+      const data = await response.json();
+      setUser({ id: data.customer_id, email, name: name || data.name });
+      // No token in localStorage - using httpOnly cookies
+      setToken(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
+      throw err;
     } finally {
       setLoading(false);
     }
