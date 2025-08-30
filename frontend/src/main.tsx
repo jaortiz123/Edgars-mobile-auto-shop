@@ -9,6 +9,7 @@ import App from './App';
 import { BookingDrawerProvider } from './contexts/BookingDrawerContext';
 import './index.css';
 import { initAdaptiveLongTaskObserver } from './utils/longTaskSampler';
+import axios from 'axios';
 
 // Initialize adaptive long task observer (Phase A). Telemetry pipeline hook TBD.
 if (typeof window !== 'undefined') {
@@ -53,3 +54,12 @@ createRoot(document.getElementById('root')!).render(
     </QueryClientProvider>
   </StrictMode>,
 );
+
+// Proactively set CSRF cookie so axios can include X-CSRF-Token on unsafe requests
+void (async () => {
+  try {
+    await axios.get('/api/csrf-token', { withCredentials: true });
+  } catch {
+    // non-fatal during initial load
+  }
+})();

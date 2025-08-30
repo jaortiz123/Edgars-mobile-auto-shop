@@ -18,8 +18,11 @@ export default function AdminLayout() {
   const { logout: authLogout } = useAuth();
 
   const logout = async () => {
-    authLogout();
-    navigate('/admin/login');
+    try {
+      await authLogout();
+    } finally {
+      navigate('/admin/login');
+    }
   };
 
   const navigation = [

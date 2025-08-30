@@ -80,30 +80,14 @@ const BASE = '/api';
 export const http = axios.create({
   baseURL: BASE,
   timeout: 10000,
-  // We rely on Bearer tokens, not cookies, so disable credential cookies to simplify CORS.
-  withCredentials: false,
+  // Switch to cookie-based auth with CSRF protection
+  withCredentials: true,
+  xsrfCookieName: 'XSRF-TOKEN',
+  xsrfHeaderName: 'X-CSRF-Token',
   headers: { 'Content-Type': 'application/json' },
 });
 
-let warnedMissingAuthOnce = false;
-http.interceptors.request.use(cfg => {
-  try {
-    // Primary storage key used by authService
-    let token = localStorage.getItem('auth_token');
-    // Backward compatibility fallback
-    if (!token) token = localStorage.getItem('token');
-    if (token) {
-      cfg.headers = cfg.headers || {};
-      if (!('Authorization' in cfg.headers)) {
-        cfg.headers['Authorization'] = `Bearer ${token}`;
-      }
-    } else if (import.meta.env.DEV && !warnedMissingAuthOnce) {
-      warnedMissingAuthOnce = true;
-      console.warn('[api] No auth token in localStorage (auth_token or token); protected endpoints will 403');
-    }
-  } catch { /* ignore */ }
-  return cfg;
-});
+// LocalStorage/Bearer token injection has been removed in favor of cookie auth.
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Unwrap API envelopes ({ data, errors, meta }) and throw on errors
@@ -652,6 +636,11 @@ export async function rescheduleAppointment(id: string, startISO: string): Promi
 // Expose the axios instance for advanced callers
 export function useApi() {
   return http;
+}
+
+// Logout: clear session cookies on the server
+export async function logout(): Promise<void> {
+  await http.post('/logout', {});
 }
 
 // ----------------------------------------------------------------------------
