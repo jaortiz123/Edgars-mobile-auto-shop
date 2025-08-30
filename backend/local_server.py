@@ -122,7 +122,7 @@ from urllib.parse import parse_qs, urlparse
 
 import jwt
 import psycopg2
-from flask import Flask, Response, jsonify, make_response, request
+from flask import Flask, Response, g, jsonify, make_response, request
 from flask_cors import CORS  # added
 from psycopg2.extras import RealDictCursor
 from werkzeug.exceptions import BadRequest, Forbidden, HTTPException, NotFound
@@ -964,6 +964,38 @@ def _normalize_and_shortcircuit_options():  # pragma: no cover infra convenience
     except Exception:
         # Silent fail; normal flow continues
         return None
+
+
+@app.before_request
+def _resolve_tenant_context():
+    """Resolve tenant context from X-Tenant-Id header for tenant isolation.
+
+    This middleware ensures that tenant context is available for RLS-based
+    tenant isolation in database operations.
+    """
+    try:
+        # Extract tenant ID from X-Tenant-Id header
+        tenant_header = request.headers.get("X-Tenant-Id")
+        if tenant_header:
+            # Basic validation - accept both UUID format and text format (like t1, t2)
+            import re
+
+            uuid_pattern = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            text_pattern = r"^[a-zA-Z0-9_-]{1,50}$"
+
+            if re.match(uuid_pattern, tenant_header, re.IGNORECASE) or re.match(
+                text_pattern, tenant_header
+            ):
+                g.tenant_id = tenant_header
+                app.logger.debug(f"Tenant context set: {tenant_header[:8]}...")
+            else:
+                app.logger.warning(f"Invalid tenant ID format: {tenant_header[:8]}...")
+        else:
+            # No tenant header provided - endpoints that need tenant isolation will fail
+            g.tenant_id = None
+    except Exception as e:
+        app.logger.error(f"Error resolving tenant context: {e}")
+        g.tenant_id = None
 
 
 ## NOTE: Legacy global_error_handler removed in favor of unified handlers
@@ -2169,6 +2201,17 @@ if "list_invoices" not in app.view_functions:
           status (str optional exact match)
         Response envelope: data { page, page_size, total_items, items: [ { id, customer_id, status, subtotal_cents, total_cents, amount_paid_cents, amount_due_cents } ] }
         """
+        # STEP 1: Enforce authentication - require authenticated user
+        try:
+            require_auth_role()
+        except Exception:
+            return jsonify({"error": "Authentication failed"}), 403
+
+        # STEP 2: Resolve active tenant - ensure tenant context is available
+        if not hasattr(g, "tenant_id") or not g.tenant_id:
+            return jsonify({"error": "Tenant context not available"}), 403
+
+        tenant_id = g.tenant_id
         try:
             page = max(1, int(request.args.get("page", 1)))
         except Exception:
@@ -2184,6 +2227,7 @@ if "list_invoices" not in app.view_functions:
         customer_id = request.args.get("customerId")
         status_filter = request.args.get("status")
 
+        # STEP 3: Wrap database operations in tenant context
         conn, use_memory, err = safe_conn()
         if err or not conn:
             return _error(
@@ -2191,6 +2235,7 @@ if "list_invoices" not in app.view_functions:
                 "db_unavailable",
                 "Database unavailable for invoice listing",
             )
+
         offset = (page - 1) * page_size
         where = []
         params: List[Any] = []  # type: ignore
@@ -2201,15 +2246,23 @@ if "list_invoices" not in app.view_functions:
             where.append("status = %s")
             params.append(status_filter)
         where_sql = ("WHERE " + " AND ".join(where)) if where else ""
-        with conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:  # type: ignore
-                cur.execute(
-                    f"SELECT id::text, customer_id, status::text, subtotal_cents, total_cents, amount_paid_cents, amount_due_cents FROM invoices {where_sql} ORDER BY created_at DESC, id DESC LIMIT %s OFFSET %s",
-                    params + [page_size, offset],
-                )
-                rows = cur.fetchall() or []
-                cur.execute(f"SELECT COUNT(*) AS cnt FROM invoices {where_sql}", params)
-                total = cur.fetchone()["cnt"] if cur.rowcount != -1 else len(rows)
+
+        try:
+            with conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:  # type: ignore
+                    # Set tenant context for RLS policies
+                    cur.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant_id,))
+
+                    # Now execute tenant-isolated queries
+                    cur.execute(
+                        f"SELECT id::text, customer_id, status::text, subtotal_cents, total_cents, amount_paid_cents, amount_due_cents FROM invoices {where_sql} ORDER BY created_at DESC, id DESC LIMIT %s OFFSET %s",
+                        params + [page_size, offset],
+                    )
+                    rows = cur.fetchall() or []
+                    cur.execute(f"SELECT COUNT(*) AS cnt FROM invoices {where_sql}", params)
+                    total = cur.fetchone()["cnt"] if cur.rowcount != -1 else len(rows)
+        except Exception as e:
+            return jsonify({"error": f"Database operation failed: {e}"}), 500
         data = {
             "page": page,
             "page_size": page_size,
@@ -2241,9 +2294,24 @@ if "invoice_estimate_pdf" not in app.view_functions:
             if forced in mapping:
                 st, code, msg = mapping[forced]
                 return _error(st, code, msg)
-        auth = require_or_maybe("Advisor")
-        if not auth:
-            return _error(HTTPStatus.FORBIDDEN, "forbidden", "Not authorized")
+
+        # Step 1: Enforce authentication with role requirement
+        require_auth_role("Advisor")
+
+        # Step 2: Resolve active tenant from request context
+        if not g.tenant_id:
+            resp, _ = _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+            return resp, 400
+
+        # Step 3: Set tenant context for database operations (invoice service)
+        try:
+            conn = db_conn()
+            with conn.cursor() as cur:
+                cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+            conn.close()
+        except Exception:
+            pass
+
         try:
             data = invoice_service.fetch_invoice_details(invoice_id)
         except invoice_service.InvoiceError as e:
@@ -2259,6 +2327,8 @@ if "invoice_estimate_pdf" not in app.view_functions:
             inv_cust = inv.get("customer_id")
             if veh_id and inv_cust:
                 with db_conn().cursor() as cur:  # type: ignore
+                    # Set tenant context for ownership validation
+                    cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
                     cur.execute("SELECT customer_id FROM vehicles WHERE id = %s", (int(veh_id),))
                     row = cur.fetchone()
                 owner_id = (
@@ -2309,9 +2379,24 @@ def invoice_receipt_pdf(invoice_id: str):
         if forced in mapping:
             st, code, msg = mapping[forced]
             return _error(st, code, msg)
-    auth = require_or_maybe("Advisor")
-    if not auth:
-        return _error(HTTPStatus.FORBIDDEN, "forbidden", "Not authorized")
+
+    # Step 1: Enforce authentication with role requirement
+    require_auth_role("Advisor")
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        resp, _ = _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+        return resp, 400
+
+    # Step 3: Set tenant context for database operations (invoice service)
+    try:
+        conn = db_conn()
+        with conn.cursor() as cur:
+            cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+        conn.close()
+    except Exception:
+        pass
+
     try:
         data = invoice_service.fetch_invoice_details(invoice_id)
     except Exception as e:
@@ -2326,6 +2411,8 @@ def invoice_receipt_pdf(invoice_id: str):
         inv_cust = inv.get("customer_id")
         if veh_id and inv_cust:
             with db_conn().cursor() as cur:  # type: ignore
+                # Set tenant context for ownership validation
+                cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
                 cur.execute("SELECT customer_id FROM vehicles WHERE id = %s", (int(veh_id),))
                 row = cur.fetchone()
             owner_id = (
@@ -2482,13 +2569,29 @@ def invoice_send_stub(invoice_id: str):
         if forced in mapping:
             st, code, msg = mapping[forced]
             return _error(st, code, msg)
-    auth = require_or_maybe("Advisor")
-    if not auth:
-        return _error(HTTPStatus.FORBIDDEN, "forbidden", "Not authorized")
+
+    # Step 1: Enforce authentication with role requirement
+    require_auth_role("Advisor")
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        resp, _ = _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+        return resp, 400
+
     body = request.get_json(silent=True) or {}
     send_type = (body.get("type") or "receipt").lower()
     if send_type not in ("receipt", "estimate"):
         return _error(HTTPStatus.BAD_REQUEST, "INVALID_TYPE", "Unsupported send type")
+
+    # Step 3: Set tenant context for database operations (invoice service)
+    try:
+        conn = db_conn()
+        with conn.cursor() as cur:
+            cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+        conn.close()
+    except Exception:
+        pass
+
     try:
         invoice_service.fetch_invoice_details(invoice_id)  # existence check
     except invoice_service.InvoiceError as e:
@@ -3203,6 +3306,23 @@ def generate_invoice(appt_id: str):
 
 @app.route("/api/admin/invoices/<invoice_id>", methods=["GET"])
 def get_invoice(invoice_id: str):
+    # Step 1: Enforce authentication with role requirement
+    require_auth_role("Advisor")
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        resp, _ = _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+        return resp, 400
+
+    # Step 3: Set tenant context for database operations
+    try:
+        conn = db_conn()
+        with conn.cursor() as cur:
+            cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+        conn.close()
+    except Exception:
+        pass
+
     # Memory fallback
     conn, use_memory, err = safe_conn()
     if (not conn and use_memory) or (err and not conn):
@@ -3227,6 +3347,23 @@ def get_invoice(invoice_id: str):
 
 @app.route("/api/admin/invoices/<invoice_id>/payments", methods=["POST"])
 def create_invoice_payment(invoice_id: str):
+    # Step 1: Enforce authentication with role requirement
+    require_auth_role("Advisor")
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        resp, _ = _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+        return resp, 400
+
+    # Step 3: Set tenant context for database operations
+    try:
+        conn = db_conn()
+        with conn.cursor() as cur:
+            cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+        conn.close()
+    except Exception:
+        pass
+
     body = request.get_json(force=True, silent=True) or {}
     amount_cents = int(body.get("amountCents", 0))
     method = (body.get("method") or "cash").lower()
@@ -3295,6 +3432,23 @@ def create_invoice_payment(invoice_id: str):
 
 @app.route("/api/admin/invoices/<invoice_id>/void", methods=["POST"])
 def void_invoice_endpoint(invoice_id: str):
+    # Step 1: Enforce authentication with role requirement
+    require_auth_role("Owner")  # Voiding invoices requires Owner level access
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        resp, _ = _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+        return resp, 400
+
+    # Step 3: Set tenant context for database operations
+    try:
+        conn = db_conn()
+        with conn.cursor() as cur:
+            cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+        conn.close()
+    except Exception:
+        pass
+
     # Memory fallback
     conn, use_memory, err = safe_conn()
     if (not conn and use_memory) or (err and not conn):
@@ -3388,7 +3542,13 @@ def health():
 # ----------------------------------------------------------------------------
 @app.route("/api/admin/appointments/board", methods=["GET"])
 def get_board():
-    maybe_auth()
+    # Step 1: Enforce authentication with role requirement
+    require_auth_role("Advisor")
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        resp, _ = _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+        return resp, 400
     frm = request.args.get("from")
     to = request.args.get("to")
     tech_id = request.args.get("techId")
@@ -3464,6 +3624,9 @@ def get_board():
     elif conn:
         with conn:
             with conn.cursor() as cur:
+                # Step 3: Set tenant context for database operations
+                cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+
                 rows = []
                 params: list[Any] = []
                 # If explicit from/to provided, use them; otherwise, use shop-local day window
@@ -4711,7 +4874,13 @@ def analytics_templates():
 # ----------------------------------------------------------------------------
 @app.route("/api/admin/appointments/<appt_id>/move", methods=["PATCH"])
 def move_card(appt_id: str):
-    user = require_or_maybe()
+    # Step 1: Enforce authentication with role requirement
+    auth_payload = require_auth_role("Advisor")
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        resp, _ = _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+        return resp, 400
     remote = request.remote_addr or "127.0.0.1"
     if app.config.get("TESTING"):
         # Normalize to IPv4 loopback so test pre-seeded key matches regardless of stack returning ::1
@@ -4798,6 +4967,9 @@ def move_card(appt_id: str):
         )
     with conn:
         with conn.cursor() as cur:
+            # Step 3: Set tenant context for database operations
+            cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+
             cur.execute(
                 "SELECT id::text, status::text FROM appointments WHERE id = %s FOR UPDATE",
                 (appt_id,),
@@ -4815,7 +4987,7 @@ def move_card(appt_id: str):
             cur.execute("UPDATE appointments SET status = %s WHERE id = %s", (new_status, appt_id))
             audit(
                 conn,
-                user.get("sub", "anon"),
+                auth_payload.get("sub", "anon"),
                 "STATUS_CHANGE",
                 "appointment",
                 appt_id,
@@ -5186,6 +5358,14 @@ def appointment_service_detail(appt_id: str, service_id: str):
 
 def get_appointment(appt_id: str):
     """Gets full appointment details."""
+    # Step 1: Enforce authentication with role requirement
+    require_auth_role("Advisor")
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        resp, _ = _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+        return resp, 400
+
     # Normalize seed alias early so direct calls (e.g. tests) also benefit
     original_requested_id = appt_id
     appt_id = _resolve_seed_appt_id(appt_id)
@@ -5193,6 +5373,9 @@ def get_appointment(appt_id: str):
     conn = db_conn()
     with conn:
         with conn.cursor() as cur:
+            # Step 3: Set tenant context for database operations
+            cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+
             # Use text comparison to avoid invalid input syntax errors when callers pass
             # seed-alias values that failed to resolve (rare) and to ensure we can detect
             # absence and optionally retry resolution one more time.
@@ -5457,7 +5640,13 @@ def get_appointment(appt_id: str):
 
 
 def patch_appointment(appt_id: str):
-    user = require_or_maybe()
+    # Step 1: Enforce authentication with role requirement
+    auth_payload = require_auth_role("Advisor")
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        resp, _ = _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+        return resp, 400
     body = request.get_json(force=True, silent=False) or {}
     try:
         app.logger.debug("patch_appointment: appt_id=%s body=%s", appt_id, body)
@@ -5605,6 +5794,9 @@ def patch_appointment(appt_id: str):
         raise err
     with conn:
         with conn.cursor() as cur:
+            # Step 3: Set tenant context for database operations
+            cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+
             cur.execute(
                 "SELECT id::text, status::text, customer_id::text, vehicle_id::text, tech_id::text, start_ts, end_ts FROM appointments WHERE id = %s FOR UPDATE",
                 (appt_id,),
@@ -5756,7 +5948,7 @@ def patch_appointment(appt_id: str):
                 try:
                     audit(
                         conn,
-                        user.get("sub", "system"),
+                        auth_payload.get("sub", "system"),
                         "APPT_PATCH",
                         "appointment",
                         appt_id,
@@ -5908,8 +6100,17 @@ def complete_job(appt_id: str):
 @app.route("/api/admin/appointments", methods=["GET"])
 def get_admin_appointments():
     """Returns a paginated list of appointments with filtering."""
-    # Auth optional for read in dev/local; still enforced in prod when DEV_NO_AUTH is false
-    maybe_auth()
+    # STEP 1: Enforce authentication - require authenticated user
+    try:
+        require_auth_role()
+    except Exception:
+        return jsonify({"error": "Authentication failed"}), 403
+
+    # STEP 2: Resolve active tenant - ensure tenant context is available
+    if not hasattr(g, "tenant_id") or not g.tenant_id:
+        return jsonify({"error": "Tenant context not available"}), 403
+
+    tenant_id = g.tenant_id
     args = request.args
     # Basic numeric param validation
     try:
@@ -6012,13 +6213,21 @@ def get_admin_appointments():
          LIMIT %s OFFSET %s
      """
 
+    # STEP 3: Wrap database operations in tenant context
     conn, use_memory, err = safe_conn()
     appointments: list[Dict[str, Any]] = []
     if conn:
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute(query, (*params, limit, offset))
-                appointments = cur.fetchall() or []
+        try:
+            with conn:
+                with conn.cursor() as cur:
+                    # Set tenant context for RLS policies
+                    cur.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant_id,))
+
+                    # Now execute tenant-isolated query
+                    cur.execute(query, (*params, limit, offset))
+                    appointments = cur.fetchall() or []
+        except Exception as e:
+            return jsonify({"error": f"Database operation failed: {e}"}), 500
     elif use_memory:
         try:
             global _LAST_MEMORY_APPOINTMENTS_QUERY, _LAST_MEMORY_APPOINTMENTS_PARAMS
@@ -6586,7 +6795,12 @@ def list_service_operations():
     Legacy shape: {"service_operations": [...]} when ?legacy=1 supplied.
     Supports simple substring search across name/category/keywords when q>=2.
     """
-    maybe_auth()
+    # Step 1: Enforce authentication with role requirement
+    require_auth_role("Advisor")
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        return _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
 
     # Contract test hook: allow forcing specific error responses via ?test_error= when TESTING
     if app.config.get("TESTING") or os.getenv("PYTEST_CURRENT_TEST"):
@@ -6656,9 +6870,14 @@ def list_service_operations():
     rows = []
     handler_variant = "v2-flat"
     tried_new_projection = False
+
+    conn = db_conn()
     try:
         with conn:
             with conn.cursor() as cur:
+                # Step 3: Set tenant context for database operations
+                cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+
                 cur.execute(final_sql, params)
                 rows = cur.fetchall()
     except Exception as e:  # pragma: no cover - defensive runtime hardening
@@ -6757,12 +6976,31 @@ def list_service_operations():
         }
 
     payload = [_coerce(r) for r in rows]
+
+    # Generate ETag based on data hash for caching
+    if payload:
+        import hashlib
+
+        data_str = str(sorted(payload, key=lambda x: x.get("id", "")))
+        etag = hashlib.md5(data_str.encode()).hexdigest()[:16]
+
+        # Check If-None-Match header for 304 response
+        if_none_match = request.headers.get("If-None-Match")
+        if if_none_match and if_none_match.strip('"') == etag:
+            return "", 304
+    else:
+        etag = "empty"
+
     if legacy:
         resp = jsonify({"service_operations": payload})
     else:
         resp = jsonify(payload)
-    # Fingerprint headers (debug observability)
+
+    # Enhanced caching and debug headers
+    resp.headers["ETag"] = f'"{etag}"'
+    resp.headers["Cache-Control"] = "private, max-age=300"  # 5 min cache
     resp.headers["X-Catalog-Handler"] = handler_variant
+    resp.headers["X-Total-Results"] = str(len(payload))
     try:  # pragma: no cover
         import inspect
 
@@ -6770,6 +7008,366 @@ def list_service_operations():
     except Exception:  # noqa: E722 - defensive
         resp.headers["X-Source-File"] = "?"
     return resp
+
+
+# ----------------------------------------------------------------------------
+# Service Operations Write Endpoints (POST, PATCH, DELETE)
+# ----------------------------------------------------------------------------
+@app.route("/api/admin/service-operations", methods=["POST"])
+def create_service_operation():
+    """Create a new service operation."""
+    # Step 1: Enforce authentication with role requirement
+    require_auth_role("Owner")  # Only owners can create services
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        return _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+
+    # Step 3: Validate request body
+    body = request.get_json(force=True, silent=True)
+    if not body:
+        return _error(HTTPStatus.BAD_REQUEST, "INVALID_JSON", "Request body must be valid JSON")
+
+    # Required fields
+    required_fields = ["name", "category"]
+    missing = [f for f in required_fields if not body.get(f)]
+    if missing:
+        return _error(
+            HTTPStatus.BAD_REQUEST,
+            "MISSING_FIELDS",
+            f"Missing required fields: {', '.join(missing)}",
+        )
+
+    # Optional fields with defaults
+    allowed_fields = {
+        "id": body.get("id"),  # Allow custom ID or will be generated
+        "name": body.get("name").strip(),
+        "category": body.get("category").strip(),
+        "subcategory": body.get("subcategory", "").strip() or None,
+        "internal_code": body.get("internal_code", "").strip() or None,
+        "skill_level": body.get("skill_level"),
+        "default_hours": body.get("default_hours"),
+        "base_labor_rate": body.get("base_labor_rate"),
+        "keywords": body.get("keywords", []),
+        "flags": body.get("flags", []),
+        "display_order": body.get("display_order", 0),
+        "is_active": body.get("is_active", True),
+    }
+
+    # Validate skill_level if provided
+    if allowed_fields["skill_level"] is not None:
+        try:
+            level = int(allowed_fields["skill_level"])
+            if level < 1 or level > 5:
+                return _error(
+                    HTTPStatus.BAD_REQUEST,
+                    "INVALID_SKILL_LEVEL",
+                    "skill_level must be between 1 and 5",
+                )
+            allowed_fields["skill_level"] = level
+        except (ValueError, TypeError):
+            return _error(
+                HTTPStatus.BAD_REQUEST,
+                "INVALID_SKILL_LEVEL",
+                "skill_level must be an integer between 1 and 5",
+            )
+
+    # Validate numeric fields
+    for field in ["default_hours", "base_labor_rate", "display_order"]:
+        if allowed_fields[field] is not None:
+            try:
+                allowed_fields[field] = float(allowed_fields[field])
+                if field == "display_order":
+                    allowed_fields[field] = int(allowed_fields[field])
+            except (ValueError, TypeError):
+                return _error(
+                    HTTPStatus.BAD_REQUEST, "INVALID_NUMERIC", f"{field} must be a valid number"
+                )
+
+    # Generate ID if not provided
+    if not allowed_fields["id"]:
+        import re
+
+        # Generate ID from name: "Oil Change Service" -> "oil_change_service"
+        base_id = re.sub(r"[^a-zA-Z0-9\s]", "", allowed_fields["name"]).strip()
+        base_id = re.sub(r"\s+", "_", base_id).lower()
+        allowed_fields["id"] = base_id[:50]  # Limit length
+
+    conn = db_conn()
+    if not conn:
+        return _error(
+            HTTPStatus.SERVICE_UNAVAILABLE, "DATABASE_UNAVAILABLE", "Database connection failed"
+        )
+
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                # Set tenant context
+                cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+
+                # Check for duplicate ID
+                cur.execute(
+                    "SELECT id FROM service_operations WHERE id = %s", (allowed_fields["id"],)
+                )
+                if cur.fetchone():
+                    return _error(
+                        HTTPStatus.CONFLICT,
+                        "DUPLICATE_ID",
+                        f"Service operation with ID '{allowed_fields['id']}' already exists",
+                    )
+
+                # Insert new service operation
+                fields = [k for k, v in allowed_fields.items() if v is not None]
+                placeholders = ", ".join(["%s"] * len(fields))
+                field_names = ", ".join(fields)
+                values = [allowed_fields[k] for k in fields]
+
+                cur.execute(
+                    f"INSERT INTO service_operations ({field_names}) VALUES ({placeholders}) RETURNING *",
+                    values,
+                )
+                row = cur.fetchone()
+
+        # Format response using same coercion as GET endpoint
+        def _coerce_single(row):
+            return {
+                "id": row["id"],
+                "internal_code": row.get("internal_code"),
+                "name": row["name"],
+                "category": row["category"],
+                "subcategory": row.get("subcategory"),
+                "skill_level": row.get("skill_level"),
+                "default_hours": (
+                    float(row["default_hours"]) if row["default_hours"] is not None else None
+                ),
+                "base_labor_rate": (
+                    float(row["base_labor_rate"]) if row["base_labor_rate"] is not None else None
+                ),
+                "keywords": row.get("keywords"),
+                "is_active": row.get("is_active"),
+                "display_order": row.get("display_order"),
+                "flags": row.get("flags"),
+                "created_at": row["created_at"].isoformat() if row.get("created_at") else None,
+                "updated_at": row["updated_at"].isoformat() if row.get("updated_at") else None,
+            }
+
+        return jsonify(_coerce_single(row)), 201
+
+    except Exception as e:
+        error_msg = str(e).lower()
+        if "unique" in error_msg and "id" in error_msg:
+            return _error(
+                HTTPStatus.CONFLICT, "DUPLICATE_ID", "Service operation ID must be unique"
+            )
+        return _error(
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "CREATE_FAILED",
+            f"Failed to create service operation: {str(e)}",
+        )
+
+
+@app.route("/api/admin/service-operations/<service_id>", methods=["PATCH"])
+def update_service_operation(service_id: str):
+    """Update an existing service operation."""
+    # Step 1: Enforce authentication with role requirement
+    require_auth_role("Owner")  # Only owners can update services
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        return _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+
+    # Step 3: Validate request body
+    body = request.get_json(force=True, silent=True)
+    if not body:
+        return _error(HTTPStatus.BAD_REQUEST, "INVALID_JSON", "Request body must be valid JSON")
+
+    # Allowed fields for update (excluding id and timestamps)
+    allowed_fields = {}
+    if "name" in body:
+        allowed_fields["name"] = body["name"].strip()
+    if "category" in body:
+        allowed_fields["category"] = body["category"].strip()
+    if "subcategory" in body:
+        allowed_fields["subcategory"] = body["subcategory"].strip() or None
+    if "internal_code" in body:
+        allowed_fields["internal_code"] = body["internal_code"].strip() or None
+    if "skill_level" in body:
+        allowed_fields["skill_level"] = body["skill_level"]
+    if "default_hours" in body:
+        allowed_fields["default_hours"] = body["default_hours"]
+    if "base_labor_rate" in body:
+        allowed_fields["base_labor_rate"] = body["base_labor_rate"]
+    if "keywords" in body:
+        allowed_fields["keywords"] = body["keywords"]
+    if "flags" in body:
+        allowed_fields["flags"] = body["flags"]
+    if "display_order" in body:
+        allowed_fields["display_order"] = body["display_order"]
+    if "is_active" in body:
+        allowed_fields["is_active"] = body["is_active"]
+
+    if not allowed_fields:
+        return _error(HTTPStatus.BAD_REQUEST, "NO_UPDATES", "No valid fields provided for update")
+
+    # Validate skill_level if provided
+    if "skill_level" in allowed_fields and allowed_fields["skill_level"] is not None:
+        try:
+            level = int(allowed_fields["skill_level"])
+            if level < 1 or level > 5:
+                return _error(
+                    HTTPStatus.BAD_REQUEST,
+                    "INVALID_SKILL_LEVEL",
+                    "skill_level must be between 1 and 5",
+                )
+            allowed_fields["skill_level"] = level
+        except (ValueError, TypeError):
+            return _error(
+                HTTPStatus.BAD_REQUEST,
+                "INVALID_SKILL_LEVEL",
+                "skill_level must be an integer between 1 and 5",
+            )
+
+    # Validate numeric fields
+    for field in ["default_hours", "base_labor_rate", "display_order"]:
+        if field in allowed_fields and allowed_fields[field] is not None:
+            try:
+                allowed_fields[field] = float(allowed_fields[field])
+                if field == "display_order":
+                    allowed_fields[field] = int(allowed_fields[field])
+            except (ValueError, TypeError):
+                return _error(
+                    HTTPStatus.BAD_REQUEST, "INVALID_NUMERIC", f"{field} must be a valid number"
+                )
+
+    conn = db_conn()
+    if not conn:
+        return _error(
+            HTTPStatus.SERVICE_UNAVAILABLE, "DATABASE_UNAVAILABLE", "Database connection failed"
+        )
+
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                # Set tenant context
+                cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+
+                # Check if service exists
+                cur.execute("SELECT id FROM service_operations WHERE id = %s", (service_id,))
+                if not cur.fetchone():
+                    return _error(
+                        HTTPStatus.NOT_FOUND,
+                        "NOT_FOUND",
+                        f"Service operation with ID '{service_id}' not found",
+                    )
+
+                # Build UPDATE query
+                set_clauses = []
+                values = []
+                for field, value in allowed_fields.items():
+                    set_clauses.append(f"{field} = %s")
+                    values.append(value)
+
+                # Add updated_at
+                set_clauses.append("updated_at = now()")
+                values.append(service_id)  # For WHERE clause
+
+                update_sql = f"UPDATE service_operations SET {', '.join(set_clauses)} WHERE id = %s RETURNING *"
+                cur.execute(update_sql, values)
+                row = cur.fetchone()
+
+        # Format response using same coercion as GET endpoint
+        def _coerce_single(row):
+            return {
+                "id": row["id"],
+                "internal_code": row.get("internal_code"),
+                "name": row["name"],
+                "category": row["category"],
+                "subcategory": row.get("subcategory"),
+                "skill_level": row.get("skill_level"),
+                "default_hours": (
+                    float(row["default_hours"]) if row["default_hours"] is not None else None
+                ),
+                "base_labor_rate": (
+                    float(row["base_labor_rate"]) if row["base_labor_rate"] is not None else None
+                ),
+                "keywords": row.get("keywords"),
+                "is_active": row.get("is_active"),
+                "display_order": row.get("display_order"),
+                "flags": row.get("flags"),
+                "created_at": row["created_at"].isoformat() if row.get("created_at") else None,
+                "updated_at": row["updated_at"].isoformat() if row.get("updated_at") else None,
+            }
+
+        return jsonify(_coerce_single(row)), 200
+
+    except Exception as e:
+        return _error(
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "UPDATE_FAILED",
+            f"Failed to update service operation: {str(e)}",
+        )
+
+
+@app.route("/api/admin/service-operations/<service_id>", methods=["DELETE"])
+def delete_service_operation(service_id: str):
+    """Soft delete a service operation by setting is_active=false."""
+    # Step 1: Enforce authentication with role requirement
+    require_auth_role("Owner")  # Only owners can delete services
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        return _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+
+    conn = db_conn()
+    if not conn:
+        return _error(
+            HTTPStatus.SERVICE_UNAVAILABLE, "DATABASE_UNAVAILABLE", "Database connection failed"
+        )
+
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                # Set tenant context
+                cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+
+                # Check if service exists and is active
+                cur.execute(
+                    "SELECT id, is_active FROM service_operations WHERE id = %s", (service_id,)
+                )
+                row = cur.fetchone()
+                if not row:
+                    return _error(
+                        HTTPStatus.NOT_FOUND,
+                        "NOT_FOUND",
+                        f"Service operation with ID '{service_id}' not found",
+                    )
+
+                if not row["is_active"]:
+                    return _error(
+                        HTTPStatus.BAD_REQUEST,
+                        "ALREADY_DELETED",
+                        "Service operation is already inactive",
+                    )
+
+                # Soft delete by setting is_active=false
+                cur.execute(
+                    "UPDATE service_operations SET is_active = false, updated_at = now() WHERE id = %s",
+                    (service_id,),
+                )
+
+        return jsonify({"message": "Service operation deleted successfully", "id": service_id}), 200
+
+    except Exception as e:
+        return _error(
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "DELETE_FAILED",
+            f"Failed to delete service operation: {str(e)}",
+        )
+
+
+# ----------------------------------------------------------------------------
+# Packages listing (Phase 1) – specialized projection with price preview
+# ----------------------------------------------------------------------------
 
 
 # ----------------------------------------------------------------------------
@@ -6798,7 +7396,13 @@ def list_service_packages():
       * price_preview currently sums child base labor rates * qty. Future: incorporate pricing rules / overrides.
       * Provides weak ETag derived from package + child composition; 120s private cache.
     """
-    maybe_auth()
+    # Step 1: Enforce authentication with role requirement
+    require_auth_role("Advisor")
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        return _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+
     conn = db_conn()
     # Simple filters: ?q substring across package name/category; ?category exact; limit
     q = request.args.get("q", "").strip()
@@ -6842,6 +7446,9 @@ def list_service_packages():
     pkg_rows = []
     with conn:
         with conn.cursor() as cur:
+            # Step 3: Set tenant context for database operations
+            cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+
             cur.execute("\n".join(pkg_sql), params)
             pkg_rows = cur.fetchall()
 
@@ -7149,6 +7756,10 @@ def export_appointments_csv():
         return jsonify({"error_code": "RBAC_FORBIDDEN", "message": "Role not permitted"}), 403
     user_id = user.get("user_id") or user.get("sub") or "user"
 
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        return jsonify({"error_code": "MISSING_TENANT", "message": "Tenant context required"}), 400
+
     # Rate limiting
     try:
         rate_limit(f"csv_export_{user_id}", 5, 3600)
@@ -7224,6 +7835,9 @@ def export_appointments_csv():
 
     with conn:
         with conn.cursor() as cur:
+            # Step 3: Set tenant context for database operations
+            cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+
             cur.execute(final_sql, params)
             rows = cur.fetchall() or []
 
@@ -7288,6 +7902,11 @@ def export_payments_csv():
     if role not in ("Owner", "Advisor", "Accountant"):
         return jsonify({"error_code": "RBAC_FORBIDDEN", "message": "Role not permitted"}), 403
     user_id = user.get("user_id") or user.get("sub") or "user"
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        return jsonify({"error_code": "MISSING_TENANT", "message": "Tenant context required"}), 400
+
     try:
         rate_limit(f"csv_export_{user_id}", 5, 3600)
     except Exception:
@@ -7309,6 +7928,9 @@ def export_payments_csv():
     rows: list[Dict[str, Any]] = []
     with conn:
         with conn.cursor() as cur:
+            # Step 3: Set tenant context for database operations
+            cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+
             cur.execute(sql)
             rows = cur.fetchall() or []
 
@@ -7384,11 +8006,13 @@ def root():
 
 @app.route("/api/admin/dashboard/stats", methods=["GET"])
 def admin_dashboard_stats():
-    # Auth optional for now (UI-friendly)
-    try:
-        require_auth_role()
-    except Exception:
-        pass
+    # Step 1: Enforce authentication with role requirement
+    require_auth_role("Advisor")
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        resp, _ = _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+        return resp, 400
     use_memory = os.getenv("FALLBACK_TO_MEMORY", "false").lower() == "true"
     try:
         conn = db_conn()
@@ -7405,6 +8029,8 @@ def admin_dashboard_stats():
     if conn:
         with conn:
             with conn.cursor() as cur:
+                # Step 3: Set tenant context for database operations
+                cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
 
                 def qval(sql: str, params: list[Any]):
                     cur.execute(sql, params)
@@ -7519,11 +8145,13 @@ def admin_search_customers():
     Returns a vehicle-centric list so the license plate is the visible source of truth
     tying a customer to a car.
     """
-    try:
-        require_auth_role()
-    except Exception:
-        # Allow dev browsing
-        pass
+    # Step 1: Enforce authentication with role requirement
+    require_auth_role("Advisor")
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        resp, _ = _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+        return resp, 400
 
     q = (request.args.get("q") or "").strip()
     if not q:
@@ -7551,6 +8179,9 @@ def admin_search_customers():
     try:
         with conn:
             with conn.cursor() as cur:
+                # Step 3: Set tenant context for database operations
+                cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+
                 cur.execute(
                     f"""
                 WITH hits AS (
@@ -7670,10 +8301,13 @@ def admin_recent_customers():
     Includes: basic customer fields, aggregated vehicles (distinct by vehicle id), latest appointment metadata.
     Optional limit query parameter (default 8, max 25).
     """
-    try:
-        require_auth_role()
-    except Exception:
-        pass
+    # Step 1: Enforce authentication with role requirement
+    require_auth_role("Advisor")
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        resp, _ = _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+        return resp, 400
 
     try:
         limit = int(request.args.get("limit", 8))
@@ -7684,6 +8318,9 @@ def admin_recent_customers():
     conn = db_conn()
     with conn:
         with conn.cursor() as cur:
+            # Step 3: Set tenant context for database operations
+            cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+
             cur.execute(
                 """
                                 WITH latest AS (
@@ -7804,6 +8441,13 @@ def admin_customer_profile(cust_id: str):
     Query param include=appointmentDetails adds nested services/payments/messages
     for each appointment. Without it, appointments are a lightweight list.
     """
+    # Step 1: Enforce authentication with role requirement
+    require_auth_role("Advisor")
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        return _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+
     include_raw = request.args.get("include", "")
     include_tokens = (
         set([t.strip() for t in include_raw.split(",") if t.strip()]) if include_raw else set()
@@ -7857,6 +8501,9 @@ def admin_customer_profile(cust_id: str):
 
     with conn:
         with conn.cursor() as cur:
+            # Step 3: Set tenant context for database operations
+            cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+
             cur.execute(
                 """
                 SELECT id::text, COALESCE(NULLIF(TRIM(name), ''), 'Unknown Customer') AS name, phone, email, is_vip,
@@ -8134,16 +8781,17 @@ def unified_customer_profile(cust_id: str):
         # Customer profile legacy tests expect lowercase codes (e.g. 'bad_request','forbidden').
         return _error(status, code, message)
 
-    # Auth soft gate (mirror legacy profile behavior) but enforce RBAC.
-    auth_present = bool(request.headers.get("Authorization"))
-    if auth_present:
-        payload = require_auth_role()
-    else:
-        payload = {"role": "Advisor"}
-    role = payload.get("role")
+    # Step 1: Enforce authentication with role requirement
+    auth_payload = require_auth_role("Advisor")
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        return _err(HTTPStatus.BAD_REQUEST, "bad_request", "Tenant context required")
+
+    role = auth_payload.get("role")
     # Permit a Customer to access ONLY their own profile
     if role == "Customer":
-        if payload.get("sub") != cust_id:
+        if auth_payload.get("sub") != cust_id:
             return _err(HTTPStatus.FORBIDDEN, "forbidden", "insufficient_role")
     elif role not in ("Owner", "Advisor", "Accountant"):
         return _err(HTTPStatus.FORBIDDEN, "forbidden", "insufficient_role")
@@ -8228,6 +8876,9 @@ def unified_customer_profile(cust_id: str):
 
     with conn:
         with conn.cursor() as cur:
+            # Step 3: Set tenant context for database operations
+            cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+
             # Customer row - using exact same query as PATCH endpoint for ETag compatibility
             cur.execute(
                 "SELECT id, name, email, phone, is_vip, address, full_name, tags, notes, sms_consent, to_char(GREATEST(updated_at, created_at),'YYYY-MM-DD"
@@ -8498,14 +9149,20 @@ def _visits_rows_to_payload(rows):
 @app.route("/api/admin/customers/<cust_id>/visits", methods=["GET"])
 def admin_customer_visits(cust_id: str):
     """Return up to 200 recent appointments for a customer (all statuses)."""
-    try:
-        require_auth_role()
-    except Exception:
-        pass
+    # Step 1: Enforce authentication with role requirement
+    require_auth_role("Advisor")
+
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        resp, _ = _error(HTTPStatus.BAD_REQUEST, "MISSING_TENANT", "Tenant context required")
+        return resp, 400
 
     conn = db_conn()
     with conn:
         with conn.cursor() as cur:
+            # Step 3: Set tenant context for database operations
+            cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+
             cur.execute(
                 """
                 SELECT a.id::text,
