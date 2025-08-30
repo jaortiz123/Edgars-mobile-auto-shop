@@ -460,7 +460,6 @@ const AppointmentDrawer = React.memo(({ open, onClose, id, onRescheduled }: { op
           {tab === 'services' && <Services data={data} isAddingService={isAddingService} setIsAddingService={memoizedSetIsAddingService} working={working ? { servicesById: working.servicesById, serviceOrder: working.serviceOrder, addedTempIds: working.addedTempIds, deletedIds: working.deletedIds, modifiedIds: working.modifiedIds } : null} onWorkingChange={updateWorking} dirty={workingDirty} />}
           {tab === 'messages' && id && <MessageThread appointmentId={id} drawerOpen={open} />}
           {tab === 'history' && data?.customer?.id && (
-            (import.meta.env.DEV && console.log('[drawer] mounting CustomerHistory', { customerId: data.customer.id, tokenPresent: !!(localStorage.getItem('auth_token')||localStorage.getItem('token')) })) ||
             <CustomerHistory
               customerId={data.customer.id}
               onAppointmentClick={(appointmentId) => {

@@ -595,28 +595,7 @@ export function handleApiError(err: unknown, defaultMessage?: string): string {
 export async function login(username: string, password: string): Promise<{ token?: string; user?: unknown }> {
   const response = await http.post('/admin/login', { username, password });
   const payload = response.data as { token?: string; user?: unknown };
-  if (payload?.token) {
-    try {
-      localStorage.setItem('auth_token', payload.token);
-      if (import.meta.env.DEV) console.log('[auth] stored admin token');
-    } catch (e) {
-      console.warn('[auth] failed to store token', e);
-    }
-  } else if (import.meta.env.DEV) {
-    console.warn('[auth] login response missing token field – generating DEV fallback token');
-    // DEV ONLY fallback: fabricate short-lived JWT so protected endpoints work locally.
-    try {
-      // Minimal unsigned JWT (header.payload.) - backend expects signature, but we bypass only if DEV_ALLOW_UNAUTH_HISTORY; this mainly seeds interceptor.
-      const header = btoa(JSON.stringify({ alg: 'none', typ: 'JWT' }));
-      const exp = Math.floor(Date.now() / 1000) + 3600; // 1h
-      const body = btoa(JSON.stringify({ sub: username || 'admin', role: 'Advisor', exp }));
-      const fake = `${header}.${body}.`;
-      localStorage.setItem('auth_token', fake);
-      console.warn('[auth] placed DEV fake token in localStorage');
-    } catch (e) {
-      console.warn('[auth] failed to create dev token', e);
-    }
-  }
+  // Cookie-based auth flow: cookies are set by the server; no localStorage usage.
   return payload;
 }
 

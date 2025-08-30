@@ -133,10 +133,7 @@ export function mockAuthentication(role: string = 'Owner', userId: string = 'tes
 
   const mockToken = `${header}.${payload}.${signature}`;
 
-  // Set in localStorage (simulating login)
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('auth_token', mockToken);
-  }
+  // Cookie-based auth no longer uses localStorage; return token for tests that need a stub value
 
   return { token: mockToken, userId, role };
 }
@@ -145,9 +142,7 @@ export function mockAuthentication(role: string = 'Owner', userId: string = 'tes
  * Clears authentication state for tests.
  */
 export function clearAuthentication() {
-  if (typeof localStorage !== 'undefined') {
-    localStorage.removeItem('auth_token');
-  }
+  // Cookie-based auth: nothing to clear client-side in tests here
 }
 
 // Export commonly used testing utilities
