@@ -22,10 +22,12 @@ const Dashboard = lazy(() => import('./admin/Dashboard'));
 const About = lazy(() => import('./pages/About'));
 const ServiceAreas = lazy(() => import('./pages/ServiceAreas'));
 const EmergencyService = lazy(() => import('./pages/EmergencyService'));
-const AdminAppointments = lazy(() => import('./pages/AdminAppointments'));
+const AppointmentsPage = lazy(() => import('./pages/admin/AppointmentsPage'));
 const CustomersPage = lazy(() => import('./pages/admin/CustomersPage'));
 const CustomerProfilePage = lazy(() => import('./pages/admin/CustomerProfilePage'));
+const CustomerProfileFoundation = lazy(() => import('./pages/admin/CustomerProfileFoundation'));
 const VehicleProfilePage = lazy(() => import('./pages/admin/VehicleProfilePage'));
+const ServicesPage = lazy(() => import('./pages/admin/ServicesPage'));
 const MessageTemplatesPage = lazy(() => import('./pages/admin/MessageTemplatesPage'));
 const AnalyticsDashboardPage = lazy(() => import('./pages/admin/AnalyticsDashboardPage'));
 import OwnerRoute from './components/OwnerRoute';
@@ -74,12 +76,14 @@ export default function App() {
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
-              <Route path="appointments" element={<AdminAppointments />} />
-              <Route path="appointments/new" element={<AdminAppointments />} />
+              <Route path="appointments" element={<AppointmentsPage />} />
+              <Route path="appointments/new" element={<AppointmentsPage />} />
               <Route path="analytics" element={<OwnerRoute><AnalyticsDashboardPage /></OwnerRoute>} />
               <Route path="customers" element={<CustomersPage />} />
               <Route path="customers/:id" element={<CustomerProfilePage />} />
+              <Route path="customers/:id/profile-foundation" element={<CustomerProfileFoundation />} />
               <Route path="vehicles/:id" element={<VehicleProfilePage />} />
+              <Route path="services" element={<ServicesPage />} />
               <Route path="templates" element={<MessageTemplatesPage />} />
               <Route path="invoices" element={<InvoicesPage />} />
               <Route path="invoices/:id" element={<InvoiceDetailPage />} />

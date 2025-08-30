@@ -267,6 +267,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Tenant statistics view
+-- Drop existing view to avoid column rename conflicts
+DROP VIEW IF EXISTS tenant_stats CASCADE;
+
 CREATE OR REPLACE VIEW tenant_stats AS
 SELECT
     t.id,
@@ -309,7 +312,7 @@ BEGIN
     -- Create break-glass role if it doesn't exist
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'breakglass_admin') THEN
         CREATE ROLE breakglass_admin WITH LOGIN PASSWORD 'temp-emergency-password-change-immediately';
-        GRANT CONNECT ON DATABASE CURRENT_DATABASE TO breakglass_admin;
+        EXECUTE 'GRANT CONNECT ON DATABASE ' || current_database() || ' TO breakglass_admin';
         GRANT USAGE ON SCHEMA public TO breakglass_admin;
         GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO breakglass_admin;
         GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO breakglass_admin;

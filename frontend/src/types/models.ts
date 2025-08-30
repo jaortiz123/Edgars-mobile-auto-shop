@@ -11,6 +11,11 @@ export interface Appointment {
   status: AppointmentStatus;
   start?: string | null; // ISO
   end?: string | null;   // ISO
+  start_ts?: string | null; // ISO - canonical start time
+  end_ts?: string | null;   // ISO - canonical end time
+  customer_id?: string | null;
+  vehicle_id?: string | null;
+  title?: string | null;
   total_amount?: number | null;
   paid_amount?: number | null;
   notes?: string | null;
@@ -242,14 +247,36 @@ export interface Service {
   category?: string;
 }
 
-// Backend service_operations row (read-only Phase 1)
+// Backend service_operations row (enhanced for service management)
 export interface ServiceOperation {
   id: string;
   name: string;
-  category: string | null;
-  default_hours: number | null;
-  default_price: number | null;
-  keywords?: string[] | null;
+  category: string;
+  subcategory?: string | null;
+  internal_code?: string | null;
   skill_level?: number | null;
+  default_hours?: number | null;
+  base_labor_rate?: number | null;
+  keywords?: string[] | null;
   flags?: string[] | null;
+  is_active: boolean;
+  display_order?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+// Service operation create/update payload
+export interface ServiceOperationInput {
+  id?: string;
+  name: string;
+  category: string;
+  subcategory?: string;
+  internal_code?: string;
+  skill_level?: number;
+  default_hours?: number;
+  base_labor_rate?: number;
+  keywords?: string[];
+  flags?: string[];
+  display_order?: number;
+  is_active?: boolean;
 }

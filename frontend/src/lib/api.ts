@@ -3,16 +3,16 @@ import axios from 'axios';
 import type { TemplateAnalyticsResponse, FetchTemplateAnalyticsParams } from '../types/analytics';
 import type {
   Appointment, AppointmentService, AppointmentStatus,
-  BoardCard, BoardColumn, DashboardStats, DrawerPayload,
+  BoardCard, BoardColumn, Customer, DashboardStats, DrawerPayload,
   CarOnPremises, Message, MessageChannel, MessageStatus,
-  ServiceOperation, Technician
+  ServiceOperation, ServiceOperationInput, Technician, Vehicle
 } from '../types/models';
 
 // Re-export types for components
 export type {
   Appointment, AppointmentService, AppointmentStatus,
-  BoardCard, BoardColumn, DashboardStats, DrawerPayload,
-  Message, MessageChannel, MessageStatus
+  BoardCard, BoardColumn, Customer, DashboardStats, DrawerPayload,
+  Message, MessageChannel, MessageStatus, Vehicle
 } from '../types/models';
 export type { Technician } from '../types/models';
 export type { TemplateAnalyticsResponse } from '../types/analytics';
@@ -27,6 +27,40 @@ export async function getServiceOperations(): Promise<ServiceOperation[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const maybe = (data as any)?.service_operations;
   return Array.isArray(maybe) ? maybe : [];
+}
+
+// Service Management API Functions
+export async function createServiceOperation(service: ServiceOperationInput): Promise<ServiceOperation> {
+  const { data } = await http.post<ServiceOperation>('/admin/service-operations', service);
+  return data;
+}
+
+export async function updateServiceOperation(id: string, service: Partial<ServiceOperationInput>): Promise<ServiceOperation> {
+  const { data } = await http.patch<ServiceOperation>(`/admin/service-operations/${id}`, service);
+  return data;
+}
+
+export async function deleteServiceOperation(id: string): Promise<{ message: string; id: string }> {
+  const { data } = await http.delete<{ message: string; id: string }>(`/admin/service-operations/${id}`);
+  return data;
+}
+
+export async function searchServiceOperations(params: {
+  q?: string;
+  sort?: string;
+  dir?: 'asc' | 'desc';
+  limit?: number;
+  category?: string;
+}): Promise<ServiceOperation[]> {
+  const searchParams = new URLSearchParams();
+  if (params.q) searchParams.set('q', params.q);
+  if (params.sort) searchParams.set('sort', params.sort);
+  if (params.dir) searchParams.set('dir', params.dir);
+  if (params.limit) searchParams.set('limit', params.limit.toString());
+  if (params.category) searchParams.set('category', params.category);
+
+  const { data } = await http.get<ServiceOperation[]>(`/admin/service-operations?${searchParams}`);
+  return Array.isArray(data) ? data : [];
 }
 
 export async function getTechnicians(): Promise<Technician[]> {
@@ -874,6 +908,54 @@ export async function fetchRecentCustomers(limit = 8): Promise<RecentCustomerRec
     }));
   } catch (e) {
     if (import.meta.env.DEV) console.warn('[recent-customers] fetch failed', e);
+    return [];
+  }
+}
+
+// Get all customers for appointment dropdowns
+export async function getCustomers(): Promise<Customer[]> {
+  try {
+    // Use the search endpoint with empty query to get all customers
+    const { data } = await http.get('/admin/customers/search?limit=1000');
+    return (data?.customers || []).map((c: unknown) => ({
+      id: (c as { id?: string })?.id?.toString() || '',
+      name: (c as { name?: string })?.name || 'Unknown',
+      email: (c as { email?: string })?.email || null,
+      phone: (c as { phone?: string })?.phone || null
+    }));
+  } catch (error) {
+    console.error('Failed to fetch customers:', error);
+    return [];
+  }
+}
+
+// Get all vehicles for appointment dropdowns
+export async function getVehicles(): Promise<Vehicle[]> {
+  try {
+    // Use customer search to get vehicles (vehicles are nested in customer data)
+    const { data } = await http.get('/admin/customers/search?limit=1000&includeVehicles=true');
+    const vehicles: Vehicle[] = [];
+
+    if (data?.customers) {
+      for (const customer of data.customers) {
+        if (customer.vehicles) {
+          for (const vehicle of customer.vehicles) {
+            vehicles.push({
+              id: vehicle.id?.toString() || '',
+              year: vehicle.year || null,
+              make: vehicle.make || null,
+              model: vehicle.model || null,
+              vin: vehicle.vin || null,
+              license_plate: vehicle.license_plate || null
+            });
+          }
+        }
+      }
+    }
+
+    return vehicles;
+  } catch (error) {
+    console.error('Failed to fetch vehicles:', error);
     return [];
   }
 }
