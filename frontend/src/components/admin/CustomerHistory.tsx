@@ -28,9 +28,7 @@ export default function CustomerHistory({ customerId, onAppointmentClick }: Cust
       setError(null);
       setUnauthorized(false);
       if (import.meta.env.DEV) {
-        try {
-          console.log('[history][debug] fetchHistory start', { customerId, tokenPresent: !!(localStorage.getItem('auth_token') || localStorage.getItem('token')) });
-        } catch { /* ignore */ }
+        console.log('[history][debug] fetchHistory start', { customerId });
       }
       const data = await getCustomerHistory(customerId);
       setHistoryData(data);
@@ -45,9 +43,7 @@ export default function CustomerHistory({ customerId, onAppointmentClick }: Cust
     } finally {
       setLoading(false);
       if (import.meta.env.DEV) {
-        try {
-          console.log('[history][debug] fetchHistory end', { customerId, error, tokenPresent: !!(localStorage.getItem('auth_token') || localStorage.getItem('token')) });
-        } catch { /* ignore */ }
+        console.log('[history][debug] fetchHistory end', { customerId, error });
       }
     }
   };

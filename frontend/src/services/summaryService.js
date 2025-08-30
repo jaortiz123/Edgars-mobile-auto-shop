@@ -27,11 +27,7 @@ export async function getDailySummary(date = new Date()) {
     const dateStr = date instanceof Date ? date.toISOString().split('T')[0] : date;
 
     // Get dashboard stats which contain some of the data we need
-    const statsResponse = await fetch('/api/admin/dashboard/stats', {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-      }
-    });
+    const statsResponse = await fetch('/api/admin/dashboard/stats');
 
     if (!statsResponse.ok) {
       throw new Error(`Stats API failed: ${statsResponse.status}`);
@@ -40,11 +36,7 @@ export async function getDailySummary(date = new Date()) {
     const stats = await statsResponse.json();
 
     // Get appointments data for more detailed analysis
-    const appointmentsResponse = await fetch(`/api/admin/appointments?from=${dateStr}T00:00:00Z&to=${dateStr}T23:59:59Z&status=COMPLETED`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-      }
-    });
+    const appointmentsResponse = await fetch(`/api/admin/appointments?from=${dateStr}T00:00:00Z&to=${dateStr}T23:59:59Z&status=COMPLETED`);
 
     let completedAppointments = [];
     if (appointmentsResponse.ok) {
