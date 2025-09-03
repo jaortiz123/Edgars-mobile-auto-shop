@@ -37,7 +37,7 @@ resource "aws_security_group" "alb" {
 # Security group for ECS tasks (allow app port from ALB)
 resource "aws_security_group" "service" {
   name        = "${local.name_prefix}-svc-sg"
-  description = "Service SG allowing ALB→task traffic"
+  description = "Service SG allowing ALB to task traffic"
   vpc_id      = data.aws_vpc.default.id
 
   ingress {

@@ -14,7 +14,8 @@ Usage
 
    - cd infrastructure/staging
    - terraform init
-   - terraform apply -var="aws_region=us-east-1"
+   - terraform apply
+     # Optionally override: terraform apply -var="aws_region=us-west-2"
 
 2) Outputs to capture as GitHub repository secrets (Task 17.4):
 
