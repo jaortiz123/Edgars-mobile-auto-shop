@@ -9,7 +9,7 @@ import { vi } from 'vitest';
 export function createMocks() {
   // Local state per mock instance to avoid shared state issues
   let localMockCurrentTime = '2024-01-15T10:00:00Z';
-  let localMockNotifications: Array<{
+  const localMockNotifications: Array<{
     id: string;
     type: string;
     message: string;

@@ -39,7 +39,7 @@ describe('QuickAssignTech optimistic workflow (zustand store)', () => {
   });
 
   it('rolls back on failure', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     // Introduce a slight async delay before rejecting so we can observe the optimistic state
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(api as any).patchAppointment = vi.fn().mockImplementation(() => new Promise((_, reject) => {
