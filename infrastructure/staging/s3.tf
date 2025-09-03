@@ -42,6 +42,9 @@ data "aws_iam_policy_document" "public_read" {
 resource "aws_s3_bucket_policy" "frontend" {
   bucket = aws_s3_bucket.frontend.id
   policy = data.aws_iam_policy_document.public_read.json
+
+  # Ensure public access block configuration is applied before the policy
+  depends_on = [aws_s3_bucket_public_access_block.frontend]
 }
 
 output "s3_bucket_name" {
