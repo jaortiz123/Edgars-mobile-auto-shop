@@ -21,7 +21,7 @@ export function MetricsSummary({ metrics }: Props) {
         const raw = metrics[i.key];
         const display = i.format ? i.format(raw) : (raw ?? '—');
         return (
-          <div key={i.key} className="p-4 rounded border bg-white shadow-sm flex flex-col" data-testid={`metric-${i.key}`}>
+          <div key={String(i.key)} className="p-4 rounded border bg-white shadow-sm flex flex-col" data-testid={`metric-${String(i.key)}`}>
             <span className="text-xs uppercase tracking-wide text-gray-500 font-medium">{i.label}</span>
             <span className="text-lg font-semibold mt-1 break-words">{display}</span>
           </div>
