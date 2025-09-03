@@ -60,7 +60,7 @@ export const ReminderNotificationComponent = () => {
 
   React.useEffect(() => {
     sendNotification();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   return (
@@ -119,7 +119,7 @@ export const RunningLateNotificationComponent = () => {
 
   React.useEffect(() => {
     sendNotification();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   return (
@@ -184,7 +184,7 @@ export const RetryNotificationComponent = () => {
 
   React.useEffect(() => {
     sendNotification();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   return (

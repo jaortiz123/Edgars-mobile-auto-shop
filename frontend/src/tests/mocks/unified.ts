@@ -88,7 +88,7 @@ export interface UnifiedMockFactory {
 export function createUnifiedMocks(): UnifiedMockFactory {
   // Local state for isolated mock instances
   let localCurrentTime = new Date('2024-01-15T10:00:00Z').getTime();
-  let localNotifications: Array<{
+  const localNotifications: Array<{
     id: string;
     type: string;
     message: string;
