@@ -3554,7 +3554,7 @@ def generate_invoice(appt_id: str):
     except Exception:
         force_mem = False
     if force_mem or (not conn and use_memory) or (err and not conn):
-        global _MEM_INVOICES, _MEM_INVOICE_SEQ, _MEM_APPTS, _MEM_SERVICES  # type: ignore
+        global _MEM_INVOICES, _MEM_INVOICE_SEQ, _MEM_SERVICES  # type: ignore
         # In memory mode, accept the provided appointment id to unblock slim E2E flow
         try:
             _MEM_INVOICE_SEQ += 1  # type: ignore
