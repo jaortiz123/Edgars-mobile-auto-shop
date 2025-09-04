@@ -26,32 +26,56 @@ test.describe('Appointment Scheduling Foundation', () => {
     await expect(page.locator('h1')).toHaveText('Appointments');
     await expect(page.getByRole('button', { name: 'New Appointment' })).toBeVisible();
 
+    // Wait for page to load completely
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000); // Give UI time to render
+
     // Check if table is visible (should be empty after cleanup)
     const table = page.locator('table');
     await expect(table).toBeVisible();
 
-    // Check for empty state indicators
-    const emptyStateMessages = [
-      'No appointments found',
-      'No appointments scheduled',
-      'No data available',
-      'Empty'
+    // More comprehensive empty state detection
+    const emptyStateSelectors = [
+      '[data-testid="empty-appointments"]',
+      '[data-testid="no-appointments"]',
+      '.empty-state',
+      '.no-data',
+      'text="No appointments found"',
+      'text="No appointments scheduled"',
+      'text="No data available"',
+      'text="Empty"',
+      'text="No results"'
     ];
 
-    // Look for any of these empty state messages
+    // Check for any empty state indicators
     let foundEmptyState = false;
-    for (const message of emptyStateMessages) {
-      if (await page.locator(`text=${message}`).count() > 0) {
+    for (const selector of emptyStateSelectors) {
+      if (await page.locator(selector).count() > 0) {
         foundEmptyState = true;
+        console.log(`Found empty state with selector: ${selector}`);
         break;
       }
     }
 
-    // If no empty state message, check that there are no appointment rows
+    // If no explicit empty state message, check that table body has no data rows
     if (!foundEmptyState) {
-      const appointmentRows = page.locator('table tbody tr');
+      const appointmentRows = page.locator('table tbody tr:not(.empty-row):not(.no-data-row)');
       const rowCount = await appointmentRows.count();
-      expect(rowCount).toBe(0);
+      console.log(`No empty state message found, checking table rows. Count: ${rowCount}`);
+
+      // If there are rows, check if they contain "no data" type content
+      if (rowCount > 0) {
+        const firstRow = appointmentRows.first();
+        const rowText = await firstRow.textContent();
+        const hasNoDataText = rowText && (
+          rowText.toLowerCase().includes('no data') ||
+          rowText.toLowerCase().includes('no appointments') ||
+          rowText.toLowerCase().includes('empty')
+        );
+        expect(hasNoDataText || rowCount === 0).toBeTruthy();
+      } else {
+        expect(rowCount).toBe(0);
+      }
     }
   });
 

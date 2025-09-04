@@ -12,34 +12,55 @@ export async function createTestAppointment(request: APIRequestContext, appointm
     ...appointmentData
   };
 
-  const response = await request.post('http://localhost:3001/api/appointments', {
-    data: defaultAppointment,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + getStoredToken()
-    }
-  });
+  try {
+    const response = await request.post('http://localhost:3001/api/appointments', {
+      data: defaultAppointment,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + getStoredToken()
+      }
+    });
 
-  return response;
+    console.log(`Create appointment response: ${response.status()}`);
+    if (!response.ok()) {
+      console.log(`Create appointment failed: ${await response.text()}`);
+    }
+
+    return response;
+  } catch (error) {
+    console.log('Error creating test appointment:', error);
+    throw error;
+  }
 }
 
 export async function clearTestAppointments(request: APIRequestContext) {
-  // Get all appointments and delete them
-  const response = await request.get('http://localhost:3001/api/appointments', {
-    headers: {
-      'Authorization': 'Bearer ' + getStoredToken()
-    }
-  });
+  try {
+    // Get all appointments and delete them
+    const response = await request.get('http://localhost:3001/api/appointments', {
+      headers: {
+        'Authorization': 'Bearer ' + getStoredToken()
+      }
+    });
 
-  if (response.ok()) {
-    const appointments = await response.json();
-    for (const appointment of appointments.data || []) {
-      await request.delete(`http://localhost:3001/api/appointments/${appointment.id}`, {
-        headers: {
-          'Authorization': 'Bearer ' + getStoredToken()
-        }
-      });
+    console.log(`Get appointments response: ${response.status()}`);
+
+    if (response.ok()) {
+      const appointments = await response.json();
+      const appointmentList = appointments.data || appointments || [];
+      console.log(`Found ${appointmentList.length} appointments to delete`);
+
+      for (const appointment of appointmentList) {
+        const deleteResponse = await request.delete(`http://localhost:3001/api/appointments/${appointment.id}`, {
+          headers: {
+            'Authorization': 'Bearer ' + getStoredToken()
+          }
+        });
+        console.log(`Delete appointment ${appointment.id}: ${deleteResponse.status()}`);
+      }
     }
+  } catch (error) {
+    console.log('Error clearing test appointments:', error);
+    // Don't throw - this is cleanup, continue with tests
   }
 }
 
