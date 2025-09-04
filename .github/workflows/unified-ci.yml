@@ -178,6 +178,7 @@ jobs:
           FALLBACK_TO_MEMORY: "true"
           JWT_SECRET: test-secret
           LOG_LEVEL: WARNING
+          AWS_DEFAULT_REGION: us-west-2
         run: pytest -q --tb=short
 
       - name: Frontend deps
