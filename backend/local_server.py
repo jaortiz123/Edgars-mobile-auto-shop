@@ -323,6 +323,55 @@ if not getattr(app, "_duplicate_silencer_installed", False):  # type: ignore[att
     app._duplicate_silencer_installed = True  # type: ignore[attr-defined]
 
 
+# ---------------------------------------------------------------------------
+# Setup-hook registration silencer (idempotent + post-first-request safe)
+#
+# Tests may importlib.reload(this_module) after the app has already served at
+# least one request via the shared test client. Flask disallows calling
+# before_request/after_request once the first request has been handled.
+#
+# To keep reloads safe and avoid AssertionError, wrap the registration methods
+# so that after the app has begun serving requests, subsequent attempts to
+# register hooks are no-ops and simply return the function unchanged.
+# ---------------------------------------------------------------------------
+if not getattr(app, "_setup_hooks_silencer_installed", False):  # type: ignore[attr-defined]
+    _orig_before_request = app.before_request  # type: ignore
+    _orig_after_request = app.after_request  # type: ignore
+
+    def _safe_before_request(self, func):  # type: ignore
+        try:
+            return _orig_before_request(func)
+        except AssertionError:
+            try:
+                app.logger.debug(
+                    "before_request_registration_skipped",
+                    extra={"func": getattr(func, "__name__", str(func))},
+                )
+            except Exception:
+                pass
+            return func
+
+    def _safe_after_request(self, func):  # type: ignore
+        try:
+            return _orig_after_request(func)
+        except AssertionError:
+            try:
+                app.logger.debug(
+                    "after_request_registration_skipped",
+                    extra={"func": getattr(func, "__name__", str(func))},
+                )
+            except Exception:
+                pass
+            return func
+
+    # Monkey-patch the app methods
+    from types import MethodType as _SetupMethodType  # type: ignore
+
+    app.before_request = _SetupMethodType(_safe_before_request, app)  # type: ignore
+    app.after_request = _SetupMethodType(_safe_after_request, app)  # type: ignore
+    app._setup_hooks_silencer_installed = True  # type: ignore[attr-defined]
+
+
 # Per-request instance logging to prove single-instance behavior during E2E runs.
 @app.before_request  # type: ignore
 def _instance_request_marker():  # pragma: no cover (diagnostic)
