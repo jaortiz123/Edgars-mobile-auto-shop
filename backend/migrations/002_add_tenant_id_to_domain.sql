@@ -1,29 +1,42 @@
 -- 002_add_tenant_id_to_domain.sql
 BEGIN;
 
--- Add tenant_id (nullable during backfill)
-ALTER TABLE customers   ADD COLUMN IF NOT EXISTS tenant_id TEXT;
-ALTER TABLE vehicles    ADD COLUMN IF NOT EXISTS tenant_id TEXT;
-ALTER TABLE invoices    ADD COLUMN IF NOT EXISTS tenant_id TEXT;
-ALTER TABLE appointments ADD COLUMN IF NOT EXISTS tenant_id TEXT;
-ALTER TABLE invoice_line_items ADD COLUMN IF NOT EXISTS tenant_id TEXT;
+-- Add tenant_id (nullable during backfill). Use UUID to align with modern schema.
+ALTER TABLE customers            ADD COLUMN IF NOT EXISTS tenant_id UUID;
+ALTER TABLE vehicles             ADD COLUMN IF NOT EXISTS tenant_id UUID;
+ALTER TABLE invoices             ADD COLUMN IF NOT EXISTS tenant_id UUID;
+ALTER TABLE appointments         ADD COLUMN IF NOT EXISTS tenant_id UUID;
+ALTER TABLE invoice_line_items   ADD COLUMN IF NOT EXISTS tenant_id UUID;
 
--- Backfill strategy: map legacy data to a bootstrap tenant (e.g., 't_default')
-INSERT INTO tenants(id, name)
-  VALUES('t_default','Default Tenant')
-  ON CONFLICT (id) DO NOTHING;
-
-UPDATE customers   SET tenant_id = COALESCE(tenant_id, 't_default');
-UPDATE vehicles    SET tenant_id = COALESCE(tenant_id, 't_default');
-UPDATE invoices    SET tenant_id = COALESCE(tenant_id, 't_default');
-UPDATE appointments SET tenant_id = COALESCE(tenant_id, 't_default');
-UPDATE invoice_line_items SET tenant_id = COALESCE(tenant_id, 't_default');
+-- Backfill strategy: map legacy data to the default tenant (if present)
+DO $$
+DECLARE
+  default_tenant UUID;
+BEGIN
+  SELECT id INTO default_tenant FROM tenants WHERE slug = 'default' LIMIT 1;
+  IF default_tenant IS NULL THEN
+    SELECT id INTO default_tenant FROM tenants WHERE name ILIKE 'Edgar%Auto Shop%' LIMIT 1;
+  END IF;
+  IF default_tenant IS NULL THEN
+    -- fallback to canonical id used elsewhere if present
+    IF EXISTS (SELECT 1 FROM tenants WHERE id = '00000000-0000-0000-0000-000000000001'::uuid) THEN
+      default_tenant := '00000000-0000-0000-0000-000000000001'::uuid;
+    END IF;
+  END IF;
+  IF default_tenant IS NOT NULL THEN
+    UPDATE customers          SET tenant_id = COALESCE(tenant_id, default_tenant);
+    UPDATE vehicles           SET tenant_id = COALESCE(tenant_id, default_tenant);
+    UPDATE invoices           SET tenant_id = COALESCE(tenant_id, default_tenant);
+    UPDATE appointments       SET tenant_id = COALESCE(tenant_id, default_tenant);
+    UPDATE invoice_line_items SET tenant_id = COALESCE(tenant_id, default_tenant);
+  END IF;
+END $$;
 
 -- Enforce NOT NULL + FKs after backfill
-ALTER TABLE customers   ALTER COLUMN tenant_id SET NOT NULL;
-ALTER TABLE vehicles    ALTER COLUMN tenant_id SET NOT NULL;
-ALTER TABLE invoices    ALTER COLUMN tenant_id SET NOT NULL;
-ALTER TABLE appointments ALTER COLUMN tenant_id SET NOT NULL;
+ALTER TABLE customers          ALTER COLUMN tenant_id SET NOT NULL;
+ALTER TABLE vehicles           ALTER COLUMN tenant_id SET NOT NULL;
+ALTER TABLE invoices           ALTER COLUMN tenant_id SET NOT NULL;
+ALTER TABLE appointments       ALTER COLUMN tenant_id SET NOT NULL;
 ALTER TABLE invoice_line_items ALTER COLUMN tenant_id SET NOT NULL;
 
 -- Add FK constraints (using DO blocks for conditional execution)
