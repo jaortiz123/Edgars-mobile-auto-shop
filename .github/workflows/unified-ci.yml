@@ -217,6 +217,12 @@ jobs:
           sudo chmod +x /usr/local/bin/docker-compose
           docker-compose --version
 
+      - name: Create .env file for docker-compose
+        run: |
+          cp .env.ci .env
+          echo "Created .env file for CI:"
+          cat .env
+
       - name: Start services (docker-compose)
         run: docker-compose up -d --build
 
