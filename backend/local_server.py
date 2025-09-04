@@ -337,6 +337,7 @@ if not getattr(app, "_duplicate_silencer_installed", False):  # type: ignore[att
 if not getattr(app, "_setup_hooks_silencer_installed", False):  # type: ignore[attr-defined]
     _orig_before_request = app.before_request  # type: ignore
     _orig_after_request = app.after_request  # type: ignore
+    _orig_route = app.route  # type: ignore
 
     def _safe_before_request(self, func):  # type: ignore
         try:
@@ -369,6 +370,25 @@ if not getattr(app, "_setup_hooks_silencer_installed", False):  # type: ignore[a
 
     app.before_request = _SetupMethodType(_safe_before_request, app)  # type: ignore
     app.after_request = _SetupMethodType(_safe_after_request, app)  # type: ignore
+
+    def _safe_route(self, rule, **options):  # type: ignore
+        try:
+            return _orig_route(rule, **options)
+        except AssertionError:
+            # Return a no-op decorator if routes are being (re)registered after first request
+            def _noop_decorator(func):  # type: ignore
+                try:
+                    self.logger.debug(
+                        "route_registration_skipped",
+                        extra={"rule": rule, "options": list(options.keys())},
+                    )
+                except Exception:
+                    pass
+                return func
+
+            return _noop_decorator
+
+    app.route = _SetupMethodType(_safe_route, app)  # type: ignore
     app._setup_hooks_silencer_installed = True  # type: ignore[attr-defined]
 
 
