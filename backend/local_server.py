@@ -338,7 +338,7 @@ if not getattr(app, "_setup_hooks_silencer_installed", False):  # type: ignore[a
     _orig_before_request = app.before_request  # type: ignore
     _orig_after_request = app.after_request  # type: ignore
 
-    def _safe_before_request(func):  # type: ignore
+    def _safe_before_request(self, func):  # type: ignore
         try:
             return _orig_before_request(func)
         except AssertionError:
@@ -351,7 +351,7 @@ if not getattr(app, "_setup_hooks_silencer_installed", False):  # type: ignore[a
                 pass
             return func
 
-    def _safe_after_request(func):  # type: ignore
+    def _safe_after_request(self, func):  # type: ignore
         try:
             return _orig_after_request(func)
         except AssertionError:
