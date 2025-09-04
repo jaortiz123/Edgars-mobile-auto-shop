@@ -5,8 +5,8 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import CustomerHistory from '../components/admin/CustomerHistory';
 import * as api from '@/lib/api';
 
-// Get the mocked function from centralized setup
-const mockGetCustomerHistory = vi.mocked(api.getCustomerHistory);
+// Create a spy on the real api function so we can control responses per test
+const mockGetCustomerHistory = vi.spyOn(api, 'getCustomerHistory');
 
 describe('CustomerHistory', () => {
   const mockOnAppointmentClick = vi.fn();

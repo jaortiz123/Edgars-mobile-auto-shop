@@ -22,10 +22,8 @@ describe('QuickAssignTech optimistic workflow (zustand store)', () => {
   });
 
   it('applies optimistic update then confirms success path', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (api as any).patchAppointment = vi.fn().mockResolvedValue({ id: 'A1', updated_fields: ['tech_id'] });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  patchSpy = (api as any).patchAppointment;
+    const spy = vi.spyOn(api, 'patchAppointment').mockResolvedValue({ id: 'A1', updated_fields: ['tech_id'] } as unknown as { id: string; updated_fields?: string[] });
+    patchSpy = spy;
     // seed card
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   useBoardStore.getState().replaceBoard([], [{ id: 'A1', techAssigned: null, status: 'SCHEDULED', position: 0 } as any]);
@@ -41,12 +39,10 @@ describe('QuickAssignTech optimistic workflow (zustand store)', () => {
   it('rolls back on failure', async () => {
 
     // Introduce a slight async delay before rejecting so we can observe the optimistic state
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(api as any).patchAppointment = vi.fn().mockImplementation(() => new Promise((_, reject) => {
+    const spy = vi.spyOn(api, 'patchAppointment').mockImplementation(() => new Promise((_, reject) => {
       setTimeout(() => reject(new Error('network fail')), 15);
-    }));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  patchSpy = (api as any).patchAppointment;
+    }) as unknown as ReturnType<typeof api.patchAppointment>);
+    patchSpy = spy as unknown as typeof patchSpy;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   useBoardStore.getState().replaceBoard([], [{ id: 'A1', techAssigned: 'T0', status: 'SCHEDULED', position: 0 } as any]);
 

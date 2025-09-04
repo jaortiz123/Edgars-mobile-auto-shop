@@ -44,7 +44,8 @@ describe('TimelineRow invoice actions', () => {
     setup();
     await userEvent.click(screen.getByTestId('invoice-actions-btn'));
     await userEvent.click(screen.getByTestId('action-view-receipt'));
-    expect(openSpy).toHaveBeenCalledWith('/api/admin/invoices/inv-123/receipt.html', '_blank', 'noopener');
+  // Component builds relative path; window.open sees '/admin/...'
+  expect(openSpy).toHaveBeenCalledWith('/admin/invoices/inv-123/receipt.html', '_blank', 'noopener');
   // Menu auto-closes
   expect(screen.queryByTestId('invoice-actions-menu')).not.toBeInTheDocument();
   });
@@ -77,15 +78,19 @@ describe('TimelineRow invoice actions', () => {
   const toastMod = await import('@/lib/toast');
   (toastMod.toast as { success?: (m: string)=>void; error?: (m: string)=>void }).success = success;
   (toastMod.toast as { success?: (m: string)=>void; error?: (m: string)=>void }).error = error;
-    // Mock fetch for 202
-    global.fetch = vi.fn().mockResolvedValue({ status: 202 });
+  // Mock axios-like http.post to return 202
+  const { http } = await import('@/lib/api');
+  type AxiosLikeResponse = { status: number; data?: unknown };
+  const postSpy = vi.spyOn(http, 'post').mockResolvedValue({ status: 202 } as AxiosLikeResponse);
     setup();
   await userEvent.click(screen.getByTestId('invoice-actions-btn'));
   await userEvent.click(screen.getByTestId('action-email'));
     const input = screen.getByTestId('email-input');
   await userEvent.type(input, 'user@example.com');
   await userEvent.click(screen.getByTestId('send-email-btn'));
-    await waitFor(() => expect(success).toHaveBeenCalled());
+  await waitFor(() => expect(success).toHaveBeenCalled());
+  // Axios http has baseURL '/api', but the component passes path-only. The spy sees the path string.
+  expect(postSpy).toHaveBeenCalledWith('/admin/invoices/inv-123/send', expect.any(Object));
     expect(screen.queryByTestId('email-modal')).not.toBeInTheDocument();
   // Announcer removed since menu closed
   expect(screen.queryByTestId('invoice-actions-menu')).not.toBeInTheDocument();
@@ -97,7 +102,9 @@ describe('TimelineRow invoice actions', () => {
   const toastMod = await import('@/lib/toast');
   (toastMod.toast as { success?: (m: string)=>void; error?: (m: string)=>void }).success = success;
   (toastMod.toast as { success?: (m: string)=>void; error?: (m: string)=>void }).error = error;
-    global.fetch = vi.fn().mockResolvedValue({ status: 500 });
+  const { http } = await import('@/lib/api');
+  type AxiosLikeResponse = { status: number; data?: unknown };
+  vi.spyOn(http, 'post').mockResolvedValue({ status: 500 } as AxiosLikeResponse);
     setup();
     await userEvent.click(screen.getByTestId('invoice-actions-btn'));
     await userEvent.click(screen.getByTestId('action-email'));

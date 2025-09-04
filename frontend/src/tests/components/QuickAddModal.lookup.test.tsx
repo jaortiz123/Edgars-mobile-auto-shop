@@ -14,9 +14,13 @@ vi.mock('@/utils/shortcut', () => ({
   createOneClickAppointment: vi.fn().mockImplementation(d => d),
   saveLastAppointmentSettings: vi.fn().mockResolvedValue(undefined)
 }));
-vi.mock('@/lib/api', () => ({
-  checkConflict: vi.fn().mockResolvedValue({ conflict: false }),
-}));
+vi.mock('@/lib/api', async () => {
+  const actual = (await vi.importActual('@/lib/api')) as Record<string, unknown>;
+  return {
+    ...actual,
+    checkConflict: vi.fn().mockResolvedValue({ conflict: false }),
+  };
+});
 vi.mock('@/services/availabilityService', () => ({
   getAvailableSlots: vi.fn().mockResolvedValue([]),
   clearAvailabilityCache: vi.fn()
@@ -28,39 +32,11 @@ beforeEach(() => {
   user = setupUserEvent();
 });
 
-const mockFetchScenario = (scenario: 'single' | 'multi' | 'notfound' | 'error') => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (globalThis as any).fetch = vi.fn(async (url: string) => {
-    if (url.includes('/api/customers/lookup')) {
-      if (scenario === 'single') {
-        return new Response(JSON.stringify({
-          customer: { id: 'c1', name: 'Alice Auto', phone: '5305551111' },
-          vehicles: [{ id: 'v1', year: 2020, make: 'Honda', model: 'Civic', license_plate: 'AAA111' }]
-        }), { status: 200 });
-      } else if (scenario === 'multi') {
-        return new Response(JSON.stringify({
-          customer: { id: 'c2', name: 'Bob Fleet', phone: '5305552222' },
-          vehicles: [
-            { id: 'v2', year: 2019, make: 'Ford', model: 'F-150', license_plate: 'BBB222' },
-            { id: 'v3', year: 2021, make: 'Tesla', model: 'Model 3', license_plate: 'CCC333' }
-          ]
-        }), { status: 200 });
-      } else if (scenario === 'notfound') {
-        return new Response(JSON.stringify({ error: 'not found' }), { status: 404 });
-      } else if (scenario === 'error') {
-        return new Response('fail', { status: 500 });
-      }
-    }
-    if (url.includes('/api/admin/service-operations')) {
-      return new Response(JSON.stringify([]), { status: 200 });
-    }
-    return new Response('{}', { status: 200 });
-  });
-};
+// No more fetch mocking; MSW handlers in src/test/server/mswServer.ts provide scenarios
+// based on phone suffix: 1111 => single, 2222 => multi, 3333 => not found.
 
 describe('QuickAddModal customer lookup', () => {
   it('auto-populates name and single vehicle', async () => {
-    mockFetchScenario('single');
     render(<QuickAddModal isOpen onClose={() => {}} onSubmit={() => {}} />);
     const phoneInput = screen.getByTestId('customer-phone-input');
   await user.type(phoneInput, '5305551111');
@@ -80,7 +56,6 @@ describe('QuickAddModal customer lookup', () => {
   });
 
   it('switches to multi-vehicle selector', async () => {
-    mockFetchScenario('multi');
     render(<QuickAddModal isOpen onClose={() => {}} onSubmit={() => {}} />);
     const phoneInput = screen.getByTestId('customer-phone-input');
   await user.type(phoneInput, '5305552222');
@@ -91,7 +66,6 @@ describe('QuickAddModal customer lookup', () => {
   });
 
   it('shows not found indicator and clears auto fields', async () => {
-    mockFetchScenario('notfound');
     render(<QuickAddModal isOpen onClose={() => {}} onSubmit={() => {}} />);
     const phoneInput = screen.getByTestId('customer-phone-input');
   await user.type(phoneInput, '5305553333');
@@ -100,7 +74,6 @@ describe('QuickAddModal customer lookup', () => {
   });
 
   it('debounces and aborts stale lookups', async () => {
-    mockFetchScenario('single');
     render(<QuickAddModal isOpen onClose={() => {}} onSubmit={() => {}} />);
     const phoneInput = screen.getByTestId('customer-phone-input');
   await user.type(phoneInput, '5305551');
@@ -108,7 +81,5 @@ describe('QuickAddModal customer lookup', () => {
   await user.type(phoneInput, '5305551111');
   vi.runAllTimers();
   expect(await screen.findByTestId('lookup-success')).toBeInTheDocument();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  expect((globalThis as any).fetch).toHaveBeenCalled();
   });
 });

@@ -39,7 +39,7 @@ export function useOptimisticCustomerEdit(profileId: string) {
       if (input.patch.phone !== undefined) body.phone = input.patch.phone;
       if (input.patch.email !== undefined) body.email = input.patch.email;
       if (input.patch.address !== undefined) body.address = input.patch.address;
-      const res = await http.patch(`/admin/customers/${input.id}`, body, { headers: { ...(etag ? { 'If-Match': etag } : {}) } });
+  const res = await http.patch(`/admin/customers/${input.id}`, body, { headers: { ...(etag ? { 'If-Match': etag } : {}) }, validateStatus: (s) => (s >= 200 && s < 300) || s === 412 });
   if (res.status === 412) {
         // Fetch latest server version for diff (GET fresh)
         const latestRes = await http.get(`/admin/customers/${input.id}`);

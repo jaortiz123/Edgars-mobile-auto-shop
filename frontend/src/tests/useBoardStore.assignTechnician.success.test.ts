@@ -2,9 +2,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useBoardStore } from '@/state/useBoardStore';
 import type { BoardCard, BoardColumn } from '@/types/models';
 
-vi.mock('@/lib/api', () => ({
-  patchAppointment: vi.fn(async () => ({ ok: true })),
-}));
+vi.mock('@/lib/api', async () => {
+  const actual = await vi.importActual<Record<string, unknown>>('@/lib/api');
+  return {
+    ...actual,
+    patchAppointment: vi.fn(async () => ({ ok: true })),
+  };
+});
 
 describe('useBoardStore assignTechnician success', () => {
   beforeEach(() => {

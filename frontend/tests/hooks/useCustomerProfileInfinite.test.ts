@@ -1,9 +1,8 @@
-import { setupServer } from 'msw/node';
-import { http, HttpResponse } from 'msw';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useCustomerProfileInfinite } from '@/hooks/useCustomerProfileInfinite';
 import type { CustomerProfile } from '@/types/customerProfile';
+import { vi } from 'vitest';
 import React from 'react';
 
 function wrapper({ children }: { children: React.ReactNode }) {
@@ -29,17 +28,14 @@ const p2: CustomerProfile = {
   page: { page_size: 1, has_more: false, next_cursor: null }
 };
 
-const server = setupServer(
-  http.get('/api/admin/customers/c1/profile', ({ request }) => {
-    const url = new URL(request.url);
-    const cursor = url.searchParams.get('cursor');
-    return cursor ? HttpResponse.json(p2) : HttpResponse.json(p1);
-  })
-);
-
-beforeAll(() => server.listen());
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
+beforeEach(() => {
+  // mock fetch for two sequential pages
+  const fetchMock = vi
+    .fn()
+    .mockImplementationOnce(() => Promise.resolve(new Response(JSON.stringify(p1), { status: 200 })))
+    .mockImplementationOnce(() => Promise.resolve(new Response(JSON.stringify(p2), { status: 200 })));
+  Object.defineProperty(globalThis, 'fetch', { value: fetchMock, configurable: true });
+});
 
 it('paginates and appends without duplicates', async () => {
   const { result } = renderHook(() => useCustomerProfileInfinite('c1', { pageSize: 1 }), { wrapper });

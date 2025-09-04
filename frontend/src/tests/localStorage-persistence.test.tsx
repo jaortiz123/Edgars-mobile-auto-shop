@@ -9,7 +9,8 @@ import { ToastProvider } from '../components/ui/Toast';
 // NOTE: The original localStorage persistence for the add-service form was removed.
 // These tests were rewritten to validate the CURRENT behaviour (no persistence, simple add flow).
 // Mock API minimal responses required by AppointmentDrawer.
-vi.mock('@/lib/api', () => {
+vi.mock('@/lib/api', async () => {
+  const actual = (await vi.importActual('@/lib/api')) as Record<string, unknown>;
   const baseAppointment = {
     id: 'test-appointment-123',
     status: 'SCHEDULED',
@@ -24,6 +25,7 @@ vi.mock('@/lib/api', () => {
   const customer = { id: 'cust-123', name: 'Test Customer', phone: '555-1111', email: 'test@example.com', vehicles: [{ id: 'veh-123', year: 2020, make: 'Toyota', model: 'Camry', vin: 'TEST123456' }] };
   const vehicle = { id: 'veh-123', year: 2020, make: 'Toyota', model: 'Camry', vin: 'TEST123456' };
   return {
+    ...actual,
     getDrawer: vi.fn().mockResolvedValue({
       appointment: baseAppointment,
       customer,

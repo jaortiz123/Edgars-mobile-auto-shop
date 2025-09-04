@@ -239,10 +239,15 @@ describe('InvoiceDetailPage', () => {
         }
         return HttpResponse.json({ data: { invoice: { id: 'inv-paid', status: 'DRAFT', subtotal_cents: 10000, tax_cents:0, total_cents:10000, amount_paid_cents:0, amount_due_cents:10000 }, line_items: [], payments: [] } });
       }),
+    // Support both localhost variants; axios baseURL '/api' resolves to 3000 under jsdom
   http.post('http://localhost:3001/api/admin/invoices/:id/payments', () => {
         paid = true;
         return HttpResponse.json({ data: { invoice: { id: 'inv-paid', status: 'PAID', total_cents:10000, amount_paid_cents:10000, amount_due_cents:0, subtotal_cents:10000, tax_cents:0 }, payment: { id:'p1', amount_cents:10000, method:'CASH', created_at:new Date().toISOString() } } }, { status:201 });
-      })
+    }),
+  http.post('http://localhost:3000/api/admin/invoices/:id/payments', () => {
+    paid = true;
+    return HttpResponse.json({ data: { invoice: { id: 'inv-paid', status: 'PAID', total_cents:10000, amount_paid_cents:10000, amount_due_cents:0, subtotal_cents:10000, tax_cents:0 }, payment: { id:'p1', amount_cents:10000, method:'CASH', created_at:new Date().toISOString() } } }, { status:201 });
+    })
     );
     renderWithRouter('inv-paid');
   await screen.findAllByText('$100.00');
@@ -278,6 +283,10 @@ describe('InvoiceDetailPage', () => {
       http.post('http://localhost:3001/api/admin/invoices/:id/void', () => {
         voided = true;
         return HttpResponse.json({ data: { invoice: { id: 'inv-void', status: 'VOID', total_cents:10000, amount_paid_cents:0, amount_due_cents:10000, subtotal_cents:10000, tax_cents:0 } } }, { status:201 });
+      }),
+      http.post('http://localhost:3000/api/admin/invoices/:id/void', () => {
+        voided = true;
+        return HttpResponse.json({ data: { invoice: { id: 'inv-void', status: 'VOID', total_cents:10000, amount_paid_cents:0, amount_due_cents:10000, subtotal_cents:10000, tax_cents:0 } } }, { status:201 });
       })
     );
     renderWithRouter('inv-void');
@@ -299,7 +308,8 @@ describe('InvoiceDetailPage', () => {
       http.get('http://localhost:3001/api/admin/invoices/:id', voidErrHandler),
       http.get('http://localhost:3000/api/admin/invoices/:id', voidErrHandler),
       http.get('/api/admin/invoices/:id', voidErrHandler),
-      http.post('http://localhost:3001/api/admin/invoices/:id/void', () => HttpResponse.json({ error: 'CANNOT_VOID' }, { status:400 }))
+  http.post('http://localhost:3001/api/admin/invoices/:id/void', () => HttpResponse.json({ error: 'CANNOT_VOID' }, { status:400 })),
+  http.post('http://localhost:3000/api/admin/invoices/:id/void', () => HttpResponse.json({ error: 'CANNOT_VOID' }, { status:400 }))
     );
     renderWithRouter('inv-void-err');
     await screen.findAllByText('$100.00');

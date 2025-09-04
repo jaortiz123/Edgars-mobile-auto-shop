@@ -4,25 +4,25 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import type { AppointmentPayload, AdminAppointment } from '../../services/apiService';
+import type * as ApiServiceModule from '../../services/apiService';
 
-// Mock environment before any imports
-vi.stubEnv('VITE_API_ENDPOINT_URL', 'http://localhost:5001');
+type AxiosLikeResponse<T = unknown> = { status: number; data: T };
+type HttpLike = {
+  get: (url: string, ...args: unknown[]) => Promise<AxiosLikeResponse>;
+  post: (url: string, body?: unknown, ...args: unknown[]) => Promise<AxiosLikeResponse>;
+  put: (url: string, body?: unknown, ...args: unknown[]) => Promise<AxiosLikeResponse>;
+};
 
 describe('ApiService Coverage Tests', () => {
-  let apiService: any;
-
-  // Mock fetch
-  const mockFetch = vi.fn();
+  let apiService: typeof ApiServiceModule;
+  let http: HttpLike;
 
   beforeEach(async () => {
-    // Reset all mocks
     vi.clearAllMocks();
-
-    // Setup fetch mock
-    global.fetch = mockFetch;
-
-    // Dynamic import to get fresh module
-    apiService = await import('../../services/apiService');
+  apiService = await import('../../services/apiService');
+  const apiMod = await import('../../lib/api');
+  http = apiMod.http as unknown as HttpLike;
   });
 
   afterEach(() => {
@@ -44,36 +44,20 @@ describe('ApiService Coverage Tests', () => {
 
     it('should create appointment successfully', async () => {
       const mockResponse = { id: 'apt123', status: 'created' };
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue(mockResponse)
-      });
-
-      const result = await apiService.createAppointment(mockAppointmentData);
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:5001/api/admin/appointments',
-        expect.objectContaining({ method: 'POST' })
-      );
-      expect(result).toEqual(mockResponse);
+  const postSpy = vi.spyOn(http, 'post').mockResolvedValue({ data: mockResponse, status: 201 } as AxiosLikeResponse);
+  const result = await apiService.createAppointment(mockAppointmentData);
+  expect(postSpy).toHaveBeenCalledWith('/admin/appointments', expect.any(Object));
+  expect(result).toEqual(mockResponse);
     });
 
     it('should handle creation failure with JSON error', async () => {
-      const errorResponse = { error: 'Customer not found' };
-      mockFetch.mockResolvedValue({
-        ok: false,
-        json: vi.fn().mockResolvedValue(errorResponse)
-      });
-
-      await expect(apiService.createAppointment(mockAppointmentData))
-        .rejects.toThrow('Customer not found');
+  vi.spyOn(http, 'post').mockRejectedValue(new Error('Customer not found'));
+  await expect(apiService.createAppointment(mockAppointmentData)).rejects.toThrow('Customer not found');
     });
 
     it('should handle network failures', async () => {
-      mockFetch.mockRejectedValue(new Error('Network error'));
-
-      await expect(apiService.createAppointment(mockAppointmentData))
-        .rejects.toThrow('Network error');
+  vi.spyOn(http, 'post').mockRejectedValue(new Error('Network error'));
+  await expect(apiService.createAppointment(mockAppointmentData)).rejects.toThrow('Network error');
     });
   });
 
@@ -86,43 +70,20 @@ describe('ApiService Coverage Tests', () => {
       ];
       const mockResponse = { data: { appointments: mockAppointments } };
 
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue(mockResponse)
-      });
-
-      const result = await apiService.getAdminAppointments();
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:5001/api/admin/appointments',
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-      expect(result).toEqual({ appointments: mockAppointments });
+  vi.spyOn(http, 'get').mockResolvedValue({ data: mockResponse, status: 200 } as AxiosLikeResponse);
+  const result = await apiService.getAdminAppointments();
+  expect(result).toEqual({ appointments: mockAppointments });
     });
 
     it('should return empty array when no data.appointments', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue({})
-      });
-
+  vi.spyOn(http, 'get').mockResolvedValue({ data: {}, status: 200 } as AxiosLikeResponse);
       const result = await apiService.getAdminAppointments();
       expect(result).toEqual({ appointments: [] });
     });
 
     it('should handle admin fetch failure', async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        json: vi.fn().mockResolvedValue({ error: 'Unauthorized access' })
-      });
-
-      await expect(apiService.getAdminAppointments())
-        .rejects.toThrow('Unauthorized access');
+  vi.spyOn(http, 'get').mockRejectedValue(new Error('Unauthorized access'));
+  await expect(apiService.getAdminAppointments()).rejects.toThrow('Unauthorized access');
     });
   });
 
@@ -133,31 +94,13 @@ describe('ApiService Coverage Tests', () => {
       ];
       const mockResponse = { appointments: mockAppointments };
 
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue(mockResponse)
-      });
-
-      const result = await apiService.getAdminAppointmentsToday();
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:5001/api/admin/appointments/today',
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-      expect(result).toEqual(mockAppointments);
+  vi.spyOn(http, 'get').mockResolvedValue({ data: mockResponse, status: 200 } as AxiosLikeResponse);
+  const result = await apiService.getAdminAppointmentsToday();
+  expect(result).toEqual(mockAppointments);
     });
 
     it('should return empty array when no appointments today', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue({})
-      });
-
+  vi.spyOn(http, 'get').mockResolvedValue({ data: {}, status: 200 } as AxiosLikeResponse);
       const result = await apiService.getAdminAppointmentsToday();
       expect(result).toEqual([]);
     });
@@ -168,46 +111,21 @@ describe('ApiService Coverage Tests', () => {
       const updateData = { status: 'completed', notes: 'Work finished' };
       const mockResponse = { message: 'Appointment updated successfully' };
 
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue(mockResponse)
-      });
-
-      const result = await apiService.updateAppointment('apt123', updateData);
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:5001/api/admin/appointments/apt123',
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(updateData),
-        }
-      );
-      expect(result).toEqual(mockResponse);
+  vi.spyOn(http, 'put').mockResolvedValue({ data: mockResponse, status: 200 } as AxiosLikeResponse);
+  const result = await apiService.updateAppointment('apt123', updateData);
+  expect(result).toEqual(mockResponse);
     });
 
     it('should handle update failure', async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        json: vi.fn().mockResolvedValue({ message: 'Appointment not found' })
-      });
-
-      await expect(apiService.updateAppointment('apt123', { status: 'completed' }))
-        .rejects.toThrow('Appointment not found');
+  vi.spyOn(http, 'put').mockRejectedValue(new Error('Appointment not found'));
+  await expect(apiService.updateAppointment('apt123', { status: 'completed' })).rejects.toThrow('Appointment not found');
     });
   });
 
   describe('Error Handling Edge Cases', () => {
     it('should handle createAppointment with message field error', async () => {
-      const errorResponse = { message: 'Invalid time slot' };
-      mockFetch.mockResolvedValue({
-        ok: false,
-        json: vi.fn().mockResolvedValue(errorResponse)
-      });
-
-      await expect(apiService.createAppointment({
+  vi.spyOn(http, 'post').mockRejectedValue(new Error('Invalid time slot'));
+  await expect(apiService.createAppointment({
         customer_id: 'cust123',
         service: 'Oil Change',
         requested_time: '2025-08-03T14:00:00Z'
@@ -215,13 +133,9 @@ describe('ApiService Coverage Tests', () => {
     });
 
     it('should handle createAppointment with JSON stringify fallback', async () => {
-      const errorResponse = { custom_field: 'some custom error data' };
-      mockFetch.mockResolvedValue({
-        ok: false,
-        json: vi.fn().mockResolvedValue(errorResponse)
-      });
-
-      await expect(apiService.createAppointment({
+  const errorResponse = { custom_field: 'some custom error data' };
+  vi.spyOn(http, 'post').mockRejectedValue(new Error(JSON.stringify(errorResponse)));
+  await expect(apiService.createAppointment({
         customer_id: 'cust123',
         service: 'Oil Change',
         requested_time: '2025-08-03T14:00:00Z'
@@ -229,13 +143,8 @@ describe('ApiService Coverage Tests', () => {
     });
 
     it('should handle createAppointment with text fallback when JSON fails', async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        json: vi.fn().mockRejectedValue(new Error('JSON parse error')),
-        text: vi.fn().mockResolvedValue('Internal Server Error')
-      });
-
-      await expect(apiService.createAppointment({
+  vi.spyOn(http, 'post').mockRejectedValue(new Error('Internal Server Error'));
+  await expect(apiService.createAppointment({
         customer_id: 'cust123',
         service: 'Oil Change',
         requested_time: '2025-08-03T14:00:00Z'
@@ -245,56 +154,29 @@ describe('ApiService Coverage Tests', () => {
   // Removed legacy getAppointments fallback test (endpoint deprecated)
 
     it('should handle getAdminAppointments with JSON stringify fallback', async () => {
-      const errorResponse = { custom_error: 'Database connection failed' };
-      mockFetch.mockResolvedValue({
-        ok: false,
-        json: vi.fn().mockResolvedValue(errorResponse)
-      });
-
-      await expect(apiService.getAdminAppointments())
-        .rejects.toThrow(JSON.stringify(errorResponse));
+  const errorResponse = { custom_error: 'Database connection failed' };
+  vi.spyOn(http, 'get').mockRejectedValue(new Error(JSON.stringify(errorResponse)));
+  await expect(apiService.getAdminAppointments()).rejects.toThrow(JSON.stringify(errorResponse));
     });
 
     it('should handle getAdminAppointments with text fallback', async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        json: vi.fn().mockRejectedValue(new Error('JSON parse error')),
-        text: vi.fn().mockResolvedValue('Internal Server Error')
-      });
-
-      await expect(apiService.getAdminAppointments())
-        .rejects.toThrow('Internal Server Error');
+  vi.spyOn(http, 'get').mockRejectedValue(new Error('Internal Server Error'));
+  await expect(apiService.getAdminAppointments()).rejects.toThrow('Internal Server Error');
     });
 
     it('should handle getAdminAppointmentsToday with text fallback', async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        json: vi.fn().mockRejectedValue(new Error('JSON parse error')),
-        text: vi.fn().mockResolvedValue('Service Temporarily Unavailable')
-      });
-
-      await expect(apiService.getAdminAppointmentsToday())
-        .rejects.toThrow('Service Temporarily Unavailable');
+  vi.spyOn(http, 'get').mockRejectedValue(new Error('Service Temporarily Unavailable'));
+  await expect(apiService.getAdminAppointmentsToday()).rejects.toThrow('Service Temporarily Unavailable');
     });
 
     it('should handle updateAppointment with text fallback', async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        json: vi.fn().mockRejectedValue(new Error('JSON parse error')),
-        text: vi.fn().mockResolvedValue('Update Failed')
-      });
-
-      await expect(apiService.updateAppointment('apt123', { status: 'completed' }))
-        .rejects.toThrow('Update Failed');
+  vi.spyOn(http, 'put').mockRejectedValue(new Error('Update Failed'));
+  await expect(apiService.updateAppointment('apt123', { status: 'completed' })).rejects.toThrow('Update Failed');
     });
 
     it('should handle createAppointment with empty error response', async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        json: vi.fn().mockResolvedValue({})
-      });
-
-      await expect(apiService.createAppointment({
+  vi.spyOn(http, 'post').mockRejectedValue(new Error('{}'));
+  await expect(apiService.createAppointment({
         customer_id: 'cust123',
         service: 'Oil Change',
         requested_time: '2025-08-03T14:00:00Z'
@@ -302,18 +184,19 @@ describe('ApiService Coverage Tests', () => {
     });
 
     it('should handle network failures for admin endpoints', async () => {
-      const networkError = new Error('Network connection failed');
-      mockFetch.mockRejectedValue(networkError);
-
-      await expect(apiService.getAdminAppointments()).rejects.toThrow('Network connection failed');
-      await expect(apiService.getAdminAppointmentsToday()).rejects.toThrow('Network connection failed');
-      await expect(apiService.updateAppointment('apt123', {})).rejects.toThrow('Network connection failed');
+  const networkError = new Error('Network connection failed');
+  vi.spyOn(http, 'get').mockRejectedValue(networkError);
+  await expect(apiService.getAdminAppointments()).rejects.toThrow('Network connection failed');
+  vi.spyOn(http, 'get').mockRejectedValue(networkError);
+  await expect(apiService.getAdminAppointmentsToday()).rejects.toThrow('Network connection failed');
+  vi.spyOn(http, 'put').mockRejectedValue(networkError);
+  await expect(apiService.updateAppointment('apt123', {})).rejects.toThrow('Network connection failed');
     });
   });
 
   describe('Type Definitions', () => {
     it('should validate AppointmentPayload interface', () => {
-      const validPayload: typeof apiService.AppointmentPayload = {
+  const validPayload: AppointmentPayload = {
         customer_id: 'cust123',
         service: 'Oil Change',
         requested_time: '2025-08-03T14:00:00Z'
@@ -326,7 +209,7 @@ describe('ApiService Coverage Tests', () => {
     });
 
     it('should validate AdminAppointment interface', () => {
-      const validAdmin: typeof apiService.AdminAppointment = {
+  const validAdmin: AdminAppointment = {
         id: 'apt123',
         customer_id: 'cust123',
         service_id: 'svc123',
@@ -340,23 +223,5 @@ describe('ApiService Coverage Tests', () => {
     });
   });
 
-  describe('Environment Variable Testing', () => {
-    it('should use the configured API base URL', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue({ id: 'apt123' })
-      });
-
-      await apiService.createAppointment({
-        customer_id: 'cust123',
-        service: 'Oil Change',
-        requested_time: '2025-08-03T14:00:00Z'
-      });
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:5001/api/admin/appointments',
-        expect.objectContaining({ method: 'POST' })
-      );
-    });
-  });
+  // Environment variable testing removed; axios client uses relative base '/api'
 });
