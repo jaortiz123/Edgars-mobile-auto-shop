@@ -27,6 +27,7 @@ import itertools
 import operator
 import sys
 import types
+import io as _io
 
 __author__ = "Benjamin Peterson <benjamin@python.org>"
 __version__ = "1.17.0"
@@ -36,6 +37,24 @@ __version__ = "1.17.0"
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 PY34 = sys.version_info[0:2] >= (3, 4)
+
+# Python 3 compatibility aliases to satisfy static analysis
+try:
+    basestring
+except NameError:
+    basestring = str  # type: ignore
+try:
+    unicode
+except NameError:
+    unicode = str  # type: ignore
+try:
+    long
+except NameError:
+    long = int  # type: ignore
+try:
+    file
+except NameError:
+    file = _io.TextIOBase  # type: ignore
 
 if PY3:
     string_types = (str,)
