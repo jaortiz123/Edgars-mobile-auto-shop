@@ -1,7 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { clearTestAppointments } from './utils/test-data';
 
 test.describe('Appointment Scheduling Foundation', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, request }) => {
+    // Clear any existing test appointments for a clean state
+    await clearTestAppointments(request);
+
     // Navigate to admin login page
     await page.goto('/admin/login');
 
@@ -22,9 +26,33 @@ test.describe('Appointment Scheduling Foundation', () => {
     await expect(page.locator('h1')).toHaveText('Appointments');
     await expect(page.getByRole('button', { name: 'New Appointment' })).toBeVisible();
 
-    // Check if table is visible (may have data or be empty)
+    // Check if table is visible (should be empty after cleanup)
     const table = page.locator('table');
     await expect(table).toBeVisible();
+
+    // Check for empty state indicators
+    const emptyStateMessages = [
+      'No appointments found',
+      'No appointments scheduled',
+      'No data available',
+      'Empty'
+    ];
+
+    // Look for any of these empty state messages
+    let foundEmptyState = false;
+    for (const message of emptyStateMessages) {
+      if (await page.locator(`text=${message}`).count() > 0) {
+        foundEmptyState = true;
+        break;
+      }
+    }
+
+    // If no empty state message, check that there are no appointment rows
+    if (!foundEmptyState) {
+      const appointmentRows = page.locator('table tbody tr');
+      const rowCount = await appointmentRows.count();
+      expect(rowCount).toBe(0);
+    }
   });
 
   test('Create New Appointment - Full CRUD Lifecycle', async ({ page }) => {

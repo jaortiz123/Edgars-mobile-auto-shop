@@ -1,6 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 import { stubCustomerProfile } from './utils/stubAuthProfile';
 import { waitForBoardReady } from './utils/waitForBoardReady';
+import { createTestAppointment } from './utils/test-data';
 
 // Assumptions:
 // - Backend test DB seeded with at least one appointment in SCHEDULED and a target column (e.g., IN_PROGRESS) exists.
@@ -31,19 +32,27 @@ test.describe('Board drag-and-drop optimistic move', () => {
       test.skip(true, 'Skip DnD test on mobile viewport (drag not supported)');
     }
   });
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, request }) => {
     await stubCustomerProfile(page);
-  // Use full board to include react-dnd provider (force full=1 param)
-  await page.goto('/e2e/board?full=1');
+
+    // Create a test appointment to ensure the board has data
+    await createTestAppointment(request, {
+      status: 'scheduled'
+    });
+
+    // Use full board to include react-dnd provider (force full=1 param)
+    await page.goto('/e2e/board?full=1');
     await waitForBoardReady(page);
   });
 
   test('success: card moves immediately then persists via network call', async ({ page }) => {
     // Capture initial card + source column
-  const sourceColumn = page.locator('.nb-board-grid .nb-column').first();
-  const card = await waitForBoardReady(page, { timeout: 20000 });
-  let cardId = await card.getAttribute('data-appointment-id');
-  console.log('DEBUG picked card id', cardId);
+    const sourceColumn = page.locator('.nb-board-grid .nb-column').first();
+    const card = await waitForBoardReady(page, { timeout: 20000 });
+    expect(card).toBeTruthy();
+
+    let cardId = await card!.getAttribute('data-appointment-id');
+    console.log('DEBUG picked card id', cardId);
     expect(cardId).toBeTruthy();
     // Determine actual source column index of this card
     const actualIndex = await getColumnIndexForCard(page, cardId!);
