@@ -8,16 +8,18 @@ export async function createTestAppointment(request: APIRequestContext, appointm
     service_type: 'Oil Change',
     appointment_date: new Date().toISOString().split('T')[0],
     appointment_time: '10:00',
-    status: 'scheduled',
+    status: 'SCHEDULED',
     ...appointmentData
   };
 
   try {
-    const response = await request.post('http://localhost:3001/api/appointments', {
-      data: defaultAppointment,
+    // Backend exposes create via admin endpoint
+    const response = await request.post('http://localhost:3001/api/admin/appointments', {
+      data: normalizeCreatePayload(defaultAppointment),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + getStoredToken()
+        'Authorization': 'Bearer ' + getStoredToken(),
+        ...getTenantHeader()
       }
     });
 
@@ -36,26 +38,30 @@ export async function createTestAppointment(request: APIRequestContext, appointm
 export async function clearTestAppointments(request: APIRequestContext) {
   try {
     // Get all appointments and delete them
-    const response = await request.get('http://localhost:3001/api/appointments', {
+    const response = await request.get('http://localhost:3001/api/admin/appointments', {
       headers: {
-        'Authorization': 'Bearer ' + getStoredToken()
+        'Authorization': 'Bearer ' + getStoredToken(),
+        ...getTenantHeader()
       }
     });
 
     console.log(`Get appointments response: ${response.status()}`);
 
     if (response.ok()) {
-      const appointments = await response.json();
-      const appointmentList = appointments.data || appointments || [];
-      console.log(`Found ${appointmentList.length} appointments to delete`);
+      const payload = await response.json();
+      const appointmentList = payload?.data?.appointments || payload?.appointments || payload || [];
+      console.log(`Found ${appointmentList.length || 0} appointments to delete`);
 
       for (const appointment of appointmentList) {
-        const deleteResponse = await request.delete(`http://localhost:3001/api/appointments/${appointment.id}`, {
+        const apptId = appointment.id || appointment?.appointment?.id;
+        if (!apptId) continue;
+        const deleteResponse = await request.delete(`http://localhost:3001/api/admin/appointments/${apptId}`, {
           headers: {
-            'Authorization': 'Bearer ' + getStoredToken()
+            'Authorization': 'Bearer ' + getStoredToken(),
+            ...getTenantHeader()
           }
         });
-        console.log(`Delete appointment ${appointment.id}: ${deleteResponse.status()}`);
+        console.log(`Delete appointment ${apptId}: ${deleteResponse.status()}`);
       }
     }
   } catch (error) {
@@ -77,4 +83,28 @@ function getStoredToken(): string {
   } catch {
     return '';
   }
+}
+
+function getTenantHeader(): Record<string, string> {
+  // Prefer explicit env; else use default stable test tenant UUID (backend accepts either UUID or slug)
+  const tenantId = process.env.E2E_TENANT_ID || '11111111-1111-1111-1111-111111111111';
+  return { 'X-Tenant-Id': tenantId };
+}
+
+function normalizeCreatePayload(data: any): any {
+  // Map generic fields to backend expectations
+  const nowIso = new Date().toISOString();
+  return {
+    status: data.status || 'SCHEDULED',
+    // Backend accepts 'start' or 'requested_time'
+    start: data.start || data.requested_time || nowIso,
+    customer_name: data.customer_name,
+    customer_email: data.customer_email,
+    customer_phone: data.customer_phone,
+    license_plate: data.license_plate,
+    vehicle_year: data.vehicle_year,
+    vehicle_make: data.vehicle_make,
+    vehicle_model: data.vehicle_model,
+    notes: data.notes || 'E2E seeded'
+  };
 }
