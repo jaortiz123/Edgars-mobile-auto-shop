@@ -230,6 +230,10 @@ jobs:
           cp .env.ci .env
           echo "Created .env file for CI:"
           cat .env
+          echo "Environment variables for docker-compose:"
+          echo "POSTGRES_USER: ${POSTGRES_USER:-not_set}"
+          echo "POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-not_set}"
+          echo "POSTGRES_DB: ${POSTGRES_DB:-not_set}"
 
       - name: Debug frontend dependencies
         run: |
@@ -242,7 +246,22 @@ jobs:
           ls -la frontend/ | grep -E "(package|Dockerfile)"
 
       - name: Start services (docker-compose)
-        run: docker-compose up -d --build
+        run: |
+          # Ensure environment variables are exported for docker-compose
+          export $(cat .env | grep -v '^#' | xargs)
+          echo "Starting docker-compose with env vars:"
+          echo "POSTGRES_USER=$POSTGRES_USER"
+          echo "POSTGRES_DB=$POSTGRES_DB"
+          docker-compose up -d --build
+
+      - name: Debug database connection
+        run: |
+          echo "Checking database container status:"
+          docker-compose ps
+          echo "Database container logs:"
+          docker-compose logs db | tail -20
+          echo "Backend container logs:"
+          docker-compose logs backend | tail -20
 
       - name: Wait for backend health
         run: |
