@@ -5,6 +5,7 @@
  * preventing circular dependencies and undefined mock issues.
  *
  * All vi.mock() calls should use the outputs from this factory.
+ * Updated: Testing CI after @vitejs/plugin-react dependency fix
  */
 
 import { vi } from 'vitest';
