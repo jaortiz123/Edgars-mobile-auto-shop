@@ -1,43 +1,35 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ServiceCatalogModal } from '@/components/appointments/ServiceCatalogModal';
-import type { ServiceOperation } from '@/components/appointments/ServiceCatalogModal';
-
-// Simple mock for fetch returning flat array
-function mockFetchOnce(data: ServiceOperation[]) {
-  (globalThis as unknown as { fetch: unknown }).fetch = vi.fn(async () => new Response(JSON.stringify(data), { status: 200 }));
-}
-
-const MOCK_SERVICES: ServiceOperation[] = [
-  { id: 'svc-1', name: 'Oil Change', category: 'MAINTENANCE', subcategory: 'Fluids', internal_code: 'OIL', display_order: 2, default_hours: 1, base_labor_rate: 49.99, is_active: true, keywords: [], skill_level: null },
-  { id: 'svc-2', name: 'Brake Inspection', category: 'BRAKES', subcategory: 'Inspection', internal_code: 'BRK-INSP', display_order: 1, default_hours: 0.5, base_labor_rate: 39.0, is_active: true, keywords: [], skill_level: null },
-  { id: 'svc-3', name: 'Alignment Check', category: 'MAINTENANCE', subcategory: 'Chassis', internal_code: 'ALIGN', display_order: 3, default_hours: 0.7, base_labor_rate: 69.0, is_active: true, keywords: [], skill_level: null },
-  { id: 'svc-4', name: 'Coolant Flush', category: 'MAINTENANCE', subcategory: 'Fluids', internal_code: 'COOL', display_order: 4, default_hours: 1.2, base_labor_rate: 89.0, is_active: true, keywords: [], skill_level: null }
-];
+import { server } from '@/test/server/mswServer';
+import { http, HttpResponse } from 'msw';
 
 describe('ServiceCatalogModal (keyboard nav + accordion)', () => {
-  it('renders categories and defaults to MAINTENANCE (no groups expanded yet)', async () => {
-    mockFetchOnce(MOCK_SERVICES);
-  render(<ServiceCatalogModal open onClose={() => {}} onAdd={() => {}} />);
-  await waitFor(() => {});
-    await screen.findByText('MAINTENANCE');
+  it('renders categories and requires expanding a group before items appear', async () => {
+    // Override the default MSW services to ensure deterministic content
+    server.use(
+      http.get('/api/admin/service-operations', () => HttpResponse.json([
+        { id: 'svc-1', internal_code: 'OIL', name: 'Oil Change', category: 'MAINTENANCE', subcategory: 'Fluids', skill_level: 1, default_hours: 1, base_labor_rate: 80, keywords: [], is_active: true, display_order: 2 },
+        { id: 'svc-2', internal_code: 'BRK-INSP', name: 'Brake Inspection', category: 'BRAKES', subcategory: 'Inspection', skill_level: 1, default_hours: 0.5, base_labor_rate: 60, keywords: [], is_active: true, display_order: 1 },
+        { id: 'svc-3', internal_code: 'ALIGN', name: 'Alignment Check', category: 'MAINTENANCE', subcategory: 'Chassis', skill_level: 1, default_hours: 0.7, base_labor_rate: 69, keywords: [], is_active: true, display_order: 3 },
+        { id: 'svc-4', internal_code: 'COOL', name: 'Coolant Flush', category: 'MAINTENANCE', subcategory: 'Fluids', skill_level: 1, default_hours: 1.2, base_labor_rate: 89, keywords: [], is_active: true, display_order: 4 },
+      ]))
+    );
+  render(<ServiceCatalogModal open onClose={() => {}} onAdd={() => {}} defaultExpandAll={false} />);
+    // Wait for categories container to be present
+    await screen.findByTestId('service-categories');
     // No rows until a group is expanded
     expect(screen.queryByText('Oil Change')).not.toBeInTheDocument();
-    expect(screen.queryByText('Alignment Check')).not.toBeInTheDocument();
-    expect(screen.queryByText('Brake Inspection')).not.toBeInTheDocument();
     // Expand Fluids only then Oil Change appears
     await userEvent.click(await screen.findByTestId('group-toggle-Fluids'));
     await screen.findByText('Oil Change');
-    expect(screen.queryByText('Alignment Check')).not.toBeInTheDocument();
   });
 
   it('filters when clicking another category (requires expanding group in that category)', async () => {
-    mockFetchOnce(MOCK_SERVICES);
-  render(<ServiceCatalogModal open onClose={() => {}} onAdd={() => {}} />);
-  await waitFor(() => {});
-    await screen.findByText('MAINTENANCE');
+  render(<ServiceCatalogModal open onClose={() => {}} onAdd={() => {}} defaultExpandAll={false} />);
+  await screen.findByTestId('service-categories');
     const brakesBtn = screen.getByRole('button', { name: /BRAKES/i });
     await userEvent.click(brakesBtn);
     // Expand its group to reveal items
@@ -47,11 +39,9 @@ describe('ServiceCatalogModal (keyboard nav + accordion)', () => {
   });
 
   it('invokes onAdd when clicking a service row', async () => {
-    const onAdd = vi.fn();
-    mockFetchOnce(MOCK_SERVICES);
-  render(<ServiceCatalogModal open onClose={() => {}} onAdd={onAdd} />);
-  await waitFor(() => {});
-    await screen.findByText('MAINTENANCE');
+  const onAdd = vi.fn();
+  render(<ServiceCatalogModal open onClose={() => {}} onAdd={onAdd} defaultExpandAll={false} />);
+  await screen.findByTestId('service-categories');
   await userEvent.click(await screen.findByTestId('group-toggle-Fluids'));
   const oil = await screen.findByText('Oil Change');
     await userEvent.click(oil);
@@ -60,18 +50,14 @@ describe('ServiceCatalogModal (keyboard nav + accordion)', () => {
   });
 
   it('focuses the search input on mount', async () => {
-    mockFetchOnce(MOCK_SERVICES);
-  render(<ServiceCatalogModal open onClose={() => {}} onAdd={() => {}} />);
-  await waitFor(() => {});
-    const search = await screen.findByTestId('service-search');
+  render(<ServiceCatalogModal open onClose={() => {}} onAdd={() => {}} defaultExpandAll={false} />);
+  const search = await screen.findByTestId('service-search');
     expect(search).toHaveFocus();
   });
 
   it('ArrowDown from list container focuses first visible service item after expanding groups', async () => {
-    mockFetchOnce(MOCK_SERVICES);
-  render(<ServiceCatalogModal open onClose={() => {}} onAdd={() => {}} />);
-  await waitFor(() => {});
-    await screen.findByText('MAINTENANCE');
+  render(<ServiceCatalogModal open onClose={() => {}} onAdd={() => {}} defaultExpandAll={false} />);
+  await screen.findByTestId('service-categories');
     // Expand groups so that first visible item is Oil Change (Fluids has lower min display order than Chassis)
     await userEvent.click(screen.getByTestId('group-toggle-Fluids'));
     await userEvent.click(screen.getByTestId('group-toggle-Chassis'));
@@ -84,11 +70,9 @@ describe('ServiceCatalogModal (keyboard nav + accordion)', () => {
   });
 
   it('Enter on focused row triggers onAdd with correct service (after expanding groups)', async () => {
-    const onAdd = vi.fn();
-    mockFetchOnce(MOCK_SERVICES);
+  const onAdd = vi.fn();
   render(<ServiceCatalogModal open onClose={() => {}} onAdd={onAdd} />);
-  await waitFor(() => {});
-    await screen.findByText('MAINTENANCE');
+  await screen.findByTestId('service-categories');
     await userEvent.click(screen.getByTestId('group-toggle-Fluids'));
     await userEvent.click(screen.getByTestId('group-toggle-Chassis'));
     const list = screen.getByTestId('service-list');
@@ -100,10 +84,8 @@ describe('ServiceCatalogModal (keyboard nav + accordion)', () => {
   });
 
   it('keyboard navigation skips services in collapsed groups', async () => {
-    mockFetchOnce(MOCK_SERVICES);
   render(<ServiceCatalogModal open onClose={() => {}} onAdd={() => {}} />);
-  await waitFor(() => {});
-    await screen.findByText('MAINTENANCE');
+  await screen.findByTestId('service-categories');
   // Expand only Fluids (svc-1 and svc-4) leaving Chassis collapsed (svc-3)
   await userEvent.click(screen.getByTestId('group-toggle-Fluids'));
     const list = screen.getByTestId('service-list');

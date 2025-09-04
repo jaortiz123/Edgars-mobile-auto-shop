@@ -84,11 +84,14 @@ import { createMocks } from '../test/mocks'
 // ========================
 // CENTRALIZED MOCK SETUP (P1-T-012)
 // ========================
-const { time, api, notification, toast, storage } = createMocks();
+const { time, notification, toast, storage } = createMocks();
 
 // Apply mocks globally to prevent circular dependencies
 vi.mock('@/utils/time', () => time);
-vi.mock('@/lib/api', () => api);
+// IMPORTANT: Do not globally mock '@/lib/api'.
+// Many integration tests rely on the real axios instance (http) so MSW can intercept requests.
+// Individual tests should use partial mocks (spread the actual module) when needed.
+// vi.mock('@/lib/api', () => api);
 vi.mock('@/services/notificationService', () => notification);
 vi.mock('@/components/ui/Toast', () => toast);
 vi.mock('@/lib/toast', () => toast);

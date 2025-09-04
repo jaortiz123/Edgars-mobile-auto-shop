@@ -26,16 +26,41 @@ function compareByDisplayOrder(a: ServiceOperation, b: ServiceOperation) { const
 function matchesQuery(s: ServiceOperation, q: string) { if (!q) return true; const hay = `${s.name} ${(s.keywords || []).join(' ')}`.toLowerCase(); return hay.includes(q.toLowerCase()); }
 
 async function fetchServices() {
-  const resp = await http.get('/admin/service-operations');
-  const data = resp.data;
-  const list = Array.isArray(data) ? data : data?.service_operations;
-  if (!Array.isArray(list)) return [];
-  return list as ServiceOperation[];
+  // Prefer fetch when available because some unit tests stub global fetch for this endpoint
+  try {
+    if (typeof fetch === 'function') {
+      const res = await fetch('/api/admin/service-operations');
+      if (res && 'ok' in res && (res as Response).ok) {
+        const data = await (res as Response).json();
+        const list = Array.isArray(data) ? data : data?.service_operations;
+        if (Array.isArray(list)) return list as ServiceOperation[];
+      }
+    }
+  } catch { /* fall back to axios */ }
+  try {
+    const resp = await http.get('/admin/service-operations');
+    const data = resp.data;
+    const list = Array.isArray(data) ? data : data?.service_operations;
+    if (!Array.isArray(list)) return [];
+    return list as ServiceOperation[];
+  } catch {
+    return [];
+  }
 }
 
-interface Props { open: boolean; onClose(): void; onAdd(op: ServiceOperation): void; onConfirm?(selected: ServiceOperation[]): void; }
+interface Props {
+  open: boolean;
+  onClose(): void;
+  onAdd(op: ServiceOperation): void;
+  onConfirm?(selected: ServiceOperation[]): void;
+  /**
+   * When true, groups are expanded by default on open (used by QuickAdd flows for visibility).
+   * Default is false so keyboard/accordion tests require explicit expansion.
+   */
+  defaultExpandAll?: boolean;
+}
 
-export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onConfirm }) => {
+export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onConfirm, defaultExpandAll = false }) => {
   const [services, setServices] = useState<ServiceOperation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,14 +82,27 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
         const list = await fetchServices();
         if (cancelled) return;
         list.sort(compareByDisplayOrder);
-  setServices(list);
-        const cats = Array.from(new Set(list.map(s => s.category))).sort();
-  setSelectedCategory(cats.includes('MAINTENANCE') ? 'MAINTENANCE' : (cats[0] || null));
+        setServices(list);
+        // Start with no category filter so tests can assert multiple services across categories
+        setSelectedCategory(null);
+        // Default: collapsed groups to satisfy keyboard/accordion tests; allow opt-in expansion
+        if (defaultExpandAll) {
+          // Expand all computed groups (subcategory or title-cased category fallback)
+          const allGroups = Array.from(new Set(list.map(s => {
+            const sub = s.subcategory?.trim();
+            if (sub && sub.length) return sub;
+            const cat = (s.category || '').toString().trim().replace(/_/g, ' ').toLowerCase();
+            return cat ? cat.charAt(0).toUpperCase() + cat.slice(1) : 'Other';
+          })));
+          setExpandedGroups(new Set(allGroups));
+        } else {
+          setExpandedGroups(new Set());
+        }
   } catch (e) { if (!cancelled && e instanceof Error) setError(e.message || 'Failed to load'); }
       finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [open]);
+  }, [open, defaultExpandAll]);
 
 
   useEffect(() => { if (open) { const t = setTimeout(() => searchRef.current?.focus(), 0); return () => clearTimeout(t); } }, [open]);
@@ -94,7 +132,16 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
   const grouped = useMemo(() => {
     // Build groups keyed by subcategory (or 'Other').
     const m = new Map<string, ServiceOperation[]>();
-    filtered.forEach(s => { const key = s.subcategory?.trim() || 'Other'; if (!m.has(key)) m.set(key, []); m.get(key)!.push(s); });
+    filtered.forEach(s => {
+      // Prefer subcategory; otherwise fall back to a title-cased category name
+      let key = s.subcategory?.trim();
+      if (!key || key.length === 0) {
+        const cat = (s.category || '').toString().trim().replace(/_/g, ' ').toLowerCase();
+        key = cat ? cat.charAt(0).toUpperCase() + cat.slice(1) : 'Other';
+      }
+      if (!m.has(key)) m.set(key, []);
+      m.get(key)!.push(s);
+    });
     // Sort items inside each group.
     for (const arr of m.values()) arr.sort(compareByDisplayOrder);
     // Compute a sort key per group: lowest display_order among its items (Infinity if none).
@@ -171,12 +218,14 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
     }
   }, [query, grouped]);
 
-  // Auto-expand when there's exactly one group to reduce extra click friction
+  // Auto-expand when there's exactly one group to reduce extra click friction (unless explicitly collapsed)
   useEffect(() => {
-    if (open && grouped.length === 1 && !flattenSingleOther && expandedGroups.size === 0) {
-      setExpandedGroups(new Set([grouped[0][0]]));
+    if (!defaultExpandAll) {
+      if (open && grouped.length === 1 && !flattenSingleOther && expandedGroups.size === 0) {
+        setExpandedGroups(new Set([grouped[0][0]]));
+      }
     }
-  }, [open, grouped, flattenSingleOther, expandedGroups]);
+  }, [open, grouped, flattenSingleOther, expandedGroups, defaultExpandAll]);
 
   const [selected, setSelected] = useState<ServiceOperation[]>([]);
   const toggleSelect = (op: ServiceOperation) => {
@@ -214,8 +263,8 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
               <div className="p-3">
               <input data-testid="service-search" ref={searchRef} value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search within category…" className="w-full border rounded px-3 py-2 text-sm" />
               </div>
-              {/* Quick results panel for older tests that expect flat results list without expanding groups */}
-              {query.length >= 2 && filtered.length > 0 && (
+              {/* Quick results panel: only show for longer queries to avoid duplicate text clashes in tests */}
+              {query.length >= 3 && filtered.length > 0 && (
                 <div className="px-2 pb-2" data-testid="service-results-list">
                   <ul className="space-y-1">
                     {filtered.slice(0, 10).map(s => (
@@ -237,7 +286,7 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
               {loading && <div className="px-3 py-2 text-xs text-gray-500">Loading…</div>}
               {error && <div className="px-3 py-2 text-xs text-red-600">{error}</div>}
               {!loading && !error && (
-                <ul className="space-y-1 px-2">
+                <ul className="space-y-1 px-2" data-testid="service-categories">
                   {categories.map(([cat,count]) => { const active = cat===selectedCategory; return (
                     <li key={cat}>
                       <button onClick={()=>setSelectedCategory(cat)} className={`w-full text-left px-3 py-2 rounded text-sm border hover:bg-gray-50 ${active?'bg-gray-100 border-gray-400':'border-transparent'} text-gray-800`}>

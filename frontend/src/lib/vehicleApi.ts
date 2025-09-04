@@ -1,5 +1,13 @@
 // Vehicle API functions for Milestone 2
-import type { AddVehiclePayload } from '@/components/admin/EditCustomerDialog';
+// Define the shape locally to avoid depending on admin components during typecheck
+export type AddVehiclePayload = {
+  make: string;
+  model: string;
+  year: number;
+  vin?: string;
+  license_plate?: string;
+  notes?: string;
+};
 
 const API_BASE = '/api/admin';
 

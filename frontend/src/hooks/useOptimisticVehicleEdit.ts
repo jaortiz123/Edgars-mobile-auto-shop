@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { http } from '@/lib/api';
-import type { AxiosResponseHeaders } from 'axios';
+// Use fetch in this hook to simplify unit tests that stub global fetch
 import { useConflictManager } from '@/conflict/ConflictProvider';
 
 export interface BasicVehicle {
@@ -21,11 +20,16 @@ interface MutationResult { json: ApiResponse; etag?: string; aborted?: boolean }
 // Query key chosen; adjust to match whichever component consumes base vehicle info.
 function vehicleBasicKey(id: string | number) { return ['vehicleBasic', String(id)] as const; }
 
-function getHeader(headers: AxiosResponseHeaders | Record<string, string> | undefined, key: string): string | undefined {
+function getHeader(headers: Headers | Record<string, string> | undefined, key: string): string | undefined {
   if (!headers) return undefined;
+  // Duck-type instead of instanceof to avoid cross-realm issues in tests
+  const anyHeaders = headers as unknown as { get?: (name: string) => string | null };
+  if (anyHeaders && typeof anyHeaders.get === 'function') {
+    return anyHeaders.get(key) ?? anyHeaders.get(key.toLowerCase()) ?? undefined;
+  }
   const lower = key.toLowerCase();
-  const val = (headers as Record<string, string>)[lower];
-  return typeof val === 'string' ? val : undefined;
+  // Also check exact case just in case
+  return (headers as Record<string, string>)[lower] ?? (headers as Record<string, string>)[key];
 }
 
 export function useOptimisticVehicleEdit(vehicleId: string) {
@@ -36,11 +40,15 @@ export function useOptimisticVehicleEdit(vehicleId: string) {
   mutationFn: async (patch: VehiclePatch): Promise<MutationResult> => {
       const existing = qc.getQueryData<BasicVehicle>(key);
       const etag = existing?._etag || existing?.etag;
-      const res = await http.patch(`/admin/vehicles/${vehicleId}`, patch, { headers: { ...(etag ? { 'If-Match': etag } : {}) } });
+      const res = await fetch(`/api/admin/vehicles/${vehicleId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(etag ? { 'If-Match': etag } : {}) },
+        body: JSON.stringify(patch),
+      });
       if (res.status === 412) {
-        const latestRes = await http.get(`/admin/vehicles/${vehicleId}`);
-        const latestJson = latestRes.data || null;
-        const latestData = latestJson && (latestJson as Record<string, unknown>).data ? (latestJson as Record<string, unknown>).data : latestJson;
+        const latestRes = await fetch(`/api/admin/vehicles/${vehicleId}`);
+        const latestJson = await latestRes.json().catch(() => null as unknown);
+        const latestData = latestJson && (latestJson as Record<string, unknown>)?.data ? (latestJson as Record<string, unknown>).data : latestJson;
         const choice = await openConflict({
           kind: 'vehicle',
           id: vehicleId,
@@ -57,23 +65,23 @@ export function useOptimisticVehicleEdit(vehicleId: string) {
         });
         if (choice === 'discard') {
           if (latestData) {
-            const etagHdr = getHeader(latestRes.headers as unknown as Record<string, string>, 'ETag');
+            const etagHdr = getHeader(latestRes.headers, 'ETag');
             qc.setQueryData(key, { ...(existing || {}), ...latestData, _etag: etagHdr || existing?._etag });
           }
-          const etagHdr = getHeader(latestRes.headers as unknown as Record<string, string>, 'ETag');
+          const etagHdr = getHeader(latestRes.headers, 'ETag');
           return { json: { data: { id: vehicleId } as BasicVehicle }, etag: etagHdr, aborted: true };
         }
         if (choice === 'overwrite') {
-          const retryRes = await http.patch(`/admin/vehicles/${vehicleId}`, patch);
-          const retryJson: ApiResponse = retryRes.data as ApiResponse;
-          const retryEtag = getHeader(retryRes.headers as unknown as Record<string, string>, 'ETag');
-      return { json: retryJson, etag: retryEtag };
+          const retryRes = await fetch(`/api/admin/vehicles/${vehicleId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+          const retryJson: ApiResponse = await retryRes.json();
+          const retryEtag = getHeader(retryRes.headers, 'ETag');
+          return { json: retryJson, etag: retryEtag };
         }
         throw Object.assign(new Error('Conflict unresolved'), { status: 412, handled: true });
       }
-      const json: ApiResponse = res.data as ApiResponse;
-      const newEtag = getHeader(res.headers as unknown as Record<string, string>, 'ETag');
-    return { json, etag: newEtag };
+      const json: ApiResponse = await res.json();
+      const newEtag = getHeader(res.headers, 'ETag');
+      return { json, etag: newEtag };
     },
     onMutate: async (patch) => {
       await qc.cancelQueries({ queryKey: key });

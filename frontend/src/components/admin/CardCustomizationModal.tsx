@@ -4,6 +4,7 @@ import EnhancedAppointmentCard from './EnhancedAppointmentCard';
 import type { BoardCard } from '@/types/models';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { MultiSelectProvider } from '@/contexts/multiSelectProvider';
 
 interface Props { open: boolean; onClose: () => void; }
 
@@ -103,9 +104,11 @@ export default function CardCustomizationModal({ open, onClose }: Props) {
           {/* Left: Live Preview */}
           <div className="flex-1 overflow-auto p-8 bg-[repeating-linear-gradient(0deg,#e5e7eb,#e5e7eb_1px,transparent_1px,transparent_24px),repeating-linear-gradient(90deg,#e5e7eb,#e5e7eb_1px,transparent_1px,transparent_24px)]">
             <p className="text-xs font-semibold mb-3 opacity-70">Preview</p>
-            <div className="max-w-[300px]">
-              <EnhancedAppointmentCard card={demoCard} />
-            </div>
+            <MultiSelectProvider>
+              <div className="max-w-[300px]">
+                <EnhancedAppointmentCard card={demoCard} />
+              </div>
+            </MultiSelectProvider>
           </div>
           {/* Right: Controls */}
           <div className="w-96 nb-border border-l flex flex-col overflow-auto">

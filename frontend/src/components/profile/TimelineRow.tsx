@@ -32,7 +32,8 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({ id, date, status, serv
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const hasInvoice = !!invoice; // guard actions
-  const baseUrl = `/api/admin/invoices/${id}`; // assumes row id == invoice id for invoice rows
+  // Use path relative to axios baseURL ('/api') to avoid '/api/api' duplication
+  const baseUrl = `/admin/invoices/${id}`; // assumes row id == invoice id for invoice rows
 
   const onViewReceipt = () => {
     window.open(`${baseUrl}/receipt.html`, '_blank', 'noopener');

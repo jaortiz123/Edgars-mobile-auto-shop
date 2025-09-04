@@ -1,18 +1,22 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { vi, it, expect, beforeEach, describe } from 'vitest';
+import { vi, expect, beforeEach, describe } from 'vitest';
 import AppointmentDrawer from '../components/admin/AppointmentDrawer';
 import { ToastProvider } from '../components/ui/Toast';
 
 // Mock the API module before importing the component
-vi.mock('@/lib/api', () => ({
-  getDrawer: vi.fn(),
-  createAppointmentService: vi.fn(),
-  updateAppointmentService: vi.fn(),
-  deleteAppointmentService: vi.fn(),
-  handleApiError: vi.fn((error, defaultMessage) => defaultMessage)
-}));
+vi.mock('@/lib/api', async () => {
+  const actual = (await vi.importActual('@/lib/api')) as Record<string, unknown>;
+  return {
+    ...actual,
+    getDrawer: vi.fn(),
+    createAppointmentService: vi.fn(),
+    updateAppointmentService: vi.fn(),
+    deleteAppointmentService: vi.fn(),
+    handleApiError: vi.fn((error, defaultMessage) => defaultMessage),
+  };
+});
 
 // Mock the toast library
 vi.mock('../lib/toast', () => ({
@@ -83,7 +87,7 @@ describe('Services CRUD in AppointmentDrawer', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getDrawer).mockResolvedValue(mockDrawerData);
+    (getDrawer as unknown as { mockResolvedValue: (v: unknown) => void }).mockResolvedValue(mockDrawerData as unknown);
   });
 
   test('displays existing services correctly', async () => {

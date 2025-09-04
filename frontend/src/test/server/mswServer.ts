@@ -44,6 +44,20 @@ interface MockService {
 // Mock data fixtures - Enhanced for happy path testing
 const mockAppointments: MockAppointment[] = [
   {
+    id: 'appt-1',
+    status: 'SCHEDULED',
+    start_ts: '2024-01-10T09:00:00Z',
+    end_ts: '2024-01-10T10:00:00Z',
+    total_amount: 0,
+    paid_amount: 0,
+    customer_name: 'Test Customer',
+    vehicle_label: '2018 Ford Focus',
+    customer_id: 'cust-test-1',
+    vehicle_id: 'veh-test-1',
+    tech_id: null,
+    notes: 'Test appointment for template context'
+  },
+  {
     id: 'apt-happy-1',
     status: 'SCHEDULED',
     start_ts: '2024-01-15T14:00:00Z',
@@ -75,6 +89,12 @@ const mockAppointments: MockAppointment[] = [
 
 const mockCustomers = [
   {
+    id: 'cust-test-1',
+    name: 'Test Customer',
+    email: 'test@example.com',
+    phone: '+15550000000'
+  },
+  {
     id: 'cust-happy-1',
     name: 'Happy Path Customer',
     email: 'happy@example.com',
@@ -89,6 +109,13 @@ const mockCustomers = [
 ];
 
 const mockVehicles = [
+  {
+    id: 'veh-test-1',
+    year: 2018,
+    make: 'Ford',
+    model: 'Focus',
+    vin: 'TESTVIN000000001'
+  },
   {
     id: 'veh-happy-1',
     year: 2020,
@@ -144,26 +171,105 @@ const mockServices: MockService[] = [
   }
 ];
 
+// Simple in-memory stores for entities that need ETag semantics in tests
+const vehicleStore: Record<string, { etag: string; data: Record<string, unknown> }> = {
+  v1: { etag: 'veh-etag-original', data: { id: 'v1', make: 'Ford', model: 'Focus', year: 2018, vin: 'VIN1', license_plate: 'AAA111' } },
+};
+
 // Request handlers
 const handlers = [
+  // --- Vehicle profile timeline (avoid /api/api duplication by using relative matches) ---
+  http.get('/api/admin/vehicles/:vehicleId/profile', ({ params, request }) => {
+    const { vehicleId } = params as { vehicleId: string };
+    // Deterministic dataset of 12 rows to support pagination tests
+    const dataset = Array.from({ length: 12 }).map((_, i) => ({
+      id: `veh-${vehicleId}-row-${i+1}`,
+      type: 'appointment',
+      occurred_at: new Date(Date.now() - i * 60000).toISOString(),
+      status: 'COMPLETED',
+      services: [{ name: 'Oil Change' }],
+      invoice: { total: 100 + i, paid: 100 + i, unpaid: 0 }
+    }));
+    const url = new URL(request.url);
+    const pageSize = Number(url.searchParams.get('page_size') || '5');
+    const cursor = url.searchParams.get('cursor');
+    // cursor corresponds to last item id from previous page
+    const start = cursor ? (dataset.findIndex(r => r.id === cursor) + 1) : 0;
+    const slice = dataset.slice(start, start + pageSize);
+    const next = (start + pageSize) < dataset.length ? slice[slice.length - 1].id : null;
+    const header = { vehicle_id: vehicleId, year: 2020, make: 'Toyota', model: 'Camry', trim: null, plate: 'ABC123', vin: '1HGBH41JXMN109186', customer_id: 'cust-happy-1' };
+    const stats = { lifetime_spend: 10000, total_visits: dataset.length, last_service_at: dataset[0].occurred_at, avg_ticket: 10000 };
+    const etag = 'W/"veh-integ-etag"';
+    const inm = request.headers.get('if-none-match');
+    if (!cursor && inm && inm === etag) {
+      return new HttpResponse(null, { status: 304, headers: { ETag: etag } });
+    }
+    return HttpResponse.json({ header, stats, timeline: slice, page: { next_cursor: next }, etag }, { headers: { ETag: etag } });
+  }),
+  // Also support localhost absolute URL variants
+  http.get('http://localhost:3000/api/admin/vehicles/:vehicleId/profile', ({ params, request }) => {
+    const { vehicleId } = params as { vehicleId: string };
+    const dataset = Array.from({ length: 12 }).map((_, i) => ({
+      id: `veh-${vehicleId}-row-${i+1}`,
+      type: 'appointment',
+      occurred_at: new Date(Date.now() - i * 60000).toISOString(),
+      status: 'COMPLETED',
+      services: [{ name: 'Oil Change' }],
+      invoice: { total: 100 + i, paid: 100 + i, unpaid: 0 }
+    }));
+    const url = new URL(request.url);
+    const pageSize = Number(url.searchParams.get('page_size') || '5');
+    const cursor = url.searchParams.get('cursor');
+    const start = cursor ? (dataset.findIndex(r => r.id === cursor) + 1) : 0;
+    const slice = dataset.slice(start, start + pageSize);
+    const next = (start + pageSize) < dataset.length ? slice[slice.length - 1].id : null;
+    const header = { vehicle_id: vehicleId, year: 2020, make: 'Toyota', model: 'Camry', trim: null, plate: 'ABC123', vin: '1HGBH41JXMN109186', customer_id: 'cust-happy-1' };
+    const stats = { lifetime_spend: 10000, total_visits: dataset.length, last_service_at: dataset[0].occurred_at, avg_ticket: 10000 };
+    const etag = 'W/"veh-integ-etag"';
+    const inm = request.headers.get('if-none-match');
+    if (!cursor && inm && inm === etag) {
+      return new HttpResponse(null, { status: 304, headers: { ETag: etag } });
+    }
+    return HttpResponse.json({ header, stats, timeline: slice, page: { next_cursor: next }, etag }, { headers: { ETag: etag } });
+  }),
   // Service operations endpoint (added for multi-service QuickAddModal tests)
   http.get('http://localhost:3000/api/admin/service-operations', () => {
+    // Default dataset aligned with tests: multiple categories and subcategories
     return HttpResponse.json([
-      { id: 'svc-oil', internal_code: 'OIL', name: 'Oil Change', category: 'MAINTENANCE', subcategory: null, skill_level: 1, default_hours: 1, base_labor_rate: 80, keywords: ['oil','change'], is_active: true, display_order: 1 },
-      { id: 'svc-tire', internal_code: 'TIRE_ROT', name: 'Tire Rotation', category: 'MAINTENANCE', subcategory: null, skill_level: 1, default_hours: 0.5, base_labor_rate: 60, keywords: ['tire','rotation'], is_active: true, display_order: 2 }
+      { id: 'svc-1', internal_code: 'OIL', name: 'Oil Change', category: 'MAINTENANCE', subcategory: 'Fluids', skill_level: 1, default_hours: 1, base_labor_rate: 80, keywords: ['oil','change'], is_active: true, display_order: 2 },
+  { id: 'svc-2', internal_code: 'BRK-INSP', name: 'Brake Inspection', category: 'BRAKES', subcategory: 'Inspection', skill_level: 1, default_hours: 0.5, base_labor_rate: 60, keywords: ['brake','inspection'], is_active: true, display_order: 1 },
+  { id: 'svc-3', internal_code: 'ALIGN', name: 'Alignment', category: 'CHASSIS', subcategory: null, skill_level: 1, default_hours: 1, base_labor_rate: 120, keywords: ['alignment','wheel'], is_active: true, display_order: 3 },
+  { id: 'svc-5', internal_code: 'ROT', name: 'Tire Rotation', category: 'TIRES', subcategory: null, skill_level: 1, default_hours: 0.5, base_labor_rate: 40, keywords: ['rotation','tire'], is_active: true, display_order: 5 },
+      { id: 'svc-4', internal_code: 'COOL', name: 'Coolant Flush', category: 'MAINTENANCE', subcategory: 'Fluids', skill_level: 1, default_hours: 1.2, base_labor_rate: 89, keywords: ['coolant','flush'], is_active: true, display_order: 4 }
     ]);
   }),
   http.get('http://localhost/api/admin/service-operations', () => {
     return HttpResponse.json([
-      { id: 'svc-oil', internal_code: 'OIL', name: 'Oil Change', category: 'MAINTENANCE', subcategory: null, skill_level: 1, default_hours: 1, base_labor_rate: 80, keywords: ['oil','change'], is_active: true, display_order: 1 },
-      { id: 'svc-tire', internal_code: 'TIRE_ROT', name: 'Tire Rotation', category: 'MAINTENANCE', subcategory: null, skill_level: 1, default_hours: 0.5, base_labor_rate: 60, keywords: ['tire','rotation'], is_active: true, display_order: 2 }
+      { id: 'svc-1', internal_code: 'OIL', name: 'Oil Change', category: 'MAINTENANCE', subcategory: 'Fluids', skill_level: 1, default_hours: 1, base_labor_rate: 80, keywords: ['oil','change'], is_active: true, display_order: 2 },
+  { id: 'svc-2', internal_code: 'BRK-INSP', name: 'Brake Inspection', category: 'BRAKES', subcategory: 'Inspection', skill_level: 1, default_hours: 0.5, base_labor_rate: 60, keywords: ['brake','inspection'], is_active: true, display_order: 1 },
+  { id: 'svc-3', internal_code: 'ALIGN', name: 'Alignment', category: 'CHASSIS', subcategory: null, skill_level: 1, default_hours: 1, base_labor_rate: 120, keywords: ['alignment','wheel'], is_active: true, display_order: 3 },
+  { id: 'svc-5', internal_code: 'ROT', name: 'Tire Rotation', category: 'TIRES', subcategory: null, skill_level: 1, default_hours: 0.5, base_labor_rate: 40, keywords: ['rotation','tire'], is_active: true, display_order: 5 },
+      { id: 'svc-4', internal_code: 'COOL', name: 'Coolant Flush', category: 'MAINTENANCE', subcategory: 'Fluids', skill_level: 1, default_hours: 1.2, base_labor_rate: 89, keywords: ['coolant','flush'], is_active: true, display_order: 4 }
     ]);
   }),
   http.get('http://localhost:3001/admin/service-operations', () => {
     return HttpResponse.json({ service_operations: [
-      { id: 'svc-oil', internal_code: 'OIL', name: 'Oil Change', category: 'MAINTENANCE', subcategory: null, skill_level: 1, default_hours: 1, base_labor_rate: 80, keywords: ['oil','change'], is_active: true, display_order: 1 },
-      { id: 'svc-tire', internal_code: 'TIRE_ROT', name: 'Tire Rotation', category: 'MAINTENANCE', subcategory: null, skill_level: 1, default_hours: 0.5, base_labor_rate: 60, keywords: ['tire','rotation'], is_active: true, display_order: 2 }
+      { id: 'svc-1', internal_code: 'OIL', name: 'Oil Change', category: 'MAINTENANCE', subcategory: 'Fluids', skill_level: 1, default_hours: 1, base_labor_rate: 80, keywords: ['oil','change'], is_active: true, display_order: 2 },
+  { id: 'svc-2', internal_code: 'BRK-INSP', name: 'Brake Inspection', category: 'BRAKES', subcategory: 'Inspection', skill_level: 1, default_hours: 0.5, base_labor_rate: 60, keywords: ['brake','inspection'], is_active: true, display_order: 1 },
+  { id: 'svc-3', internal_code: 'ALIGN', name: 'Alignment', category: 'CHASSIS', subcategory: null, skill_level: 1, default_hours: 1, base_labor_rate: 120, keywords: ['alignment','wheel'], is_active: true, display_order: 3 },
+  { id: 'svc-5', internal_code: 'ROT', name: 'Tire Rotation', category: 'TIRES', subcategory: null, skill_level: 1, default_hours: 0.5, base_labor_rate: 40, keywords: ['rotation','tire'], is_active: true, display_order: 5 },
+      { id: 'svc-4', internal_code: 'COOL', name: 'Coolant Flush', category: 'MAINTENANCE', subcategory: 'Fluids', skill_level: 1, default_hours: 1.2, base_labor_rate: 89, keywords: ['coolant','flush'], is_active: true, display_order: 4 }
     ]});
+  }),
+  // Relative match for axios http.get('/admin/service-operations')
+  http.get('/api/admin/service-operations', () => {
+    return HttpResponse.json([
+      { id: 'svc-1', internal_code: 'OIL', name: 'Oil Change', category: 'MAINTENANCE', subcategory: 'Fluids', skill_level: 1, default_hours: 1, base_labor_rate: 80, keywords: ['oil','change'], is_active: true, display_order: 2 },
+  { id: 'svc-2', internal_code: 'BRK-INSP', name: 'Brake Inspection', category: 'BRAKES', subcategory: 'Inspection', skill_level: 1, default_hours: 0.5, base_labor_rate: 60, keywords: ['brake','inspection'], is_active: true, display_order: 1 },
+  { id: 'svc-3', internal_code: 'ALIGN', name: 'Alignment', category: 'CHASSIS', subcategory: null, skill_level: 1, default_hours: 1, base_labor_rate: 120, keywords: ['alignment','wheel'], is_active: true, display_order: 3 },
+  { id: 'svc-5', internal_code: 'ROT', name: 'Tire Rotation', category: 'TIRES', subcategory: null, skill_level: 1, default_hours: 0.5, base_labor_rate: 40, keywords: ['rotation','tire'], is_active: true, display_order: 5 },
+      { id: 'svc-4', internal_code: 'COOL', name: 'Coolant Flush', category: 'MAINTENANCE', subcategory: 'Fluids', skill_level: 1, default_hours: 1.2, base_labor_rate: 89, keywords: ['coolant','flush'], is_active: true, display_order: 4 }
+    ]);
   }),
   // Invoice detail endpoint mock
   http.get('http://localhost:3000/api/admin/invoices/:id', ({ params }) => {
@@ -267,6 +373,402 @@ const handlers = [
       ]
     };
     return HttpResponse.json({ data: mockInvoice });
+  }),
+
+  // --- Invoice actions: payments and void (relative /api variants for axios baseURL) ---
+  http.post('/api/admin/invoices/:id/payments', async ({ params, request }) => {
+    const { id } = params as { id: string };
+    try {
+      const body = await request.json() as { amountCents?: number; method?: string; note?: string };
+      const amount = body?.amountCents ?? 1000;
+      const method = body?.method ?? 'CARD';
+      // Simulate overpayment error for a specific invoice id used in tests
+      if (id === 'inv-ovr' && amount > 10000) {
+        return HttpResponse.json({ error: 'OVERPAYMENT' }, { status: 400 });
+      }
+      return HttpResponse.json({
+        data: {
+          invoice: {
+            id,
+            status: 'PARTIALLY_PAID',
+            subtotal_cents: 10000,
+            tax_cents: 0,
+            total_cents: 10000,
+            amount_paid_cents: Math.min(10000, amount),
+            amount_due_cents: Math.max(0, 10000 - amount)
+          },
+          payment: {
+            id: 'pay-msw-1',
+            amount_cents: amount,
+            method,
+            created_at: new Date().toISOString(),
+            note: body?.note ?? null
+          }
+        }
+      }, { status: 201 });
+    } catch {
+      return HttpResponse.json({ error: 'PAYMENT_FAILED' }, { status: 400 });
+    }
+  }),
+  // Absolute URL variants for environments/tests using explicit hosts
+  http.post('http://localhost:3001/api/admin/invoices/:id/payments', async ({ params, request }) => {
+    const { id } = params as { id: string };
+    try {
+      const body = await request.json() as { amountCents?: number; method?: string; note?: string };
+      const amount = body?.amountCents ?? 1000;
+      const method = body?.method ?? 'CARD';
+      if (id === 'inv-ovr' && amount > 10000) {
+        return HttpResponse.json({ error: 'OVERPAYMENT' }, { status: 400 });
+      }
+      return HttpResponse.json({
+        data: {
+          invoice: { id, status: 'PARTIALLY_PAID', subtotal_cents: 10000, tax_cents: 0, total_cents: 10000, amount_paid_cents: Math.min(10000, amount), amount_due_cents: Math.max(0, 10000 - amount) },
+          payment: { id: 'pay-msw-abs-3001', amount_cents: amount, method, created_at: new Date().toISOString(), note: body?.note ?? null }
+        }
+      }, { status: 201 });
+    } catch {
+      return HttpResponse.json({ error: 'PAYMENT_FAILED' }, { status: 400 });
+    }
+  }),
+  http.post('http://localhost:3000/api/admin/invoices/:id/payments', async ({ params, request }) => {
+    const { id } = params as { id: string };
+    try {
+      const body = await request.json() as { amountCents?: number; method?: string; note?: string };
+      const amount = body?.amountCents ?? 1000;
+      const method = body?.method ?? 'CARD';
+      if (id === 'inv-ovr' && amount > 10000) {
+        return HttpResponse.json({ error: 'OVERPAYMENT' }, { status: 400 });
+      }
+      return HttpResponse.json({
+        data: {
+          invoice: { id, status: 'PARTIALLY_PAID', subtotal_cents: 10000, tax_cents: 0, total_cents: 10000, amount_paid_cents: Math.min(10000, amount), amount_due_cents: Math.max(0, 10000 - amount) },
+          payment: { id: 'pay-msw-abs-3000', amount_cents: amount, method, created_at: new Date().toISOString(), note: body?.note ?? null }
+        }
+      }, { status: 201 });
+    } catch {
+      return HttpResponse.json({ error: 'PAYMENT_FAILED' }, { status: 400 });
+    }
+  }),
+  // Email send endpoint for invoices (TimelineRow)
+  http.post('/api/admin/invoices/:id/send', ({ params }) => {
+    const { id } = params as { id: string };
+    // Always accept and return 202 per implementation contract
+    return new HttpResponse(null, { status: 202, headers: { 'x-invoice-id': id } });
+  }),
+  http.post('http://localhost:3000/api/admin/invoices/:id/send', ({ params }) => {
+    const { id } = params as { id: string };
+    return new HttpResponse(null, { status: 202, headers: { 'x-invoice-id': id } });
+  }),
+  // Customers GET/PATCH for optimistic edit flows
+  http.get('/api/admin/customers/:id', ({ params }) => {
+    const { id } = params as { id: string };
+    return HttpResponse.json({ data: { id, name: 'Server User', email: 'server@example.com', phone: '999' } }, { headers: { ETag: 'etag-server' } });
+  }),
+  http.patch('/api/admin/customers/:id', async ({ params, request }) => {
+    const { id } = params as { id: string };
+    const ifMatch = request.headers.get('if-match');
+    // Simulate conflict when an If-Match is provided but doesn't match current 'etag-server'
+    if (ifMatch && ifMatch !== 'etag-server') {
+      return new HttpResponse('precondition', { status: 412 });
+    }
+    const body = await request.json().catch(() => ({})) as { name?: string; phone?: string; email?: string };
+    return HttpResponse.json({ data: { id, name: body.name ?? 'Updated', phone: body.phone ?? '222', email: body.email ?? 'user@x.com' } }, { headers: { ETag: 'etag-new' } });
+  }),
+  // localhost:3000 variants for unit tests using absolute URLs
+  http.get('http://localhost:3000/api/admin/customers/:id', ({ params }) => {
+    const { id } = params as { id: string };
+    return HttpResponse.json({ data: { id, name: 'Server User', email: 'server@example.com', phone: '999' } }, { headers: { ETag: 'etag-server' } });
+  }),
+  http.patch('http://localhost:3000/api/admin/customers/:id', async ({ params, request }) => {
+    const { id } = params as { id: string };
+    const ifMatch = request.headers.get('if-match');
+    if (ifMatch && ifMatch !== 'etag-server') {
+      return new HttpResponse('precondition', { status: 412 });
+    }
+    const body = await request.json().catch(() => ({})) as { name?: string; phone?: string; email?: string };
+    return HttpResponse.json({ data: { id, name: body.name ?? 'Updated', phone: body.phone ?? '222', email: body.email ?? 'user@x.com' } }, { headers: { ETag: 'etag-new' } });
+  }),
+  http.post('/api/admin/invoices/:id/void', async ({ params }) => {
+    const { id } = params as { id: string };
+    return HttpResponse.json({
+      data: {
+        invoice: {
+          id,
+          status: 'VOID',
+          subtotal_cents: 10000,
+          tax_cents: 0,
+          total_cents: 10000,
+          amount_paid_cents: 0,
+          amount_due_cents: 10000,
+          voided_at: new Date().toISOString()
+        }
+      }
+    }, { status: 201 });
+  }),
+
+  // --- Vehicles (optimistic edit) with ETag + 412 semantics ---
+  http.get('/api/admin/vehicles/:id', ({ params }) => {
+    const id = String((params as { id: string }).id);
+  const current = vehicleStore[id] || { etag: 'vetag0', data: { id } };
+    return HttpResponse.json({ data: current.data }, { headers: { ETag: current.etag } });
+  }),
+  http.patch('/api/admin/vehicles/:id', async ({ params, request }) => {
+    const id = String((params as { id: string }).id);
+    const ifMatch = request.headers.get('if-match');
+  const current = vehicleStore[id] || { etag: 'vetag0', data: { id } };
+    if (ifMatch && ifMatch !== current.etag) {
+      return new HttpResponse('precondition', { status: 412 });
+    }
+    const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const nextEtag = current.etag === 'veh-etag-original' ? 'veh-etag-new' : `vetag${Date.now()}`;
+    const nextData = { ...current.data, ...body };
+    vehicleStore[id] = { etag: nextEtag, data: nextData };
+    return HttpResponse.json({ data: nextData }, { headers: { ETag: nextEtag } });
+  }),
+  // localhost:3000 variants
+  http.get('http://localhost:3000/api/admin/vehicles/:id', ({ params }) => {
+    const id = String((params as { id: string }).id);
+  const current = vehicleStore[id] || { etag: 'vetag0', data: { id } };
+    return HttpResponse.json({ data: current.data }, { headers: { ETag: current.etag } });
+  }),
+  http.patch('http://localhost:3000/api/admin/vehicles/:id', async ({ params, request }) => {
+    const id = String((params as { id: string }).id);
+    const ifMatch = request.headers.get('if-match');
+  const current = vehicleStore[id] || { etag: 'vetag0', data: { id } };
+    if (ifMatch && ifMatch !== current.etag) {
+      return new HttpResponse('precondition', { status: 412 });
+    }
+    const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const nextEtag = current.etag === 'veh-etag-original' ? 'veh-etag-new' : `vetag${Date.now()}`;
+    const nextData = { ...current.data, ...body };
+    vehicleStore[id] = { etag: nextEtag, data: nextData };
+    return HttpResponse.json({ data: nextData }, { headers: { ETag: nextEtag } });
+  }),
+
+  // --- Customers profile timeline (supports include_invoices & limit_appointments) ---
+  http.get('/api/admin/customers/:id/profile', ({ params, request }) => {
+    const id = String((params as { id: string }).id);
+    const url = new URL(request.url, 'http://localhost');
+    const includeInvoices = url.searchParams.get('include_invoices') === 'true';
+    const limitAppts = Number(url.searchParams.get('limit_appointments') || '5');
+    const etag = 'W/"cust-prof-etag"';
+    const ifNoneMatch = request.headers.get('if-none-match');
+    // Build deterministic page (single page)
+    const appointments = Array.from({ length: limitAppts }).map((_, i) => ({
+      id: `apt-${i + 1}`,
+      status: 'COMPLETED',
+      start: new Date(Date.now() - i * 86400000).toISOString(),
+      total_amount: 100 * (i + 1),
+    }));
+    const invoices = includeInvoices ? appointments.map((_, i) => ({ id: `inv-${i + 1}`, total_cents: 10000 + i * 1000 })) : undefined;
+    const payload = {
+      header: { customer_id: id, name: 'Test Customer' },
+      timeline: appointments,
+      invoices,
+      page: { next_cursor: null },
+    };
+    if (ifNoneMatch && ifNoneMatch === etag) {
+      return new HttpResponse(null, { status: 304, headers: { ETag: etag } });
+    }
+    return HttpResponse.json(payload, { headers: { ETag: etag } });
+  }),
+  http.get('http://localhost:3000/api/admin/customers/:id/profile', ({ params, request }) => {
+    const id = String((params as { id: string }).id);
+    const url = new URL(request.url);
+    const includeInvoices = url.searchParams.get('include_invoices') === 'true';
+    const limitAppts = Number(url.searchParams.get('limit_appointments') || '5');
+    const cursor = url.searchParams.get('cursor');
+    const page1 = { customer: { id, full_name: 'Ada', created_at: '2025-01-01T00:00:00Z' }, stats: { lifetime_spend: 0, unpaid_balance: 0, total_visits: 0, last_visit_at: null, avg_ticket: 0, last_service_at: null }, vehicles: [], appointments: [{ id: 'a1', vehicle_id: 'v1', scheduled_at: '2025-07-01T00:00:00Z', status: 'COMPLETED', services: [], invoice: null }], page: { page_size: limitAppts, has_more: true, next_cursor: 'CUR2' } };
+    const page2 = { customer: { id, full_name: 'Ada', created_at: '2025-01-01T00:00:00Z' }, stats: { lifetime_spend: 0, unpaid_balance: 0, total_visits: 0, last_visit_at: null, avg_ticket: 0, last_service_at: null }, vehicles: [], appointments: [{ id: 'a0', vehicle_id: 'v1', scheduled_at: '2025-06-01T00:00:00Z', status: 'COMPLETED', services: [], invoice: null }], page: { page_size: limitAppts, has_more: false, next_cursor: null } };
+    const payload = cursor ? page2 : page1;
+    if (includeInvoices) {
+      // augment appointments with a synthetic invoice mirror
+      const p = payload as unknown as { appointments: Array<unknown>; [k: string]: unknown };
+      const appts = Array.isArray(p.appointments) ? p.appointments : [];
+      (p as { invoices?: Array<{ id: string; total_cents: number }> }).invoices = appts.map((_, i) => ({ id: `inv-${i + 1}`, total_cents: 10000 + i * 1000 }));
+    }
+    return HttpResponse.json(payload);
+  }),
+
+  // --- Customer lookup ---
+  http.get('/api/customers/lookup', ({ request }) => {
+    const url = new URL(request.url, 'http://localhost');
+    const phone = url.searchParams.get('phone') || '';
+    if (phone.endsWith('1111')) {
+      return HttpResponse.json({
+        customer: { id: 'c1', name: 'Alice Auto', phone: '5305551111' },
+        vehicles: [{ id: 'v1', year: 2020, make: 'Honda', model: 'Civic', license_plate: 'AAA111' }]
+      });
+    }
+    if (phone.endsWith('2222')) {
+      return HttpResponse.json({
+        customer: { id: 'c2', name: 'Bob Fleet', phone: '5305552222' },
+        vehicles: [
+          { id: 'v2', year: 2019, make: 'Ford', model: 'F-150', license_plate: 'BBB222' },
+          { id: 'v3', year: 2021, make: 'Tesla', model: 'Model 3', license_plate: 'CCC333' }
+        ]
+      });
+    }
+    if (phone.endsWith('3333')) {
+      return HttpResponse.json({ error: 'not found' }, { status: 404 });
+    }
+    return HttpResponse.json({ error: 'not found' }, { status: 404 });
+  }),
+  http.get('http://localhost:3000/api/customers/lookup', ({ request }) => {
+    const url = new URL(request.url);
+    const phone = url.searchParams.get('phone') || '';
+    if (phone.endsWith('1111')) {
+      return HttpResponse.json({
+        customer: { id: 'c1', name: 'Alice Auto', phone: '5305551111' },
+        vehicles: [{ id: 'v1', year: 2020, make: 'Honda', model: 'Civic', license_plate: 'AAA111' }]
+      });
+    }
+    if (phone.endsWith('2222')) {
+      return HttpResponse.json({
+        customer: { id: 'c2', name: 'Bob Fleet', phone: '5305552222' },
+        vehicles: [
+          { id: 'v2', year: 2019, make: 'Ford', model: 'F-150', license_plate: 'BBB222' },
+          { id: 'v3', year: 2021, make: 'Tesla', model: 'Model 3', license_plate: 'CCC333' }
+        ]
+      });
+    }
+    if (phone.endsWith('3333')) {
+      return HttpResponse.json({ error: 'not found' }, { status: 404 });
+    }
+    return HttpResponse.json({ error: 'not found' }, { status: 404 });
+  }),
+
+  // --- Customers Search (CustomersPage) ---
+  http.get('/api/admin/customers/search', ({ request }) => {
+    const url = new URL(request.url, 'http://localhost');
+    const q = (url.searchParams.get('q') || '').toLowerCase();
+    const filter = url.searchParams.get('filter') || 'all';
+    const sortBy = url.searchParams.get('sortBy') || 'relevance';
+    // Minimal dataset that covers tests
+    const items = [
+      { vehicleId: 'v1', customerId: 'c1', name: 'Alice A', phone: '555-1111', visitsCount: 3, lastVisit: null, plate: 'ABC123', vehicle: 'Honda Civic' },
+      { vehicleId: 'v2', customerId: 'c2', name: 'Bob B', email: 'bob@example.com', visitsCount: 1, lastVisit: null, plate: 'XYZ999', vehicle: 'Toyota Camry' },
+      { vehicleId: 'v3', customerId: 'c9', name: 'Nav Test', phone: '555-9999', visitsCount: 1, lastVisit: null },
+    ];
+    let results = items.filter(i => !q || i.name.toLowerCase().includes(q) || (i.phone || '').includes(q) || (i.plate || '').toLowerCase().includes(q));
+    if (filter === 'vip') {
+      results = results.filter(i => i.name.toLowerCase().includes('vip'));
+    }
+    if (sortBy === 'name_asc') results = [...results].sort((a,b) => a.name.localeCompare(b.name));
+  // highest_lifetime_spend: keep current order for test purposes
+    return HttpResponse.json({ data: { items: results } });
+  }),
+  http.get('http://localhost:3000/api/admin/customers/search', ({ request }) => {
+    const url = new URL(request.url);
+    const q = (url.searchParams.get('q') || '').toLowerCase();
+    const items = [
+      { vehicleId: 'v1', customerId: 'c1', name: 'Alice A', phone: '555-1111', visitsCount: 2, lastVisit: null, plate: 'ABC123', vehicle: 'Honda Civic' },
+      { vehicleId: 'v2', customerId: 'c1', name: 'Alice A', phone: '555-1111', visitsCount: 5, lastVisit: null, plate: 'XYZ789', vehicle: 'Toyota Camry' },
+      { vehicleId: 'v2', customerId: 'c2', name: 'Bob B', email: 'bob@example.com', visitsCount: 1, lastVisit: null }
+    ];
+    const results = items.filter(i => !q || i.name.toLowerCase().includes(q) || (i.phone || '').includes(q) || (i.plate || '').toLowerCase().includes(q));
+    return HttpResponse.json({ data: { items: results } });
+  }),
+
+  // --- Technicians ---
+  http.get('/api/admin/technicians', () => {
+    return HttpResponse.json({ technicians: [
+      { id: 'tech-1', name: 'Sam' },
+      { id: 'tech-2', name: 'Riley' }
+    ]});
+  }),
+  http.get('http://localhost:3000/api/admin/technicians', () => {
+    return HttpResponse.json({ technicians: [
+      { id: 'tech-1', name: 'Sam' },
+      { id: 'tech-2', name: 'Riley' }
+    ]});
+  }),
+
+  // --- Message Templates (list/get/create/update) ---
+  http.get('/api/admin/message-templates', () => {
+    return HttpResponse.json({ message_templates: [
+  { id: 'tpl-1', slug: 'tpl-1', label: 'Vehicle Ready', channel: 'sms', category: 'status', body: 'Hi {{customer.name}}, your vehicle is ready!', variables: [], is_active: true },
+  { id: 'tpl-2', slug: 'tpl-2', label: 'Reminder', channel: 'sms', category: 'reminder', body: 'Reminder: appointment soon', variables: [], is_active: true }
+    ]});
+  }),
+  http.get('http://localhost:3000/api/admin/message-templates', () => {
+    return HttpResponse.json({ message_templates: [
+  { id: 'tpl-1', slug: 'tpl-1', label: 'Vehicle Ready', channel: 'sms', category: 'status', body: 'Hi {{customer.name}}, your vehicle is ready!', variables: [], is_active: true },
+  { id: 'tpl-2', slug: 'tpl-2', label: 'Reminder', channel: 'sms', category: 'reminder', body: 'Reminder: appointment soon', variables: [], is_active: true }
+    ]});
+  }),
+  http.get('/api/admin/message-templates/:id', ({ params }) => {
+    const id = String((params as { id: string }).id);
+    return HttpResponse.json({ id, slug: 'example', label: 'Example', channel: 'sms', category: null, body: 'Body', variables: [], is_active: true });
+  }),
+  http.post('/api/admin/message-templates', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    return HttpResponse.json({ id: 'new', slug: String(body.slug || 'new'), label: String(body.label || 'New'), channel: String(body.channel || 'sms'), category: body.category ?? null, body: String(body.body || ''), variables: [], is_active: true }, { status: 201 });
+  }),
+  http.patch('/api/admin/message-templates/:id', async ({ params, request }) => {
+    const id = String((params as { id: string }).id);
+    const body = await request.json() as Record<string, unknown>;
+    return HttpResponse.json({ id, slug: 'new', label: String(body.label || 'Updated'), channel: String(body.channel || 'sms'), category: body.category ?? null, body: String(body.body || ''), variables: [], is_active: true });
+  }),
+  // host variant for unit tests that use localhost:3000
+  http.post('http://localhost:3000/api/admin/message-templates', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    return HttpResponse.json({ id: 'new', slug: String(body.slug || 'new'), label: String(body.label || 'New'), channel: String(body.channel || 'sms'), category: body.category ?? null, body: String(body.body || ''), variables: [], is_active: true }, { status: 201 });
+  }),
+  http.patch('http://localhost:3000/api/admin/message-templates/:id', async ({ params, request }) => {
+    const id = String((params as { id: string }).id);
+    const body = await request.json() as Record<string, unknown>;
+    return HttpResponse.json({ id, slug: 'new', label: String(body.label || 'Updated'), channel: String(body.channel || 'sms'), category: body.category ?? null, body: String(body.body || ''), variables: [], is_active: true });
+  }),
+
+  // --- Appointment Messages (relative + localhost:3000) ---
+  http.get('/api/appointments/:id/messages', () => {
+    return HttpResponse.json({ messages: [], errors: null, meta: { request_id: generateRequestId() } });
+  }),
+  http.post('/api/appointments/:id/messages', async ({ request }) => {
+    await request.json().catch(() => ({}));
+    return HttpResponse.json({ id: `msg-${Date.now()}`, status: 'sent', errors: null, meta: { request_id: generateRequestId() } }, { status: 201 });
+  }),
+  http.get('http://localhost:3000/api/appointments/:id/messages', () => {
+    return HttpResponse.json({ messages: [], errors: null, meta: { request_id: generateRequestId() } });
+  }),
+  http.post('http://localhost:3000/api/appointments/:id/messages', async ({ request }) => {
+    await request.json().catch(() => ({}));
+    return HttpResponse.json({ id: `msg-${Date.now()}`, status: 'sent', errors: null, meta: { request_id: generateRequestId() } }, { status: 201 });
+  }),
+  // --- Invoices list (for InvoicesPage) ---
+  http.get('/api/admin/invoices', ({ request }) => {
+    const url = new URL(request.url);
+    const page = Number(url.searchParams.get('page') || '1');
+    const pageSize = Number(url.searchParams.get('pageSize') || '20');
+    // simple deterministic set: empty on page > 1
+    const items = page > 1 ? [] : [
+      { id: 'inv1', status: 'PAID', total_cents: 10000, amount_due_cents: 0, amount_paid_cents: 10000, subtotal_cents:10000, tax_cents:0, created_at: new Date().toISOString(), issued_at: new Date().toISOString(), updated_at: new Date().toISOString(), customer_id: 1, customer_name: 'Alice' },
+      { id: 'inv2', status: 'DRAFT', total_cents: 2500, amount_due_cents: 2500, amount_paid_cents: 0, subtotal_cents:2500, tax_cents:0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), customer_id: 2, customer_name: 'Bob' }
+    ];
+    return HttpResponse.json({ data: { items, page, page_size: pageSize, total_items: items.length, total_pages: 1 } });
+  }),
+  http.get('http://localhost:3000/api/admin/invoices', ({ request }) => {
+    const url = new URL(request.url);
+    const page = Number(url.searchParams.get('page') || '1');
+    const pageSize = Number(url.searchParams.get('pageSize') || '20');
+    const items = page > 1 ? [] : [
+      { id: 'inv1', status: 'PAID', total_cents: 10000, amount_due_cents: 0, amount_paid_cents: 10000, subtotal_cents:10000, tax_cents:0, created_at: new Date().toISOString(), issued_at: new Date().toISOString(), updated_at: new Date().toISOString(), customer_id: 1, customer_name: 'Alice' },
+      { id: 'inv2', status: 'DRAFT', total_cents: 2500, amount_due_cents: 2500, amount_paid_cents: 0, subtotal_cents:2500, tax_cents:0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), customer_id: 2, customer_name: 'Bob' }
+    ];
+    return HttpResponse.json({ data: { items, page, page_size: pageSize, total_items: items.length, total_pages: 1 } });
+  }),
+  // --- Add package to invoice ---
+  http.post('/api/admin/invoices/:id/add-package', async ({ params, request }) => {
+    const { id } = params as { id: string };
+    // Just echo a new line item into the response
+    const body = await request.json().catch(() => ({ package_id: 'unknown' })) as { package_id?: string };
+    return HttpResponse.json({
+      data: {
+        invoice: { id, status: 'DRAFT', total_cents: 12500, amount_due_cents: 12500, amount_paid_cents: 0, subtotal_cents: 12500, tax_cents: 0 },
+        line_items: [ { id: 'li-new', name: `Package ${body.package_id || 'unknown'}`, quantity: 1, unit_price_cents: 12500, line_subtotal_cents: 12500, tax_cents: 0, total_cents: 12500 } ]
+      }
+    }, { status: 201 });
   }),
   // Board endpoint for unit tests (when axios baseURL is '/api', resolves to localhost:3000/api/...)
   http.get('http://localhost:3000/api/admin/appointments/board', ({ request }) => {
@@ -470,6 +972,34 @@ const handlers = [
   }),
 
   // Get single appointment (drawer payload) for unit tests (localhost:3000)
+  http.get('/api/appointments/:id', ({ params }) => {
+    const id = params.id as string;
+    const appointment = mockAppointments.find(apt => apt.id === id);
+    if (!appointment) {
+      return HttpResponse.json({ error: 'Appointment not found' }, { status: 404 });
+    }
+    const customer = mockCustomers.find(c => c.id === appointment.customer_id);
+    const vehicle = mockVehicles.find(v => v.id === appointment.vehicle_id);
+    const services = mockServices.filter(s => s.appointment_id === id);
+    const drawerPayload = {
+      appointment: {
+        id: appointment.id,
+        status: appointment.status,
+        start: appointment.start_ts,
+        end: appointment.end_ts,
+        total_amount: appointment.total_amount,
+        paid_amount: appointment.paid_amount,
+        check_in_at: null,
+        check_out_at: null,
+        tech_id: appointment.tech_id
+      },
+      customer,
+      vehicle,
+      services
+    };
+    return HttpResponse.json(drawerPayload);
+  }),
+
   http.get('http://localhost:3000/api/appointments/:id', ({ params }) => {
     const id = params.id as string;
     console.log('🔧 MSW: getDrawer handler (unit test) called for id:', id);
@@ -536,6 +1066,65 @@ const handlers = [
       errors: null,
       meta: { request_id: generateRequestId() }
     });
+  }),
+
+  // --- Admin appointments (relative /api variants for axios baseURL) ---
+  http.get('/api/admin/appointments', ({ request }) => {
+    const url = new URL(request.url, 'http://localhost');
+    const status = url.searchParams.get('status');
+    const limit = parseInt(url.searchParams.get('limit') || '50');
+    const offset = parseInt(url.searchParams.get('offset') || '0');
+
+    let filteredAppointments = mockAppointments;
+    if (status) {
+      filteredAppointments = filteredAppointments.filter(apt =>
+        apt.status.toUpperCase() === status.toUpperCase()
+      );
+    }
+
+    const paginatedAppointments = filteredAppointments.slice(offset, offset + limit);
+    return HttpResponse.json({
+      data: {
+        appointments: paginatedAppointments,
+        nextCursor: paginatedAppointments.length === limit ? 'next-page' : null
+      },
+      errors: null,
+      meta: { request_id: generateRequestId() }
+    });
+  }),
+  http.get('/api/admin/appointments/today', () => {
+    // Simple "today" view: subset of mockAppointments for stability
+    const today = mockAppointments.slice(0, 1);
+    return HttpResponse.json({ appointments: today });
+  }),
+  http.post('/api/admin/appointments', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    const newAppointment: MockAppointment = {
+      id: `apt-${Date.now()}`,
+      status: (body.status as string) || 'SCHEDULED',
+      start_ts: (body.start as string) || new Date().toISOString(),
+      end_ts: (body.end as string) || new Date(Date.now() + 3600000).toISOString(),
+      total_amount: (body.total_amount as number) || 0,
+      paid_amount: (body.paid_amount as number) || 0,
+      customer_name: (body.customer_name as string) || 'New Customer',
+      vehicle_label: (body.vehicle_label as string) || 'Unknown Vehicle',
+      customer_id: (body.customer_id as string) || 'cust-new',
+      vehicle_id: (body.vehicle_id as string) || 'veh-new',
+      tech_id: (body.tech_id as string) || null,
+      notes: (body.notes as string) || ''
+    };
+    mockAppointments.push(newAppointment);
+    return HttpResponse.json({ data: { id: newAppointment.id } }, { status: 201 });
+  }),
+  http.put('/api/admin/appointments/:id', async ({ params, request }) => {
+    const id = params.id as string;
+    const body = await request.json() as Record<string, unknown>;
+    const idx = mockAppointments.findIndex(a => a.id === id);
+    if (idx === -1) {
+      return HttpResponse.json({ message: 'Appointment not found' }, { status: 404 });
+    }
+    Object.assign(mockAppointments[idx], body);
+    return HttpResponse.json({ message: 'Appointment updated successfully' });
   }),
 
   // Get single appointment (drawer payload)

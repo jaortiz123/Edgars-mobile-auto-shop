@@ -107,7 +107,7 @@ export default function AdminLayout() {
           {/* Mobile navigation header */}
           <div className="md:hidden px-sp-4 py-sp-3 nb-border border-b bg-white/95 backdrop-blur-sm">
             <h1 className="text-fs-2 font-bold">Edgar's Admin</h1>
-            <nav className="flex mt-2 gap-1 overflow-x-auto">
+            <nav className="flex mt-2 gap-sp-1 overflow-x-auto">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
