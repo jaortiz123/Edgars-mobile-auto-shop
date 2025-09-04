@@ -5,9 +5,10 @@ import { Page, Locator } from '@playwright/test';
  * 1. Waits for grid DOM attachment (not necessarily visible on mobile).
  * 2. Prefers data-board-ready='1' but falls back to first detected card anywhere inside the grid.
  * 3. Returns first appointment card (may be hidden on mobile – caller can decide if visibility needed).
+ * 4. Can optionally handle empty boards gracefully.
  */
-export async function waitForBoardReady(page: Page, opts: { timeout?: number; requireVisibleCard?: boolean } = {}): Promise<Locator> {
-  const { timeout = 15000, requireVisibleCard = true } = opts;
+export async function waitForBoardReady(page: Page, opts: { timeout?: number; requireVisibleCard?: boolean; allowEmpty?: boolean } = {}): Promise<Locator | null> {
+  const { timeout = 15000, requireVisibleCard = true, allowEmpty = false } = opts;
   const start = Date.now();
   const grid = page.locator('.nb-board-grid').first();
 
@@ -35,7 +36,11 @@ export async function waitForBoardReady(page: Page, opts: { timeout?: number; re
     }
     await page.waitForTimeout(100);
   }
-  if (!card) throw new Error('Board readiness: no appointment card detected before timeout');
+
+  if (!card && !allowEmpty) {
+    throw new Error('Board readiness: no appointment card detected before timeout');
+  }
+
   return card;
 }
 
