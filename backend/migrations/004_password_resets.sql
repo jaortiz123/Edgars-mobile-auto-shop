@@ -8,12 +8,12 @@
 
 -- Create password_resets table
 CREATE TABLE password_resets (
-    user_id TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
     token_hash TEXT NOT NULL,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (NOW() + INTERVAL '1 hour'),
     used_at TIMESTAMP WITH TIME ZONE NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    tenant_id TEXT NOT NULL,
+    tenant_id UUID NOT NULL,
 
     -- Composite primary key ensures one token per user at a time
     PRIMARY KEY (user_id, token_hash),
@@ -38,15 +38,15 @@ ALTER TABLE password_resets ENABLE ROW LEVEL SECURITY;
 CREATE POLICY password_resets_user_isolation ON password_resets
     FOR ALL
     USING (
-        tenant_id = current_setting('app.current_tenant_id', true)::text
-        AND user_id = current_setting('app.current_user_id', true)::text
+        tenant_id = current_tenant_id()
+        AND user_id = (current_setting('app.current_user_id', true))::integer
     );
 
 -- RLS Policy: Allow INSERT for any authenticated user within their tenant
 CREATE POLICY password_resets_insert_policy ON password_resets
     FOR INSERT
     WITH CHECK (
-        tenant_id = current_setting('app.current_tenant_id', true)::text
+        tenant_id = current_tenant_id()
     );
 
 -- Add helpful comment for future reference
