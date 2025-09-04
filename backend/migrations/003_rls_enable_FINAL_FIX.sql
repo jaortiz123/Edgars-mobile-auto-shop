@@ -2,10 +2,11 @@
 -- CRITICAL FIX: RLS Configuration for Non-Superuser Application
 BEGIN;
 
--- Helper function: current tenant context
-CREATE OR REPLACE FUNCTION current_tenant_id() RETURNS text
+-- Helper function: current tenant context (UUID-typed)
+DROP FUNCTION IF EXISTS current_tenant_id();
+CREATE OR REPLACE FUNCTION current_tenant_id() RETURNS uuid
 LANGUAGE sql STABLE AS $$
-  SELECT NULLIF(current_setting('app.tenant_id', true), '')
+  SELECT NULLIF(current_setting('app.tenant_id', true), '')::uuid
 $$;
 
 -- Enable RLS on customers table
@@ -38,7 +39,7 @@ CREATE OR REPLACE FUNCTION enforce_tenant_on_insert() RETURNS trigger AS $$
 BEGIN
   IF NEW.tenant_id IS NULL THEN
     NEW.tenant_id := current_tenant_id();
-    IF NEW.tenant_id IS NULL OR NEW.tenant_id = '' THEN
+    IF NEW.tenant_id IS NULL THEN
       RAISE EXCEPTION 'No tenant context set. Use SET app.tenant_id = ''tenant_id''';
     END IF;
   END IF;
