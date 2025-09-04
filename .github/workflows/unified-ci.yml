@@ -245,10 +245,8 @@ jobs:
 
       - name: Run Playwright tests
         run: |
-          echo "Running Playwright tests..."
-          npm run test:e2e -- --list
-          echo "Attempting to run smoke test specifically:"
-          npx playwright test e2e/smoke.spec.ts --reporter=list
+          echo "Running Playwright E2E tests..."
+          npm run test:e2e -- --reporter=list --max-failures=5
         env:
           CI: true
 
