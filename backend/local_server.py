@@ -3554,7 +3554,7 @@ def generate_invoice(appt_id: str):
     except Exception:
         force_mem = False
     if force_mem or (not conn and use_memory) or (err and not conn):
-        global _MEM_INVOICES, _MEM_INVOICE_SEQ, _MEM_SERVICES  # type: ignore
+        global _MEM_INVOICES, _MEM_INVOICE_SEQ  # type: ignore
         # In memory mode, accept the provided appointment id to unblock slim E2E flow
         try:
             _MEM_INVOICE_SEQ += 1  # type: ignore
@@ -3632,7 +3632,6 @@ def get_invoice(invoice_id: str):
     # Memory fallback
     conn, use_memory, err = safe_conn()
     if (not conn and use_memory) or (err and not conn):
-        global _MEM_INVOICES  # type: ignore
         try:
             inv = _MEM_INVOICES.get(invoice_id)  # type: ignore
         except Exception:
@@ -3681,7 +3680,7 @@ def create_invoice_payment(invoice_id: str):
             return _error(
                 HTTPStatus.BAD_REQUEST, "invalid_amount", "Payment amount must be positive"
             )
-        global _MEM_INVOICES, _MEM_PAYMENTS  # type: ignore
+        global _MEM_PAYMENTS  # type: ignore
         inv = None
         try:
             inv = _MEM_INVOICES.get(invoice_id)  # type: ignore
@@ -3758,7 +3757,6 @@ def void_invoice_endpoint(invoice_id: str):
     # Memory fallback
     conn, use_memory, err = safe_conn()
     if (not conn and use_memory) or (err and not conn):
-        global _MEM_INVOICES  # type: ignore
         try:
             inv = _MEM_INVOICES.get(invoice_id)  # type: ignore
         except Exception:
@@ -3867,7 +3865,6 @@ def get_board():
     rows: list[dict[str, Any]] = []
     if not conn and use_memory:
         # Memory-backed board from fabricated appointment list
-        global _MEM_APPTS  # type: ignore
         try:
             for a in _MEM_APPTS:  # type: ignore
                 if tech_id and a.get("tech_id") != tech_id:
@@ -6332,7 +6329,6 @@ def start_job(appt_id: str):
     if not conn and not use_memory and err:
         use_memory = True
     if not conn and use_memory:
-        global _MEM_APPTS  # type: ignore
         try:
             for a in _MEM_APPTS:  # type: ignore
                 if a.get("id") == appt_id:
@@ -6358,7 +6354,6 @@ def ready_job(appt_id: str):
     if not conn and not use_memory and err:
         use_memory = True
     if not conn and use_memory:
-        global _MEM_APPTS  # type: ignore
         try:
             for a in _MEM_APPTS:  # type: ignore
                 if a.get("id") == appt_id:
@@ -6382,7 +6377,6 @@ def complete_job(appt_id: str):
     if not conn and not use_memory and err:
         use_memory = True
     if not conn and use_memory:
-        global _MEM_APPTS  # type: ignore
         try:
             for a in _MEM_APPTS:  # type: ignore
                 if a.get("id") == appt_id:
@@ -9826,7 +9820,6 @@ def check_in(appt_id: str):
     except Exception:
         conn = None
     if not conn and use_memory:
-        global _MEM_APPTS  # type: ignore
         try:
             for a in _MEM_APPTS:  # type: ignore
                 if a.get("id") == appt_id:
@@ -9882,7 +9875,6 @@ def check_out(appt_id: str):
     except Exception:
         conn = None
     if not conn and use_memory:
-        global _MEM_APPTS  # type: ignore
         try:
             for a in _MEM_APPTS:  # type: ignore
                 if a.get("id") == appt_id:
