@@ -16,7 +16,7 @@ export default async function globalSetup() {
   const profileUrl = process.env.PROFILE_READINESS_URL || 'http://localhost:3001/api/customers/profile'
   const maxAttempts = parseInt(process.env.PROFILE_READINESS_ATTEMPTS || '20', 10)
   const delayMs = parseInt(process.env.PROFILE_READINESS_DELAY_MS || '500', 10)
-  const tenantId = process.env.E2E_TENANT_ID || '11111111-1111-1111-1111-111111111111'
+  const tenantId = process.env.E2E_TENANT_ID || '00000000-0000-0000-0000-000000000001'
 
   let successStreak = 0
   let ready = false
@@ -68,6 +68,18 @@ export default async function globalSetup() {
     if (!adminToken) {
       console.warn('[global-setup] Admin login succeeded but no token found in response') // eslint-disable-line no-console
       return
+    }
+
+    // Ensure staff membership for advisor in target tenant so membership checks pass
+    try {
+      await axios.post(
+        'http://localhost:3001/api/admin/staff/memberships',
+        { staff_id: 'advisor', tenant_id: tenantId, role: 'Advisor' },
+        { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}`, 'X-Tenant-Id': tenantId } }
+      )
+      console.log('[global-setup] Ensured staff membership for advisor in tenant', tenantId) // eslint-disable-line no-console
+    } catch (mErr: any) {
+      console.warn('[global-setup] Could not ensure staff membership (proceeding):', mErr?.message || mErr) // eslint-disable-line no-console
     }
     const storageState = {
       cookies: [],

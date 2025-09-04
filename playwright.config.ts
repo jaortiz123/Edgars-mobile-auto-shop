@@ -62,7 +62,7 @@ export default defineConfig({
     navigationTimeout: 30000,
     // Always send tenant context so backend resolves g.tenant_id
     extraHTTPHeaders: {
-      'X-Tenant-Id': process.env.E2E_TENANT_ID || '11111111-1111-1111-1111-111111111111',
+      'X-Tenant-Id': process.env.E2E_TENANT_ID || '00000000-0000-0000-0000-000000000001',
     },
     storageState: 'e2e/storageState.json'
   },
