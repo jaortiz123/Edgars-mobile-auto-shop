@@ -217,6 +217,14 @@ jobs:
           sudo chmod +x /usr/local/bin/docker-compose
           docker-compose --version
 
+      - name: Install frontend dependencies for Playwright
+        working-directory: frontend
+        run: |
+          echo "Installing frontend dependencies for Playwright webServer..."
+          npm ci
+          echo "Verifying @vitejs/plugin-react installation:"
+          npm list @vitejs/plugin-react
+
       - name: Create .env file for docker-compose
         run: |
           cp .env.ci .env
