@@ -7,6 +7,9 @@ BEGIN;
 SET TIME ZONE 'UTC';
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- Ensure tenant context for RLS/triggered inserts (default tenant)
+SET LOCAL app.tenant_id = '00000000-0000-0000-0000-000000000001';
+
 -- Seed service_operations (Phase-1 catalog)
 INSERT INTO service_operations (id,internal_code,name,category,keywords,default_hours,default_price,flags,is_active,replaced_by_id,labor_matrix_code,skill_level)
 VALUES
