@@ -137,6 +137,16 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-cov pytest-mock
 
+      - name: Load base schema (database/init.sql)
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: test_autoshop
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        run: |
+          psql "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}" -v ON_ERROR_STOP=1 -f database/init.sql
+
       - name: Apply raw SQL migrations
         working-directory: backend
         env:
@@ -146,6 +156,16 @@ jobs:
           POSTGRES_USER: test_user
           POSTGRES_PASSWORD: test_password
         run: python run_sql_migrations.py
+
+      - name: Seed service catalog (optional)
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: test_autoshop
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        run: |
+          psql "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}" -v ON_ERROR_STOP=1 -f backend/seeds/seed_s1.sql || echo "Seed step skipped"
 
       - name: Run backend tests
         working-directory: backend
