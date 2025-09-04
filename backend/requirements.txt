@@ -8,6 +8,8 @@ Flask-CORS
 PyJWT
 redis
 bcrypt
+boto3
+psutil
 
 # Testing dependencies
 pytest
