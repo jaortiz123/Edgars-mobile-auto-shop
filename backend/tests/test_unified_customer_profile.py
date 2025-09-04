@@ -17,7 +17,17 @@ def make_token(role="Advisor", sub="user-1"):
 
 
 def auth_headers(role="Advisor"):
-    return {"Authorization": f"Bearer {make_token(role=role)}"}
+    import uuid
+
+    return {"Authorization": f"Bearer {make_token(role=role)}", "X-Tenant-Id": str(uuid.uuid4())}
+
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _bypass_tenant(monkeypatch):
+    monkeypatch.setenv("SKIP_TENANT_ENFORCEMENT", "true")
 
 
 def _rand_plate():

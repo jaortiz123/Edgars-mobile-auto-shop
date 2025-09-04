@@ -1,12 +1,6 @@
+import os
 import pytest
 from backend import local_server
-
-
-@pytest.fixture
-def client():
-    local_server.app.config["TESTING"] = True
-    with local_server.app.test_client() as client:
-        yield client
 
 
 def test_get_board_happy_path(client):
@@ -20,6 +14,8 @@ def test_get_board_happy_path(client):
 
 def test_get_board_empty_dataset(client, mocker):
     """Test the /api/admin/appointments/board endpoint with an empty dataset."""
+    # Bypass tenant enforcement and enable memory fallback when DB is mocked to return None
+    mocker.patch.dict(os.environ, {"SKIP_TENANT_ENFORCEMENT": "true", "FALLBACK_TO_MEMORY": "true"})
     mocker.patch("backend.local_server.db_conn", return_value=None)
     response = client.get("/api/admin/appointments/board")
     assert response.status_code == 200

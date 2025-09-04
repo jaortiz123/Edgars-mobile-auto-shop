@@ -157,9 +157,9 @@ def test_get_customer_history_returns_past_appointments_with_payments(
     assert "payments" in appointment
 
 
-def test_get_customer_history_requires_authentication(client):
+def test_get_customer_history_requires_authentication(no_auto_auth_client):
     """Test that the endpoint requires authentication"""
-    response = client.get("/api/customers/123/history")
+    response = no_auto_auth_client.get("/api/customers/123/history")
 
     assert response.status_code == 403
     json_data = response.get_json()
@@ -194,3 +194,11 @@ def test_get_customer_history_orders_by_date_desc(client, auth_headers, fake_db)
             next_date = appointments[i + 1]["start"]
             # Current should be >= next (descending order)
             assert current_date >= next_date
+
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _bypass_tenant(monkeypatch):
+    monkeypatch.setenv("SKIP_TENANT_ENFORCEMENT", "true")

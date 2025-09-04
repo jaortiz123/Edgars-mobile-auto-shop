@@ -36,9 +36,17 @@ except ImportError:
 
 
 @pytest.fixture
-def client():
-    """Create a test client for the Flask app."""
+def client(monkeypatch):
+    """Create a test client for the Flask app with tenant checks bypassed for fake DB."""
     app.config["TESTING"] = True
+    # Enforce RBAC and bypass tenant membership when using mocked DB
+    try:
+        import backend.local_server as srv
+
+        srv.DEV_NO_AUTH = False  # type: ignore
+    except Exception:
+        pass
+    monkeypatch.setenv("SKIP_TENANT_ENFORCEMENT", "true")
     with app.test_client() as client:
         yield client
 
@@ -50,7 +58,9 @@ def auth_headers():
     def make_token(role="Owner", user_id="test-user"):
         payload = {"sub": user_id, "role": role}
         token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
-        return {"Authorization": f"Bearer {token}"}
+        import uuid
+
+        return {"Authorization": f"Bearer {token}", "X-Tenant-Id": str(uuid.uuid4())}
 
     return make_token
 

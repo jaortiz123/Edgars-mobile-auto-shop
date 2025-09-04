@@ -5,7 +5,12 @@ Tests that ETag from GET profile endpoint works with PATCH endpoint.
 """
 
 import jwt
+import pytest
 import requests
+
+# This external integration test targets a live server on localhost:3001.
+# Skip in unit/integration CI runs for the backend test container environment.
+pytestmark = pytest.mark.skip(reason="Requires live server at :3001; skipped in CI backend suite")
 
 # Configuration
 BASE_URL = "http://localhost:3001"

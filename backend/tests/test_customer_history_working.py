@@ -41,6 +41,12 @@ def mock_db():
         yield mock_cursor
 
 
+@pytest.fixture(autouse=True)
+def _bypass_tenant(monkeypatch):
+    # Avoid tenant membership queries interfering with mocked DB
+    monkeypatch.setenv("SKIP_TENANT_ENFORCEMENT", "true")
+
+
 def test_get_customer_history_returns_404_for_nonexistent_customer(
     client, auth_headers, monkeypatch
 ):
@@ -229,9 +235,9 @@ def test_get_customer_history_returns_past_appointments_with_payments(
     assert len(apt2["payments"]) == 1
 
 
-def test_get_customer_history_requires_authentication(client):
+def test_get_customer_history_requires_authentication(no_auto_auth_client):
     """Test that the endpoint requires authentication"""
-    response = client.get("/api/customers/123/history")
+    response = no_auto_auth_client.get("/api/customers/123/history")
 
     assert response.status_code == 403
     json_data = response.get_json()

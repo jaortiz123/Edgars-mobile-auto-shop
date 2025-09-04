@@ -103,13 +103,15 @@ def test_vehicle_profile_cursor_precedence_over_dates(client):
 # RBAC negative: disable dev bypass and ensure no token results in 403 (before 404)
 
 
-def test_vehicle_profile_rbac_forbidden(client):
+def test_vehicle_profile_rbac_forbidden(no_auto_auth_client):
     import local_server as srv
 
     prev = srv.DEV_NO_AUTH
     try:
         srv.DEV_NO_AUTH = False
-        resp = client.get("/api/admin/vehicles/999999/profile", headers={"X-Test-NoAuth": "1"})
+        resp = no_auto_auth_client.get(
+            "/api/admin/vehicles/999999/profile", headers={"X-Test-NoAuth": "1"}
+        )
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.get_data(as_text=True)
     finally:
         srv.DEV_NO_AUTH = prev

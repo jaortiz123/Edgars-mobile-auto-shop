@@ -41,6 +41,7 @@ class _FakeCursor:
         self._result_one = None
         self._result_many = None
         self._last_sql = ""
+        self.rowcount = 0
 
     def __enter__(self):
         return self
@@ -51,6 +52,7 @@ class _FakeCursor:
     def execute(self, sql, params=None):  # extremely small SQL shim just for these tests
         self._last_sql = sql
         params = params or []
+        self.rowcount = 0
         # INSERT customers
         if sql.startswith("INSERT INTO customers"):
             self.conn._cid += 1
@@ -60,10 +62,14 @@ class _FakeCursor:
             self.conn.customers[cid] = {
                 "id": cid,
                 "name": name,
+                "full_name": name,
                 "email": email,
                 "phone": phone,
                 "is_vip": False,
                 "address": None,
+                "tags": [],
+                "notes": None,
+                "sms_consent": False,
                 "created_at": now,
                 "updated_at": now,
             }
@@ -107,10 +113,14 @@ class _FakeCursor:
                 self._result_one = {
                     "id": row["id"],
                     "name": row["name"],
+                    "full_name": row.get("full_name"),
                     "email": row["email"],
                     "phone": row["phone"],
                     "is_vip": row["is_vip"],
                     "address": row["address"],
+                    "tags": row.get("tags", []),
+                    "notes": row.get("notes"),
+                    "sms_consent": row.get("sms_consent", False),
                     "ts": ts,
                 }
             return
@@ -143,6 +153,7 @@ class _FakeCursor:
                 for col, val in zip(cols, params[:-1]):
                     row[col] = val
                 row["updated_at"] = _now_ts()
+            self.rowcount = 1 if row else 0
             self._result_one = None
             return
         # UPDATE vehicles
@@ -155,6 +166,7 @@ class _FakeCursor:
                 for col, val in zip(cols, params[:-1]):
                     row[col] = val
                 row["updated_at"] = _now_ts()
+            self.rowcount = 1 if row else 0
             self._result_one = None
             return
         # INSERT audit (customer)

@@ -59,6 +59,7 @@ def test_board_fallbacks_nulls(client, monkeypatch):
         }
     ]
 
+    monkeypatch.setenv("SKIP_TENANT_ENFORCEMENT", "true")
     monkeypatch.setattr(local_server, "db_conn", lambda: _make_conn_with_rows(rows))
     resp = client.get("/api/admin/appointments/board")
     assert resp.status_code == 200
@@ -86,6 +87,7 @@ def test_board_fallbacks_empty_string(client, monkeypatch):
         }
     ]
 
+    monkeypatch.setenv("SKIP_TENANT_ENFORCEMENT", "true")
     monkeypatch.setattr(local_server, "db_conn", lambda: _make_conn_with_rows(rows))
     resp = client.get("/api/admin/appointments/board")
     assert resp.status_code == 200

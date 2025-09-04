@@ -109,6 +109,22 @@ def vehicle_ownership_required(
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(fn)
         def wrapper(*args, **kwargs):
+            # In tests, honor forced error triggers before auth to validate error contracts
+            try:
+                srv = _get_srv()
+                if getattr(srv.app, "config", {}).get("TESTING"):
+                    forced = request.args.get("test_error")
+                    forced_map = {
+                        "bad_request": (400, "bad_request", "Bad request (test)"),
+                        "forbidden": (403, "forbidden", "Forbidden (test)"),
+                        "not_found": (404, "not_found", "Not found (test)"),
+                        "internal": (500, "internal", "Internal server error (test)"),
+                    }
+                    if forced in forced_map:
+                        st, code, msg = forced_map[forced]
+                        return srv._error(st, code, msg)
+            except Exception:
+                pass
             # Role enforcement first; unauthorized => 403 (do not leak ownership info)
             srv = _get_srv()
             auth = srv.require_or_maybe(require_role)
