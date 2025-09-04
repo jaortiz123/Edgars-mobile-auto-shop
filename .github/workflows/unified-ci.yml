@@ -274,7 +274,7 @@ jobs:
           import os
           import psycopg2
           from psycopg2.extras import RealDictCursor
-          dsn = os.environ.get('DATABASE_URL') or 'postgres://ci_user:ci_password@db:5432/ci_autoshop'
+          dsn = os.environ.get('DATABASE_URL') or 'postgres://postgres:postgres@db:5432/ci_autoshop'
           conn = psycopg2.connect(dsn)
           cur = conn.cursor(cursor_factory=RealDictCursor)
           cur.execute("CREATE TABLE IF NOT EXISTS tenants (id uuid primary key, name text, slug text unique, is_active boolean default true);")
