@@ -88,7 +88,7 @@ test.describe('Invoice System Comprehensive E2E', () => {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
-        'X-Tenant-ID': '11111111-1111-1111-1111-111111111111' // Use first test tenant
+  'X-Tenant-Id': (process.env.E2E_TENANT_ID || '00000000-0000-0000-0000-000000000001')
       },
       data: {
         status: 'COMPLETED'
@@ -110,7 +110,7 @@ test.describe('Invoice System Comprehensive E2E', () => {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
-        'X-Tenant-ID': '11111111-1111-1111-1111-111111111111' // Use first test tenant
+  'X-Tenant-Id': (process.env.E2E_TENANT_ID || '00000000-0000-0000-0000-000000000001')
       }
     });
 
@@ -166,7 +166,7 @@ test.describe('Invoice System Comprehensive E2E', () => {
         const pdfApiResp = await page.request.get(`http://localhost:3001/api/admin/invoices/${invoiceId}/pdf`, {
           headers: {
             Authorization: `Bearer ${token}`,
-            'X-Tenant-ID': '11111111-1111-1111-1111-111111111111' // Use first test tenant
+            'X-Tenant-Id': (process.env.E2E_TENANT_ID || '00000000-0000-0000-0000-000000000001')
           }
         });
 
@@ -203,7 +203,7 @@ test.describe('Invoice System Comprehensive E2E', () => {
     const detailResp = await page.request.get(`http://localhost:3001/api/admin/invoices/${invoiceId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
-        'X-Tenant-ID': '11111111-1111-1111-1111-111111111111' // Use first test tenant
+  'X-Tenant-Id': (process.env.E2E_TENANT_ID || '00000000-0000-0000-0000-000000000001')
       }
     });
 
@@ -270,7 +270,7 @@ test.describe('Invoice System Comprehensive E2E', () => {
     const finalDetailResp = await page.request.get(`http://localhost:3001/api/admin/invoices/${invoiceId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
-        'X-Tenant-ID': '11111111-1111-1111-1111-111111111111' // Use first test tenant
+  'X-Tenant-Id': (process.env.E2E_TENANT_ID || '00000000-0000-0000-0000-000000000001')
       }
     });
 

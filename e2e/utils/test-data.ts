@@ -87,7 +87,7 @@ function getStoredToken(): string {
 
 function getTenantHeader(): Record<string, string> {
   // Prefer explicit env; else use default stable test tenant UUID (backend accepts either UUID or slug)
-  const tenantId = process.env.E2E_TENANT_ID || '11111111-1111-1111-1111-111111111111';
+  const tenantId = process.env.E2E_TENANT_ID || '00000000-0000-0000-0000-000000000001';
   return { 'X-Tenant-Id': tenantId };
 }
 

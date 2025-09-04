@@ -20,11 +20,11 @@ test.describe('Invoice System API Verification', () => {
 
     console.log('✅ Authentication setup complete');
 
-    const tenantId = '11111111-1111-1111-1111-111111111111'; // Use first test tenant
+  const tenantId = process.env.E2E_TENANT_ID || '00000000-0000-0000-0000-000000000001';
     const headers = {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
-      'X-Tenant-ID': tenantId
+      'X-Tenant-Id': tenantId
     };
 
     // Step 1: Create a new appointment
