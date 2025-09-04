@@ -4,6 +4,7 @@ import { Page } from '@playwright/test';
 
 export async function stubCustomerProfile(page: Page, overrides: Partial<{ email: string }> = {}) {
   await page.route('**/customers/profile', async route => {
+  // Keep stub simple; backend expects tenant header but stub bypasses server
     await route.fulfill({
       status: 200,
       contentType: 'application/json',

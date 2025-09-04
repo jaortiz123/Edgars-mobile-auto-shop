@@ -60,7 +60,11 @@ export default defineConfig({
     // Set reasonable timeouts for CI
     actionTimeout: 15000,
     navigationTimeout: 30000,
-  storageState: 'e2e/storageState.json'
+    // Always send tenant context so backend resolves g.tenant_id
+    extraHTTPHeaders: {
+      'X-Tenant-Id': process.env.E2E_TENANT_ID || '11111111-1111-1111-1111-111111111111',
+    },
+    storageState: 'e2e/storageState.json'
   },
 
   // Global test timeout
