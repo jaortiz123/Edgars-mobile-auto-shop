@@ -1,10 +1,16 @@
 -- 003_rls_enable.sql
 BEGIN;
 
--- Helper function: NULL‑safe current tenant
-CREATE OR REPLACE FUNCTION current_tenant_id() RETURNS text
+-- Helper function: NULL‑safe current tenant (UUID-typed)
+DO $$ BEGIN
+  PERFORM 1;
+END $$;
+
+-- Replace any prior text-typed function with a UUID-returning version
+DROP FUNCTION IF EXISTS current_tenant_id();
+CREATE OR REPLACE FUNCTION current_tenant_id() RETURNS uuid
 LANGUAGE sql STABLE AS $$
-  SELECT NULLIF(current_setting('app.tenant_id', true), '')
+  SELECT NULLIF(current_setting('app.tenant_id', true), '')::uuid
 $$;
 
 -- Enable RLS
@@ -19,6 +25,18 @@ DO $$
 DECLARE tbl text;
 BEGIN
   FOR tbl IN SELECT unnest(ARRAY['customers','vehicles','invoices','appointments','invoice_line_items']) LOOP
+    EXECUTE format(
+      'DROP POLICY IF EXISTS %I_rls_select ON %I', tbl, tbl
+    );
+    EXECUTE format(
+      'DROP POLICY IF EXISTS %I_rls_modify ON %I', tbl, tbl
+    );
+    EXECUTE format(
+      'DROP POLICY IF EXISTS %I_rls_update ON %I', tbl, tbl
+    );
+    EXECUTE format(
+      'DROP POLICY IF EXISTS %I_rls_delete ON %I', tbl, tbl
+    );
     EXECUTE format(
       'CREATE POLICY %I_rls_select ON %I FOR SELECT USING (tenant_id = current_tenant_id())',
       tbl, tbl
