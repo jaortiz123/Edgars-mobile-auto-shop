@@ -326,8 +326,23 @@ export async function getCarsOnPremises(): Promise<CarOnPremises[]> {
 // Additional methods expected by Dashboard.tsx
 export async function getDrawer(id: string) {
   // Preserve /api prefix regardless of how axios joins baseURL and paths
-  const resp = await http.get<Envelope<DrawerPayload>>(`/appointments/${id}`);
-  return resp.data.data;
+  const resp = await http.get(`/appointments/${id}`);
+  const payload = resp.data as unknown;
+  // Accept both envelope and direct DrawerPayload forms
+  if (payload && typeof payload === 'object') {
+    // Envelope: { data: { appointment, customer, vehicle, services } }
+    if ('data' in (payload as Record<string, unknown>)) {
+      const inner = (payload as { data?: unknown }).data;
+      if (inner && typeof inner === 'object' && 'appointment' in (inner as Record<string, unknown>)) {
+        return inner as DrawerPayload;
+      }
+    }
+    // Direct: { appointment, customer, vehicle, services }
+    if ('appointment' in (payload as Record<string, unknown>)) {
+      return payload as DrawerPayload;
+    }
+  }
+  throw new Error('Unexpected drawer response shape');
 }
 
 // Services CRUD methods

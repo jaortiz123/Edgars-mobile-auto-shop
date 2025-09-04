@@ -2,9 +2,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useBoardStore } from '@/state/useBoardStore';
 import type { BoardCard, BoardColumn } from '@/types/models';
 
-vi.mock('@/lib/api', () => ({
-  patchAppointment: vi.fn(async () => { throw new Error('Patch failed'); }),
-}));
+vi.mock('@/lib/api', async () => {
+  const actual = (await vi.importActual('@/lib/api')) as Record<string, unknown>;
+  return {
+    ...actual,
+    patchAppointment: vi.fn(async () => { throw new Error('Patch failed'); }),
+  };
+});
 
 describe('assignTechnician rollback', () => {
   beforeEach(() => {

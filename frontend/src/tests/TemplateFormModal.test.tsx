@@ -7,13 +7,13 @@ import { vi } from 'vitest';
 import TemplateFormModal from '@/components/admin/TemplateFormModal';
 
 // Use spies instead of full module mock to avoid impacting other tests relying on real exports
+import * as api from '@/lib/api';
 import type { MessageTemplateRecord } from '@/lib/api';
-// Access the globally mocked api module and override specific methods for this test file only
-const api = await import('@/lib/api');
+// Use spies on the real module exports per-file
 const mockCreated: MessageTemplateRecord = { id: '1', slug: 'new', label: 'New', channel: 'sms', category: null, body: 'Hello', variables: [], is_active: true };
 const mockUpdated: MessageTemplateRecord = { id: '1', slug: 'new', label: 'Updated', channel: 'sms', category: null, body: 'Hello', variables: [], is_active: true };
-((api as unknown as { createMessageTemplate: { mockResolvedValue: (v: MessageTemplateRecord) => void } }).createMessageTemplate).mockResolvedValue(mockCreated);
-((api as unknown as { updateMessageTemplate: { mockResolvedValue: (v: MessageTemplateRecord) => void } }).updateMessageTemplate).mockResolvedValue(mockUpdated);
+vi.spyOn(api, 'createMessageTemplate').mockResolvedValue(mockCreated);
+vi.spyOn(api, 'updateMessageTemplate').mockResolvedValue(mockUpdated);
 
 describe('TemplateFormModal validation', () => {
   it('shows error when required fields missing on create', async () => {

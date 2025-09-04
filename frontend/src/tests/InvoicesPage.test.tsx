@@ -1,8 +1,9 @@
 import React from 'react';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import InvoicesPage from '@/pages/admin/InvoicesPage';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import * as api from '@/services/apiService';
 
 function renderInvoices() {
   return render(
@@ -16,26 +17,16 @@ function renderInvoices() {
 
 
 describe('InvoicesPage', () => {
-  const originalFetch = global.fetch;
-
   beforeEach(() => {
-    global.fetch = vi.fn();
-  });
-
-  afterEach(() => {
-    vi.resetAllMocks();
-    global.fetch = originalFetch;
+    vi.restoreAllMocks();
   });
 
   it('Loading State: shows loading indicator initially', async () => {
-    let resolveFn: (v: unknown) => void;
-    // @ts-expect-error test mock
-    global.fetch.mockReturnValue(new Promise(res => { resolveFn = res; }));
+    const p = new Promise<api.InvoiceListResponse>(resolve => setTimeout(() => resolve({ items: [], page: 1, page_size: 20, total_items: 0, total_pages: 0 }), 10));
+    vi.spyOn(api, 'fetchInvoices').mockReturnValue(p as unknown as Promise<api.InvoiceListResponse>);
     renderInvoices();
     expect(screen.getByText(/Loading invoices/i)).toBeInTheDocument();
-  resolveFn!({ ok: true, json: async () => ({ data: { items: [], page:1, page_size:20, total_items:0, total_pages:0 } }) });
-  // Wait for loading state to clear to avoid act() warning from late state updates
-  await waitFor(() => expect(screen.queryByText(/Loading invoices/i)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText(/Loading invoices/i)).not.toBeInTheDocument());
   });
 
   it('Success State: renders rows for returned invoices', async () => {
@@ -43,8 +34,7 @@ describe('InvoicesPage', () => {
       { id: 'inv1', status: 'PAID', total_cents: 10000, amount_due_cents: 0, amount_paid_cents: 10000, subtotal_cents:10000, tax_cents:0, created_at: new Date().toISOString(), issued_at: new Date().toISOString(), updated_at: new Date().toISOString(), customer_id: 1, customer_name: 'Alice' },
       { id: 'inv2', status: 'DRAFT', total_cents: 2500, amount_due_cents: 2500, amount_paid_cents: 0, subtotal_cents:2500, tax_cents:0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), customer_id: 2, customer_name: 'Bob' }
     ];
-    // @ts-expect-error test mock
-    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ data: { items: invoices, page:1, page_size:20, total_items:2, total_pages:1 } }) });
+  vi.spyOn(api, 'fetchInvoices').mockResolvedValue({ items: invoices, page:1, page_size:20, total_items:2, total_pages:1 });
     renderInvoices();
   // Await at least one invoice row to ensure initial async fetch resolved
   expect(await screen.findByText('inv1')).toBeInTheDocument();
@@ -64,16 +54,14 @@ describe('InvoicesPage', () => {
   });
 
   it('Empty State: shows message when no invoices', async () => {
-    // @ts-expect-error test mock
-    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ data: { items: [], page:1, page_size:20, total_items:0, total_pages:0 } }) });
+  vi.spyOn(api, 'fetchInvoices').mockResolvedValue({ items: [], page:1, page_size:20, total_items:0, total_pages:0 });
     renderInvoices();
   expect(await screen.findByText(/No invoices found/i)).toBeInTheDocument();
   await waitFor(() => expect(screen.queryByText(/Loading invoices/i)).not.toBeInTheDocument());
   });
 
   it('Error State: displays error when fetch fails', async () => {
-    // @ts-expect-error test mock
-    global.fetch.mockRejectedValue(new Error('Network down'));
+  vi.spyOn(api, 'fetchInvoices').mockRejectedValue(new Error('Network down'));
     renderInvoices();
   const alert = await screen.findByRole('alert');
   expect(alert).toHaveTextContent(/Network down|Failed to load invoices/);

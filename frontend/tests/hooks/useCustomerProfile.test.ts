@@ -1,15 +1,8 @@
-import { setupServer } from 'msw/node';
-import { http, HttpResponse } from 'msw';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useCustomerProfile } from '@/hooks/useCustomerProfile';
+import { vi } from 'vitest';
 import React from 'react';
-
-const server = setupServer();
-
-beforeAll(() => server.listen());
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
 
 function wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({
@@ -27,26 +20,29 @@ const base = {
 };
 
 it('handles 200 then 304 without flicker', async () => {
-  let hits = 0;
-  server.use(
-    http.get('/api/admin/customers/c1/profile', () => {
-      hits++;
-      if (hits === 1) {
-        return HttpResponse.json(base, {
+  const fetchMock = vi
+    .fn()
+    .mockImplementationOnce(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(base), {
           status: 200,
-          headers: { 'ETag': 'W/"abc"' }
-        });
-      }
-      return new HttpResponse(null, {
-        status: 304,
-        headers: { 'ETag': 'W/"abc"' }
-      });
-    })
-  );
+          headers: { ETag: 'W/"abc"' },
+        }),
+      ),
+    )
+    .mockImplementationOnce(() =>
+      Promise.resolve(
+        new Response(null, {
+          status: 304,
+          headers: { ETag: 'W/"abc"' },
+        }),
+      ),
+    );
+  Object.defineProperty(globalThis, 'fetch', { value: fetchMock, configurable: true });
 
-  const { result, rerender } = renderHook(() => useCustomerProfile('c1'), { wrapper });
+  const { result } = renderHook(() => useCustomerProfile('c1'), { wrapper });
   await waitFor(() => expect(result.current.data?.customer.id).toBe('c1'));
-  // trigger a refetch by re-rendering
-  rerender();
+  // trigger a refetch explicitly
+  await result.current.refetch();
   await waitFor(() => expect(result.current.data?.customer.full_name).toBe('Ada'));
 });

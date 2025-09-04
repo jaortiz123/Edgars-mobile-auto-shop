@@ -301,7 +301,6 @@ export function _test_snapshot(){ return getTelemetry()._testSnapshot(); }
 export async function _test_forceFlush(){ await getTelemetry()._testForceFlush(true); }
 export function _test_setMaxQueue(n: number){ getTelemetry()._testSetMaxQueue(n); }
 export function _test_reset(){ // resets singleton so a fresh instance reloads from storage
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (singleton as any) = null;
 }
 export function _test_updateConfig(p: Partial<TelemetryConfig>){ getTelemetry()._testUpdateConfig(p); }

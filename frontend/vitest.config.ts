@@ -63,6 +63,8 @@ export default defineConfig({
       '**/archived/**',
       '**/src/tests/archived/**',
       '**/src/tests/triage-removed/**',
+  // Exclude Playwright specs from Vitest (run only under Playwright)
+  '**/tests/pages/**/*.spec.ts',
       // Exclude heavy integration test suites from the default unit run
   // Keep integration tests excluded by default; run them via dedicated script if desired
   '**/src/tests/integration/**',

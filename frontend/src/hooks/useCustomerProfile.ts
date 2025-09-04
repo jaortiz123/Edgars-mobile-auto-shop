@@ -38,7 +38,11 @@ export function useCustomerProfile(id: string, opts: { vehicleId?: string; from?
       dataCache.set(cacheKey, data);
       return data;
     },
-    placeholderData: (prev) => prev,
+  placeholderData: (prev) => {
+      // If we already have cached data for this key, keep it to avoid flicker
+      const cacheKey = keyStr(qk);
+      return dataCache.get(cacheKey) ?? prev;
+    },
     staleTime: 30_000,
   });
 }

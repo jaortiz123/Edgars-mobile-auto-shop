@@ -52,6 +52,30 @@ export function createMocks() {
     },
 
     api: {
+      // Minimal axios-like client used across the app
+      // Provides default no-op handlers and status codes for unit tests.
+      // Individual tests can override methods via vi.mocked(api.http.post).mockResolvedValue(...)
+    http: (() => {
+        const ok = { status: 200, statusText: 'OK' } as const;
+        const baseResp = (extra: Record<string, unknown> = {}) => ({ data: {}, headers: {}, config: {}, ...ok, ...extra });
+        return {
+      get: vi.fn(async () => baseResp()),
+      post: vi.fn(async () => baseResp()),
+      patch: vi.fn(async () => baseResp()),
+      delete: vi.fn(async () => baseResp()),
+          // Provide bare interceptor API so code that attaches interceptors doesn't crash
+          interceptors: { response: { use: vi.fn() } },
+        } as unknown as {
+          get: ReturnType<typeof vi.fn>;
+          post: ReturnType<typeof vi.fn>;
+          patch: ReturnType<typeof vi.fn>;
+          delete: ReturnType<typeof vi.fn>;
+          interceptors: { response: { use: ReturnType<typeof vi.fn> } };
+        };
+      })(),
+
+      // Convenience to mirror real export
+      useApi: function () { return (this as unknown as { http: unknown }).http; },
       // API calls with simulation controls
       getBoard: vi.fn().mockResolvedValue({
         columns: [

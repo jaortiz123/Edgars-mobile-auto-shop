@@ -5,6 +5,12 @@ interface ImportMetaEnv {
   readonly VITE_API_URL: string;
   // Optional environment variable for Sentry, if still needed
   readonly VITE_SENTRY_DSN?: string;
+  // Optional alternate API base var sometimes referenced in code
+  readonly VITE_API_BASE_URL?: string;
+  // Standard Vite env flags
+  readonly DEV: boolean;
+  readonly PROD: boolean;
+  readonly MODE: string;
 }
 
 interface ImportMeta {

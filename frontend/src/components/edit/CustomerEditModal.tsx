@@ -26,7 +26,15 @@ export function CustomerEditModal({ open, onClose, profile }: Props) {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    mutation.mutate({ id: profile.customer.id, patch: { full_name: fullName, phone: phone || null, email: email || null } }, { onSuccess: () => onClose() });
+    mutation.mutate(
+      { id: profile.customer.id, patch: { full_name: fullName, phone: phone || null, email: email || null } },
+      {
+        onSuccess: (result: unknown) => {
+          const r = result as { aborted?: boolean } | null;
+          if (!r?.aborted) onClose();
+        },
+      }
+    );
   };
 
   return (

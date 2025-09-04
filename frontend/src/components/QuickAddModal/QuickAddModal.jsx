@@ -1067,6 +1067,7 @@ const QuickAddModal = ({
         {/* Service Catalog Modal */}
         <ServiceCatalogModal
           open={showServiceModal}
+          defaultExpandAll
           onAdd={(op) => {
             // immediate chip add for legacy behavior while still allowing batch confirm
             setSelectedServices(prev => prev.find(s=>s.id===op.id)? prev : [...prev, { id: op.id, name: op.name, defaultPrice: op.base_labor_rate }]);

@@ -57,7 +57,8 @@ function buildVehicleProfileUrl(vehicleId: string, opts: { cursor?: string; page
   if (opts.pageSize) qs.set('page_size', String(opts.pageSize));
   if (opts.includeInvoices) qs.set('include_invoices', 'true');
   if (opts.filters?.status && opts.filters.status !== 'ALL') qs.set('status', opts.filters.status);
-  return `/api/admin/vehicles/${vehicleId}/profile${qs.size ? `?${qs}` : ''}`;
+  // Return a path relative to axios baseURL ('/api') to avoid '/api/api' duplication
+  return `/admin/vehicles/${vehicleId}/profile${qs.size ? `?${qs}` : ''}`;
 }
 
 interface FetchResult { json: VehicleProfileResponse; etag: string | null }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CustomerCard, { CustomerVehicleInfo } from '@/components/admin/CustomerCard';
 import FilterChips, { CustomerFilter } from '@/components/admin/FilterChips';
 import SortDropdown, { CustomerSort } from '@/components/admin/SortDropdown';
-import { fetchRecentCustomers, RecentCustomerRecord, http } from '@/lib/api';
+import { fetchRecentCustomers, RecentCustomerRecord } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 
 // Use centralized axios client with relative base '/api'
@@ -26,12 +26,17 @@ type SearchItem = {
 
 async function searchCustomers(q: string, filter: CustomerFilter, sortBy: CustomerSort): Promise<SearchItem[]> {
   if (!q.trim()) return [];
-  const controller = new AbortController();
   const params = new URLSearchParams({ q: q.trim(), limit: '25' });
   if (filter && filter !== 'all') params.append('filter', filter);
   if (sortBy && sortBy !== 'relevance') params.append('sortBy', sortBy);
-  const { data } = await http.get(`/admin/customers/search?${params.toString()}`, { signal: controller.signal as unknown as AbortSignal });
-  return data?.data?.items || data?.items || [];
+  const resp = await fetch(`/api/admin/customers/search?${params.toString()}`);
+  // Some unit tests stub fetch with a minimal shape lacking 'ok'; treat missing as OK.
+  const ok = typeof (resp as { ok?: boolean }).ok === 'boolean' ? (resp as { ok?: boolean }).ok === true : true;
+  if (!ok) throw new Error('Search failed');
+  const json = await resp.json().catch(() => ({} as unknown));
+  return (json as { data?: { items?: SearchItem[] } ; items?: SearchItem[] })?.data?.items
+    || (json as { items?: SearchItem[] }).items
+    || [];
 }
 
 
