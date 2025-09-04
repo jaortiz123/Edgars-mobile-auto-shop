@@ -16,6 +16,7 @@ export default async function globalSetup() {
   const profileUrl = process.env.PROFILE_READINESS_URL || 'http://localhost:3001/api/customers/profile'
   const maxAttempts = parseInt(process.env.PROFILE_READINESS_ATTEMPTS || '20', 10)
   const delayMs = parseInt(process.env.PROFILE_READINESS_DELAY_MS || '500', 10)
+  const tenantId = process.env.E2E_TENANT_ID || '11111111-1111-1111-1111-111111111111'
 
   let successStreak = 0
   let ready = false
@@ -23,7 +24,7 @@ export default async function globalSetup() {
     try {
       const res = await axios.get(profileUrl, {
         timeout: 1500,
-        headers: { Origin: 'http://localhost:5173', Authorization: 'Bearer dummy-token' }
+        headers: { Origin: 'http://localhost:5173', Authorization: 'Bearer dummy-token', 'X-Tenant-Id': tenantId }
       })
       if (res.status !== 404 && res.status < 500) {
         successStreak += 1
@@ -58,7 +59,11 @@ export default async function globalSetup() {
   // Single-source auth: perform advisor (admin) login only and persist token.
   // This avoids mixed customer/admin tokens racing in localStorage, which caused intermittent 403s.
   try {
-    const adminLogin = await axios.post('http://localhost:3001/api/admin/login', { username: 'advisor', password: 'dev' }, { headers: { 'Content-Type': 'application/json' } })
+    const adminLogin = await axios.post(
+      'http://localhost:3001/api/admin/login',
+      { username: 'advisor', password: 'dev' },
+      { headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': tenantId } }
+    )
     const adminToken: string | undefined = adminLogin.data?.data?.token
     if (!adminToken) {
       console.warn('[global-setup] Admin login succeeded but no token found in response') // eslint-disable-line no-console
