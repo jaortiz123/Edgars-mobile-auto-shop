@@ -13,9 +13,35 @@ def _patch_db(monkeypatch):
 
 
 @pytest.fixture()
-def client():
+def client(monkeypatch):
+    from flask.testing import FlaskClient
+    import time, jwt, uuid
+
     srv.app.config.update(TESTING=True)
-    return srv.app.test_client()
+    monkeypatch.setenv("SKIP_TENANT_ENFORCEMENT", "true")
+
+    token = jwt.encode(
+        {"sub": "owner", "role": "Owner", "iat": int(time.time()), "exp": int(time.time()) + 3600},
+        srv.JWT_SECRET,
+        algorithm=srv.JWT_ALG,
+    )
+    if isinstance(token, bytes):
+        token = token.decode("utf-8")
+
+    class _AuthClient(FlaskClient):
+        def open(self, *a, **kw):  # type: ignore[override]
+            headers = kw.setdefault("headers", {})
+            headers.setdefault("Authorization", f"Bearer {token}")
+            headers.setdefault("X-Tenant-Id", str(uuid.uuid4()))
+            return super().open(*a, **kw)
+
+    prev = getattr(srv.app, "test_client_class", FlaskClient)
+    try:
+        srv.app.test_client_class = _AuthClient
+        with srv.app.test_client() as c:
+            yield c
+    finally:
+        srv.app.test_client_class = prev
 
 
 def _seed_customer(conn, name="Patch User"):
@@ -49,13 +75,20 @@ def _get_etag(client, cid):
     ts = max(row["updated_at"], row["created_at"])
     row_for = {
         "id": row["id"],
-        "name": row["name"],
-        "email": row["email"],
-        "phone": row["phone"],
-        "address": row["address"],
+        "name": row.get("name"),
+        "full_name": row.get("full_name") or row.get("name"),
+        "email": row.get("email"),
+        "phone": row.get("phone"),
+        "tags": row.get("tags", []),
+        "notes": row.get("notes"),
+        "sms_consent": bool(row.get("sms_consent", False)),
         "ts": ts,
     }
-    return srv._strong_etag("customer", row_for, ["name", "email", "phone", "address"])
+    return srv._strong_etag(
+        "customer",
+        row_for,
+        ["name", "full_name", "email", "phone", "tags", "notes", "sms_consent"],
+    )
 
 
 def _get_vehicle_etag(client, vid, cust):

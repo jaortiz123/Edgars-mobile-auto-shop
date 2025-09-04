@@ -89,11 +89,23 @@ def test_get_admin_appointments_orders_by_start_ts_asc_id_asc(client, monkeypatc
     assert appointments[1]["id"] == "apt-1002"
     assert appointments[1]["start_ts"] == "2025-07-29T11:00:00+00:00"
 
-    # Verify the SQL query was called with correct ORDER BY clause
-    # The actual SQL should include "ORDER BY a.start_ts ASC, a.id ASC"
-    mock_cursor.execute.assert_called_once()
-    sql_query = mock_cursor.execute.call_args[0][0]
-    assert "ORDER BY a.start_ts ASC, a.id ASC" in sql_query
+    # Verify the SQL query used the correct ORDER BY clause.
+    # Ignore extra executes from tenant/context setup and focus on the main appointments query.
+    executed_queries = [
+        call.args[0]
+        for call in getattr(mock_cursor.execute, "call_args_list", [])
+        if call and call.args
+    ]
+    target = None
+    for q in executed_queries:
+        q_str = q if isinstance(q, str) else str(q)
+        if "FROM appointments a" in q_str and "ORDER BY a.start_ts" in q_str:
+            target = q_str
+            break
+    assert (
+        target is not None
+    ), f"Expected appointments query not executed. Calls: {executed_queries!r}"
+    assert "ORDER BY a.start_ts ASC, a.id ASC" in target
 
 
 def test_get_admin_appointments_rejects_limit_over_200(client, monkeypatch):
@@ -102,6 +114,9 @@ def test_get_admin_appointments_rejects_limit_over_200(client, monkeypatch):
     import backend.local_server as srv
 
     monkeypatch.setattr(srv, "db_conn", lambda: None)
+    # Bypass tenant enforcement and enable memory fallback so request reaches validation
+    monkeypatch.setenv("SKIP_TENANT_ENFORCEMENT", "true")
+    monkeypatch.setenv("FALLBACK_TO_MEMORY", "true")
 
     r = client.get("/api/admin/appointments?limit=250")
     assert r.status_code == 400
@@ -120,6 +135,9 @@ def test_get_admin_appointments_rejects_cursor_plus_offset(client, monkeypatch):
     import backend.local_server as srv
 
     monkeypatch.setattr(srv, "db_conn", lambda: None)
+    # Bypass tenant enforcement and enable memory fallback so request reaches validation
+    monkeypatch.setenv("SKIP_TENANT_ENFORCEMENT", "true")
+    monkeypatch.setenv("FALLBACK_TO_MEMORY", "true")
 
     r = client.get("/api/admin/appointments?cursor=abc123&offset=10")
     assert r.status_code == 400

@@ -8,13 +8,13 @@ def enable_memory(monkeypatch):
     import backend.local_server as srv
 
     monkeypatch.setenv("FALLBACK_TO_MEMORY", "true")
+    monkeypatch.setenv("SKIP_TENANT_ENFORCEMENT", "true")
     yield
 
 
 class DummyConn:
     def __init__(self):
-        self.queries = []
-        self.params = []
+        self.calls = []  # list of (query, params)
 
     def cursor(self, *args, **kwargs):
         return self
@@ -26,8 +26,7 @@ class DummyConn:
         pass
 
     def execute(self, query, params=None):
-        self.queries.append(query)
-        self.params = list(params) if params else []
+        self.calls.append((query, list(params) if params else []))
 
     def fetchall(self):
         # Return a single dummy appointment row matching SELECT columns
@@ -66,11 +65,22 @@ def test_filters_applied(client, monkeypatch, param, expected_sql_fragment, expe
 
     r = client.get(f"/api/admin/appointments?{param}")
     assert r.status_code == 200
-    # Query should have been executed
-    full_query = conn.queries[0] if conn.queries else ""
-    assert expected_sql_fragment in full_query
-    # Params should include expected_param
-    assert any(str(expected_param) in str(p) for p in conn.params)
+    # Find the main appointments SELECT among calls (ignore set_config etc.)
+    target_query = ""
+    target_params = []
+    for q, ps in conn.calls:
+        qs = q if isinstance(q, str) else str(q)
+        if "FROM appointments a" in qs and "ORDER BY a.start_ts" in qs:
+            target_query = qs
+            target_params = ps
+            break
+    assert target_query, f"appointments SELECT not executed; calls={conn.calls!r}"
+    assert expected_sql_fragment in target_query
+    # Params should include expected_param (string compare)
+    assert any(str(expected_param) in str(p) for p in target_params), (
+        expected_param,
+        target_params,
+    )
 
 
 def test_invalid_limit_offset(client, monkeypatch):

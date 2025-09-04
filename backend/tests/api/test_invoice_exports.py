@@ -80,7 +80,7 @@ def test_invoice_export_not_found(client):
     assert send_resp.status_code == HTTPStatus.NOT_FOUND
 
 
-def test_invoice_export_rbac_forbidden(monkeypatch, client):
+def test_invoice_export_rbac_forbidden(monkeypatch, client, no_auto_auth_client):
     """Force authorization helper to fail and assert 403 on all export + send endpoints."""
     import local_server as root_srv
 
@@ -112,17 +112,8 @@ def test_invoice_export_rbac_forbidden(monkeypatch, client):
         "invoice", {}
     ).get("id")
 
-    # Now disable dev bypass + patch auth to simulate forbidden
+    # Now disable dev bypass to enforce auth
     monkeypatch.setattr(root_srv, "DEV_NO_AUTH", False)
-    monkeypatch.setattr(root_srv, "require_or_maybe", lambda required=None: None)
-    # Ensure any secondary import path also patched if present
-    try:
-        import backend.local_server as pkg_srv  # type: ignore
-
-        monkeypatch.setattr(pkg_srv, "DEV_NO_AUTH", False)
-        monkeypatch.setattr(pkg_srv, "require_or_maybe", lambda required=None: None)
-    except Exception:
-        pass
 
     for path in [
         f"/api/admin/invoices/{invoice_id}/receipt.html",
@@ -131,7 +122,11 @@ def test_invoice_export_rbac_forbidden(monkeypatch, client):
         f"/api/admin/invoices/{invoice_id}/estimate.pdf",
         f"/api/admin/invoices/{invoice_id}/send",
     ]:
-        resp = client.get(path) if path.endswith((".html", ".pdf")) else client.post(path)
+        resp = (
+            no_auto_auth_client.get(path)
+            if path.endswith((".html", ".pdf"))
+            else no_auto_auth_client.post(path)
+        )
         assert resp.status_code == HTTPStatus.FORBIDDEN, (path, resp.get_data(as_text=True))
         body = resp.get_json()
     assert body["error"]["code"] in ("forbidden", "auth_required")

@@ -24,18 +24,55 @@ CREATE TYPE inspection_item_status AS ENUM ('pass','attention','fail');
 CREATE TABLE customers (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
+    full_name TEXT,
     email TEXT,
     phone TEXT,
     address TEXT,
     is_vip BOOLEAN NOT NULL DEFAULT FALSE,
+    -- Multi-tenant support (nullable for legacy rows/tests)
+    tenant_id UUID NULL,
+    tags TEXT[] NOT NULL DEFAULT '{}',
+    notes TEXT,
+    sms_consent BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Tenancy tables (minimal subset used by tests and middleware)
+CREATE TABLE tenants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    slug TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    plan TEXT NOT NULL DEFAULT 'starter',
+    status TEXT NOT NULL DEFAULT 'active',
+    admin_email TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE user_tenant_memberships (
+    user_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    role TEXT NOT NULL DEFAULT 'Customer',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, tenant_id)
+);
+
+CREATE TABLE staff_tenant_memberships (
+    staff_id TEXT NOT NULL,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    role TEXT NOT NULL DEFAULT 'Advisor',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (staff_id, tenant_id)
+);
+CREATE INDEX idx_staff_memberships_tenant ON staff_tenant_memberships(tenant_id);
+CREATE INDEX idx_user_memberships_tenant ON user_tenant_memberships(tenant_id);
 
 -- vehicles table
 CREATE TABLE vehicles (
     id SERIAL PRIMARY KEY,
     customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    tenant_id UUID NULL,
     make TEXT,
     model TEXT,
     year INTEGER,
@@ -120,6 +157,7 @@ CREATE TABLE appointments (
     id SERIAL PRIMARY KEY,
     customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE RESTRICT,
     vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE RESTRICT,
+    tenant_id UUID NULL,
     status appointment_status NOT NULL DEFAULT 'SCHEDULED',
     -- Added to align with robustness tests referencing appointment_date
     appointment_date TIMESTAMPTZ,
@@ -185,6 +223,16 @@ CREATE TABLE messages (
     body TEXT NOT NULL,
     status message_status NOT NULL,
     sent_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Customer authentication (basic) used by /api/customers/register and /login
+CREATE TABLE customer_auth (
+    customer_id INTEGER PRIMARY KEY REFERENCES customers(id) ON DELETE CASCADE,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    salt TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Customer / Vehicle patch audit tables (Epic E Phase 2)
@@ -436,5 +484,41 @@ ALTER TABLE customer_audits
     ADD CONSTRAINT customer_audits_fields_shape CHECK (audit_json_has_from_to(fields_changed));
 ALTER TABLE vehicle_audits
     ADD CONSTRAINT vehicle_audits_fields_shape CHECK (audit_json_has_from_to(fields_changed));
+
+-- ---------------------------------------------------------------------------
+-- Multi-tenant Row-Level Security (RLS) policies for tests
+-- ---------------------------------------------------------------------------
+-- Enable RLS on key tables used by tenant isolation tests and app endpoints.
+ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vehicles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
+-- Enforce RLS even for table owners (tests create tables as the session user)
+ALTER TABLE customers FORCE ROW LEVEL SECURITY;
+ALTER TABLE vehicles FORCE ROW LEVEL SECURITY;
+ALTER TABLE appointments FORCE ROW LEVEL SECURITY;
+
+-- Ensure idempotency across sessions
+DROP POLICY IF EXISTS tenant_isolation_customers ON customers;
+DROP POLICY IF EXISTS tenant_isolation_vehicles ON vehicles;
+DROP POLICY IF EXISTS tenant_isolation_appointments ON appointments;
+
+-- Isolation policy: restrict reads and writes to current tenant context
+CREATE POLICY tenant_isolation_customers ON customers
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+    WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+CREATE POLICY tenant_isolation_vehicles ON vehicles
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+    WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+CREATE POLICY tenant_isolation_appointments ON appointments
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+    WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+-- Tenant-aware uniqueness (optional but mirrors production expectations)
+DROP INDEX IF EXISTS customers_email_key;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_customers_email_per_tenant
+    ON customers(tenant_id, lower(email))
+    WHERE email IS NOT NULL AND tenant_id IS NOT NULL;
 
 COMMIT;

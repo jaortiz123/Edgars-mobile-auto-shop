@@ -1,6 +1,7 @@
 import uuid
 import re
 import pytest
+from typing import Optional
 
 from local_server import app as flask_app
 
@@ -12,7 +13,7 @@ def client(pg_container):
         yield c
 
 
-def _get_cookie(resp, name: str) -> str | None:
+def _get_cookie(resp, name: str) -> Optional[str]:
     hdr = resp.headers.get("Set-Cookie", "")
     # naive parse across multiple Set-Cookie lines handled by werkzeug joining into a single header
     cookies = re.findall(r"(^|, )([^=]+)=([^;]+);", hdr)

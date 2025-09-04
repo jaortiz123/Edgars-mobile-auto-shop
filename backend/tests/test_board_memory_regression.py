@@ -14,13 +14,7 @@ def enable_memory_mode(monkeypatch):
     yield
 
 
-@pytest.fixture
-def client():
-    from backend.local_server import app
-
-    app.testing = True
-    with app.test_client() as c:
-        yield c
+## client fixture comes from backend/tests/conftest.py
 
 
 def test_board_shows_memory_created_appointment(client):

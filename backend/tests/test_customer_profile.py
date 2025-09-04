@@ -25,17 +25,21 @@ JWT_ALG = local_server.JWT_ALG
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
     app.config["TESTING"] = True
+    # Bypass tenant enforcement for mocked DB connections in this suite
+    monkeypatch.setenv("SKIP_TENANT_ENFORCEMENT", "true")
     with app.test_client() as c:
         yield c
 
 
 @pytest.fixture
 def auth_headers():
+    import uuid
+
     def make(role="Owner", sub="tester"):
         token = jwt.encode({"sub": sub, "role": role}, JWT_SECRET, algorithm=JWT_ALG)
-        return {"Authorization": f"Bearer {token}"}
+        return {"Authorization": f"Bearer {token}", "X-Tenant-Id": str(uuid.uuid4())}
 
     return make
 
@@ -57,9 +61,11 @@ class _Cursor:
         self.params = params
 
     def fetchone(self):
-        # step 1: customer row
-        if self.step == 1:
-            if self.params and self.params[0] == "missing-cust":
+        # Customer row detection (resilient to prior SET LOCAL execution)
+        if isinstance(self.last_sql, str) and "FROM customers" in self.last_sql:
+            if self.params and (
+                self.params[0] == "missing-cust" or self.params[0] == "cust-missing"
+            ):
                 return None
             now = datetime(2025, 8, 15, 12, 0, 0, tzinfo=timezone.utc)
             return {
@@ -337,7 +343,7 @@ def test_profile_vip_overdue_logic(client, auth_headers, mock_db, monkeypatch):
 
     class _C2(_Cursor):
         def fetchone(self):
-            if self.step == 1:
+            if isinstance(self.last_sql, str) and "FROM customers" in self.last_sql:
                 now = datetime(2025, 8, 15, 12, 0, 0, tzinfo=timezone.utc)
                 return {
                     "id": "cust-2",
@@ -348,7 +354,7 @@ def test_profile_vip_overdue_logic(client, auth_headers, mock_db, monkeypatch):
                     "created_at": now - timedelta(days=800),
                     "updated_at": now - timedelta(days=1),
                 }
-            if "WITH appts AS" in self.last_sql:
+            if isinstance(self.last_sql, str) and "WITH appts AS" in self.last_sql:
                 now = datetime(2025, 8, 15, 12, 0, 0, tzinfo=timezone.utc)
                 return {
                     "total_spent": 6000,
