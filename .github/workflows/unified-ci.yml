@@ -223,12 +223,27 @@ jobs:
           echo "Created .env file for CI:"
           cat .env
 
+      - name: Debug frontend dependencies
+        run: |
+          echo "Checking frontend package.json and package-lock.json..."
+          echo "Frontend package.json devDependencies:"
+          grep -A 20 "devDependencies" frontend/package.json | grep -E "(vitejs|react)"
+          echo "Package-lock.json @vitejs entries:"
+          grep -A 5 -B 5 "@vitejs/plugin-react" frontend/package-lock.json | head -15 || echo "No @vitejs/plugin-react found in package-lock.json"
+          echo "Frontend directory contents:"
+          ls -la frontend/ | grep -E "(package|Dockerfile)"
+
       - name: Start services (docker-compose)
         run: docker-compose up -d --build
 
       - name: Wait for backend health
         run: |
           timeout 60 bash -c 'until curl -fsS http://localhost:3001/health; do sleep 2; done'
+
+      - name: Check frontend service logs
+        run: |
+          echo "Frontend service logs:"
+          docker-compose logs frontend | tail -50
 
       - name: Debug test setup
         run: |
