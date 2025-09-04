@@ -1,10 +1,17 @@
 -- 003_rls_enable.sql
 BEGIN;
 
--- Helper function: NULL‑safe current tenant (UUID-typed)
-DO $$ BEGIN
-  PERFORM 1;
-END $$;
+-- Pre-drop any existing RLS policies that reference current_tenant_id()
+DO $$
+DECLARE tbl text;
+BEGIN
+  FOR tbl IN SELECT unnest(ARRAY['customers','vehicles','invoices','appointments','invoice_line_items']) LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I_rls_select ON %I', tbl, tbl);
+    EXECUTE format('DROP POLICY IF EXISTS %I_rls_modify ON %I', tbl, tbl);
+    EXECUTE format('DROP POLICY IF EXISTS %I_rls_update ON %I', tbl, tbl);
+    EXECUTE format('DROP POLICY IF EXISTS %I_rls_delete ON %I', tbl, tbl);
+  END LOOP;
+END$$;
 
 -- Replace any prior text-typed function with a UUID-returning version
 DROP FUNCTION IF EXISTS current_tenant_id();

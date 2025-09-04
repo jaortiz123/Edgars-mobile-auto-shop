@@ -2,13 +2,6 @@
 -- CRITICAL FIX: RLS Configuration for Non-Superuser Application
 BEGIN;
 
--- Helper function: current tenant context (UUID-typed)
-DROP FUNCTION IF EXISTS current_tenant_id();
-CREATE OR REPLACE FUNCTION current_tenant_id() RETURNS uuid
-LANGUAGE sql STABLE AS $$
-  SELECT NULLIF(current_setting('app.tenant_id', true), '')::uuid
-$$;
-
 -- Enable RLS on customers table
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
 -- CRITICAL: Force RLS even for table owner (but not superuser)
