@@ -364,6 +364,9 @@ jobs:
             ON CONFLICT (id) DO NOTHING
           """, ('00000000-0000-0000-0000-000000000001',))
 
+          # Fix sequence counter after manual inserts to prevent duplicate key errors
+          cur.execute("SELECT setval('customers_id_seq', (SELECT MAX(id) FROM customers))")
+
           # Create test vehicles for E2E tests
           cur.execute("""
             INSERT INTO vehicles(id, customer_id, make, model, year, license_plate, tenant_id)
@@ -382,6 +385,9 @@ jobs:
             VALUES (3, 3, 'Ford', 'F-150', 2021, 'DEF-456', %s)
             ON CONFLICT (id) DO NOTHING
           """, ('00000000-0000-0000-0000-000000000001',))
+
+          # Fix sequence counter after manual inserts to prevent duplicate key errors
+          cur.execute("SELECT setval('vehicles_id_seq', (SELECT MAX(id) FROM vehicles))")
 
           conn.commit()
           cur.close(); conn.close()
