@@ -660,10 +660,7 @@ export async function login(username: string, password: string): Promise<{ token
 }
 
 export async function deleteAppointment(id: string): Promise<void> {
-  // Ensure we always hit the correct API prefix regardless of how axios joins baseURL
-  const base = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
-  const url = `${base}/admin/appointments/${id}`;
-  await http.delete(url);
+  await http.delete(`/admin/appointments/${id}`);
 }
 
 // Reschedule: update the start time of an appointment
