@@ -9017,6 +9017,9 @@ def admin_search_customers():
     Returns a vehicle-centric list so the license plate is the visible source of truth
     tying a customer to a car.
     """
+    # Nuclear debugging for E2E customer search issues
+    log.error(f"[CUSTOMER_SEARCH_DEBUG] Called with args: {dict(request.args)}")
+
     # Step 1: Enforce authentication with role requirement
     require_auth_role("Advisor")
 
@@ -9026,7 +9029,9 @@ def admin_search_customers():
         return resp, 400
 
     q = (request.args.get("q") or "").strip()
+    log.error(f"[CUSTOMER_SEARCH_DEBUG] Query: '{q}', tenant_id: {g.tenant_id}")
     if not q:
+        log.error("[CUSTOMER_SEARCH_DEBUG] Empty query, returning empty items")
         return _ok({"items": []})
     limit = min(int(request.args.get("limit", 25)), 100)
     flt = (request.args.get("filter") or "").strip().lower()
@@ -9162,6 +9167,9 @@ def admin_search_customers():
             }
         )
 
+    log.error(
+        f"[CUSTOMER_SEARCH_DEBUG] Returning {len(items)} items: {[item['name'] for item in items]}"
+    )
     return _ok({"items": items})
 
 

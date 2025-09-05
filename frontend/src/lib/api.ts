@@ -900,12 +900,15 @@ export async function getCustomers(): Promise<Customer[]> {
   try {
     // Use the search endpoint with 'a' to match most customers (names often contain 'a')
     const { data } = await http.get('/admin/customers/search?q=a&limit=1000');
-    return (data?.items || []).map((item: unknown) => ({
+    console.log('[CUSTOMER_DEBUG] Raw API response:', data);
+    const customers = (data?.items || []).map((item: unknown) => ({
       id: (item as { customerId?: string })?.customerId?.toString() || '',
       name: (item as { name?: string })?.name || 'Unknown',
       email: (item as { email?: string })?.email || null,
       phone: (item as { phone?: string })?.phone || null
     }));
+    console.log('[CUSTOMER_DEBUG] Mapped customers:', customers);
+    return customers;
   } catch (error) {
     console.error('Failed to fetch customers:', error);
     return [];
