@@ -1095,8 +1095,10 @@ def _normalize_and_shortcircuit_options():  # pragma: no cover infra convenience
 @app.before_request
 def _resolve_tenant_context():
     """Resolve tenant context and enforce customer membership for authenticated requests."""
+    print(f"SIMPLE_DEBUG: _resolve_tenant_context called for {request.path}")
     try:
         tenant_header = request.headers.get("X-Tenant-Id")
+        print(f"SIMPLE_DEBUG: tenant_header = {tenant_header}")
 
         # For catalog endpoints, avoid DB lookups so tests that mock the first
         # cursor.execute error (for projection fallback) are not consumed here.
@@ -1260,6 +1262,9 @@ def _resolve_tenant_context():
                             return _error(HTTPStatus.FORBIDDEN, "forbidden", "tenant_access_denied")
                     else:
                         # staff membership check using multiple approaches for robustness
+                        print(
+                            f"SIMPLE_DEBUG: Checking staff membership for user_sub={user_sub}, resolved_tenant={resolved_tenant}"
+                        )
                         _row = None
 
                         # First attempt: exact string match
@@ -1291,10 +1296,13 @@ def _resolve_tenant_context():
                             and user_sub == "advisor"
                             and resolved_tenant == "00000000-0000-0000-0000-000000000001"
                         ):
+                            print("SIMPLE_DEBUG: E2E bypass triggered! Setting _row=True")
                             app.logger.error(
                                 "TENANT_DEBUG: Allowing advisor access for E2E test tenant"
                             )
                             _row = True
+
+                        print(f"SIMPLE_DEBUG: Final _row result: {_row}")
 
                         try:
                             app.logger.error(
