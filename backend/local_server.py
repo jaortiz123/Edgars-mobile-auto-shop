@@ -1114,8 +1114,12 @@ def _resolve_tenant_context():
         # Parse auth payload if present (don't hard-fail)
         try:
             auth_payload = maybe_auth(None)
-        except Exception:
+            print(f"[DEBUG] maybe_auth result: {auth_payload}")
+            app.logger.error(f"maybe_auth result: {auth_payload}")
+        except Exception as e:
             auth_payload = None
+            print(f"[DEBUG] maybe_auth failed: {e}")
+            app.logger.error(f"maybe_auth failed: {e}")
 
         conn, use_memory, err = safe_conn()
         if err or (conn is None and not use_memory):
@@ -1237,6 +1241,12 @@ def _resolve_tenant_context():
                 ):
                     try:
                         user_sub = str(auth_payload.get("sub"))
+                        print(
+                            f"[DEBUG] user_sub extracted: '{user_sub}', tenant_header: '{tenant_header}', resolved_tenant: '{resolved_tenant}'"
+                        )
+                        app.logger.error(
+                            f"user_sub extracted: '{user_sub}', tenant_header: '{tenant_header}', resolved_tenant: '{resolved_tenant}'"
+                        )
                     except Exception:
                         return _error(HTTPStatus.FORBIDDEN, "forbidden", "invalid_user_id")
 
@@ -1269,17 +1279,44 @@ def _resolve_tenant_context():
                             and resolved_tenant == "00000000-0000-0000-0000-000000000001"
                         ):
                             # E2E bypass: allow advisor access to test tenant
+                            print(
+                                f"[DEBUG] E2E bypass triggered! user_sub='{user_sub}', resolved_tenant='{resolved_tenant}'"
+                            )
+                            app.logger.error(
+                                f"E2E bypass triggered! user_sub='{user_sub}', resolved_tenant='{resolved_tenant}'"
+                            )
                             _row = True
                         else:
                             # Standard membership check: simple UUID comparison
+                            print(
+                                f"[DEBUG] Checking staff membership for user_sub='{user_sub}', resolved_tenant='{resolved_tenant}'"
+                            )
+                            app.logger.error(
+                                f"Checking staff membership for user_sub='{user_sub}', resolved_tenant='{resolved_tenant}'"
+                            )
                             cur.execute(
                                 "SELECT 1 FROM staff_tenant_memberships WHERE staff_id = %s AND tenant_id = %s::uuid",
                                 (user_sub, resolved_tenant),
                             )
                             _row = cur.fetchone()
+                            print(f"[DEBUG] Staff membership query result: {_row}")
+                            app.logger.error(f"Staff membership query result: {_row}")
 
                         if not _row:
+                            print(
+                                f"[DEBUG] ACCESS DENIED: No staff membership found for user_sub='{user_sub}', resolved_tenant='{resolved_tenant}'"
+                            )
+                            app.logger.error(
+                                f"ACCESS DENIED: No staff membership found for user_sub='{user_sub}', resolved_tenant='{resolved_tenant}'"
+                            )
                             return _error(HTTPStatus.FORBIDDEN, "forbidden", "tenant_access_denied")
+                        else:
+                            print(
+                                f"[DEBUG] ACCESS GRANTED: Staff membership confirmed for user_sub='{user_sub}', resolved_tenant='{resolved_tenant}'"
+                            )
+                            app.logger.error(
+                                f"ACCESS GRANTED: Staff membership confirmed for user_sub='{user_sub}', resolved_tenant='{resolved_tenant}'"
+                            )
 
         g.tenant_id = resolved_tenant
         try:
