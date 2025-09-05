@@ -75,7 +75,7 @@ if not _early_profile_loaded:  # pragma: no cover - exercised via E2E race scena
                 resp.headers["Vary"] = "Origin"
                 resp.headers["Access-Control-Allow-Credentials"] = "true"
                 resp.headers["Access-Control-Allow-Headers"] = (
-                    "Authorization, Content-Type, X-Request-Id, X-Tenant-Id"
+                    "Authorization, Content-Type, X-Request-Id, X-Tenant-Id, x-tenant-id"
                 )
                 resp.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
             resp.headers["X-Debug-App-Instance"] = _FB_INSTANCE_ID
@@ -461,7 +461,13 @@ try:  # idempotent guard
                 r"/customers/*": {"origins": "*"},  # Temporary: allow all origins
             },
             supports_credentials=False,  # Disable for Docker direct calls
-            allow_headers=["Authorization", "Content-Type", "X-Request-Id", "X-Tenant-Id"],
+            allow_headers=[
+                "Authorization",
+                "Content-Type",
+                "X-Request-Id",
+                "X-Tenant-Id",
+                "x-tenant-id",
+            ],
             methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
             expose_headers=["X-Debug-App-Instance"],
         )
