@@ -1193,8 +1193,10 @@ def _resolve_tenant_context():
                     pth = request.path or ""
                     method = request.method or "GET"
                     is_public_auth = (
-                        pth.rstrip("/") == "/api/customers/register" and method == "POST"
-                    ) or (pth.rstrip("/") == "/api/customers/login" and method == "POST")
+                        (pth.rstrip("/") == "/api/customers/register" and method == "POST")
+                        or (pth.rstrip("/") == "/api/customers/login" and method == "POST")
+                        or (pth.rstrip("/") == "/api/admin/login" and method == "POST")
+                    )
                 except Exception:
                     is_public_auth = False
                 # Certain unit-test-only endpoints use fake DBs and should not enforce
