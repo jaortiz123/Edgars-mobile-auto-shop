@@ -3,6 +3,24 @@ import { clearTestAppointments } from './utils/test-data';
 
 test.describe('Appointment Scheduling Foundation', () => {
   test.beforeEach(async ({ page, request }) => {
+    // Capture browser console logs for debugging
+    page.on('console', msg => {
+      console.log(`[BROWSER CONSOLE] ${msg.type()}: ${msg.text()}`);
+    });
+
+    // Capture network requests for debugging
+    page.on('request', request => {
+      if (request.url().includes('/api/admin/customers/search') || request.url().includes('/api/admin/vehicles/search')) {
+        console.log(`[NETWORK REQUEST] ${request.method()} ${request.url()}`);
+      }
+    });
+
+    page.on('response', response => {
+      if (response.url().includes('/api/admin/customers/search') || response.url().includes('/api/admin/vehicles/search')) {
+        console.log(`[NETWORK RESPONSE] ${response.status()} ${response.url()}`);
+      }
+    });
+
     // Clear any existing test appointments for a clean state
     await clearTestAppointments(request);
 
@@ -83,6 +101,24 @@ test.describe('Appointment Scheduling Foundation', () => {
     // Step 1: Open the New Appointment modal
     await page.getByRole('button', { name: 'New Appointment' }).click();
     await expect(page.getByRole('heading', { name: /new appointment/i })).toBeVisible();
+
+    // Wait for data loading and check dropdown options
+    console.log('[E2E DEBUG] Waiting for customer dropdown to populate...');
+    await page.waitForTimeout(2000); // Give time for API calls to complete
+
+    // Check if customer options are available
+    const customerOptions = await page.locator('select[aria-label="Select customer"] option').count();
+    const vehicleOptions = await page.locator('select[aria-label="Select vehicle"] option').count();
+
+    console.log(`[E2E DEBUG] Customer options count: ${customerOptions}`);
+    console.log(`[E2E DEBUG] Vehicle options count: ${vehicleOptions}`);
+
+    // Log the actual options for debugging
+    const customerOptionTexts = await page.locator('select[aria-label="Select customer"] option').allTextContents();
+    const vehicleOptionTexts = await page.locator('select[aria-label="Select vehicle"] option').allTextContents();
+
+    console.log(`[E2E DEBUG] Customer options: ${JSON.stringify(customerOptionTexts)}`);
+    console.log(`[E2E DEBUG] Vehicle options: ${JSON.stringify(vehicleOptionTexts)}`);
 
     // Step 2: Fill out the appointment form
     const startTime = new Date();
