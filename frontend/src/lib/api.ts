@@ -946,6 +946,10 @@ export async function getCustomers(): Promise<Customer[]> {
     // Use the search endpoint with 'a' to match most customers (names often contain 'a')
     const { data } = await http.get('/admin/customers/search?q=a&limit=1000');
     console.log('[CUSTOMER_DEBUG] Raw API response:', data);
+    console.log('[CUSTOMER_DEBUG] Raw API response JSON:', JSON.stringify(data, null, 2));
+    console.log('[CUSTOMER_DEBUG] data.items type:', typeof data?.items);
+    console.log('[CUSTOMER_DEBUG] data.items value:', data?.items);
+    console.log('[CUSTOMER_DEBUG] data.items length:', data?.items?.length);
     const customers = (data?.items || []).map((item: unknown) => ({
       id: (item as { customerId?: string })?.customerId?.toString() || '',
       name: (item as { name?: string })?.name || 'Unknown',
