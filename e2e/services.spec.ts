@@ -5,10 +5,10 @@ test.describe('Service Management System', () => {
     // Navigate to admin login page
     await page.goto('/admin/login');
 
-    // Login as admin (using existing test credentials/mock)
-    await page.fill('input[placeholder="Username"]', 'advisor');
-    await page.fill('input[type="password"]', 'dev');
-    await page.click('button[type="submit"]');
+    // Login as admin (using accessible selectors)
+    await page.getByPlaceholder('Username').fill('advisor');
+    await page.getByPlaceholder('Password').fill('dev');
+    await page.getByRole('button', { name: /login|sign in/i }).click();
 
     // Wait for dashboard to load
     await page.waitForURL('/admin/dashboard');
@@ -20,18 +20,18 @@ test.describe('Service Management System', () => {
 
   test('Service Management Page Loads', async ({ page }) => {
     // Verify page title and basic UI elements
-    await expect(page.locator('h1')).toContainText('Service Management');
-    await expect(page.locator('text=Manage your shop\'s service catalog')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Service Management', level: 1 })).toBeVisible();
+    await expect(page.getByText(/manage your shop's service catalog/i)).toBeVisible();
 
     // Verify search and filter controls
-    await expect(page.locator('input[placeholder*="Search services"]')).toBeVisible();
-    await expect(page.locator('select[aria-label="Filter by category"]')).toBeVisible();
-    await expect(page.locator('text=Add Service')).toBeVisible();
+    await expect(page.getByPlaceholder(/search services/i)).toBeVisible();
+    await expect(page.getByLabel('Filter by category')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add Service' })).toBeVisible();
   });
 
   test('Search Functionality', async ({ page }) => {
     // Test search with debouncing
-    const searchInput = page.locator('input[placeholder*="Search services"]');
+    const searchInput = page.getByPlaceholder(/search services/i);
     await searchInput.fill('oil');
 
     // Wait for debounce
@@ -52,7 +52,7 @@ test.describe('Service Management System', () => {
 
   test('Category Filtering', async ({ page }) => {
     // Select a specific category
-    const categoryFilter = page.locator('select[aria-label="Filter by category"]');
+    const categoryFilter = page.getByLabel('Filter by category');
     await categoryFilter.selectOption('MAINTENANCE');
 
     // Wait for filter to apply
@@ -73,7 +73,7 @@ test.describe('Service Management System', () => {
 
   test('Sorting Functionality', async ({ page }) => {
     // Test sorting by name
-    await page.click('th:has-text("Name")');
+    await page.getByRole('columnheader', { name: /^name$/i }).click();
     await page.waitForTimeout(300);
 
     // Verify sorting indicator or effect
@@ -81,7 +81,7 @@ test.describe('Service Management System', () => {
     const firstNameText = await firstRowName.textContent();
 
     // Click again to reverse sort
-    await page.click('th:has-text("Name")');
+    await page.getByRole('columnheader', { name: /^name$/i }).click();
     await page.waitForTimeout(300);
 
     const newFirstRowName = page.locator('tbody tr:first-child td:first-child');
@@ -96,27 +96,27 @@ test.describe('Service Management System', () => {
 
   test('Create New Service - Full CRUD Lifecycle', async ({ page }) => {
     // Step 1: Create a new service
-    await page.click('text=Add Service');
+    await page.getByRole('button', { name: 'Add Service' }).click();
 
     // Verify modal opened
-    await expect(page.locator('text=Create New Service')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /create new service/i })).toBeVisible();
 
     // Fill out the service form
     const serviceName = `Test Service ${Date.now()}`;
-    await page.fill('input#name', serviceName);
-    await page.selectOption('select#category', 'MAINTENANCE');
-    await page.fill('input#subcategory', 'Test Subcategory');
-    await page.fill('input#default_hours', '2.5');
-    await page.fill('input#base_labor_rate', '150.00');
-    await page.selectOption('select#skill_level', '3');
-    await page.fill('input#keywords', 'test, service, maintenance');
-    await page.fill('input#display_order', '10');
+    await page.getByLabel(/service name/i).fill(serviceName);
+    await page.getByLabel(/^category/i).selectOption('MAINTENANCE');
+    await page.getByLabel(/subcategory/i).fill('Test Subcategory');
+    await page.getByLabel(/default hours/i).fill('2.5');
+    await page.getByLabel(/labor rate/i).fill('150.00');
+    await page.getByLabel(/skill level/i).selectOption('3');
+    await page.getByLabel(/keywords/i).fill('test, service, maintenance');
+    await page.getByLabel(/display order/i).fill('10');
 
     // Submit form
-    await page.click('text=Create Service');
+    await page.getByRole('button', { name: 'Create Service' }).click();
 
     // Wait for success and modal to close
-    await expect(page.locator('text=Create New Service')).not.toBeVisible();
+    await expect(page.getByRole('heading', { name: /create new service/i })).not.toBeVisible();
 
     // Verify service appears in table
     await expect(page.locator(`text=${serviceName}`)).toBeVisible();
@@ -130,11 +130,11 @@ test.describe('Service Management System', () => {
 
     // Update service name
     const updatedName = `${serviceName} - Updated`;
-    await page.fill('input#name', updatedName);
-    await page.fill('input#base_labor_rate', '175.00');
+    await page.getByLabel(/service name/i).fill(updatedName);
+    await page.getByLabel(/labor rate/i).fill('175.00');
 
     // Submit update
-    await page.click('text=Update Service');
+    await page.getByRole('button', { name: 'Update Service' }).click();
 
     // Wait for modal to close
     await expect(page.locator('text=Edit Service')).not.toBeVisible();
@@ -166,20 +166,20 @@ test.describe('Service Management System', () => {
 
   test('Form Validation', async ({ page }) => {
     // Open create modal
-    await page.click('text=Add Service');
+    await page.getByRole('button', { name: 'Add Service' }).click();
 
     // Try to submit without required fields
-    await page.click('text=Create Service');
+    await page.getByRole('button', { name: 'Create Service' }).click();
 
     // Verify validation (form should not submit)
-    await expect(page.locator('text=Create New Service')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /create new service/i })).toBeVisible();
 
     // Fill only name and try again
-    await page.fill('input#name', 'Test Service');
-    await page.click('text=Create Service');
+    await page.getByLabel(/service name/i).fill('Test Service');
+    await page.getByRole('button', { name: 'Create Service' }).click();
 
     // Should succeed with minimal required fields
-    await expect(page.locator('text=Create New Service')).not.toBeVisible();
+    await expect(page.getByRole('heading', { name: /create new service/i })).not.toBeVisible();
   });
 
   test('Service Details Display', async ({ page }) => {
@@ -192,12 +192,12 @@ test.describe('Service Management System', () => {
 
     if (rowCount > 0 && !await page.locator('text=No services found').isVisible()) {
       // Verify table columns are properly displayed
-      await expect(page.locator('th:has-text("Name")')).toBeVisible();
-      await expect(page.locator('th:has-text("Category")')).toBeVisible();
-      await expect(page.locator('th:has-text("Duration")')).toBeVisible();
-      await expect(page.locator('th:has-text("Rate")')).toBeVisible();
-      await expect(page.locator('th:has-text("Skill Level")')).toBeVisible();
-      await expect(page.locator('th:has-text("Status")')).toBeVisible();
+      await expect(page.getByRole('columnheader', { name: /^name$/i })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name: /^category$/i })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name: /^duration$/i })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name: /^rate$/i })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name: /^skill level$/i })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name: /^status$/i })).toBeVisible();
 
       // Check first row has proper data structure
       const firstRow = serviceRows.first();

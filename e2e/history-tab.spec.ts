@@ -114,7 +114,7 @@ test.describe('Appointment Drawer History Tab', () => {
 
     // 8. Either appointments render or empty state appears (both are acceptable success states)
     const emptyState = drawer.getByText(/no appointment history/i);
-    const yearGroupHeader = drawer.locator('button >> text=/\\d{4}/').first();
+    const yearGroupHeader = drawer.getByRole('button', { name: /\d{4}/ }).first();
 
     await Promise.race([
       emptyState.waitFor({ timeout: 10000 }).catch(() => {}),

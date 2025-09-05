@@ -9,10 +9,10 @@ test.describe('Appointment Scheduling Foundation', () => {
     // Navigate to admin login page
     await page.goto('/admin/login');
 
-    // Login as admin (using existing test credentials/mock)
-    await page.fill('input[placeholder="Username"]', 'advisor');
-    await page.fill('input[type="password"]', 'dev');
-    await page.click('button[type="submit"]');
+    // Login as admin (using accessible selectors)
+    await page.getByPlaceholder('Username').fill('advisor');
+    await page.getByPlaceholder('Password').fill('dev');
+    await page.getByRole('button', { name: /login|sign in/i }).click();
 
     // Wait for dashboard to load
     await page.waitForURL('/admin/dashboard');
@@ -23,7 +23,7 @@ test.describe('Appointment Scheduling Foundation', () => {
   });
 
   test('Load appointments page and show empty state', async ({ page }) => {
-    await expect(page.locator('h1')).toHaveText('Appointments');
+    await expect(page.getByRole('heading', { name: 'Appointments', level: 1 })).toBeVisible();
     await expect(page.getByRole('button', { name: 'New Appointment' })).toBeVisible();
 
     // Wait for page to load completely
@@ -82,7 +82,7 @@ test.describe('Appointment Scheduling Foundation', () => {
   test('Create New Appointment - Full CRUD Lifecycle', async ({ page }) => {
     // Step 1: Open the New Appointment modal
     await page.getByRole('button', { name: 'New Appointment' }).click();
-    await expect(page.locator('text=New Appointment')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /new appointment/i })).toBeVisible();
 
     // Step 2: Fill out the appointment form
     const startTime = new Date();
@@ -139,8 +139,8 @@ test.describe('Appointment Scheduling Foundation', () => {
     await expect(page.locator('text=Appointment created successfully')).toBeVisible();
 
     // Now edit the appointment
-    await page.locator('text=Edit').first().click();
-    await expect(page.locator('text=Edit Appointment')).toBeVisible();
+    await page.getByRole('button', { name: /^edit$/i }).first().click();
+    await expect(page.getByRole('heading', { name: /edit appointment/i })).toBeVisible();
 
     // Update the title
     await page.locator('input[placeholder="Brief description of the work"]').fill('Brake Service - Updated');
@@ -212,7 +212,7 @@ test.describe('Appointment Scheduling Foundation', () => {
       await dialog.accept();
     });
 
-    await page.locator('text=Delete').first().click();
+    await page.getByRole('button', { name: /^delete$/i }).first().click();
 
     await expect(page.locator('text=Appointment deleted successfully')).toBeVisible();
     // The appointment should no longer be visible
@@ -248,7 +248,7 @@ test.describe('Appointment Scheduling Foundation', () => {
     await expect(page.locator('text=Scheduling conflict detected')).toBeVisible();
 
     // The modal should still be open (appointment wasn't created)
-    await expect(page.locator('text=New Appointment')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /new appointment/i })).toBeVisible();
   });
 
   test('Form Validation', async ({ page }) => {
@@ -259,7 +259,7 @@ test.describe('Appointment Scheduling Foundation', () => {
     await page.getByRole('button', { name: 'Create Appointment' }).click();
 
     // Should not submit and still show modal
-    await expect(page.locator('text=New Appointment')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /new appointment/i })).toBeVisible();
 
     // Fill only customer and submit
     await page.locator('select[aria-label="Select customer"]').selectOption({ index: 1 });
@@ -335,7 +335,7 @@ test.describe('Appointment Scheduling Foundation', () => {
     await page.setViewportSize({ width: 375, height: 667 });
 
     // Page should still be usable
-    await expect(page.locator('h1')).toHaveText('Appointments');
+    await expect(page.getByRole('heading', { name: 'Appointments', level: 1 })).toBeVisible();
     await expect(page.getByRole('button', { name: 'New Appointment' })).toBeVisible();
 
     // Table should be horizontally scrollable or stack properly
@@ -344,7 +344,7 @@ test.describe('Appointment Scheduling Foundation', () => {
 
     // Open modal on mobile
     await page.getByRole('button', { name: 'New Appointment' }).click();
-    await expect(page.locator('text=New Appointment')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /new appointment/i })).toBeVisible();
 
     // Modal should fit on mobile screen
     const modal = page.locator('.fixed.inset-0');
