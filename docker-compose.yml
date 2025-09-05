@@ -41,7 +41,8 @@ services:
       - "5173:5173"
     environment:
       - VITE_API_URL=http://backend:3001
-      - DOCKER_ENV=true
+      - VITE_DOCKER_ENV=true
+      - VITE_NODE_ENV=production
       - NODE_ENV=production
     env_file:
       - ./.env
