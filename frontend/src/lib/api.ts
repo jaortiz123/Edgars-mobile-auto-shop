@@ -985,8 +985,10 @@ export async function getVehicles(): Promise<Vehicle[]> {
     const { data } = await http.get('/admin/customers/search?q=a&limit=1000');
     const vehicles: Vehicle[] = [];
 
-    if (data?.items) {
-      for (const item of data.items) {
+    // Fix: Use data.data.items since API returns nested structure
+    const items = data?.data?.items || data?.items || [];
+    if (items) {
+      for (const item of items) {
         // Only include items that have vehicle information
         if (item.vehicleId && item.plate) {
           vehicles.push({
