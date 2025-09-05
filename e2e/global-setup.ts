@@ -88,6 +88,7 @@ export default async function globalSetup() {
           origin: 'http://localhost:5173',
           localStorage: [
             { name: 'auth_token', value: adminToken },
+            { name: 'tenant_id', value: tenantId },
             { name: 'viewMode', value: 'board' }
           ]
         }
