@@ -76,11 +76,30 @@ export const toStatus = (s: string): AppointmentStatus =>
 // Use a relative base to leverage Vite's dev proxy and avoid CORS in development.
 // In production, the frontend is typically served behind the same origin as the API gateway.
 // In Docker/CI environment, connect directly to backend service
-const BASE = process.env.NODE_ENV === 'production' && process.env.DOCKER_ENV === 'true'
-  ? 'http://backend:3001/api'
-  : '/api';
 
-console.log('[API CONFIG] Using BASE URL:', BASE, 'NODE_ENV:', process.env.NODE_ENV, 'DOCKER_ENV:', process.env.DOCKER_ENV);
+// Environment detection with fallbacks
+const isDockerEnv = () => {
+  try {
+    // Check for Docker environment indicators using Vite env vars
+    const nodeEnv = import.meta.env.VITE_NODE_ENV || import.meta.env.NODE_ENV
+    const dockerEnv = import.meta.env.VITE_DOCKER_ENV
+
+    return nodeEnv === 'production' && dockerEnv === 'true'
+  } catch (error) {
+    console.warn('[API CONFIG] Environment detection error:', error)
+    return false
+  }
+}
+
+const BASE = isDockerEnv() ? 'http://backend:3001/api' : '/api'
+
+console.log('[API CONFIG] Environment details:', {
+  VITE_NODE_ENV: import.meta.env.VITE_NODE_ENV,
+  NODE_ENV: import.meta.env.NODE_ENV,
+  VITE_DOCKER_ENV: import.meta.env.VITE_DOCKER_ENV,
+  isDocker: isDockerEnv(),
+  BASE_URL: BASE
+})
 
 export const http = axios.create({
   baseURL: BASE,
@@ -90,7 +109,7 @@ export const http = axios.create({
   xsrfCookieName: 'XSRF-TOKEN',
   xsrfHeaderName: 'X-CSRF-Token',
   headers: { 'Content-Type': 'application/json' },
-});
+})
 
 // LocalStorage/Bearer token injection has been removed in favor of cookie auth.
 
