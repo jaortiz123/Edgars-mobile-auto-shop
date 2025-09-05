@@ -430,6 +430,7 @@ if not getattr(app, "_setup_hooks_silencer_installed", False):  # type: ignore[a
 # Per-request instance logging to prove single-instance behavior during E2E runs.
 @app.before_request  # type: ignore
 def _instance_request_marker():  # pragma: no cover (diagnostic)
+    print(f"SIMPLE_DEBUG: _instance_request_marker called for {request.method} {request.path}")
     try:
         app.logger.debug(
             "instance_request",
@@ -627,6 +628,7 @@ def _maybe_inject_test_auth():  # lightweight hook
 
 @app.before_request  # type: ignore
 def _inject_legacy_test_auth():  # pragma: no cover
+    print(f"SIMPLE_DEBUG: _inject_legacy_test_auth called for {request.method} {request.path}")
     try:
         _maybe_inject_test_auth()
     except Exception:
