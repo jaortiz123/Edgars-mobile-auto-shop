@@ -1265,17 +1265,32 @@ def _resolve_tenant_context():
                 # skip staff membership validation for E2E tests
                 try:
                     auth_header = request.headers.get("Authorization", "")
+                    app_instance_id = os.getenv("APP_INSTANCE_ID")
+
+                    # Debug logging for E2E bypass troubleshooting
+                    print(f"[E2E_DEBUG] Path: {pth}")
+                    print(f"[E2E_DEBUG] tenant_header: '{tenant_header}'")
+                    print(f"[E2E_DEBUG] auth_header present: {bool(auth_header)}")
+                    print(
+                        f"[E2E_DEBUG] auth_header starts with Bearer: {auth_header.startswith('Bearer ')}"
+                    )
+                    print(f"[E2E_DEBUG] APP_INSTANCE_ID: '{app_instance_id}'")
+                    print(f"[E2E_DEBUG] APP_INSTANCE_ID == 'ci': {app_instance_id == 'ci'}")
+
                     is_e2e_bypass = (
                         tenant_header == "00000000-0000-0000-0000-000000000001"
                         and auth_header.startswith("Bearer ")
-                        and os.getenv("APP_INSTANCE_ID") == "ci"
+                        and app_instance_id == "ci"
                     )
+                    print(f"[E2E_DEBUG] is_e2e_bypass: {is_e2e_bypass}")
+
                     if is_e2e_bypass:
                         print(f"[DEBUG] E2E bypass activated for path {pth}")
                         app.logger.error(f"E2E bypass activated for path {pth}")
                         g.tenant_id = resolved_tenant
                         return None
-                except Exception:
+                except Exception as e:
+                    print(f"[E2E_DEBUG] Exception in E2E bypass: {e}")
                     pass
                 # Certain unit-test-only endpoints use fake DBs and should not enforce
                 # tenant membership (e.g., customer history with monkeypatched connections).
