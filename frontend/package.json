@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "predev": "bash -lc 'if [ -z \"$SKIP_KILL_5173\" ]; then lsof -ti tcp:5173 | xargs kill -9 || true; else echo \"SKIP_KILL_5173 set; not killing port 5173\"; fi'",
+    "predev": "sh -c 'if [ -z \"$SKIP_KILL_5173\" ]; then command -v lsof > /dev/null && lsof -ti tcp:5173 | xargs kill -9 2>/dev/null || true; else echo \"SKIP_KILL_5173 set; not killing port 5173\"; fi'",
     "dev": "vite",
     "dev:clean": "npx kill-port 5173 && vite",
     "kill-port": "npx kill-port 5173",
