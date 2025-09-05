@@ -6989,14 +6989,28 @@ def get_admin_appointments():
 
 @app.route("/api/admin/appointments", methods=["POST"])
 def create_appointment():
+    # Add debug logging at the start
+    print("[APPT_DEBUG] create_appointment called")
+    app.logger.error("[APPT_DEBUG] create_appointment called")
+
     # Allow dev bypass; otherwise require Owner. Be resilient if auth injection fails in tests.
     user = require_or_maybe("Owner") or {"sub": "system", "role": "Owner"}
     body = request.get_json(silent=True) or {}
 
+    print(f"[APPT_DEBUG] user: {user}, body keys: {list(body.keys()) if body else 'None'}")
+    app.logger.error(
+        f"[APPT_DEBUG] user: {user}, body keys: {list(body.keys()) if body else 'None'}"
+    )
+
     # Integrated validation + conflict detection (Phase 1)
     try:
         from backend.validation import find_conflicts, validate_appointment_payload
-    except Exception:
+
+        print("[APPT_DEBUG] Successfully imported validation functions")
+        app.logger.error("[APPT_DEBUG] Successfully imported validation functions")
+    except Exception as e:
+        print(f"[APPT_DEBUG] Failed to import validation: {e}")
+        app.logger.error(f"[APPT_DEBUG] Failed to import validation: {e}")
         validate_appointment_payload = None  # type: ignore
         find_conflicts = None  # type: ignore
     # Normalize start alias for validator
@@ -7054,8 +7068,19 @@ def create_appointment():
     service_category = body.get("service_category") or body.get("serviceCategory")
     tech_id = body.get("tech_id") or body.get("techId")
 
+    print("[APPT_DEBUG] About to call safe_conn()")
+    app.logger.error("[APPT_DEBUG] About to call safe_conn()")
+
     # Memory mode fallback: fabricate deterministic appointment when DB unavailable
     conn, use_memory, err = safe_conn()
+
+    print(
+        f"[APPT_DEBUG] safe_conn result: conn={conn is not None}, use_memory={use_memory}, err={err}"
+    )
+    app.logger.error(
+        f"[APPT_DEBUG] safe_conn result: conn={conn is not None}, use_memory={use_memory}, err={err}"
+    )
+
     # If DB unavailable but tests/dev expect graceful memory fallback, enable it even if safe_conn didn't.
     if not conn and not use_memory and err:
         use_memory = True
@@ -7335,6 +7360,13 @@ def create_appointment():
                                 )
 
             # Insert appointment (extended columns always present; None if absent)
+            print(
+                f"[APPT_DEBUG] About to INSERT appointment with values: status={status}, customer_id={resolved_customer_id}, vehicle_id={resolved_vehicle_id}"
+            )
+            app.logger.error(
+                f"[APPT_DEBUG] About to INSERT appointment with values: status={status}, customer_id={resolved_customer_id}, vehicle_id={resolved_vehicle_id}"
+            )
+
             cur.execute(
                 """
                 INSERT INTO appointments (status, start_ts, total_amount, paid_amount, customer_id, vehicle_id, notes, location_address, primary_operation_id, service_category, tech_id)
@@ -7355,10 +7387,20 @@ def create_appointment():
                     tech_id,
                 ),
             )
+
+            print("[APPT_DEBUG] INSERT executed, fetching result...")
+            app.logger.error("[APPT_DEBUG] INSERT executed, fetching result...")
+
             row = cur.fetchone()
             if not row:
+                print("[APPT_DEBUG] ERROR: No row returned from INSERT")
+                app.logger.error("[APPT_DEBUG] ERROR: No row returned from INSERT")
                 raise RuntimeError("Failed to create appointment, no ID returned.")
             new_id = row["id"]
+
+            print(f"[APPT_DEBUG] Appointment created successfully with ID: {new_id}")
+            app.logger.error(f"[APPT_DEBUG] Appointment created successfully with ID: {new_id}")
+
             audit(
                 conn,
                 user.get("sub", "system"),
