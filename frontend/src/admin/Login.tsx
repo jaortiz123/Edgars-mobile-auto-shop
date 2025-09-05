@@ -28,7 +28,7 @@ export default function Login() {
         placeholder="Password"
         className="border p-sp-2 w-full"
       />
-      <button className="bg-blue-500 text-white px-sp-4 py-sp-2">Login</button>
+      <button type="submit" className="bg-blue-500 text-white px-sp-4 py-sp-2">Login</button>
     </form>
   )
 }
