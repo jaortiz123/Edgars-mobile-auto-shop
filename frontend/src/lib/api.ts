@@ -91,7 +91,8 @@ const isDockerEnv = () => {
   }
 }
 
-const BASE = isDockerEnv() ? 'http://backend:3001/api' : '/api'
+// Fix: In Docker, frontend runs in browser and needs host-accessible URL
+const BASE = isDockerEnv() ? 'http://localhost:3001/api' : '/api'
 
 console.log('[API CONFIG] Environment details:', {
   VITE_NODE_ENV: import.meta.env.VITE_NODE_ENV,
