@@ -10385,6 +10385,44 @@ def check_out_alias(appt_id: str):
 
 
 # ----------------------------------------------------------------------------
+# Global Error Handler for Debugging CI 500 Errors
+# ----------------------------------------------------------------------------
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(error):
+    """Global exception handler to catch and log all unhandled exceptions"""
+    import traceback
+
+    error_msg = f"Unhandled exception in {request.method} {request.path}: {str(error)}"
+    error_traceback = traceback.format_exc()
+
+    print(f"[GLOBAL_ERROR] {error_msg}")
+    print(f"[GLOBAL_ERROR] Traceback: {error_traceback}")
+    app.logger.error(f"GLOBAL_ERROR: {error_msg}")
+    app.logger.error(f"GLOBAL_ERROR Traceback: {error_traceback}")
+
+    # Write to debug file for CI inspection
+    try:
+        with open("/tmp/global_error.log", "a") as f:
+            f.write(f"ERROR: {error_msg}\n")
+            f.write(f"TRACEBACK: {error_traceback}\n")
+            f.write(f"REQUEST_PATH: {request.path}\n")
+            f.write(f"REQUEST_METHOD: {request.method}\n")
+            f.write(f"REQUEST_BODY: {request.get_json(silent=True)}\n")
+            f.write("---\n")
+    except Exception:
+        pass
+
+    # Return standardized error response
+    return _error(
+        HTTPStatus.INTERNAL_SERVER_ERROR,
+        "internal",
+        "An unexpected internal server error occurred.",
+    )
+
+
+# ----------------------------------------------------------------------------
 # Final Entrypoint (after ALL route definitions including newly added lookup)
 # ----------------------------------------------------------------------------
 if __name__ == "__main__":  # pragma: no cover - manual run convenience
