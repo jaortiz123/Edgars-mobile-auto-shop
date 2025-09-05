@@ -1243,7 +1243,20 @@ def _resolve_tenant_context():
                         if not cur.fetchone():
                             return _error(HTTPStatus.FORBIDDEN, "forbidden", "tenant_access_denied")
                     else:
-                        # staff membership check
+                        # staff membership check - enhanced debug logging
+                        app.logger.error(
+                            "TENANT_DEBUG: About to check staff membership for staff_id=%s, tenant=%s",
+                            user_sub,
+                            resolved_tenant,
+                        )
+
+                        # First, let's see what's actually in the table
+                        cur.execute(
+                            "SELECT staff_id, tenant_id::text, role FROM staff_tenant_memberships"
+                        )
+                        all_memberships = cur.fetchall()
+                        app.logger.error("TENANT_DEBUG: All staff memberships: %s", all_memberships)
+
                         cur.execute(
                             "SELECT 1 FROM staff_tenant_memberships WHERE staff_id = %s AND tenant_id = %s::uuid",
                             (user_sub, resolved_tenant),
