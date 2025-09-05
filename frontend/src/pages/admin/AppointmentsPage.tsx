@@ -126,7 +126,11 @@ const AppointmentsPage: React.FC = () => {
       }
 
       setShowModal(false);
-      loadData();
+
+      // Add small delay to ensure database transaction is committed before reload
+      setTimeout(() => {
+        loadData();
+      }, 100);
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
         const response = (err as { response?: { data?: { error?: { details?: { conflicts?: unknown }, message?: string } } } }).response;
@@ -149,7 +153,11 @@ const AppointmentsPage: React.FC = () => {
     try {
       await deleteAppointment(appointmentId);
       setSuccessMessage('Appointment deleted successfully');
-      loadData();
+
+      // Add small delay to ensure database transaction is committed before reload
+      setTimeout(() => {
+        loadData();
+      }, 100);
     } catch (err) {
       console.error('Delete appointment failed:', err);
       setError('Failed to delete appointment');
@@ -160,7 +168,11 @@ const AppointmentsPage: React.FC = () => {
     try {
       await updateAppointment(appointmentId, { status: newStatus });
       setSuccessMessage(`Appointment status updated to ${newStatus}`);
-      loadData();
+
+      // Add small delay to ensure database transaction is committed before reload
+      setTimeout(() => {
+        loadData();
+      }, 100);
     } catch (err) {
       console.error('Status update failed:', err);
       setError('Failed to update appointment status');
