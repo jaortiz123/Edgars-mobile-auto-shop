@@ -6989,12 +6989,34 @@ def get_admin_appointments():
 
 @app.route("/api/admin/appointments", methods=["POST"])
 def create_appointment():
-    # Add debug logging at the start
-    print("[APPT_DEBUG] create_appointment called")
-    app.logger.error("[APPT_DEBUG] create_appointment called")
+    # CRITICAL DEBUG: Add logging at the very start before any operations
+    try:
+        print("[APPT_DEBUG] create_appointment called - entry point")
+        app.logger.error("[APPT_DEBUG] create_appointment called - entry point")
 
-    # Allow dev bypass; otherwise require Owner. Be resilient if auth injection fails in tests.
-    user = require_or_maybe("Owner") or {"sub": "system", "role": "Owner"}
+        print(f"[APPT_DEBUG] request.method={request.method}, request.path={request.path}")
+        app.logger.error(
+            f"[APPT_DEBUG] request.method={request.method}, request.path={request.path}"
+        )
+
+        print("[APPT_DEBUG] About to call require_or_maybe('Owner')")
+        app.logger.error("[APPT_DEBUG] About to call require_or_maybe('Owner')")
+
+        # Allow dev bypass; otherwise require Owner. Be resilient if auth injection fails in tests.
+        user = require_or_maybe("Owner") or {"sub": "system", "role": "Owner"}
+
+        print(f"[APPT_DEBUG] require_or_maybe succeeded, user={user}")
+        app.logger.error(f"[APPT_DEBUG] require_or_maybe succeeded, user={user}")
+
+    except Exception as e:
+        print(f"[APPT_DEBUG] EXCEPTION in auth/setup: {str(e)}")
+        app.logger.error(f"[APPT_DEBUG] EXCEPTION in auth/setup: {str(e)}")
+        import traceback
+
+        print(f"[APPT_DEBUG] TRACEBACK: {traceback.format_exc()}")
+        app.logger.error(f"[APPT_DEBUG] TRACEBACK: {traceback.format_exc()}")
+        # Re-raise to let global handler catch it
+        raise
     body = request.get_json(silent=True) or {}
 
     print(f"[APPT_DEBUG] user: {user}, body keys: {list(body.keys()) if body else 'None'}")
@@ -10444,15 +10466,16 @@ def handle_unexpected_error(error):
     app.logger.error(f"GLOBAL_ERROR: {error_msg}")
     app.logger.error(f"GLOBAL_ERROR Traceback: {error_traceback}")
 
-    # Write to debug file for CI inspection
+    # Write to debug file for CI inspection AND print it to stdout for CI visibility
     try:
+        debug_content = f"ERROR: {error_msg}\nTRACEBACK: {error_traceback}\nREQUEST_PATH: {request.path}\nREQUEST_METHOD: {request.method}\nREQUEST_BODY: {request.get_json(silent=True)}\n---\n"
+
         with open("/tmp/global_error.log", "a") as f:
-            f.write(f"ERROR: {error_msg}\n")
-            f.write(f"TRACEBACK: {error_traceback}\n")
-            f.write(f"REQUEST_PATH: {request.path}\n")
-            f.write(f"REQUEST_METHOD: {request.method}\n")
-            f.write(f"REQUEST_BODY: {request.get_json(silent=True)}\n")
-            f.write("---\n")
+            f.write(debug_content)
+
+        # Also print debug content to stdout for CI visibility
+        print(f"[GLOBAL_ERROR_DETAILS] {debug_content}")
+        app.logger.error(f"GLOBAL_ERROR_DETAILS: {debug_content}")
     except Exception:
         pass
 
