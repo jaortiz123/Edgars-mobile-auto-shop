@@ -10,11 +10,24 @@ bcrypt
 boto3
 psutil
 
-# Testing dependencies
+pg8000
+psycopg2
+python-json-logger
+alembic
+SQLAlchemy
+Flask
+Flask-CORS
+PyJWT
+redis
+bcrypt
+boto3
+psutil
+
+# for local database seeding using a lighter-weight SQL connection
 pytest
 pytest-cov
 pytest-mock
 testcontainers
 
-# Linting dependencies
+# Dev dependencies
 flake8
