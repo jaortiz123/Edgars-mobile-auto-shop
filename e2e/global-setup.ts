@@ -52,8 +52,8 @@ export default async function globalSetup() {
     await new Promise(r => setTimeout(r, delayMs))
   }
   if (ready) {
-    await new Promise(r => setTimeout(r, 750)) // stabilization delay
-    console.log('[global-setup] Stabilization delay complete (750ms)') // eslint-disable-line no-console
+    await new Promise(r => setTimeout(r, 2000)) // stabilization delay increased for backend initialization
+    console.log('[global-setup] Stabilization delay complete (2000ms)') // eslint-disable-line no-console
   }
 
   // Single-source auth: perform advisor (admin) login only and persist token.
