@@ -213,12 +213,12 @@ export async function getAppointments(): Promise<{ appointments: Appointment[]; 
 
 export async function createAppointment(
   appointmentData: Partial<Appointment>
-): Promise<string> {
-  const resp = await http.post<{ id: string }>(
+): Promise<{ appointment: Appointment; id: string }> {
+  const resp = await http.post<{ appointment: Appointment; id: string }>(
     '/admin/appointments',
     appointmentData
   );
-  return resp.data.id;
+  return resp.data;
 }
 
 // ---------------------------------------------------------------------------
