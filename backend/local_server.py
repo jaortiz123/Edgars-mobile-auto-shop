@@ -1089,7 +1089,7 @@ def _normalize_and_shortcircuit_options():  # pragma: no cover infra convenience
                 resp.headers["Vary"] = "Origin"
                 resp.headers["Access-Control-Allow-Credentials"] = "true"
                 resp.headers["Access-Control-Allow-Headers"] = (
-                    "Authorization, Content-Type, X-Request-Id"
+                    "Authorization, Content-Type, X-Request-Id, X-Tenant-Id, x-tenant-id"
                 )
                 resp.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
             resp.headers["X-Debug-App-Instance"] = APP_INSTANCE_ID
@@ -1109,7 +1109,7 @@ def _normalize_and_shortcircuit_options():  # pragma: no cover infra convenience
                 resp.headers["Vary"] = "Origin"
                 resp.headers["Access-Control-Allow-Credentials"] = "true"
                 resp.headers["Access-Control-Allow-Headers"] = (
-                    "Authorization, Content-Type, X-Request-Id"
+                    "Authorization, Content-Type, X-Request-Id, X-Tenant-Id, x-tenant-id"
                 )
                 resp.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
             resp.headers["X-Debug-App-Instance"] = APP_INSTANCE_ID
@@ -3941,7 +3941,7 @@ def handle_http_exception(e: HTTPException):
             resp.headers["Vary"] = "Origin"
             resp.headers["Access-Control-Allow-Credentials"] = "true"
             resp.headers["Access-Control-Allow-Headers"] = (
-                "Authorization, Content-Type, X-Request-Id"
+                "Authorization, Content-Type, X-Request-Id, X-Tenant-Id, x-tenant-id"
             )
             resp.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
         resp.headers["X-Profile-Fallback"] = "error-handler"
