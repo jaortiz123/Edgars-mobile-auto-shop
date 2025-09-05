@@ -360,6 +360,13 @@ jobs:
           # Do not fail the job on this smoke check
           exit 0
 
+      - name: Capture backend debug logs after smoke test
+        run: |
+          echo "Backend container logs (looking for GLOBAL_ERROR or APPT_DEBUG):"
+          docker-compose logs backend | grep -A 10 -B 2 "GLOBAL_ERROR\|APPT_DEBUG" || echo "No debug output found in backend logs"
+          echo "All recent backend logs:"
+          docker-compose logs backend | tail -50
+
       - name: Check frontend service logs
         run: |
           echo "Frontend service logs:"
