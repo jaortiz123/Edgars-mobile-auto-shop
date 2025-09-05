@@ -86,6 +86,42 @@ const AppointmentsPage: React.FC = () => {
     }
   };
 
+  const loadDataWithRetry = async (expectedCount?: number, maxRetries = 5) => {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const [appointmentsData, customersData, vehiclesData] = await Promise.all([
+          getAppointments(),
+          getCustomers(),
+          getVehicles()
+        ]);
+
+        const appointments = appointmentsData?.appointments || [];
+
+        // If we're expecting a specific count (after create), retry if not met
+        if (expectedCount !== undefined && appointments.length < expectedCount) {
+          if (i < maxRetries - 1) {
+            await new Promise(resolve => setTimeout(resolve, 200));
+            continue;
+          }
+        }
+
+        setAppointments(appointments);
+        setCustomers(customersData);
+        setVehicles(vehiclesData);
+        setLoading(false);
+        return;
+      } catch (error) {
+        console.error('Failed to load appointments:', error);
+        if (i === maxRetries - 1) {
+          setError('Failed to load data');
+          setLoading(false);
+        } else {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      }
+    }
+  };
+
   const openCreateModal = () => {
     setEditingAppointment(null);
     setFormData({
@@ -120,17 +156,18 @@ const AppointmentsPage: React.FC = () => {
       if (editingAppointment) {
         await updateAppointment(editingAppointment.id, formData);
         setSuccessMessage('Appointment updated successfully');
+        setShowModal(false);
+
+        // No expected count change for updates, just retry to ensure consistency
+        await loadDataWithRetry();
       } else {
         await createAppointment(formData);
         setSuccessMessage('Appointment created successfully');
+        setShowModal(false);
+
+        // Expect current count + 1 after creation
+        await loadDataWithRetry(appointments.length + 1);
       }
-
-      setShowModal(false);
-
-      // Add delay to ensure database transaction is committed and UI updates
-      setTimeout(() => {
-        loadData();
-      }, 500);
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
         const response = (err as { response?: { data?: { error?: { details?: { conflicts?: unknown }, message?: string } } } }).response;
@@ -151,31 +188,47 @@ const AppointmentsPage: React.FC = () => {
     }
 
     try {
+      // Optimistically remove from UI
+      const originalAppointments = [...appointments];
+      setAppointments(prev => prev.filter(apt => apt.id !== appointmentId));
+
       await deleteAppointment(appointmentId);
       setSuccessMessage('Appointment deleted successfully');
 
-      // Add delay to ensure database transaction is committed and UI updates
-      setTimeout(() => {
-        loadData();
-      }, 500);
+      // Verify deletion with server
+      await loadDataWithRetry();
     } catch (err) {
       console.error('Delete appointment failed:', err);
       setError('Failed to delete appointment');
+
+      // Rollback optimistic update on error
+      await loadData();
     }
   };
 
   const handleStatusChange = async (appointmentId: string, newStatus: AppointmentStatus) => {
     try {
+      // Optimistically update local state
+      const originalAppointments = [...appointments];
+      setAppointments(prev =>
+        prev.map(apt =>
+          apt.id === appointmentId
+            ? { ...apt, status: newStatus }
+            : apt
+        )
+      );
+
       await updateAppointment(appointmentId, { status: newStatus });
       setSuccessMessage(`Appointment status updated to ${newStatus}`);
 
-      // Add delay to ensure database transaction is committed and UI updates
-      setTimeout(() => {
-        loadData();
-      }, 500);
+      // Verify update with server
+      await loadDataWithRetry();
     } catch (err) {
       console.error('Status update failed:', err);
       setError('Failed to update appointment status');
+
+      // Rollback optimistic update on error
+      await loadData();
     }
   };
 
