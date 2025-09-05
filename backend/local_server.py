@@ -1243,37 +1243,12 @@ def _resolve_tenant_context():
                         if not cur.fetchone():
                             return _error(HTTPStatus.FORBIDDEN, "forbidden", "tenant_access_denied")
                     else:
-                        # staff membership check - enhanced debug logging
-                        app.logger.error(
-                            "TENANT_DEBUG: About to check staff membership for staff_id=%s, tenant=%s",
-                            user_sub,
-                            resolved_tenant,
-                        )
-
-                        # First, let's see what's actually in the table
+                        # staff membership check using string comparison for reliability
                         cur.execute(
-                            "SELECT staff_id, tenant_id::text, role FROM staff_tenant_memberships"
-                        )
-                        all_memberships = cur.fetchall()
-                        app.logger.error("TENANT_DEBUG: All staff memberships: %s", all_memberships)
-
-                        cur.execute(
-                            "SELECT 1 FROM staff_tenant_memberships WHERE staff_id = %s AND tenant_id = %s::uuid",
+                            "SELECT 1 FROM staff_tenant_memberships WHERE staff_id = %s AND tenant_id::text = %s",
                             (user_sub, resolved_tenant),
                         )
                         _row = cur.fetchone()
-
-                        # Also try a more explicit comparison to debug UUID casting issues
-                        if not _row:
-                            app.logger.error(
-                                "TENANT_DEBUG: Original query failed, trying string comparison"
-                            )
-                            cur.execute(
-                                "SELECT 1 FROM staff_tenant_memberships WHERE staff_id = %s AND tenant_id::text = %s",
-                                (user_sub, resolved_tenant),
-                            )
-                            _row = cur.fetchone()
-                            app.logger.error("TENANT_DEBUG: String comparison result: %s", _row)
                         try:
                             app.logger.error(
                                 "TENANT_MEMBERSHIP_CHECK staff_id=%s tenant=%s row=%s",
@@ -1281,10 +1256,6 @@ def _resolve_tenant_context():
                                 resolved_tenant,
                                 _row,
                             )
-                            # also log table count for sanity
-                            cur.execute("SELECT COUNT(*) AS c FROM staff_tenant_memberships")
-                            _cnt = cur.fetchone()
-                            app.logger.error("TENANT_MEMBERSHIP_COUNT=%s", _cnt)
                         except Exception as _e:
                             try:
                                 app.logger.error("TENANT_MEMBERSHIP_DEBUG_ERROR %s", _e)
