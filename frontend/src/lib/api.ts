@@ -75,13 +75,18 @@ export const toStatus = (s: string): AppointmentStatus =>
 
 // Use a relative base to leverage Vite's dev proxy and avoid CORS in development.
 // In production, the frontend is typically served behind the same origin as the API gateway.
-const BASE = '/api';
+// In Docker/CI environment, connect directly to backend service
+const BASE = process.env.NODE_ENV === 'production' && process.env.DOCKER_ENV === 'true'
+  ? 'http://backend:3001/api'
+  : '/api';
+
+console.log('[API CONFIG] Using BASE URL:', BASE, 'NODE_ENV:', process.env.NODE_ENV, 'DOCKER_ENV:', process.env.DOCKER_ENV);
 
 export const http = axios.create({
   baseURL: BASE,
   timeout: 10000,
   // Switch to cookie-based auth with CSRF protection
-  withCredentials: true,
+  withCredentials: false, // Disable for direct backend calls in Docker
   xsrfCookieName: 'XSRF-TOKEN',
   xsrfHeaderName: 'X-CSRF-Token',
   headers: { 'Content-Type': 'application/json' },

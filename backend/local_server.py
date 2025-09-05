@@ -446,15 +446,22 @@ def _instance_request_marker():  # pragma: no cover (diagnostic)
 # After Flask app (variable 'app') is instantiated above, initialize CORS once.
 try:  # idempotent guard
     if not getattr(app, "_CORS_INITIALIZED", False):  # type: ignore
-        ALLOWED_ORIGINS = {"http://localhost:5173", "http://127.0.0.1:5173"}
+        ALLOWED_ORIGINS = {
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://frontend:5173",  # Docker service name
+            # Allow any 172.18.0.x Docker network addresses for CI
+            "*",  # Temporary: allow all origins for debugging
+        }
+        print(f"[CORS DEBUG] Configuring CORS for origins: {ALLOWED_ORIGINS}")
         CORS(
             app,
             resources={
-                r"/api/*": {"origins": list(ALLOWED_ORIGINS)},
-                r"/customers/*": {"origins": list(ALLOWED_ORIGINS)},
+                r"/api/*": {"origins": "*"},  # Temporary: allow all origins
+                r"/customers/*": {"origins": "*"},  # Temporary: allow all origins
             },
-            supports_credentials=True,
-            allow_headers=["Authorization", "Content-Type", "X-Request-Id"],
+            supports_credentials=False,  # Disable for Docker direct calls
+            allow_headers=["Authorization", "Content-Type", "X-Request-Id", "X-Tenant-Id"],
             methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
             expose_headers=["X-Debug-App-Instance"],
         )
