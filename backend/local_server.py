@@ -1130,21 +1130,32 @@ def _resolve_tenant_context():
                 return None
             import re
 
+            app.logger.error("TENANT_DEBUG: Resolving tenant header: %s", value)
+
             uuid_pattern = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
             if re.match(uuid_pattern, value, re.IGNORECASE):
+                app.logger.error("TENANT_DEBUG: Header matches UUID pattern, querying by id")
                 cur.execute("SELECT id::text AS id FROM tenants WHERE id = %s::uuid", (value,))
             else:
+                app.logger.error(
+                    "TENANT_DEBUG: Header doesn't match UUID pattern, querying by slug"
+                )
                 cur.execute("SELECT id::text AS id FROM tenants WHERE slug = %s", (value,))
             row = cur.fetchone()
+            app.logger.error("TENANT_DEBUG: Query result: %s", row)
             if not row:
                 return None
             try:
                 # RealDictCursor path
-                return row.get("id")  # type: ignore[attr-defined]
+                result = row.get("id")  # type: ignore[attr-defined]
+                app.logger.error("TENANT_DEBUG: RealDictCursor result: %s", result)
+                return result
             except Exception:
                 try:
                     # Tuple/cursor path
-                    return row[0]
+                    result = row[0]
+                    app.logger.error("TENANT_DEBUG: Tuple cursor result: %s", result)
+                    return result
                 except Exception:
                     # Fallback: best-effort first value
                     try:
@@ -1163,6 +1174,11 @@ def _resolve_tenant_context():
                 # 1) If header provided, resolve to canonical UUID
                 resolved_tenant = (
                     _resolve_header_to_tenant_id(cur, tenant_header) if tenant_header else None
+                )
+                app.logger.error(
+                    "TENANT_DEBUG: After resolution - tenant_header=%s, resolved_tenant=%s",
+                    tenant_header,
+                    resolved_tenant,
                 )
                 # In test mode with mocked DB connections, allow unresolved header to pass through
                 if (
