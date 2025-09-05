@@ -245,13 +245,17 @@ jobs:
           echo "Frontend directory contents:"
           ls -la frontend/ | grep -E "(package|Dockerfile)"
 
-      - name: Start services (docker-compose)
+      - name: Start E2E environment with docker-compose
         run: |
+          # Copy the CI environment file to be the active .env
+          cp .env.ci .env
           # Ensure environment variables are exported for docker-compose
-          export $(cat .env | grep -v '^#' | xargs)
+          export $(cat .env.ci | grep -v '^#' | xargs)
           echo "Starting docker-compose with env vars:"
           echo "POSTGRES_USER=$POSTGRES_USER"
           echo "POSTGRES_DB=$POSTGRES_DB"
+          echo "JWT_SECRET=$JWT_SECRET"
+          echo "E2E_TENANT_ID=$E2E_TENANT_ID"
           docker-compose up -d --build
 
       - name: Debug database connection
