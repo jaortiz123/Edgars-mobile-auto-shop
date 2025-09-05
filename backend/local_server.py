@@ -661,14 +661,18 @@ REQUEST_ID_REGEX = __import__("re").compile(
 
 log = logging.getLogger("api")
 log.setLevel(logging.INFO)
-# Ensure errors surface in CI/stdout even if root logging isn't configured
+# Ensure logs surface where needed. During pytest, allow propagation so caplog can
+# capture records. Outside tests (dev/server), attach a stdout handler if none.
 try:  # pragma: no cover - environment/bootstrap concern
-    if not log.handlers:
+    in_pytest = bool(os.getenv("PYTEST_CURRENT_TEST"))
+    force_stdout = os.getenv("API_LOG_STDOUT", "false").lower() == "true"
+    if (force_stdout or not in_pytest) and not log.handlers:
         _h = logging.StreamHandler(sys.stdout)
         _h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s"))
         log.addHandler(_h)
-        # Avoid double logging to root if it gets configured later
-        log.propagate = False
+    # Propagate when running tests so pytest caplog can capture records
+    force_propagate = os.getenv("API_LOG_PROPAGATE", "").lower() == "true"
+    log.propagate = in_pytest or force_propagate
 except Exception:
     pass
 
