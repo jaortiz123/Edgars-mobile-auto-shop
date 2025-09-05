@@ -127,10 +127,10 @@ const AppointmentsPage: React.FC = () => {
 
       setShowModal(false);
 
-      // Add small delay to ensure database transaction is committed before reload
+      // Add delay to ensure database transaction is committed and UI updates
       setTimeout(() => {
         loadData();
-      }, 100);
+      }, 500);
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
         const response = (err as { response?: { data?: { error?: { details?: { conflicts?: unknown }, message?: string } } } }).response;
@@ -154,10 +154,10 @@ const AppointmentsPage: React.FC = () => {
       await deleteAppointment(appointmentId);
       setSuccessMessage('Appointment deleted successfully');
 
-      // Add small delay to ensure database transaction is committed before reload
+      // Add delay to ensure database transaction is committed and UI updates
       setTimeout(() => {
         loadData();
-      }, 100);
+      }, 500);
     } catch (err) {
       console.error('Delete appointment failed:', err);
       setError('Failed to delete appointment');
@@ -169,10 +169,10 @@ const AppointmentsPage: React.FC = () => {
       await updateAppointment(appointmentId, { status: newStatus });
       setSuccessMessage(`Appointment status updated to ${newStatus}`);
 
-      // Add small delay to ensure database transaction is committed before reload
+      // Add delay to ensure database transaction is committed and UI updates
       setTimeout(() => {
         loadData();
-      }, 100);
+      }, 500);
     } catch (err) {
       console.error('Status update failed:', err);
       setError('Failed to update appointment status');
