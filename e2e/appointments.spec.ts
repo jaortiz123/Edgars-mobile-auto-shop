@@ -10,8 +10,8 @@ test.describe('Appointment Scheduling Foundation', () => {
     await page.goto('/admin/login');
 
     // Login as admin (using existing test credentials/mock)
-    await page.fill('input[type="email"]', 'admin@edgarautoshop.com');
-    await page.fill('input[type="password"]', 'admin123');
+    await page.fill('input[placeholder="Username"]', 'advisor');
+    await page.fill('input[type="password"]', 'dev');
     await page.click('button[type="submit"]');
 
     // Wait for dashboard to load
