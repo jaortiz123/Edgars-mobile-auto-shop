@@ -75,7 +75,7 @@ if not _early_profile_loaded:  # pragma: no cover - exercised via E2E race scena
                 resp.headers["Vary"] = "Origin"
                 resp.headers["Access-Control-Allow-Credentials"] = "true"
                 resp.headers["Access-Control-Allow-Headers"] = (
-                    "Authorization, Content-Type, X-Request-Id"
+                    "Authorization, Content-Type, X-Request-Id, X-Tenant-Id"
                 )
                 resp.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
             resp.headers["X-Debug-App-Instance"] = _FB_INSTANCE_ID
