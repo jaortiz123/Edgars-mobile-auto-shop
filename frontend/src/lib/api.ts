@@ -112,7 +112,27 @@ export const http = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// LocalStorage/Bearer token injection has been removed in favor of cookie auth.
+// Request interceptor to add Authorization Bearer token and tenant headers
+http.interceptors.request.use(
+  (config) => {
+    // Add Authorization Bearer token from localStorage if available
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Add tenant ID header - use E2E tenant if available, otherwise fallback
+    const tenantId = (typeof window !== 'undefined' && (window as any).E2E_TENANT_ID)
+      || localStorage.getItem('tenant_id')
+      || '00000000-0000-0000-0000-000000000001';
+    config.headers['X-Tenant-Id'] = tenantId;
+
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Unwrap API envelopes ({ data, errors, meta }) and throw on errors
