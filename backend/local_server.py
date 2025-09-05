@@ -7220,6 +7220,9 @@ def create_appointment():
         raise err
     with conn:
         with conn.cursor() as cur:
+            # Set tenant context for database operations (required for RLS)
+            cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+
             # Conflict detection before insert (DB path)
             # Skip conflict detection entirely when client supplies explicit end_ts; edit-conflict tests rely on PATCH to trigger conflict
             if (
