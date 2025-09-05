@@ -277,10 +277,41 @@ jobs:
           dsn = os.environ.get('DATABASE_URL') or 'postgres://test_user:test_password@db:5432/test_autoshop'
           conn = psycopg2.connect(dsn)
           cur = conn.cursor(cursor_factory=RealDictCursor)
-          cur.execute("CREATE TABLE IF NOT EXISTS tenants (id uuid primary key, name text, slug text unique, is_active boolean default true);")
+
+          # Create tenants table with proper structure (matching migrations)
+          cur.execute("""
+            CREATE TABLE IF NOT EXISTS tenants (
+                id UUID PRIMARY KEY,
+                slug VARCHAR(100) UNIQUE NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                plan VARCHAR(50) NOT NULL DEFAULT 'starter',
+                status VARCHAR(50) NOT NULL DEFAULT 'active',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                max_appointments INTEGER DEFAULT 100,
+                max_vehicles INTEGER DEFAULT 50,
+                max_customers INTEGER DEFAULT 100,
+                admin_email VARCHAR(255),
+                phone VARCHAR(50),
+                logo_url VARCHAR(500),
+                primary_color VARCHAR(7) DEFAULT '#0066cc'
+            )
+          """)
           conn.commit()
-          cur.execute("INSERT INTO tenants(id,name,slug,is_active) VALUES (%s,%s,%s,true) ON CONFLICT (id) DO NOTHING", ('00000000-0000-0000-0000-000000000001','Test Tenant 1','test-tenant-1'))
-          cur.execute("INSERT INTO tenants(id,name,slug,is_active) VALUES (%s,%s,%s,true) ON CONFLICT (id) DO NOTHING", ('00000000-0000-0000-0000-000000000002','Test Tenant 2','test-tenant-2'))
+
+          # Insert test tenants using proper columns
+          cur.execute("""
+            INSERT INTO tenants(id, name, slug, status)
+            VALUES (%s, %s, %s, 'active')
+            ON CONFLICT (id) DO NOTHING
+          """, ('00000000-0000-0000-0000-000000000001', 'Test Tenant 1', 'test-tenant-1'))
+
+          cur.execute("""
+            INSERT INTO tenants(id, name, slug, status)
+            VALUES (%s, %s, %s, 'active')
+            ON CONFLICT (id) DO NOTHING
+          """, ('00000000-0000-0000-0000-000000000002', 'Test Tenant 2', 'test-tenant-2'))
+
           conn.commit()
           cur.close(); conn.close()
           print('Seed tenants done')
