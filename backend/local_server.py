@@ -7549,44 +7549,26 @@ def create_appointment():
             print(f"[APPT_DEBUG] Appointment created successfully with ID: {new_id}")
             app.logger.error(f"[APPT_DEBUG] Appointment created successfully with ID: {new_id}")
 
-            # Fetch the created appointment to return complete data
-            cur.execute(
-                """
-                SELECT
-                    id::text,
-                    status,
-                    start_ts,
-                    end_ts,
-                    total_amount,
-                    paid_amount,
-                    customer_id::text,
-                    vehicle_id::text,
-                    notes,
-                    location_address,
-                    primary_operation_id::text,
-                    service_category,
-                    tech_id::text,
-                    title
-                FROM appointments
-                WHERE id = %s
-            """,
-                (new_id,),
-            )
+            # Construct the appointment dict from the data we inserted
+            appointment_dict = {
+                "id": new_id,
+                "status": status,
+                "start_ts": start_val.isoformat() if start_val else None,
+                "end_ts": None,  # Not set during creation
+                "total_amount": 0.0,  # Default value
+                "paid_amount": 0.0,  # Default value
+                "customer_id": resolved_customer_id,
+                "vehicle_id": resolved_vehicle_id,
+                "notes": notes,
+                "location_address": location_address,
+                "primary_operation_id": primary_operation_id,
+                "service_category": service_category,
+                "tech_id": tech_id,
+                "title": None,  # Not set during creation
+            }
 
-            created_appointment = cur.fetchone()
-            if not created_appointment:
-                print("[APPT_DEBUG] ERROR: Failed to fetch created appointment")
-                app.logger.error("[APPT_DEBUG] ERROR: Failed to fetch created appointment")
-                raise RuntimeError("Failed to fetch created appointment.")
-
-            # Convert to dict and format timestamps
-            appointment_dict = dict(created_appointment)
-            if appointment_dict.get("start_ts"):
-                appointment_dict["start_ts"] = appointment_dict["start_ts"].isoformat()
-            if appointment_dict.get("end_ts"):
-                appointment_dict["end_ts"] = appointment_dict["end_ts"].isoformat()
-            if "total_amount" in appointment_dict:
-                appointment_dict["total_amount"] = float(appointment_dict["total_amount"] or 0)
+            print(f"[APPT_DEBUG] Created appointment dict: {appointment_dict}")
+            app.logger.error(f"[APPT_DEBUG] Created appointment dict: {appointment_dict}")
 
             audit(
                 conn,
