@@ -154,17 +154,13 @@ test.describe('Appointment Scheduling Foundation', () => {
     // Step 4: Verify appointment was created
     await expect(page.locator('text=Appointment created successfully')).toBeVisible();
 
-    // Wait for appointment to appear in list with retry pattern
-    await expect(async () => {
-      // Force a refresh of the page data
-      await page.keyboard.press('F5');
-      await page.waitForLoadState('networkidle');
+    // Wait sufficiently for database transaction to complete and UI to refresh
+    await page.waitForTimeout(3000);
 
-      // Check if appointment is visible
-      await expect(page.locator('text=Oil Change Test')).toBeVisible();
-      await expect(page.locator('text=$75.99')).toBeVisible();
-      await expect(page.locator('text=SCHEDULED')).toBeVisible();
-    }).toPass({ timeout: 15000 });
+    // Check if appointment is visible
+    await expect(page.locator('text=Oil Change Test')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=$75.99')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=SCHEDULED')).toBeVisible({ timeout: 10000 });
   });
 
   test('Edit Appointment', async ({ page }) => {
