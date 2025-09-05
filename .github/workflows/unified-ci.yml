@@ -345,6 +345,44 @@ jobs:
             ON CONFLICT (staff_id, tenant_id) DO NOTHING
           """, ('owner', '00000000-0000-0000-0000-000000000001'))
 
+          # Create test customers for E2E tests
+          cur.execute("""
+            INSERT INTO customers(id, name, email, phone, tenant_id)
+            VALUES (1, 'John Smith', 'john@example.com', '555-0001', %s)
+            ON CONFLICT (id) DO NOTHING
+          """, ('00000000-0000-0000-0000-000000000001',))
+
+          cur.execute("""
+            INSERT INTO customers(id, name, email, phone, tenant_id)
+            VALUES (2, 'Jane Doe', 'jane@example.com', '555-0002', %s)
+            ON CONFLICT (id) DO NOTHING
+          """, ('00000000-0000-0000-0000-000000000001',))
+
+          cur.execute("""
+            INSERT INTO customers(id, name, email, phone, tenant_id)
+            VALUES (3, 'Bob Johnson', 'bob@example.com', '555-0003', %s)
+            ON CONFLICT (id) DO NOTHING
+          """, ('00000000-0000-0000-0000-000000000001',))
+
+          # Create test vehicles for E2E tests
+          cur.execute("""
+            INSERT INTO vehicles(id, customer_id, make, model, year, license_plate, tenant_id)
+            VALUES (1, 1, 'Honda', 'Civic', 2020, 'ABC-123', %s)
+            ON CONFLICT (id) DO NOTHING
+          """, ('00000000-0000-0000-0000-000000000001',))
+
+          cur.execute("""
+            INSERT INTO vehicles(id, customer_id, make, model, year, license_plate, tenant_id)
+            VALUES (2, 2, 'Toyota', 'Camry', 2019, 'XYZ-789', %s)
+            ON CONFLICT (id) DO NOTHING
+          """, ('00000000-0000-0000-0000-000000000001',))
+
+          cur.execute("""
+            INSERT INTO vehicles(id, customer_id, make, model, year, license_plate, tenant_id)
+            VALUES (3, 3, 'Ford', 'F-150', 2021, 'DEF-456', %s)
+            ON CONFLICT (id) DO NOTHING
+          """, ('00000000-0000-0000-0000-000000000001',))
+
           conn.commit()
           cur.close(); conn.close()
           print('Seed tenants and staff memberships done')
