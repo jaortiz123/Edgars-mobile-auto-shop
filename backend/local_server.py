@@ -7553,7 +7553,7 @@ def create_appointment():
             appointment_dict = {
                 "id": new_id,
                 "status": status,
-                "start_ts": start_val.isoformat() if start_val else None,
+                "start_ts": start_val,  # start_val is already an ISO format string
                 "end_ts": None,  # Not set during creation
                 "total_amount": 0.0,  # Default value
                 "paid_amount": 0.0,  # Default value
