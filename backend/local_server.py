@@ -1262,6 +1262,18 @@ def _resolve_tenant_context():
                             (user_sub, resolved_tenant),
                         )
                         _row = cur.fetchone()
+
+                        # Also try a more explicit comparison to debug UUID casting issues
+                        if not _row:
+                            app.logger.error(
+                                "TENANT_DEBUG: Original query failed, trying string comparison"
+                            )
+                            cur.execute(
+                                "SELECT 1 FROM staff_tenant_memberships WHERE staff_id = %s AND tenant_id::text = %s",
+                                (user_sub, resolved_tenant),
+                            )
+                            _row = cur.fetchone()
+                            app.logger.error("TENANT_DEBUG: String comparison result: %s", _row)
                         try:
                             app.logger.error(
                                 "TENANT_MEMBERSHIP_CHECK staff_id=%s tenant=%s row=%s",
