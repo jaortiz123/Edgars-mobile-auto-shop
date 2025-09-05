@@ -944,13 +944,27 @@ export async function fetchRecentCustomers(limit = 8): Promise<RecentCustomerRec
 export async function getCustomers(): Promise<Customer[]> {
   try {
     // Use the search endpoint with 'a' to match most customers (names often contain 'a')
-    const { data } = await http.get('/admin/customers/search?q=a&limit=1000');
+    const response = await http.get('/admin/customers/search?q=a&limit=1000');
+    console.log('[CUSTOMER_DEBUG] Full response:', response);
+    console.log('[CUSTOMER_DEBUG] response.data:', response.data);
+    console.log('[CUSTOMER_DEBUG] response.data type:', typeof response.data);
+
+    const { data } = response;
+    console.log('[CUSTOMER_DEBUG] Destructured data:', data);
     console.log('[CUSTOMER_DEBUG] Raw API response:', data);
     console.log('[CUSTOMER_DEBUG] Raw API response JSON:', JSON.stringify(data, null, 2));
+    console.log('[CUSTOMER_DEBUG] data.data:', data.data);
+    console.log('[CUSTOMER_DEBUG] data.data type:', typeof data.data);
+    console.log('[CUSTOMER_DEBUG] data.data.items:', data.data?.items);
     console.log('[CUSTOMER_DEBUG] data.items type:', typeof data?.items);
     console.log('[CUSTOMER_DEBUG] data.items value:', data?.items);
     console.log('[CUSTOMER_DEBUG] data.items length:', data?.items?.length);
-    const customers = (data?.items || []).map((item: unknown) => ({
+
+    // Try both possible paths
+    const items = data?.data?.items || data?.items || [];
+    console.log('[CUSTOMER_DEBUG] Final items array:', items);
+
+    const customers = items.map((item: unknown) => ({
       id: (item as { customerId?: string })?.customerId?.toString() || '',
       name: (item as { name?: string })?.name || 'Unknown',
       email: (item as { email?: string })?.email || null,
