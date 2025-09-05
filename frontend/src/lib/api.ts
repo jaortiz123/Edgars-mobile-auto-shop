@@ -898,13 +898,13 @@ export async function fetchRecentCustomers(limit = 8): Promise<RecentCustomerRec
 // Get all customers for appointment dropdowns
 export async function getCustomers(): Promise<Customer[]> {
   try {
-    // Use the search endpoint with empty query to get all customers
-    const { data } = await http.get('/admin/customers/search?limit=1000');
-    return (data?.customers || []).map((c: unknown) => ({
-      id: (c as { id?: string })?.id?.toString() || '',
-      name: (c as { name?: string })?.name || 'Unknown',
-      email: (c as { email?: string })?.email || null,
-      phone: (c as { phone?: string })?.phone || null
+    // Use the search endpoint with 'a' to match most customers (names often contain 'a')
+    const { data } = await http.get('/admin/customers/search?q=a&limit=1000');
+    return (data?.items || []).map((item: unknown) => ({
+      id: (item as { customerId?: string })?.customerId?.toString() || '',
+      name: (item as { name?: string })?.name || 'Unknown',
+      email: (item as { email?: string })?.email || null,
+      phone: (item as { phone?: string })?.phone || null
     }));
   } catch (error) {
     console.error('Failed to fetch customers:', error);
@@ -915,23 +915,22 @@ export async function getCustomers(): Promise<Customer[]> {
 // Get all vehicles for appointment dropdowns
 export async function getVehicles(): Promise<Vehicle[]> {
   try {
-    // Use customer search to get vehicles (vehicles are nested in customer data)
-    const { data } = await http.get('/admin/customers/search?limit=1000&includeVehicles=true');
+    // Use customer search with 'a' to get vehicles
+    const { data } = await http.get('/admin/customers/search?q=a&limit=1000');
     const vehicles: Vehicle[] = [];
 
-    if (data?.customers) {
-      for (const customer of data.customers) {
-        if (customer.vehicles) {
-          for (const vehicle of customer.vehicles) {
-            vehicles.push({
-              id: vehicle.id?.toString() || '',
-              year: vehicle.year || null,
-              make: vehicle.make || null,
-              model: vehicle.model || null,
-              vin: vehicle.vin || null,
-              license_plate: vehicle.license_plate || null
-            });
-          }
+    if (data?.items) {
+      for (const item of data.items) {
+        // Only include items that have vehicle information
+        if (item.vehicleId && item.plate) {
+          vehicles.push({
+            id: item.vehicleId?.toString() || '',
+            year: null, // Backend doesn't return year/make/model separately in this API
+            make: null,
+            model: null,
+            vin: null,
+            license_plate: item.plate || null
+          });
         }
       }
     }
