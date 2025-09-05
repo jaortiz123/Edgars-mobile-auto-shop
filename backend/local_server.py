@@ -7549,6 +7549,45 @@ def create_appointment():
             print(f"[APPT_DEBUG] Appointment created successfully with ID: {new_id}")
             app.logger.error(f"[APPT_DEBUG] Appointment created successfully with ID: {new_id}")
 
+            # Fetch the created appointment to return complete data
+            cur.execute(
+                """
+                SELECT
+                    id::text,
+                    status,
+                    start_ts,
+                    end_ts,
+                    total_amount,
+                    paid_amount,
+                    customer_id::text,
+                    vehicle_id::text,
+                    notes,
+                    location_address,
+                    primary_operation_id::text,
+                    service_category,
+                    tech_id::text,
+                    title
+                FROM appointments
+                WHERE id = %s
+            """,
+                (new_id,),
+            )
+
+            created_appointment = cur.fetchone()
+            if not created_appointment:
+                print("[APPT_DEBUG] ERROR: Failed to fetch created appointment")
+                app.logger.error("[APPT_DEBUG] ERROR: Failed to fetch created appointment")
+                raise RuntimeError("Failed to fetch created appointment.")
+
+            # Convert to dict and format timestamps
+            appointment_dict = dict(created_appointment)
+            if appointment_dict.get("start_ts"):
+                appointment_dict["start_ts"] = appointment_dict["start_ts"].isoformat()
+            if appointment_dict.get("end_ts"):
+                appointment_dict["end_ts"] = appointment_dict["end_ts"].isoformat()
+            if "total_amount" in appointment_dict:
+                appointment_dict["total_amount"] = float(appointment_dict["total_amount"] or 0)
+
             audit(
                 conn,
                 user.get("sub", "system"),
@@ -7563,8 +7602,8 @@ def create_appointment():
                     "vehicle_id": resolved_vehicle_id,
                 },
             )
-    # Return both nested and flat id for backward test compatibility
-    return _ok({"appointment": {"id": new_id}, "id": new_id}, HTTPStatus.CREATED)
+    # Return the complete created appointment
+    return _ok({"appointment": appointment_dict, "id": new_id}, HTTPStatus.CREATED)
 
 
 @app.route("/api/admin/appointments/<appt_id>", methods=["DELETE"])

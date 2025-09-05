@@ -86,42 +86,6 @@ const AppointmentsPage: React.FC = () => {
     }
   };
 
-  const loadDataWithRetry = async (expectedCount?: number, maxRetries = 5) => {
-    for (let i = 0; i < maxRetries; i++) {
-      try {
-        const [appointmentsData, customersData, vehiclesData] = await Promise.all([
-          getAppointments(),
-          getCustomers(),
-          getVehicles()
-        ]);
-
-        const appointments = appointmentsData?.appointments || [];
-
-        // If we're expecting a specific count (after create), retry if not met
-        if (expectedCount !== undefined && appointments.length < expectedCount) {
-          if (i < maxRetries - 1) {
-            await new Promise(resolve => setTimeout(resolve, 200));
-            continue;
-          }
-        }
-
-        setAppointments(appointments);
-        setCustomers(customersData);
-        setVehicles(vehiclesData);
-        setLoading(false);
-        return;
-      } catch (error) {
-        console.error('Failed to load appointments:', error);
-        if (i === maxRetries - 1) {
-          setError('Failed to load data');
-          setLoading(false);
-        } else {
-          await new Promise(resolve => setTimeout(resolve, 200));
-        }
-      }
-    }
-  };
-
   const openCreateModal = () => {
     setEditingAppointment(null);
     setFormData({
@@ -158,15 +122,15 @@ const AppointmentsPage: React.FC = () => {
         setSuccessMessage('Appointment updated successfully');
         setShowModal(false);
 
-        // No expected count change for updates, just retry to ensure consistency
-        await loadDataWithRetry();
+        // Reload data after update
+        await loadData();
       } else {
-        await createAppointment(formData);
+        const response = await createAppointment(formData);
         setSuccessMessage('Appointment created successfully');
         setShowModal(false);
 
-        // Expect current count + 1 after creation
-        await loadDataWithRetry(appointments.length + 1);
+        // Add the created appointment directly to the list
+        setAppointments(prev => [...prev, response.appointment]);
       }
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
@@ -180,9 +144,7 @@ const AppointmentsPage: React.FC = () => {
         setError('Failed to save appointment');
       }
     }
-  };
-
-  const handleDelete = async (appointmentId: string) => {
+  };  const handleDelete = async (appointmentId: string) => {
     if (!confirm('Are you sure you want to delete this appointment?')) {
       return;
     }
@@ -196,7 +158,7 @@ const AppointmentsPage: React.FC = () => {
       setSuccessMessage('Appointment deleted successfully');
 
       // Verify deletion with server
-      await loadDataWithRetry();
+      await loadData();
     } catch (err) {
       console.error('Delete appointment failed:', err);
       setError('Failed to delete appointment');
@@ -222,7 +184,7 @@ const AppointmentsPage: React.FC = () => {
       setSuccessMessage(`Appointment status updated to ${newStatus}`);
 
       // Verify update with server
-      await loadDataWithRetry();
+      await loadData();
     } catch (err) {
       console.error('Status update failed:', err);
       setError('Failed to update appointment status');
