@@ -345,6 +345,20 @@ jobs:
           print('Seed tenants and staff memberships done')
           PY
 
+      - name: Smoke test POST /api/admin/appointments (capture error details)
+        run: |
+          echo "Smoke testing create appointment endpoint (non-blocking)..."
+          set +e
+          RESPONSE=$(curl -s -S -i -X POST http://localhost:3001/api/admin/appointments \
+            -H 'Content-Type: application/json' \
+            -H 'X-Tenant-Id: 00000000-0000-0000-0000-000000000001' \
+            --data '{"requested_time": "2025-01-01T10:00:00Z", "customer_name": "CI Test", "license_plate": "CI-SMOKE-1"}')
+          STATUS=$(printf "%s" "$RESPONSE" | awk 'NR==1{print $2}')
+          echo "Status: $STATUS"
+          printf "%s\n" "$RESPONSE" | tail -n +1
+          # Do not fail the job on this smoke check
+          exit 0
+
       - name: Check frontend service logs
         run: |
           echo "Frontend service logs:"

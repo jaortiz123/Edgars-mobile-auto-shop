@@ -11,10 +11,10 @@ async function ensureLoggedIn(page: Page) {
   await page.goto('http://localhost:5173/admin/customers');
   if (/\/admin\/login/.test(page.url())) {
     // Fallback: perform real login if redirect happened.
-    const user = page.getByRole('textbox', { name: /username/i }).or(page.getByPlaceholder(/username/i));
-    const pass = page.getByLabel(/password/i).or(page.getByRole('textbox', { name: /password/i })).or(page.getByPlaceholder(/password/i));
+    const user = page.getByPlaceholder(/username/i).or(page.getByRole('textbox', { name: /username/i }));
+    const pass = page.getByPlaceholder(/password/i).or(page.getByLabel(/password/i));
     await user.fill('advisor');
-    await pass.fill('password');
+    await pass.fill('dev');
     // More permissive button locator
     const loginBtn = page.getByRole('button', { name: /login|log in|sign in/i });
     await loginBtn.click();
@@ -200,7 +200,7 @@ test.describe('Customer Profile Foundation', () => {
     }, { timeout: 10000 }).toBeGreaterThanOrEqual(1);
 
     // STEP 3: Test vehicle filtering - click on first vehicle filter
-    const toyotaFilterBtn = page.locator('button:has-text("2020 Toyota Camry")').first();
+    const toyotaFilterBtn = page.getByRole('button', { name: /2020\s+toyota\s+camry/i }).first();
     await toyotaFilterBtn.click();
 
     // Verify Toyota appointments are shown
@@ -211,7 +211,7 @@ test.describe('Customer Profile Foundation', () => {
     }, { timeout: 5000 }).toBeGreaterThanOrEqual(1);
 
     // STEP 4: Test "All Vehicles" filter
-    const allVehiclesBtn = page.locator('button:has-text("All Vehicles")').first();
+    const allVehiclesBtn = page.getByRole('button', { name: /all vehicles/i }).first();
     await allVehiclesBtn.click();
 
     // Verify appointments are shown again
@@ -276,7 +276,7 @@ test.describe('Customer Profile Foundation', () => {
     await page.waitForURL(/\/admin\/customers\/(.+)/);
 
     // Check if Load More button appears (depends on backend data)
-    const loadMoreBtn = page.locator('button:has-text("Load More")');
+    const loadMoreBtn = page.getByRole('button', { name: /load more/i });
 
     // If the button exists, test that it works
     if (await loadMoreBtn.isVisible()) {
@@ -287,7 +287,7 @@ test.describe('Customer Profile Foundation', () => {
       await loadMoreBtn.click();
 
       // Verify loading state
-      await expect(page.locator('button:has-text("Loading...")')).toBeVisible({ timeout: 2000 });
+      await expect(page.getByRole('button', { name: /loading\.{3}/i })).toBeVisible({ timeout: 2000 });
 
       // Wait for loading to complete and verify more appointments loaded
       await expect.poll(async () => {

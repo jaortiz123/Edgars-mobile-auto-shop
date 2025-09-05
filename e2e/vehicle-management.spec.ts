@@ -10,10 +10,10 @@ async function ensureLoggedIn(page: Page) {
   await page.goto('http://localhost:5173/admin/customers');
   if (/\/admin\/login/.test(page.url())) {
     // Fallback: perform real login if redirect happened.
-    const user = page.getByRole('textbox', { name: /username/i }).or(page.getByPlaceholder(/username/i));
-    const pass = page.getByLabel(/password/i).or(page.getByRole('textbox', { name: /password/i })).or(page.getByPlaceholder(/password/i));
+    const user = page.getByPlaceholder(/username/i).or(page.getByRole('textbox', { name: /username/i }));
+    const pass = page.getByPlaceholder(/password/i).or(page.getByLabel(/password/i));
     await user.fill('advisor');
-    await pass.fill('password');
+    await pass.fill('dev');
     const loginBtn = page.getByRole('button', { name: /login|log in|sign in/i });
     await loginBtn.click();
     await page.waitForURL(/\/admin\//, { timeout: 15000 });
@@ -284,7 +284,7 @@ test.describe('Vehicle Management UI', () => {
     await expect(page.locator('[data-testid^="vehicle-card-"]', { hasText: '2021 BMW X5' })).toBeVisible();
 
     // Click on a specific vehicle filter button
-    const bmwFilterBtn = page.locator('button:has-text("2021 BMW X5")');
+    const bmwFilterBtn = page.getByRole('button', { name: /2021\s+bmw\s+x5/i });
     await bmwFilterBtn.click();
 
     // Verify only the BMW is visible
@@ -292,7 +292,7 @@ test.describe('Vehicle Management UI', () => {
     await expect(page.locator('[data-testid^="vehicle-card-"]', { hasText: '2020 Honda Civic' })).not.toBeVisible();
 
     // Click "All Vehicles" to show both again
-    const allVehiclesBtn = page.locator('button:has-text("All Vehicles")');
+    const allVehiclesBtn = page.getByRole('button', { name: /all vehicles/i });
     await allVehiclesBtn.click();
 
     // Verify both vehicles are visible again

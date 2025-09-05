@@ -661,6 +661,16 @@ REQUEST_ID_REGEX = __import__("re").compile(
 
 log = logging.getLogger("api")
 log.setLevel(logging.INFO)
+# Ensure errors surface in CI/stdout even if root logging isn't configured
+try:  # pragma: no cover - environment/bootstrap concern
+    if not log.handlers:
+        _h = logging.StreamHandler(sys.stdout)
+        _h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s"))
+        log.addHandler(_h)
+        # Avoid double logging to root if it gets configured later
+        log.propagate = False
+except Exception:
+    pass
 
 
 class _AsyncLogWorker(threading.Thread):  # pragma: no cover - infrastructure
@@ -4219,7 +4229,12 @@ def void_invoice_endpoint(invoice_id: str):
 
 
 def handle_unexpected_exception(e: Exception):
-    """Centralized handler for unexpected (500-level) exceptions."""
+    """Centralized handler for unexpected (500-level) exceptions.
+
+    In CI/debug environments, include exception details in the response body
+    under error.details so failures are directly visible in logs and Playwright
+    output without depending on external log aggregation.
+    """
     try:
         log.error(
             "Unhandled exception caught: %s (%s)",
@@ -4233,11 +4248,37 @@ def handle_unexpected_exception(e: Exception):
         )
     except Exception:
         pass
-    # Tests assert code == "INTERNAL" for 500 paths
+
+    # Decide whether to expose details in the HTTP response (safe for CI dev only)
+    expose = False
+    try:
+        expose = (
+            os.getenv("EXPOSE_INTERNAL_ERRORS", "false").lower() == "true"
+            or os.getenv("CI_DEBUG_ERRORS", "false").lower() == "true"
+            or os.getenv("CI", "").strip() != ""
+        )
+    except Exception:
+        expose = False
+
+    details = None
+    if expose:
+        try:
+            details = {
+                "exception": e.__class__.__name__,
+                "message": str(e),
+                "traceback": traceback.format_exc(),
+                "path": getattr(request, "path", None),
+                "method": getattr(request, "method", None),
+            }
+        except Exception:
+            details = None
+
+    # Tests assert code == "INTERNAL" for 500 paths; keep code stable
     resp, status = _error(
         HTTPStatus.INTERNAL_SERVER_ERROR,
         "INTERNAL",
         "An unexpected internal server error occurred.",
+        details=details,
     )
     return resp, status
 
