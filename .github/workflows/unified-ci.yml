@@ -299,6 +299,17 @@ jobs:
           """)
           conn.commit()
 
+          # Create staff_tenant_memberships table (matching migrations)
+          cur.execute("""
+            CREATE TABLE IF NOT EXISTS staff_tenant_memberships (
+              staff_id  TEXT NOT NULL,
+              tenant_id UUID NOT NULL,
+              role      TEXT NOT NULL DEFAULT 'Advisor',
+              PRIMARY KEY (staff_id, tenant_id)
+            )
+          """)
+          conn.commit()
+
           # Insert test tenants using proper columns
           cur.execute("""
             INSERT INTO tenants(id, name, slug, status)
@@ -312,9 +323,22 @@ jobs:
             ON CONFLICT (id) DO NOTHING
           """, ('00000000-0000-0000-0000-000000000002', 'Test Tenant 2', 'test-tenant-2'))
 
+          # Insert staff memberships for test users
+          cur.execute("""
+            INSERT INTO staff_tenant_memberships(staff_id, tenant_id, role)
+            VALUES (%s, %s, 'Advisor')
+            ON CONFLICT (staff_id, tenant_id) DO NOTHING
+          """, ('advisor', '00000000-0000-0000-0000-000000000001'))
+
+          cur.execute("""
+            INSERT INTO staff_tenant_memberships(staff_id, tenant_id, role)
+            VALUES (%s, %s, 'Owner')
+            ON CONFLICT (staff_id, tenant_id) DO NOTHING
+          """, ('owner', '00000000-0000-0000-0000-000000000001'))
+
           conn.commit()
           cur.close(); conn.close()
-          print('Seed tenants done')
+          print('Seed tenants and staff memberships done')
           PY
 
       - name: Check frontend service logs
@@ -341,6 +365,7 @@ jobs:
           npm run test:e2e -- --reporter=list --max-failures=5
         env:
           CI: true
+          E2E_TENANT_ID: 00000000-0000-0000-0000-000000000001
 
       - name: Teardown services
         if: always()
