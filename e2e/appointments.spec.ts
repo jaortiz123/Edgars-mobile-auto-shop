@@ -152,7 +152,9 @@ test.describe('Appointment Scheduling Foundation', () => {
     await page.getByRole('button', { name: 'Create Appointment' }).click();
 
     // Step 4: Verify appointment was created
-    await expect(page.locator('text=Appointment created successfully')).toBeVisible();
+    // Wait for the success message to appear using data-testid with longer timeout
+    await expect(page.locator('[data-testid="success-message"]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[data-testid="success-message"]')).toContainText('Appointment created successfully');
 
     // Wait sufficiently for database transaction to complete and UI to refresh
     await page.waitForTimeout(3000);
@@ -177,7 +179,8 @@ test.describe('Appointment Scheduling Foundation', () => {
     await page.locator('input[placeholder="Brief description of the work"]').fill('Brake Service');
     await page.getByRole('button', { name: 'Create Appointment' }).click();
 
-    await expect(page.locator('text=Appointment created successfully')).toBeVisible();
+    await expect(page.locator('[data-testid="success-message"]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[data-testid="success-message"]')).toContainText('Appointment created successfully');
 
     // Now edit the appointment
     await page.getByRole('button', { name: /^edit$/i }).first().click();
@@ -209,7 +212,8 @@ test.describe('Appointment Scheduling Foundation', () => {
     await page.locator('input[placeholder="Brief description of the work"]').fill('Tire Rotation');
     await page.getByRole('button', { name: 'Create Appointment' }).click();
 
-    await expect(page.locator('text=Appointment created successfully')).toBeVisible();
+    await expect(page.locator('[data-testid="success-message"]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[data-testid="success-message"]')).toContainText('Appointment created successfully');
 
     // Test status workflow: SCHEDULED → IN_PROGRESS
     const statusDropdown = page.locator('select[aria-label="Change appointment status"]').first();
@@ -245,7 +249,8 @@ test.describe('Appointment Scheduling Foundation', () => {
     await page.locator('input[placeholder="Brief description of the work"]').fill('To Be Deleted');
     await page.getByRole('button', { name: 'Create Appointment' }).click();
 
-    await expect(page.locator('text=Appointment created successfully')).toBeVisible();
+    await expect(page.locator('[data-testid="success-message"]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[data-testid="success-message"]')).toContainText('Appointment created successfully');
 
     // Delete the appointment
     page.on('dialog', async dialog => {
@@ -274,7 +279,8 @@ test.describe('Appointment Scheduling Foundation', () => {
     await page.locator('input[placeholder="Brief description of the work"]').fill('First Appointment');
     await page.getByRole('button', { name: 'Create Appointment' }).click();
 
-    await expect(page.locator('text=Appointment created successfully')).toBeVisible();
+    await expect(page.locator('[data-testid="success-message"]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[data-testid="success-message"]')).toContainText('Appointment created successfully');
 
     // Try to create a second appointment with the same vehicle at the same time
     await page.getByRole('button', { name: 'New Appointment' }).click();
@@ -318,7 +324,8 @@ test.describe('Appointment Scheduling Foundation', () => {
     await page.getByRole('button', { name: 'Create Appointment' }).click();
 
     // Should now submit successfully
-    await expect(page.locator('text=Appointment created successfully')).toBeVisible();
+    await expect(page.locator('[data-testid="success-message"]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[data-testid="success-message"]')).toContainText('Appointment created successfully');
   });
 
   test('Search and Filter Functionality', async ({ page }) => {
@@ -342,7 +349,8 @@ test.describe('Appointment Scheduling Foundation', () => {
       await page.locator('input[placeholder="Brief description of the work"]').fill(appointments[i]);
       await page.getByRole('button', { name: 'Create Appointment' }).click();
 
-      await expect(page.locator('text=Appointment created successfully')).toBeVisible();
+      await expect(page.locator('[data-testid="success-message"]')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('[data-testid="success-message"]')).toContainText('Appointment created successfully');
     }
 
     // Verify all appointments are visible
