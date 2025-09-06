@@ -280,3 +280,14 @@ db-data/
 *.bak
 *.backup
 *.old
+
+### TEST REPORTS & ARTIFACTS ###
+# Playwright and E2E test reports
+e2e-report/
+e2e-report-smoke/
+test-results/
+playwright-report/
+# Test artifacts and debug files
+appointments-results.json
+top_fail_cats.txt
+INVALID
