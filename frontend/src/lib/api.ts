@@ -478,8 +478,8 @@ export async function fetchTemplateAnalytics(params: FetchTemplateAnalyticsParam
 //   return data;
 // }
 
-export async function updateAppointment(id: string, body: Partial<Appointment>) {
-  const { data } = await http.patch<Appointment>(`/appointments/${id}`, body);
+export async function updateAppointment(id: string, body: Partial<Appointment>): Promise<{appointment: Appointment}> {
+  const { data } = await http.patch<{appointment: Appointment}>(`/appointments/${id}`, body);
   return data;
 }
 

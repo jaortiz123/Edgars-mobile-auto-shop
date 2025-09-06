@@ -133,11 +133,13 @@ const AppointmentsPage: React.FC = () => {
 
     try {
       if (editingAppointment) {
-        await updateAppointment(editingAppointment.id, formData);
+        const response = await updateAppointment(editingAppointment.id, formData);
         setSuccessMessage('Appointment updated successfully');
 
-        // Reload data after update
-        await loadData();
+        // Update the appointment directly in the list using optimistic updates
+        setAppointments(prev =>
+          prev.map(apt => apt.id === response.appointment.id ? response.appointment : apt)
+        );
 
         // Delay closing modal to show success message
         setTimeout(() => setShowModal(false), 1500);
@@ -190,7 +192,6 @@ const AppointmentsPage: React.FC = () => {
   const handleStatusChange = async (appointmentId: string, newStatus: AppointmentStatus) => {
     try {
       // Optimistically update local state
-      const originalAppointments = [...appointments];
       setAppointments(prev =>
         prev.map(apt =>
           apt.id === appointmentId
@@ -199,11 +200,13 @@ const AppointmentsPage: React.FC = () => {
         )
       );
 
-      await updateAppointment(appointmentId, { status: newStatus });
+      const response = await updateAppointment(appointmentId, { status: newStatus });
       setSuccessMessage(`Appointment status updated to ${newStatus}`);
 
-      // Verify update with server
-      await loadData();
+      // Update with the complete appointment from server response
+      setAppointments(prev =>
+        prev.map(apt => apt.id === appointmentId ? response.appointment : apt)
+      );
     } catch (err) {
       console.error('Status update failed:', err);
       setError('Failed to update appointment status');

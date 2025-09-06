@@ -6821,8 +6821,56 @@ def patch_appointment(appt_id: str):
                     pass
             if not (sets or wants_vehicle_update):
                 return _ok({"id": appt_id, "updated_fields": []})
+
+    # Fetch the complete updated appointment to return
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT
+                a.id::text,
+                a.status::text,
+                a.start_ts,
+                a.end_ts,
+                a.total_amount,
+                a.paid_amount,
+                a.customer_id::text,
+                a.vehicle_id::text,
+                a.notes,
+                a.location_address,
+                a.primary_operation_id::text,
+                a.service_category,
+                a.tech_id::text,
+                a.title
+            FROM appointments a
+            WHERE a.id = %s
+        """,
+            (appt_id,),
+        )
+        row = cur.fetchone()
+
+    if not row:
+        return _error(HTTPStatus.NOT_FOUND, "NOT_FOUND", "Appointment not found after update")
+
+    appointment_dict = {
+        "id": row["id"],
+        "status": row["status"],
+        "start_ts": row["start_ts"],
+        "end_ts": row["end_ts"],
+        "total_amount": float(row["total_amount"]) if row["total_amount"] is not None else 0.0,
+        "paid_amount": float(row["paid_amount"]) if row["paid_amount"] is not None else 0.0,
+        "customer_id": row["customer_id"],
+        "vehicle_id": row["vehicle_id"],
+        "notes": row["notes"],
+        "location_address": row["location_address"],
+        "primary_operation_id": row["primary_operation_id"],
+        "service_category": row["service_category"],
+        "tech_id": row["tech_id"],
+        "title": row["title"],
+    }
+
     return _ok(
         {
+            "appointment": appointment_dict,
             "id": appt_id,
             "updated_fields": list(
                 set([k for (k, _) in fields if k in body] + list(vehicle_keys & set(body.keys())))
