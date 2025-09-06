@@ -65,6 +65,7 @@ const AppointmentsPage: React.FC = () => {
   // Clear success and error messages after a delay
   useEffect(() => {
     if (successMessage) {
+      console.log('Success message state changed:', successMessage);
       const timer = setTimeout(() => setSuccessMessage(''), 5000);
       return () => clearTimeout(timer);
     }
@@ -140,18 +141,19 @@ const AppointmentsPage: React.FC = () => {
           prev.map(apt => apt.id === response.appointment.id ? response.appointment : apt)
         );
 
-        // Close modal first, then show success message
+        // Show success message and close modal
+        setSuccessMessage('Appointment updated successfully');
         setShowModal(false);
-        setTimeout(() => setSuccessMessage('Appointment updated successfully'), 100);
       } else {
         const response = await createAppointment(formData);
 
         // Add the created appointment directly to the list
         setAppointments(prev => [...prev, response.appointment]);
 
-        // Close modal first, then show success message
+        // Show success message and close modal
+        console.log('Setting success message: Appointment created successfully');
+        setSuccessMessage('Appointment created successfully');
         setShowModal(false);
-        setTimeout(() => setSuccessMessage('Appointment created successfully'), 100);
       }
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
@@ -266,7 +268,7 @@ const AppointmentsPage: React.FC = () => {
       )}
 
       {successMessage && (
-        <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+        <div data-testid="success-message" className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
           {successMessage}
         </div>
       )}
