@@ -66,6 +66,8 @@ const AppointmentsPage: React.FC = () => {
   useEffect(() => {
     if (successMessage) {
       console.log('Success message state changed:', successMessage);
+      // Force a React re-render to ensure DOM is updated immediately
+      setSuccessMessage(prev => prev);
       const timer = setTimeout(() => setSuccessMessage(''), 5000);
       return () => clearTimeout(timer);
     }
@@ -153,7 +155,13 @@ const AppointmentsPage: React.FC = () => {
         // Show success message and close modal
         console.log('Setting success message: Appointment created successfully');
         setSuccessMessage('Appointment created successfully');
+        console.log('Success message set, closing modal');
         setShowModal(false);
+        // Force a re-render to ensure DOM is updated
+        setTimeout(() => {
+          const messageElement = document.querySelector('[data-testid="success-message"]');
+          console.log('Success message element in DOM:', messageElement ? messageElement.textContent : 'NOT FOUND');
+        }, 100);
       }
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
