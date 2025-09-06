@@ -134,24 +134,24 @@ const AppointmentsPage: React.FC = () => {
     try {
       if (editingAppointment) {
         const response = await updateAppointment(editingAppointment.id, formData);
-        setSuccessMessage('Appointment updated successfully');
 
         // Update the appointment directly in the list using optimistic updates
         setAppointments(prev =>
           prev.map(apt => apt.id === response.appointment.id ? response.appointment : apt)
         );
 
-        // Delay closing modal to show success message
-        setTimeout(() => setShowModal(false), 1500);
+        // Close modal first, then show success message
+        setShowModal(false);
+        setTimeout(() => setSuccessMessage('Appointment updated successfully'), 100);
       } else {
         const response = await createAppointment(formData);
-        setSuccessMessage('Appointment created successfully');
 
         // Add the created appointment directly to the list
         setAppointments(prev => [...prev, response.appointment]);
 
-        // Delay closing modal to show success message
-        setTimeout(() => setShowModal(false), 1500);
+        // Close modal first, then show success message
+        setShowModal(false);
+        setTimeout(() => setSuccessMessage('Appointment created successfully'), 100);
       }
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
