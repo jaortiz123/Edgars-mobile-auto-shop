@@ -7,7 +7,7 @@ test.describe('Milestone 3: Advanced Vehicle Actions - E2E Demo', () => {
     await stubCustomerProfile(page, { email: 'admin@example.com' });
 
     // Navigate to admin customers page
-    await page.goto('http://localhost:3000/admin/customers');
+    await page.goto('http://localhost:5173/admin/customers');
     await page.waitForLoadState('networkidle');
   });
 
