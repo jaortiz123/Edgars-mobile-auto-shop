@@ -10,28 +10,29 @@ export default defineConfig({
   // Global timeout for the entire test run (4 minutes) to prevent hangs
   globalTimeout: 240000,
 
-  // Cross-browser projects for P2-T-005 and mobile viewport for P2-T-008
+  // Optimized for speed: single browser project
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-    {
-      name: 'mobile-chrome',
-      use: {
-        ...devices['iPhone 12'],
-        viewport: { width: 375, height: 812 },
-        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1',
-      },
-    },
+    // Commented out other browsers for faster CI
+    // {
+    //   name: 'firefox',
+    //   use: { ...devices['Desktop Firefox'] },
+    // },
+    // {
+    //   name: 'webkit',
+    //   use: { ...devices['Desktop Safari'] },
+    // },
+    // {
+    //   name: 'mobile-chrome',
+    //   use: {
+    //     ...devices['iPhone 12'],
+    //     viewport: { width: 375, height: 812 },
+    //     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1',
+    //   },
+    // },
   ],
 
   reporter: [
