@@ -136,13 +136,13 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ mode, initial, appoin
   if (values.vehicleId) payload.vehicle_id = values.vehicleId;
   if (values.techId) payload.tech_id = values.techId;
   if (services.length) payload.service_operation_ids = services.map(s => s.id);
-        const id = await api.createAppointment(payload as unknown as Record<string, unknown>);
+        const result = await api.createAppointment(payload as unknown as Record<string, unknown>);
         try {
           // fire a lightweight global event so board/listeners can refresh
-          window.dispatchEvent(new CustomEvent('appointments:created', { detail: { id } }));
+          window.dispatchEvent(new CustomEvent('appointments:created', { detail: { id: result.id } }));
         } catch { /* ignore */ }
         onSubmit?.(values);
-        onCreated?.(id);
+        onCreated?.(result.id);
       } catch (err: unknown) {
         let parsed = false;
         if (err && typeof err === 'object' && 'response' in err) {
