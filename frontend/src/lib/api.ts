@@ -214,11 +214,25 @@ export async function getAppointments(): Promise<{ appointments: Appointment[]; 
 export async function createAppointment(
   appointmentData: Partial<Appointment>
 ): Promise<{ appointment: Appointment; id: string }> {
-  const resp = await http.post<{ appointment: Appointment; id: string }>(
+  // Accept both direct and envelope forms from backend
+  const resp = await http.post(
     '/admin/appointments',
     appointmentData
   );
-  return resp.data;
+  const payload = resp.data as unknown;
+  if (payload && typeof payload === 'object') {
+    // Direct form: { appointment, id }
+    if ('appointment' in (payload as Record<string, unknown>)) {
+      const p = payload as { appointment: Appointment; id: string };
+      return { appointment: p.appointment, id: p.id };
+    }
+    // Envelope form: { data: { appointment, id }, meta? }
+    const maybe = (payload as { data?: { appointment?: Appointment; id?: string } }).data;
+    if (maybe && maybe.appointment) {
+      return { appointment: maybe.appointment, id: maybe.id || '' };
+    }
+  }
+  throw new Error('Unexpected appointment response shape');
 }
 
 // ---------------------------------------------------------------------------
@@ -478,9 +492,20 @@ export async function fetchTemplateAnalytics(params: FetchTemplateAnalyticsParam
 //   return data;
 // }
 
-export async function updateAppointment(id: string, body: Partial<Appointment>): Promise<{appointment: Appointment}> {
-  const { data } = await http.patch<{appointment: Appointment}>(`/appointments/${id}`, body);
-  return data;
+export async function updateAppointment(id: string, body: Partial<Appointment>): Promise<{ appointment: Appointment }> {
+  const resp = await http.patch(`/appointments/${id}`, body);
+  const payload = resp.data as unknown;
+  if (payload && typeof payload === 'object') {
+    if ('appointment' in (payload as Record<string, unknown>)) {
+      const p = payload as { appointment: Appointment };
+      return { appointment: p.appointment };
+    }
+    const maybe = (payload as { data?: { appointment?: Appointment } }).data;
+    if (maybe && maybe.appointment) {
+      return { appointment: maybe.appointment };
+    }
+  }
+  throw new Error('Unexpected appointment update response');
 }
 
 // Lightweight utilities expected by Dashboard.tsx

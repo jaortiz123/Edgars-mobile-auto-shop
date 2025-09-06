@@ -127,15 +127,27 @@ export default function ServicesPage() {
         subcategory: formData.subcategory || undefined,
         internal_code: formData.internal_code || undefined
       };
+      // Map UI field to API schema (default_price)
+      const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 50);
+      const apiPayload: any = { ...payload, default_price: payload.base_labor_rate };
+      if (!apiPayload.internal_code || String(apiPayload.internal_code).trim() === '') {
+        apiPayload.internal_code = slugify(payload.name || 'svc');
+      }
+      delete apiPayload.base_labor_rate;
 
       if (editingService) {
-        await updateServiceOperation(editingService.id, payload);
-        alert('Service updated successfully');
+        await updateServiceOperation(editingService.id, apiPayload);
+        // Close modal and log success without blocking alert
+        setShowModal(false);
+        console.log('Service updated successfully');
       } else {
-        await createServiceOperation(payload);
-        alert('Service created successfully');
+        await createServiceOperation(apiPayload);
+        // Close modal and log success without blocking alert
+        setShowModal(false);
+        console.log('Service created successfully');
       }
 
+      // Ensure modal is closed in both branches
       setShowModal(false);
       loadServices(); // Refresh the list
     } catch (error) {

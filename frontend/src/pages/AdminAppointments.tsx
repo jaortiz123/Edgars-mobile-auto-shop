@@ -1,6 +1,7 @@
 // Task: Create AdminAppointments React page
 import React, { useEffect, useState } from 'react';
-import { getAdminAppointmentsToday, updateAppointment } from '../services/apiService';
+import { getAdminAppointmentsToday } from '../services/apiService';
+import { updateAppointment } from '@/lib/api';
 import { NotificationTracker } from '../components/admin/NotificationTracker';
 import CalendarView from '../components/admin/CalendarView';
 import ScheduleView from '../components/admin/ScheduleView';

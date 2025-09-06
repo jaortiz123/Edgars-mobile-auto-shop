@@ -6,7 +6,11 @@
       "localStorage": [
         {
           "name": "auth_token",
-          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZHZpc29yIiwicm9sZSI6IkFkdmlzb3IiLCJpYXQiOjE3NTY1Mjc3NDQsImV4cCI6MTc1NjU1NjU0NH0.L-HYWujabLnyAcvRwlM_cUZN8TO9qMsWRIeEjcI0tYo"
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZHZpc29yIiwicm9sZSI6IkFkdmlzb3IiLCJpYXQiOjE3NTcxOTk0NTgsImV4cCI6MTc1NzIyODI1OH0.p2V1cbYKjoAVoQBJ314T3-NCVJ46Zt-lQ3xCgyFCvkU"
+        },
+        {
+          "name": "tenant_id",
+          "value": "00000000-0000-0000-0000-000000000001"
         },
         {
           "name": "viewMode",

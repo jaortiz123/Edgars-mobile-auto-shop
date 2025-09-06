@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from dataclasses import field as dc_field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 VALID_STATUSES = {"SCHEDULED", "IN_PROGRESS", "READY", "COMPLETED", "NO_SHOW", "CANCELED"}
 ALLOWED_TRANSITIONS = {
@@ -173,7 +173,7 @@ def find_conflicts(
     conn,
     *,
     tech_id: Optional[str],
-    vehicle_id: Optional[int],
+    vehicle_id: Optional[Union[int, str]],
     start_ts: datetime,
     end_ts: Optional[datetime],
     exclude_id: Optional[int] = None,
@@ -234,7 +234,7 @@ def find_conflicts(
             t_params.extend([new_eff_end, start_ts])
         conflicts["tech"] = _exec(t_sql, t_params)
 
-    if vehicle_id is not None and isinstance(vehicle_id, int):
+    if vehicle_id is not None:
         if use_strict:
             v_sql = f"""
                 SELECT a.id FROM appointments a

@@ -1,4 +1,5 @@
 import { useQuery, QueryKey } from '@tanstack/react-query';
+import { http } from '@/lib/api';
 import type { CustomerProfile } from '@/types/customerProfile';
 
 const etagCache = new Map<string, string>();
@@ -25,18 +26,26 @@ export function useCustomerProfile(id: string, opts: { vehicleId?: string; from?
       const cacheKey = keyStr(queryKey);
       const url = buildUrl(id, opts);
       const et = etagCache.get(cacheKey);
-      const r = await fetch(url, { signal, headers: et ? { 'If-None-Match': et } : {} });
-      if (r.status === 304) {
-        const cached = dataCache.get(cacheKey);
-        if (cached) return cached;
-        // Defensive: if no cached data, fall through to fetch fresh
+      const headers = et ? { 'If-None-Match': et } : {};
+
+      try {
+        const response = await http.get(url, {
+          signal,
+          headers,
+          timeout: 10000  // 10 second timeout
+        });
+        const data = response.data as CustomerProfile;
+        const newEt = response.headers?.['etag'] || undefined;
+        if (newEt) etagCache.set(cacheKey, newEt);
+        dataCache.set(cacheKey, data);
+        return data;
+      } catch (error: any) {
+        if (error.response?.status === 304) {
+          const cached = dataCache.get(cacheKey);
+          if (cached) return cached;
+        }
+        throw error;
       }
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data = (await r.json()) as CustomerProfile;
-      const newEt = r.headers.get('ETag') || undefined;
-      if (newEt) etagCache.set(cacheKey, newEt);
-      dataCache.set(cacheKey, data);
-      return data;
     },
   placeholderData: (prev) => {
       // If we already have cached data for this key, keep it to avoid flicker

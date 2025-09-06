@@ -25,6 +25,23 @@ try:
     from local_server import app  # type: ignore
 
     print("[RUN_SERVER_DEBUG] Successfully imported local_server.app")
+    # Dump a concise list of registered routes once at startup for debugging
+    try:
+        rules = []
+        try:
+            rules = list(app.url_map.iter_rules())  # type: ignore[attr-defined]
+        except Exception:
+            rules = []
+        simplified = []
+        for r in rules:
+            methods = sorted((getattr(r, "methods", {"GET"}) or {"GET"}) - {"HEAD", "OPTIONS"})
+            method = methods[0] if methods else "GET"
+            simplified.append(f"{method} {r}")
+        print("[RUN_SERVER_DEBUG] Registered routes (sample):")
+        for line in sorted(set(simplified)):
+            print("[ROUTE]", line)
+    except Exception:
+        pass
 except Exception as e:
     error_msg = f"CRITICAL: Failed to import local_server.app: {str(e)}"
     traceback_msg = f"TRACEBACK: {traceback.format_exc()}"

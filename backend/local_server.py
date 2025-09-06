@@ -9686,7 +9686,7 @@ def admin_search_customers():
     log.error(f"[CUSTOMER_SEARCH_DEBUG] Called with args: {dict(request.args)}")
 
     # Step 1: Enforce authentication with role requirement (E2E-friendly)
-    user = require_or_maybe("Advisor") or {"sub": "system", "role": "Advisor"}
+    require_or_maybe("Advisor") or {"sub": "system", "role": "Advisor"}
 
     # Step 2: Resolve active tenant from request context
     if not g.tenant_id:

@@ -26,8 +26,14 @@ if (typeof window !== 'undefined') {
 }
 
 // Start MSW in development if enabled via env flag
-declare global { interface Window { ENABLE_MSW?: boolean } }
-if (import.meta.env.DEV && window.ENABLE_MSW !== false) {
+declare global { interface Window { ENABLE_MSW?: boolean; Playwright?: unknown } }
+// Disable MSW during Playwright E2E (navigator.webdriver true) or when explicitly disabled
+if (
+  import.meta.env.DEV &&
+  window.ENABLE_MSW !== false &&
+  typeof navigator !== 'undefined' &&
+  !(navigator.webdriver || (window as any).Playwright)
+) {
   // Dynamic import to avoid bundling for production
   import('./mocks/browser').then(({ worker }) => {
     worker.start({ onUnhandledRequest: 'bypass' });

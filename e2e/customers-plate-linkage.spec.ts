@@ -61,6 +61,10 @@ test('appointment creation links vehicle by plate and is searchable on Customers
   await page.goto('http://localhost:5173/admin/customers');
   const input = page.getByPlaceholder(/search by plate|name|phone|email/i);
   await input.fill(plate);
+  // Debounce + network confirmation
+  await page.waitForTimeout(300);
+  await page.waitForResponse(r => r.url().includes('/api/admin/customers/search') && r.request().method()==='GET', { timeout: 15000 }).catch(()=>{});
+  await input.blur();
 
   const list = page.getByTestId('customer-results');
   // On mobile the container may remain visually hidden but still contain cards; proceed without strict visibility.

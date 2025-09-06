@@ -72,7 +72,12 @@ test.describe('Customer Profile Foundation', () => {
     const searchUrl = (plateQuery: string) => `http://localhost:3001/api/admin/customers/search?q=${encodeURIComponent(plateQuery)}`;
     let found = false; let lastPayload: any = null;
     for (let attempt = 1; attempt <= 6; attempt++) { // ~3s total (6 * 500ms)
-      const apiRes = await request.get(searchUrl(plate));
+      const apiRes = await request.get(searchUrl(plate), {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'X-Tenant-Id': '00000000-0000-0000-0000-000000000001'
+        }
+      });
       const json = await apiRes.json().catch(() => ({}));
       lastPayload = json;
       const items = json?.data?.items || [];
