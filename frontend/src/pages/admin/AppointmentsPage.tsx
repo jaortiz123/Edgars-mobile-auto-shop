@@ -120,17 +120,21 @@ const AppointmentsPage: React.FC = () => {
       if (editingAppointment) {
         await updateAppointment(editingAppointment.id, formData);
         setSuccessMessage('Appointment updated successfully');
-        setShowModal(false);
 
         // Reload data after update
         await loadData();
+
+        // Delay closing modal to show success message
+        setTimeout(() => setShowModal(false), 1500);
       } else {
         const response = await createAppointment(formData);
         setSuccessMessage('Appointment created successfully');
-        setShowModal(false);
 
         // Add the created appointment directly to the list
         setAppointments(prev => [...prev, response.appointment]);
+
+        // Delay closing modal to show success message
+        setTimeout(() => setShowModal(false), 1500);
       }
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
