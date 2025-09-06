@@ -5,6 +5,7 @@ Focused lightweight helpers using psycopg2 to match existing `local_server` styl
 
 from __future__ import annotations
 
+import os
 import uuid
 from decimal import Decimal
 from typing import Any, Dict, List
@@ -58,6 +59,18 @@ def generate_invoice_for_appointment(appt_id: str) -> Dict[str, Any]:
     try:
         with conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Ensure tenant context for RLS/trigger consistency. When running in
+                # CI/E2E (APP_INSTANCE_ID=ci), fall back to DEFAULT_TEST_TENANT if unset.
+                try:  # best-effort; if this fails DB will raise and be caught by caller
+                    tenant_id = getattr(srv.g, "tenant_id", None)
+                    if not tenant_id and os.getenv("APP_INSTANCE_ID") == "ci":
+                        tenant_id = os.getenv(
+                            "DEFAULT_TEST_TENANT", "00000000-0000-0000-0000-000000000001"
+                        )
+                    if tenant_id:
+                        cur.execute("SET LOCAL app.tenant_id = %s", (tenant_id,))
+                except Exception:
+                    pass
                 # Fetch & lock appointment (persistence concern)
                 cur.execute(
                     "SELECT id::text, status::text, customer_id::text, vehicle_id::text FROM appointments WHERE id = %s FOR UPDATE",

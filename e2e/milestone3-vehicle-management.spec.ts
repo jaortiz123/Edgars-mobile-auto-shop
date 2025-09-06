@@ -6,8 +6,8 @@ test.describe('Milestone 3: Advanced Vehicle Actions', () => {
     // Set up authentication as admin user
     await stubCustomerProfile(page, { email: 'admin@example.com' });
 
-    // Navigate to admin customers page using the port where the server is running
-    await page.goto('http://localhost:3000/admin/customers');
+    // Navigate to admin customers page (use Vite dev port)
+    await page.goto('http://localhost:5173/admin/customers');
     await page.waitForLoadState('networkidle');
   });
 
@@ -17,7 +17,8 @@ test.describe('Milestone 3: Advanced Vehicle Actions', () => {
     // Search for any customers first - use a simple search term
     const searchInput = page.getByPlaceholder(/search by plate|name|phone|email/i);
     await searchInput.fill('test');
-    await page.waitForTimeout(1500); // Allow search to complete
+    await page.waitForTimeout(300);
+    await page.waitForResponse(r => r.url().includes('/api/admin/customers/search') && r.request().method()==='GET', { timeout: 15000 }).catch(()=>{});
     console.log('✅ Searched for customers');
 
     // Look for customer results and click the first one
@@ -32,7 +33,7 @@ test.describe('Milestone 3: Advanced Vehicle Actions', () => {
         console.log('✅ Navigated to customer profile');
 
         // Look for Edit Customer button and click it
-        const editButton = page.getByTestId('btn-edit-customer');
+        const editButton = page.getByTestId('btn-edit-customer').first();
         await page.waitForTimeout(2000); // Wait for page to fully load
 
         // Debug: Log what buttons are actually visible
@@ -66,14 +67,14 @@ test.describe('Milestone 3: Advanced Vehicle Actions', () => {
           console.log('✅ Edit dialog opened');
 
           // Switch to Vehicles tab
-          const vehiclesTab = page.locator('button:has-text("Vehicles")');
+          const vehiclesTab = page.locator('button:has-text("Vehicles")').first();
           if (await vehiclesTab.count() > 0) {
             await vehiclesTab.click();
             await page.waitForTimeout(500);
             console.log('✅ Switched to Vehicles tab');
 
             // Find vehicles and test Set Primary functionality
-            const vehicleCards = page.locator('[data-testid="vehicle-card"]');
+            const vehicleCards = page.locator('[data-testid="vehicle-card"]').first().locator('..').locator('[data-testid="vehicle-card"]');
             const vehicleCount = await vehicleCards.count();
             console.log(`Found ${vehicleCount} vehicles`);
 
@@ -140,7 +141,8 @@ test.describe('Milestone 3: Advanced Vehicle Actions', () => {
     // Search for any customers
     const searchInput = page.getByPlaceholder(/search by plate|name|phone|email/i);
     await searchInput.fill('test');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(300);
+    await page.waitForResponse(r => r.url().includes('/api/admin/customers/search') && r.request().method()==='GET', { timeout: 15000 }).catch(()=>{});
 
     // Navigate to customer profile and edit dialog
     const customerResults = page.getByTestId('customer-results');
@@ -221,7 +223,8 @@ test.describe('Milestone 3: Advanced Vehicle Actions', () => {
     // Navigate to customer with vehicles
     const searchInput = page.getByPlaceholder(/search by plate|name|phone|email/i);
     await searchInput.fill('test');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(300);
+    await page.waitForResponse(r => r.url().includes('/api/admin/customers/search') && r.request().method()==='GET', { timeout: 15000 }).catch(()=>{});
 
     const customerResults = page.getByTestId('customer-results');
     if (await customerResults.isVisible()) {

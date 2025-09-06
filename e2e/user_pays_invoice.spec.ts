@@ -10,12 +10,13 @@ test.describe('Slim Invoice Payment', () => {
   // Navigate first to ensure origin and storageState applied (avoids SecurityError on localStorage)
   await page.goto('http://localhost:5173/');
   const token = await page.evaluate(() => localStorage.getItem('auth_token'));
+  const tenantId = await page.evaluate(() => localStorage.getItem('tenant_id'));
     if (!token) throw new Error('Missing auth token');
     const nowIso = new Date().toISOString();
 
     // Create completed appointment
     const apptResp = await page.request.post('http://localhost:3001/api/admin/appointments', {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'X-Tenant-Id': tenantId || '' },
       data: { status: 'COMPLETED', start: nowIso }
     });
     const apptJson = await apptResp.json();
@@ -24,14 +25,14 @@ test.describe('Slim Invoice Payment', () => {
 
     // Add service (ensures non-zero invoice)
     const svcResp = await page.request.post(`http://localhost:3001/api/appointments/${apptId}/services`, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'X-Tenant-Id': tenantId || '' },
       data: { name: 'Slim Spec Service', estimated_price: 55 }
     });
     if (!svcResp.ok()) throw new Error('Service seed failed');
 
     // Generate invoice
     const invResp = await page.request.post(`http://localhost:3001/api/admin/appointments/${apptId}/invoice`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}`, 'X-Tenant-Id': tenantId || '' }
     });
     if (!invResp.ok()) throw new Error('Invoice generation failed');
     const invJson = await invResp.json();
@@ -43,7 +44,9 @@ test.describe('Slim Invoice Payment', () => {
     await expect(page.getByTestId('invoice-status-badge')).toBeVisible();
 
     // Determine amount due
-    const detailResp = await page.request.get(`http://localhost:3001/api/admin/invoices/${invoiceId}`);
+    const detailResp = await page.request.get(`http://localhost:3001/api/admin/invoices/${invoiceId}`, {
+      headers: { Authorization: `Bearer ${token}`, 'X-Tenant-Id': tenantId || '' }
+    });
     const detailJson = await detailResp.json();
     const amountDueCents = detailJson.data?.invoice?.amount_due_cents ?? 0;
     expect(amountDueCents).toBeGreaterThan(0);

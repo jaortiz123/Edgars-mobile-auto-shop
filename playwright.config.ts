@@ -1,5 +1,24 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Build reporters so we can disable interactive servers in non-interactive runs
+const reporters: any[] = [
+  ['list'],
+  ['html', { outputFolder: 'e2e-report', open: 'never' }],
+];
+// Only enable Monocart HTML preview when explicitly requested
+if (process.env.PW_MONOCART === '1') {
+  reporters.push([
+    'monocart-reporter',
+    {
+      name: 'Cross-Browser Test Report',
+      outputFile: './test-results/report.html',
+      // Ensure reporter does not start a local server unless requested
+      open: false,
+      show: false,
+    },
+  ]);
+}
+
 export default defineConfig({
   testDir: 'e2e',
   globalSetup: require.resolve('./e2e/global-setup'),
@@ -35,25 +54,7 @@ export default defineConfig({
     // },
   ],
 
-  reporter: [
-    ['html', { outputFolder: 'e2e-report' }],
-    ['monocart-reporter', {
-      name: "Cross-Browser Test Report",
-      outputFile: './test-results/report.html',
-      coverage: {
-        entryFilter: (entry) => {
-          // Exclude files from node_modules
-          if (entry.url.includes('node_modules')) {
-            return false;
-          }
-          return true;
-        },
-        sourceFilter: (sourcePath) => {
-          return sourcePath.startsWith('frontend/src/');
-        }
-      }
-    }]
-  ],
+  reporter: reporters,
 
   use: {
     trace: 'on-first-retry',

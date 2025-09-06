@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CustomerCard, { CustomerVehicleInfo } from '@/components/admin/CustomerCard';
 import FilterChips, { CustomerFilter } from '@/components/admin/FilterChips';
 import SortDropdown, { CustomerSort } from '@/components/admin/SortDropdown';
-import { fetchRecentCustomers, RecentCustomerRecord } from '@/lib/api';
+import { fetchRecentCustomers, RecentCustomerRecord, http } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 
 // Use centralized axios client with relative base '/api'
@@ -29,14 +29,17 @@ async function searchCustomers(q: string, filter: CustomerFilter, sortBy: Custom
   const params = new URLSearchParams({ q: q.trim(), limit: '25' });
   if (filter && filter !== 'all') params.append('filter', filter);
   if (sortBy && sortBy !== 'relevance') params.append('sortBy', sortBy);
-  const resp = await fetch(`/api/admin/customers/search?${params.toString()}`);
-  // Some unit tests stub fetch with a minimal shape lacking 'ok'; treat missing as OK.
-  const ok = typeof (resp as { ok?: boolean }).ok === 'boolean' ? (resp as { ok?: boolean }).ok === true : true;
-  if (!ok) throw new Error('Search failed');
-  const json = await resp.json().catch(() => ({} as unknown));
-  return (json as { data?: { items?: SearchItem[] } ; items?: SearchItem[] })?.data?.items
-    || (json as { items?: SearchItem[] }).items
-    || [];
+
+  try {
+    const resp = await http.get(`/admin/customers/search?${params.toString()}`);
+    const json = resp.data;
+    return (json as { data?: { items?: SearchItem[] } ; items?: SearchItem[] })?.data?.items
+      || (json as { items?: SearchItem[] }).items
+      || [];
+  } catch (error) {
+    console.error('Customer search failed:', error);
+    throw new Error('Search failed');
+  }
 }
 
 

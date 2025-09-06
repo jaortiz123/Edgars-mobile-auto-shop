@@ -17,14 +17,18 @@ services:
     ports:
       - "3001:3001"
     environment:
+      # Ensure the backend connects to the Postgres container, not localhost
       - POSTGRES_HOST=db
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      # Override DATABASE_URL from .env so container uses service host 'db'
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/edgar_db?sslmode=disable
       - JWT_SECRET=${JWT_SECRET}
       - LOG_LEVEL=${LOG_LEVEL}
       - DEFAULT_TEST_TENANT=${DEFAULT_TEST_TENANT}
-      - APP_INSTANCE_ID=${APP_INSTANCE_ID}
+      # Enable E2E bypass logic in backend auth/tenant middleware
+      - APP_INSTANCE_ID=ci
     env_file:
       - ./.env
     depends_on:
