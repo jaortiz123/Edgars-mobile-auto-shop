@@ -53,11 +53,17 @@ test-results/
 ### LOGS ###
 # Ignore log files from various tools.
 *.log
+**/*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
+backend-*.log
+server.log
+security_server.log
+debug_server*.log
+frontend.dev.log
 
 ### OPERATING SYSTEM FILES ###
 # Ignore macOS, Windows, and Linux generated files.
@@ -168,6 +174,7 @@ dmypy.json
 # Runtime data
 pids
 *.pid
+**/*.pid
 *.seed
 *.pid.lock
 
@@ -291,3 +298,10 @@ playwright-report/
 appointments-results.json
 top_fail_cats.txt
 INVALID
+
+# Security and audit artifacts (do not commit large JSON/text outputs)
+audit_artifacts/security/*.json
+audit_artifacts/security/*.md
+audit_artifacts/security/
+audit_artifacts/inventory_auth_matches.txt
+audit_artifacts/*.txt

@@ -60,13 +60,21 @@ def compute_plan_id(sql: str, conn=None) -> str:
 
     Caller may supply an existing connection; otherwise a new one is created.
     """
+    # Safety guard: only allow single-statement SELECTs to be explained
+    candidate = sql.strip()
+    if ";" in candidate:
+        raise ValueError("Refusing to EXPLAIN multi-statement SQL")
+    if not candidate.lower().lstrip().startswith("select"):
+        raise ValueError("Only SELECT statements are supported for plan hashing")
     owns_conn = False
     if conn is None:
         conn = srv.db_conn()
         owns_conn = True
     try:
         with conn.cursor() as cur:
-            cur.execute(f"EXPLAIN (FORMAT JSON) {sql}")
+            # We strictly validate above to allow only a single SELECT statement without semicolons.
+            # Bandit B608 false positive: this is safe given the guards and EXPLAIN context.
+            cur.execute(f"EXPLAIN (FORMAT JSON) {sql}")  # nosec B608
             row = cur.fetchone()
             if not row:
                 raise RuntimeError("No EXPLAIN output")

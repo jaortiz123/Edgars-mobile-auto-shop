@@ -31,3 +31,7 @@ testcontainers
 
 # Dev dependencies
 flake8
+
+# Security patches
+# urllib3 <2.5.0 affected by redirect handling issue (GHSA-pq67-6m6q-mj2v)
+urllib3>=2.5.0

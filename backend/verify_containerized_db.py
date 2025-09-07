@@ -10,14 +10,19 @@ import time
 from pathlib import Path
 
 
-def run_command(cmd, description):
-    """Run a command and return success status."""
+def run_command(cmd_args, description):
+    """Run a command (as an arg list) and return success status."""
     print(f"\n🔍 {description}")
-    print(f"Command: {cmd}")
+    try:
+        printable = " ".join(cmd_args)
+    except Exception:
+        printable = str(cmd_args)
+    print(f"Command: {printable}")
 
     try:
         start_time = time.time()
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
+        # shell=False to avoid shell injection (Bandit B602/B606)
+        result = subprocess.run(cmd_args, shell=False, capture_output=True, text=True, timeout=300)
         duration = time.time() - start_time
 
         if result.returncode == 0:
@@ -50,36 +55,77 @@ def main():
 
     tests = [
         {
-            "cmd": "python -c 'import testcontainers; print(\"testcontainers version:\", testcontainers.__version__)'",
+            "cmd": [
+                sys.executable,
+                "-c",
+                "import testcontainers; print('testcontainers version:', getattr(testcontainers, '__version__', 'unknown'))",
+            ],
             "desc": "Verify testcontainers dependency",
         },
         {
-            "cmd": "python -c 'import psycopg2; print(\"psycopg2 available\")'",
+            "cmd": [sys.executable, "-c", "import psycopg2; print('psycopg2 available')"],
             "desc": "Verify psycopg2 dependency",
         },
-        {"cmd": "docker --version", "desc": "Verify Docker availability"},
+        {"cmd": ["docker", "--version"], "desc": "Verify Docker availability"},
         {
-            "cmd": "python -m pytest tests/test_integration_database.py::TestContainerizedDatabase::test_database_connection -v",
+            "cmd": [
+                sys.executable,
+                "-m",
+                "pytest",
+                "tests/test_integration_database.py::TestContainerizedDatabase::test_database_connection",
+                "-v",
+            ],
             "desc": "Test basic database connection",
         },
         {
-            "cmd": "python -m pytest tests/test_integration_database.py::TestContainerizedDatabase::test_seed_data_loaded -v",
+            "cmd": [
+                sys.executable,
+                "-m",
+                "pytest",
+                "tests/test_integration_database.py::TestContainerizedDatabase::test_seed_data_loaded",
+                "-v",
+            ],
             "desc": "Test seed data loading",
         },
         {
-            "cmd": "python -m pytest tests/test_integration_database.py::TestContainerizedDatabase::test_foreign_key_constraints -v",
+            "cmd": [
+                sys.executable,
+                "-m",
+                "pytest",
+                "tests/test_integration_database.py::TestContainerizedDatabase::test_foreign_key_constraints",
+                "-v",
+            ],
             "desc": "Test foreign key constraints (real SQL behavior)",
         },
         {
-            "cmd": "python -m pytest tests/test_integration_database.py::TestContainerizedDatabase::test_appointment_status_enum -v",
+            "cmd": [
+                sys.executable,
+                "-m",
+                "pytest",
+                "tests/test_integration_database.py::TestContainerizedDatabase::test_appointment_status_enum",
+                "-v",
+            ],
             "desc": "Test ENUM constraints (real SQL behavior)",
         },
         {
-            "cmd": "python -m pytest tests/test_integration_database.py::TestLegacyCompatibility -v",
+            "cmd": [
+                sys.executable,
+                "-m",
+                "pytest",
+                "tests/test_integration_database.py::TestLegacyCompatibility",
+                "-v",
+            ],
             "desc": "Test backward compatibility with legacy fixtures",
         },
         {
-            "cmd": "time python -m pytest tests/test_integration_database.py::TestContainerizedDatabase -v",
+            # timing handled by Python, drop external 'time' (avoids shell)
+            "cmd": [
+                sys.executable,
+                "-m",
+                "pytest",
+                "tests/test_integration_database.py::TestContainerizedDatabase",
+                "-v",
+            ],
             "desc": "Full containerized test suite performance",
         },
     ]

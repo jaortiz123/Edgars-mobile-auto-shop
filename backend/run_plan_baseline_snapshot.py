@@ -52,8 +52,10 @@ def _fetch_gucs(cur) -> dict:
     gucs = {}
     for name in GUC_NAMES:
         try:
-            cur.execute(f"SHOW {name}")
-            val = cur.fetchone()[0]
+            # Use current_setting with parameter to avoid dynamic identifier interpolation
+            cur.execute("SELECT current_setting(%s, true)", (name,))
+            row = cur.fetchone()
+            val = row[0] if row else None
             gucs[name] = val
         except Exception:
             gucs[name] = None
