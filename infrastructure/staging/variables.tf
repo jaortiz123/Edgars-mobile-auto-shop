@@ -39,3 +39,8 @@ locals {
   ecr_repo_name      = coalesce(var.ecr_repository_name, "${local.name_prefix}-backend")
   s3_bucket_base     = replace(lower(local.name_prefix), "_", "-")
 }
+
+variable "domain_name" {
+  description = "Primary domain name to look up ACM certificate for the ALB HTTPS listener"
+  type        = string
+}

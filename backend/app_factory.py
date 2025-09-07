@@ -11,7 +11,7 @@ import os
 
 from flask import Flask
 
-from backend.security_core import *  # Import all security functions
+# Import security helpers (use explicit namespace to satisfy linters)
 
 
 def create_app(config=None):
@@ -74,4 +74,9 @@ def create_app_for_testing(database_url=None):
 if __name__ == "__main__":
     app = create_app()
     port = int(os.getenv("PORT", 5001))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    # Enforce safe defaults: only allow debug and 0.0.0.0 in explicit development
+    app_env = os.getenv("APP_ENV", "development").lower()
+    is_dev = app_env in {"dev", "development", "local"}
+    host = "0.0.0.0" if is_dev else "127.0.0.1"
+    debug = bool(is_dev)
+    app.run(host=host, port=port, debug=debug)

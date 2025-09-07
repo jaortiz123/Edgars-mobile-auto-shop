@@ -235,4 +235,10 @@ def get_profile():
 if __name__ == "__main__":
     print("🔒 Starting minimal cross-tenant security test server...")
     print("🎯 Implementing CRITICAL tenant isolation check in /api/customers/profile")
-    app.run(host="0.0.0.0", port=3001, debug=True)
+    import os
+
+    app_env = os.getenv("APP_ENV", "development").lower()
+    is_dev = app_env in {"dev", "development", "local"}
+    host = "0.0.0.0" if is_dev else "127.0.0.1"
+    debug = bool(is_dev)
+    app.run(host=host, port=3001, debug=debug)

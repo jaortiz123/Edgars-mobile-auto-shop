@@ -305,3 +305,4 @@ audit_artifacts/security/*.md
 audit_artifacts/security/
 audit_artifacts/inventory_auth_matches.txt
 audit_artifacts/*.txt
+audit_artifacts/*.json

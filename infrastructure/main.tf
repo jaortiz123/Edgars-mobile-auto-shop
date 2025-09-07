@@ -148,6 +148,19 @@ resource "aws_db_instance" "edgar_db" {
   db_subnet_group_name  = aws_db_subnet_group.edgar_db_subnets.name
   vpc_security_group_ids = [aws_security_group.db_sg.id]
   skip_final_snapshot   = true
+
+  # Encrypt storage at rest using default KMS key unless custom specified
+  storage_encrypted = true
+
+  # Export logs for audit/forensics and upgrades
+  enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
+
+  # Performance Insights for observability
+  performance_insights_enabled = true
+  performance_insights_retention_period = 7
+
+  # Enhanced monitoring (requires IAM role; using default 0 = disabled, but recommend 60)
+  monitoring_interval = 60
 }
 
 # Creates the DynamoDB table for storing quote requests and history.
@@ -166,6 +179,11 @@ resource "aws_dynamodb_table" "QuotesTable" {
   tags = {
     Project     = "AutoRepairHub"
     Environment = "Dev"
+  }
+
+  # Encrypt at rest (AWS managed KMS key by default)
+  server_side_encryption {
+    enabled = true
   }
 }
 
@@ -195,6 +213,11 @@ resource "aws_dynamodb_table" "notification_tracking" {
   tags = {
     Project     = "AutoRepairHub"
     Environment = "Dev"
+  }
+
+  # Encrypt at rest (AWS managed KMS key by default)
+  server_side_encryption {
+    enabled = true
   }
 }
 
