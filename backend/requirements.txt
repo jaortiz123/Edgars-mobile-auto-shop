@@ -10,6 +10,9 @@ bcrypt
 boto3
 psutil
 
+# Schema validation
+pydantic[email]>=2.6,<3
+
 pg8000
 psycopg2
 python-json-logger
