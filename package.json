@@ -46,5 +46,8 @@
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "undici": "^6.21.3"
+  },
+  "overrides": {
+    "form-data": ">=4.0.4"
   }
 }

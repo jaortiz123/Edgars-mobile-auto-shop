@@ -235,6 +235,7 @@ def lambda_handler(event, context):
             values.append(appointment_id)
             conn = get_db_connection()
             with conn.cursor() as cur:
+                # nosec B608: set_clause uses a strict allowed_fields whitelist; values are parameterized
                 cur.execute(
                     f"""
                     UPDATE appointments SET {set_clause}

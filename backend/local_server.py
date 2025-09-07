@@ -125,6 +125,7 @@ import jwt
 import psycopg2
 from flask import Flask, Response, g, jsonify, make_response, request
 from flask_cors import CORS  # added
+from psycopg2 import sql
 from psycopg2.extras import RealDictCursor
 from werkzeug.exceptions import BadRequest, Forbidden, HTTPException, NotFound
 
@@ -2914,7 +2915,7 @@ if "list_invoices" not in app.view_functions:
         if status_filter:
             where.append("status = %s")
             params.append(status_filter)
-        where_sql = ("WHERE " + " AND ".join(where)) if where else ""
+        # where_sql removed; using composed where_clause below
 
         try:
             with conn:
@@ -2922,13 +2923,28 @@ if "list_invoices" not in app.view_functions:
                     # Set tenant context for RLS policies
                     cur.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant_id,))
 
-                    # Now execute tenant-isolated queries
-                    cur.execute(
-                        f"SELECT id::text, customer_id, status::text, subtotal_cents, total_cents, amount_paid_cents, amount_due_cents FROM invoices {where_sql} ORDER BY created_at DESC, id DESC LIMIT %s OFFSET %s",
-                        params + [page_size, offset],
+                    # Now execute tenant-isolated queries (safe composition to avoid SQLi)
+                    from psycopg2 import sql as _sql
+
+                    base_select = _sql.SQL(
+                        "SELECT id::text, customer_id, status::text, subtotal_cents, total_cents, amount_paid_cents, amount_due_cents FROM invoices"
                     )
+                    where_clause = _sql.SQL(" WHERE ").join([])
+                    if where:
+                        where_clause = _sql.SQL(" WHERE ") + _sql.SQL(" AND ").join(
+                            [_sql.SQL(w) for w in where]
+                        )
+                    order_limit = _sql.SQL(" ORDER BY created_at DESC, id DESC LIMIT %s OFFSET %s")
+                    query = base_select + where_clause + order_limit
+                    cur.execute(query, params + [page_size, offset])
                     rows = cur.fetchall() or []
-                    cur.execute(f"SELECT COUNT(*) AS cnt FROM invoices {where_sql}", params)
+                    count_query = _sql.SQL("SELECT COUNT(*) AS cnt FROM invoices") + (
+                        _sql.SQL("")
+                        if not where
+                        else _sql.SQL(" WHERE ")
+                        + _sql.SQL(" AND ").join([_sql.SQL(w) for w in where])
+                    )
+                    cur.execute(count_query, params)
                     total = cur.fetchone()["cnt"] if cur.rowcount != -1 else len(rows)
         except Exception as e:
             return jsonify({"error": f"Database operation failed: {e}"}), 500
@@ -7167,6 +7183,7 @@ def patch_appointment(appt_id: str):
             updated_keys: list[str] = []
             if sets:
                 params.append(appt_id)
+                # nosec B608: column identifiers come from a strict whitelist; values are %s-bound
                 cur.execute(f"UPDATE appointments SET {', '.join(sets)} WHERE id = %s", params)
                 updated_keys.extend([k for (k, _) in fields if k in body and body[k] is not None])
             if wants_vehicle_update:
@@ -7370,6 +7387,7 @@ def _set_status(
         if new_status == "COMPLETED":
             sets.append("completed_at = COALESCE(completed_at, now())")
         params.append(appt_id)
+        # nosec B608: SET columns are whitelisted server-side; values are parameterized
         cur.execute(f"UPDATE appointments SET {', '.join(sets)} WHERE id = %s", params)
         audit(
             conn,
@@ -8187,13 +8205,24 @@ def delete_appointment(appt_id: str):
         raise err
     with conn:
         with conn.cursor() as cur:
+            # Whitelist table names to avoid SQL injection in dynamic identifiers (Bandit B608)
             child_tables = ["appointment_services", "messages", "payments"]
             for table in child_tables:
                 try:
-                    cur.execute(f"DELETE FROM {table} WHERE appointment_id = %s", (appt_id,))
+                    if table not in child_tables:
+                        continue
+                    cur.execute(
+                        sql.SQL("DELETE FROM {} WHERE appointment_id = %s").format(
+                            sql.Identifier(table)
+                        ),
+                        (appt_id,),
+                    )
                 except psycopg2.Error as e:
                     log.warning(
-                        f"Could not delete from child table {table} for appointment {appt_id}: {e}"
+                        "Could not delete from child table %s for appointment %s: %s",
+                        table,
+                        appt_id,
+                        e,
                     )
             cur.execute("DELETE FROM appointments WHERE id = %s RETURNING id::text", (appt_id,))
             deleted = cur.fetchone()

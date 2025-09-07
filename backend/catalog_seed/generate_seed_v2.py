@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Service Catalog seed generator (v2)."""
+"""Service Catalog seed generator (v2).
+
+This script only generates SQL text files for seeding and never executes SQL against a database.
+Bandit B608 warnings on string construction are false positives in this context.
+"""
 
 from __future__ import annotations
 
@@ -112,7 +116,7 @@ def generate_insert(values: dict[str, str], pretty: bool, upsert: bool) -> str:
             f"  '{values['keywords']}',\n"
             f"  {values['is_active']}\n)"
         )
-        sql = head + vals
+        sql = head + vals  # nosec B608: generating seed SQL text only (not executed)
     else:
         sql = (
             f"INSERT INTO {tbl} (id, name, category, min_hours, typical_hours, max_hours, "
@@ -120,7 +124,7 @@ def generate_insert(values: dict[str, str], pretty: bool, upsert: bool) -> str:
             f"('{esc(values['id'])}', '{esc(values['name'])}', '{values['category']}', {values['min_hours']}, "
             f"{values['typical_hours']}, {values['max_hours']}, {values['base_labor_rate']}, {values['requires_senior_tech']}, "
             f"{values['skill_level']}, '{values['vehicle_types']}', '{values['keywords']}', {values['is_active']})"
-        )
+        )  # nosec B608: generating seed SQL text only (not executed)
     if upsert:
         sql += (
             " ON CONFLICT (id) DO UPDATE SET "

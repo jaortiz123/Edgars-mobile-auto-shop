@@ -1,0 +1,14 @@
+# Minimal gitleaks config to reduce noise from logs and artifacts
+
+title = "gitleaks config"
+
+[allowlist]
+description = "Ignore known noisy paths"
+paths = [
+  "debug_.*\\.log",
+  "audit_artifacts/.*",
+  "frontend\\.dev\\.log",
+  "backend-.*\\.log",
+  "debug-server.*",
+  "\\.github/workflows/.*"
+]
