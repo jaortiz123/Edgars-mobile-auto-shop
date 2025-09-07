@@ -1,0 +1,2 @@
+rule,methods,function,file,line
+/api/admin/login,POST,admin_login,backend/local_server.py,3355
