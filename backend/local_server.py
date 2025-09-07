@@ -233,6 +233,21 @@ if _existing_owner and _existing_owner not in {
     )
 app._OWNING_MODULE = __name__
 
+# Fail-safe (Priority 3): Disallow default development secrets in production
+try:
+    _env = (os.getenv("APP_ENV") or os.getenv("FLASK_ENV") or os.getenv("ENV") or "").lower()
+    if _env in {"prod", "production", "staging"}:
+        default_jwt = JWT_SECRET in {"dev_secret", "test_secret"}
+        default_flask = os.getenv("FLASK_SECRET_KEY", "dev-secret-key") in {
+            "dev-secret-key",
+            "test_secret",
+        }
+        if default_jwt or default_flask:
+            raise RuntimeError("Unsafe default secrets detected in production environment")
+except Exception:
+    # Crash fast; orchestrator should restart with correct secrets
+    raise
+
 # ---------------------------------------------------------------------------
 # Duplicate route registration silencer (module reload guard)
 # On importlib.reload the same module executes again against the singleton app
@@ -468,21 +483,27 @@ def _instance_request_marker():  # pragma: no cover (diagnostic)
 # After Flask app (variable 'app') is instantiated above, initialize CORS once.
 try:  # idempotent guard
     if not getattr(app, "_CORS_INITIALIZED", False):  # type: ignore
-        ALLOWED_ORIGINS = {
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "http://frontend:5173",  # Docker service name
-            # Allow any 172.18.0.x Docker network addresses for CI
-            "*",  # Temporary: allow all origins for debugging
-        }
+        _env = (os.getenv("APP_ENV") or os.getenv("FLASK_ENV") or os.getenv("ENV") or "").lower()
+        if _env in {"prod", "production", "staging"}:
+            ALLOWED_ORIGINS = {os.getenv("FRONTEND_ORIGIN", "https://app.example.com")}
+            cors_origins = list(ALLOWED_ORIGINS)
+            cors_credentials = True
+        else:
+            ALLOWED_ORIGINS = {
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://frontend:5173",  # Docker service name
+            }
+            cors_origins = list(ALLOWED_ORIGINS)
+            cors_credentials = False
         print(f"[CORS DEBUG] Configuring CORS for origins: {ALLOWED_ORIGINS}")
         CORS(
             app,
             resources={
-                r"/api/*": {"origins": "*"},  # Temporary: allow all origins
-                r"/customers/*": {"origins": "*"},  # Temporary: allow all origins
+                r"/api/*": {"origins": cors_origins},
+                r"/customers/*": {"origins": cors_origins},
             },
-            supports_credentials=False,  # Disable for Docker direct calls
+            supports_credentials=cors_credentials,
             allow_headers=[
                 "Authorization",
                 "Content-Type",
@@ -1005,6 +1026,15 @@ def after_request_hook(resp):
             pass
         _async_log.emit("info", payload)
     except Exception:  # pragma: no cover
+        pass
+    # Security headers (Priority 2)
+    try:
+        csp = "default-src 'self'; frame-ancestors 'none'; object-src 'none'"
+        resp.headers.setdefault("Content-Security-Policy", csp)
+        resp.headers.setdefault("X-Frame-Options", "DENY")
+        resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+        resp.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    except Exception:
         pass
     return resp
 
@@ -3561,6 +3591,20 @@ def customer_register():
     On conflict (email already registered) returns 409.
     """
     body = request.get_json(silent=True) or {}
+    # Schema validation (Priority 1)
+    try:
+        from backend.schemas import CustomerRegister  # type: ignore
+    except Exception:  # fallback for flat layout
+        try:
+            from schemas import CustomerRegister  # type: ignore
+        except Exception as e:
+            return _error(
+                HTTPStatus.INTERNAL_SERVER_ERROR, "schema_error", f"Schema import failed: {e}"
+            )
+    try:
+        reg = CustomerRegister(**body)
+    except Exception as e:
+        return _error(HTTPStatus.BAD_REQUEST, "invalid_request", str(e))
     # Rate limit registration attempts per-IP and email
     try:
         remote = request.remote_addr or "127.0.0.1"
@@ -3568,9 +3612,9 @@ def customer_register():
         rate_limit(f"auth_register:{remote}:{email_key}", limit=10, window=300)
     except Exception:
         pass
-    email = (body.get("email") or "").strip().lower()
-    password = body.get("password") or ""
-    name = (body.get("name") or email.split("@")[0] or "Customer").strip()
+    email = reg.email.strip().lower()
+    password = reg.password
+    name = (reg.name or email.split("@")[0] or "Customer").strip()
     if not email or not password:
         return _error(HTTPStatus.BAD_REQUEST, "invalid_request", "Email and password required")
     # Enforce strong password policy (Priority 2)
@@ -7697,6 +7741,45 @@ def create_appointment():
         # Re-raise to let global handler catch it
         raise
     body = request.get_json(silent=True) or {}
+    # Schema validation (Priority 1)
+    try:
+        from backend.schemas import AppointmentCreate  # type: ignore
+    except Exception:
+        try:
+            from schemas import AppointmentCreate  # type: ignore
+        except Exception as e:
+            return _error(
+                HTTPStatus.INTERNAL_SERVER_ERROR, "schema_error", f"Schema import failed: {e}"
+            )
+    try:
+        appt_model = AppointmentCreate(**body)
+        # Normalize for downstream logic
+        body["start_ts"] = appt_model.normalized_start().isoformat()
+        # Sync known fields back into body (ensures types are normalized)
+        for k in (
+            "status",
+            "total_amount",
+            "paid_amount",
+            "customer_id",
+            "customer_name",
+            "customer_phone",
+            "customer_email",
+            "license_plate",
+            "vehicle_year",
+            "vehicle_make",
+            "vehicle_model",
+            "notes",
+            "location_address",
+            "primary_operation_id",
+            "service_category",
+            "tech_id",
+            "vehicle_id",
+        ):
+            v = getattr(appt_model, k, None)
+            if v is not None:
+                body[k] = v
+    except Exception as e:
+        return _error(HTTPStatus.BAD_REQUEST, "invalid_request", str(e))
 
     print(f"[APPT_DEBUG] user: {user}, body keys: {list(body.keys()) if body else 'None'}")
     app.logger.error(
@@ -7722,13 +7805,7 @@ def create_appointment():
             app.logger.error(f"[APPT_DEBUG] Failed to import validation: {e2}")
             validate_appointment_payload = None  # type: ignore
             find_conflicts = None  # type: ignore
-    # Normalize start alias for validator
-    # Provide validator a canonical start_ts if alternative keys supplied
-    if "start_ts" not in body:
-        if "start" in body:
-            body["start_ts"] = body.get("start")
-        elif "requested_time" in body:
-            body["start_ts"] = body.get("requested_time")
+    # start_ts is already normalized via Pydantic model above
     validation_result = None
     if validate_appointment_payload:
         validation_result = validate_appointment_payload(body, mode="create")
