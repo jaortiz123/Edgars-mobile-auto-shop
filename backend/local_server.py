@@ -1591,6 +1591,8 @@ if "metrics_304_efficiency" not in app.view_functions:
         store is available, replace this with a 7-day query. For now it provides
         immediate feedback for development / CI.
         """
+        # Enforce Advisor-level auth for admin metrics endpoint
+        require_auth_role("Advisor")
         # Define route templates of interest (simplified patterns)
         tracked = [
             "/api/customer/profile",  # example canonicalized path
@@ -1898,11 +1900,7 @@ if "patch_customer" not in app.view_functions:
                 st, code, msg = forced_map[forced]
                 return _error(st, code, msg)
 
-        user = require_or_maybe("Advisor")  # Owner/Advisor allowed
-        if not user:
-            resp, status = _error(HTTPStatus.FORBIDDEN, "FORBIDDEN", "Not authorized")
-            resp.headers["Cache-Control"] = "no-store"
-            return resp, status
+        user = require_auth_role("Advisor")  # Owner/Advisor allowed
 
         try:
             cid_int = int(cid)
@@ -2065,11 +2063,13 @@ if "create_vehicle" not in app.view_functions:
     @app.route("/api/admin/vehicles", methods=["POST"])
     def create_vehicle():  # type: ignore
         """Create a new vehicle for a customer - minimal test implementation."""
+        # Enforce Advisor-level auth for vehicle creation
+        user = require_auth_role("Advisor")
         try:
             app.logger.info("Vehicle creation endpoint hit")
 
             # Simple auth check
-            user = require_or_maybe("Advisor")
+            user = user  # already authenticated above
             if not user:
                 app.logger.info("Auth failed")
                 return jsonify({"error": {"code": "forbidden", "message": "Not authorized"}}), 403
@@ -2410,7 +2410,7 @@ if "get_vehicle_basic" not in app.view_functions:
 
     @app.route("/api/admin/vehicles/<vid>", methods=["GET"])
     def get_vehicle_basic(vid: str):  # type: ignore
-        user = require_or_maybe("Advisor")
+        user = require_auth_role("Advisor")
         if not user:
             resp, status = _error(HTTPStatus.FORBIDDEN, "FORBIDDEN", "Not authorized")
             resp.headers["Cache-Control"] = "no-store"
@@ -2455,6 +2455,8 @@ if "patch_vehicle" not in app.view_functions:
 
     @app.route("/api/admin/vehicles/<vid>", methods=["PATCH"])
     def patch_vehicle(vid: str):  # type: ignore
+        # Enforce Advisor-level auth for vehicle updates
+        require_auth_role("Advisor")
         if app.config.get("TESTING"):
             forced = request.args.get("test_error")
             forced_map = {
@@ -2617,7 +2619,7 @@ if "transfer_vehicle" not in app.view_functions:
           403 if not authorized
           404 if vehicle or customer not found
         """
-        user = require_or_maybe("Advisor")
+        user = require_auth_role("Advisor")
         if not user:
             resp, status = _error(HTTPStatus.FORBIDDEN, "FORBIDDEN", "Not authorized")
             resp.headers["Cache-Control"] = "no-store"
@@ -2863,8 +2865,8 @@ if "list_invoices" not in app.view_functions:
           status (str optional exact match)
         Response envelope: data { page, page_size, total_items, items: [ { id, customer_id, status, subtotal_cents, total_cents, amount_paid_cents, amount_due_cents } ] }
         """
-        # STEP 1: Authentication optional for tests; parse if present
-        _ = maybe_auth()
+        # STEP 1: Enforce Advisor-level authentication
+        require_auth_role("Advisor")
         # STEP 2: Resolve active tenant - provide test default if missing (handled in before_request)
         if not hasattr(g, "tenant_id") or not g.tenant_id:
             # In strict mode this would be a 400, but tests expect endpoint to work without explicit header
@@ -4273,6 +4275,8 @@ def handle_rate_limited(e):  # pragma: no cover - exercised via tests
 # Invoice API endpoints (generate, get, payments, void) added post-error handlers
 @app.route("/api/admin/appointments/<appt_id>/invoice", methods=["POST"])
 def generate_invoice(appt_id: str):
+    # Enforce Advisor-level auth for invoice generation
+    require_auth_role("Advisor")
     global _MEM_INVOICES, _MEM_INVOICE_SEQ, _MEM_PAYMENTS  # type: ignore
     # Explicit debug to verify route registration and execution
     try:
@@ -4367,8 +4371,8 @@ def generate_invoice(appt_id: str):
 
 @app.route("/api/admin/invoices/<invoice_id>", methods=["GET"])
 def get_invoice(invoice_id: str):
-    # Step 1: Authentication optional for tests; parse if present
-    _ = maybe_auth()
+    # Enforce Advisor-level auth for invoice retrieval
+    require_auth_role("Advisor")
 
     # Step 2: Resolve active tenant from request context
     if not g.tenant_id:
@@ -4482,8 +4486,8 @@ def get_invoice(invoice_id: str):
 
 @app.route("/api/admin/invoices/<invoice_id>/payments", methods=["POST"])
 def create_invoice_payment(invoice_id: str):
-    # Step 1: Authentication optional for tests; parse if present
-    _ = maybe_auth()
+    # Enforce Advisor-level auth for invoice payment creation
+    require_auth_role("Advisor")
 
     # Step 2: Resolve active tenant from request context
     if not g.tenant_id:
@@ -4624,8 +4628,8 @@ def create_invoice_payment(invoice_id: str):
 
 @app.route("/api/admin/invoices/<invoice_id>/void", methods=["POST"])
 def void_invoice_endpoint(invoice_id: str):
-    # Step 1: Authentication optional for tests; parse if present
-    _ = maybe_auth()
+    # Enforce Advisor-level auth for invoice voiding
+    require_auth_role("Advisor")
 
     # Step 2: Resolve active tenant from request context
     if not g.tenant_id:
@@ -5372,7 +5376,7 @@ def _row_to_template(r: dict) -> dict:
 @app.route("/api/admin/message-templates", methods=["GET"])
 def list_message_templates():
     """List active message templates. Advisors can view; Owners manage."""
-    maybe_auth()  # allow dev bypass or Advisor/Owner
+    require_auth_role("Advisor")
     include_inactive = request.args.get("includeInactive", "false").lower() == "true"
     channel = request.args.get("channel")
     category = request.args.get("category")
@@ -5489,7 +5493,7 @@ def create_message_template():
 
 @app.route("/api/admin/message-templates/<tid>", methods=["GET"])
 def get_message_template(tid: str):
-    maybe_auth()
+    require_auth_role("Advisor")
     conn = db_conn()
     with conn:
         with conn.cursor() as cur:
@@ -5671,8 +5675,8 @@ def log_template_usage():
         )
         resp.headers["Retry-After"] = "3600"  # 1 hour generic backoff hint
         return resp, status
-    # Allow Advisor or Owner but require auth (no maybe_auth for audit quality)
-    user = require_or_maybe()
+    # Enforce Advisor baseline for admin telemetry
+    user = require_auth_role("Advisor")
     body = request.get_json(silent=True) or {}
     raw_tid = (body.get("template_id") or "").strip()
     tpl_slug = (body.get("template_slug") or "").strip()
@@ -5823,7 +5827,7 @@ def technicians_list():
     Response:
         200 JSON { "technicians": [ { id, name, initials, isActive, createdAt?, updatedAt? } ] }
     """
-    maybe_auth()
+    require_auth_role("Advisor")
     include_inactive = request.args.get("includeInactive", "false").lower() == "true"
     where_clause = "TRUE" if include_inactive else "is_active IS TRUE"
     conn = db_conn()
@@ -5899,7 +5903,7 @@ def _bucket_edges(start: datetime, end: datetime, granularity: str):
 
 @app.route("/api/admin/analytics/templates", methods=["GET"])
 def analytics_templates():
-    maybe_auth()
+    require_auth_role("Advisor")
     rng = request.args.get("range")
     gran_override = request.args.get("granularity")
     channel_filter = request.args.get("channel", "all").lower()
@@ -6122,8 +6126,8 @@ def analytics_templates():
 # ----------------------------------------------------------------------------
 @app.route("/api/admin/appointments/<appt_id>/move", methods=["PATCH"])
 def move_card(appt_id: str):
-    # Step 1: Authentication optional for tests; parse if present
-    auth_payload = maybe_auth()
+    # Step 1: Enforce Advisor-level authentication
+    auth_payload = require_auth_role("Advisor")
 
     # Step 2: Resolve active tenant from request context
     if not g.tenant_id:
@@ -6260,6 +6264,7 @@ def appointment_handler(appt_id: str):
 # Provide admin namespace alias for same handler (consistency with board endpoint under /api/admin)
 @app.route("/api/admin/appointments/<appt_id>", methods=["GET", "PATCH"])
 def admin_appointment_handler(appt_id: str):
+    require_auth_role("Advisor")
     appt_id = _resolve_seed_appt_id(appt_id)
     if request.method == "GET":
         return get_appointment(appt_id)
@@ -7623,14 +7628,14 @@ def create_appointment():
             f"[APPT_DEBUG] request.method={request.method}, request.path={request.path}"
         )
 
-        print("[APPT_DEBUG] About to call require_or_maybe('Owner')")
-        app.logger.error("[APPT_DEBUG] About to call require_or_maybe('Owner')")
+        print("[APPT_DEBUG] About to call require_auth_role('Advisor')")
+        app.logger.error("[APPT_DEBUG] About to call require_auth_role('Advisor')")
 
-        # Allow dev bypass; otherwise require Owner. Be resilient if auth injection fails in tests.
-        user = require_or_maybe("Owner") or {"sub": "system", "role": "Owner"}
+        # Enforce Advisor-level authentication
+        user = require_auth_role("Advisor")
 
-        print(f"[APPT_DEBUG] require_or_maybe succeeded, user={user}")
-        app.logger.error(f"[APPT_DEBUG] require_or_maybe succeeded, user={user}")
+        print(f"[APPT_DEBUG] require_auth_role succeeded, user={user}")
+        app.logger.error(f"[APPT_DEBUG] require_auth_role succeeded, user={user}")
 
     except Exception as e:
         print(f"[APPT_DEBUG] EXCEPTION in auth/setup: {str(e)}")
@@ -9102,6 +9107,7 @@ def add_package_to_invoice(invoice_id: str):
       - Updates invoice totals (subtotal/total/amount_due) preserving amount_paid.
     Returns: { invoice: <updated>, added_line_items: [...], package_id, package_name, added_subtotal_cents }
     """
+    require_auth_role("Advisor")
     body = request.get_json(silent=True) or {}
     package_id = body.get("packageId") or body.get("package_id")
     if not package_id or not isinstance(package_id, str):
@@ -9714,8 +9720,8 @@ def admin_search_customers():
     # Nuclear debugging for E2E customer search issues
     log.error(f"[CUSTOMER_SEARCH_DEBUG] Called with args: {dict(request.args)}")
 
-    # Step 1: Enforce authentication with role requirement (E2E-friendly)
-    require_or_maybe("Advisor") or {"sub": "system", "role": "Advisor"}
+    # Step 1: Enforce authentication with role requirement
+    require_auth_role("Advisor")
 
     # Step 2: Resolve active tenant from request context
     if not g.tenant_id:
@@ -10355,25 +10361,8 @@ def unified_customer_profile(cust_id: str):
         # Customer profile legacy tests expect lowercase codes (e.g. 'bad_request','forbidden').
         return _error(status, code, message)
 
-    # Step 1: Use maybe_auth for E2E-compatible authentication
-    auth_payload = maybe_auth()
-
-    # For E2E tests, bypass authentication requirement
-    if not auth_payload and app.config.get("APP_INSTANCE_ID") == "ci":
-        auth_payload = {"role": "Advisor", "sub": "e2e"}
-        print(f"[E2E_DEBUG] unified_customer_profile E2E bypass for customer {cust_id}")
-
-    # Special handling for dev-user in E2E environment
-    if (
-        auth_payload
-        and auth_payload.get("sub") == "dev-user"
-        and app.config.get("APP_INSTANCE_ID") == "ci"
-    ):
-        print(f"[E2E_DEBUG] Converting dev-user to E2E bypass for customer {cust_id}")
-        auth_payload = {"role": "Advisor", "sub": "e2e"}
-
-    if not auth_payload:
-        return _err(HTTPStatus.FORBIDDEN, "auth_required", "Authentication required")
+    # Step 1: Enforce Advisor-level authentication (admin scope)
+    auth_payload = require_auth_role("Advisor")
 
     # Step 2: Resolve active tenant from request context
     if not g.tenant_id:
@@ -10878,9 +10867,7 @@ def vehicle_profile(vehicle_id: str):
         if forced in forced_map:
             st, code, msg = forced_map[forced]
             return _error(st, code, msg)
-    auth = require_or_maybe("Advisor")
-    if not auth:
-        return _error(HTTPStatus.FORBIDDEN, "forbidden", "Not authorized")
+    require_auth_role("Advisor")
 
     if not fetch_vehicle_header:
         return _error(HTTPStatus.SERVICE_UNAVAILABLE, "unavailable", "Profile repo not loaded")
@@ -11034,7 +11021,7 @@ def admin_vehicle_visits_alias(license_plate: str):
 # Today endpoint used by some widgets
 @app.route("/api/admin/appointments/today", methods=["GET"])
 def today_appointments():
-    maybe_auth()
+    require_auth_role("Advisor")
     conn = db_conn()
     with conn:
         with conn.cursor() as cur:
