@@ -154,7 +154,7 @@ def get_customers():
 
         # Verify JWT token
         try:
-            payload = jwt.decode(token, app.config["SECRET_KEY"], algorithms=["HS256"])
+            jwt.decode(token, app.config["SECRET_KEY"], algorithms=["HS256"])
         except jwt.ExpiredSignatureError:
             return jsonify({"error": "Token expired"}), 401
         except jwt.InvalidTokenError:
@@ -220,4 +220,8 @@ def request_password_reset():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app_env = os.environ.get("APP_ENV", "development").lower()
+    is_dev = app_env in {"dev", "development", "local"}
+    host = "0.0.0.0" if is_dev else "127.0.0.1"
+    debug = bool(is_dev)
+    app.run(host=host, port=port, debug=debug)

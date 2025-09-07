@@ -130,4 +130,8 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 5002))
     print(f"Starting minimal test server on port {port}")
     print(f"Database URL: {os.getenv('DATABASE_URL', 'Using individual env vars')}")
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app_env = os.getenv("APP_ENV", "development").lower()
+    is_dev = app_env in {"dev", "development", "local"}
+    host = "0.0.0.0" if is_dev else "127.0.0.1"
+    debug = bool(is_dev)
+    app.run(host=host, port=port, debug=debug)

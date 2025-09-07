@@ -30,6 +30,30 @@ resource "aws_lb_listener" "http" {
   protocol          = "HTTP"
 
   default_action {
+    type = "redirect"
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+# HTTPS listener with TLS 1.2+ policy
+data "aws_acm_certificate" "selected" {
+  domain   = var.domain_name
+  statuses = ["ISSUED"]
+  most_recent = true
+}
+
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.this.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-Res-2021-06" # TLS1.3/1.2 modern policy
+  certificate_arn   = data.aws_acm_certificate.selected.arn
+
+  default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.this.arn
   }
