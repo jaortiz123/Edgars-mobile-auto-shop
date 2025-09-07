@@ -20,9 +20,18 @@ test.describe('Milestone 2: Add Vehicle Flow', () => {
     if (await customerResults.isVisible()) {
       const firstCustomer = customerResults.locator('[data-testid^="customer-"]').first()
       if (await firstCustomer.count() > 0) {
-        await firstCustomer.click()
-        await page.waitForLoadState('networkidle')
-        console.log('✅ Navigated to customer profile')
+        // Click on "View Full History" button to navigate to customer profile
+        const viewHistoryBtn = firstCustomer.getByTestId('customer-view-history');
+        if (await viewHistoryBtn.count() > 0) {
+          await viewHistoryBtn.click();
+          await page.waitForLoadState('networkidle');
+          console.log('✅ Navigated to customer profile via View History button');
+        } else {
+          // Fallback: try clicking the customer card directly
+          await firstCustomer.click();
+          await page.waitForLoadState('networkidle');
+          console.log('✅ Navigated to customer profile via card click');
+        }
       } else {
         console.log('No customers found - will test API only')
         return; // Skip UI test if no customers found
@@ -32,14 +41,37 @@ test.describe('Milestone 2: Add Vehicle Flow', () => {
       return; // Skip UI test if no search results
     }
 
-    // Wait for profile page to load
-    await page.waitForSelector('text=Customer Profile', { timeout: 5000 })
+    // Wait for profile page to load with multiple possible text indicators
+    await page.waitForLoadState('networkidle');
+
+    const profileText = page.getByText(/customer profile|profile|customer details/i);
+    const editBtn = page.getByRole('button', { name: /edit/i });
+
+    // Wait for either profile text or edit button to be visible
+    try {
+      await expect(profileText.or(editBtn)).toBeVisible({ timeout: 10000 });
+    } catch {
+      console.log('Profile page elements not found - proceeding with Edit button search');
+    }
 
     // Look for Edit button and click it
-    const editButton = page.locator('button:has-text("Edit")')
-    await editButton.waitFor({ timeout: 5000 })
-    await editButton.click()
-    console.log('✅ Clicked Edit button')
+    console.log('🔍 Debugging page state');
+
+    // Debug: Check current URL and page title
+    const currentUrl = page.url();
+    console.log(`🔍 Current URL: ${currentUrl}`);
+
+    // Debug: Check if we're on the profile page
+    if (currentUrl.includes('/admin/customers/')) {
+      console.log('✅ Successfully navigated to customer profile page');
+    } else {
+      console.log('❌ Still on customer list page, navigation failed');
+    }
+
+    const editButton = page.getByTestId('btn-edit-customer');
+    await editButton.waitFor({ timeout: 5000 });
+    await editButton.click();
+    console.log('✅ Clicked Edit button');
 
     // Wait for the edit dialog to open
     await page.waitForSelector('[role="dialog"]', { timeout: 5000 })

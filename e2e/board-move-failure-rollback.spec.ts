@@ -73,6 +73,12 @@ test.describe('Board drag-and-drop rollback on failure', () => {
   if (!targetStatus) test.skip(true, 'No target status');
   await page.evaluate(([id, status]) => (window as any).__boardMove(id, status), [cardId, targetStatus]);
 
+  // Wait for network stability after move attempt and rollback
+  await page.waitForLoadState('networkidle', { timeout: 10000 });
+
+  // Add stabilization delay for rollback patterns
+  await page.waitForTimeout(500);
+
   // After simulated failure, card should roll back to original column
   await expect.poll(async () => await getColumnIndexForCard(page, cardId!)).toBe(initialIndex);
 

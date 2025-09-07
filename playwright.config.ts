@@ -29,6 +29,12 @@ export default defineConfig({
   // Global timeout for the entire test run (4 minutes) to prevent hangs
   globalTimeout: 240000,
 
+  // PRIORITY 5: Serial execution control for race condition elimination
+  // Force appointments.spec.ts and customer-profile tests to run serially
+  // to prevent appointment creation during cleanup operations
+  fullyParallel: false,
+  workers: 1, // Single worker ensures complete serial execution
+
   // Optimized for speed: single browser project
   projects: [
     {

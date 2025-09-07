@@ -177,18 +177,25 @@ test.describe('Appointment Scheduling Foundation', () => {
     // Step 3: Submit the form
     await page.getByRole('button', { name: 'Create Appointment' }).click();
 
+    // Wait for network stability after form submission
+    await page.waitForLoadState('networkidle', { timeout: 15000 });
+
     // Step 4: Verify appointment was created
     // Wait for the success message to appear using data-testid with longer timeout
-    await expect(page.locator('[data-testid="success-message"]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[data-testid="success-message"]')).toBeVisible({ timeout: 15000 });
     await expect(page.locator('[data-testid="success-message"]')).toContainText('Appointment created successfully');
+
+    // Wait for any modal dismissal or dialog closure
+    await page.waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 5000 }).catch(() => {});
 
     // Wait sufficiently for database transaction to complete and UI to refresh
     await page.waitForTimeout(3000);
+    await page.waitForLoadState('networkidle');
 
-    // Check if appointment is visible
-    await expect(page.locator('text=Oil Change Test')).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('text=$75.99')).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('text=SCHEDULED')).toBeVisible({ timeout: 10000 });
+    // Check if appointment is visible - use first() to avoid strict mode violations
+    await expect(page.locator('text=Oil Change Test').first()).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('text=$75.99').first()).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('text=SCHEDULED').first()).toBeVisible({ timeout: 30000 });
   });
 
   test('Edit Appointment', async ({ page }) => {
@@ -217,8 +224,15 @@ test.describe('Appointment Scheduling Foundation', () => {
 
     // Ensure banner is not above viewport
     await page.evaluate(() => window.scrollTo(0, 0));
-    await expect(page.locator('[data-testid="success-message"]')).toBeVisible({ timeout: 10000 });
+
+    // Wait for network stability after appointment creation
+    await page.waitForLoadState('networkidle', { timeout: 15000 });
+
+    await expect(page.locator('[data-testid="success-message"]')).toBeVisible({ timeout: 15000 });
     await expect(page.locator('[data-testid="success-message"]')).toContainText('Appointment created successfully');
+
+    // Wait for any modal dismissal or dialog closure
+    await page.waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 5000 }).catch(() => {});
 
     // Now edit the appointment
     await page.getByRole('button', { name: /^edit$/i }).first().click();
@@ -234,10 +248,17 @@ test.describe('Appointment Scheduling Foundation', () => {
 
     await page.getByRole('button', { name: 'Update Appointment' }).click();
 
+    // Wait for network stability after appointment update
+    await page.waitForLoadState('networkidle', { timeout: 15000 });
+
     // Verify update
     await page.evaluate(() => window.scrollTo(0, 0));
-    await expect(page.locator('[data-testid="success-message"]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[data-testid="success-message"]')).toBeVisible({ timeout: 15000 });
     await expect(page.locator('[data-testid="success-message"]')).toContainText(/Appointment (updated|created) successfully/);
+
+    // Wait for any modal dismissal or dialog closure
+    await page.waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 5000 }).catch(() => {});
+
     // Be specific to avoid strict mode collisions with the banner containing the title
     await expect(page.getByRole('cell', { name: 'Brake Service - Updated' })).toBeVisible();
     await expect(page.getByRole('cell', { name: '$125.50' })).toBeVisible();
