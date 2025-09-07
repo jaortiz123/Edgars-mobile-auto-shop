@@ -182,6 +182,13 @@ test.describe('Board drag-and-drop optimistic move', () => {
         if (typeof w.__boardMove === 'function') { await w.__boardMove(id, status); return { ok: true, status }; }
         return { ok: false, error: 'no-move-hook' };
       }, [cardId, targetStatus]);
+
+      // Wait for network stability after move attempt - critical for optimistic updates
+      await page.waitForLoadState('networkidle', { timeout: 10000 });
+
+      // Add stabilization delay for optimistic update patterns
+      await page.waitForTimeout(500);
+
       // Wait for either store map change or error persisted
       let storeChanged = false;
       try {
@@ -216,6 +223,10 @@ test.describe('Board drag-and-drop optimistic move', () => {
     const targetMeta = statusMeta.find(s => s.status === finalStatus);
     expect(targetMeta, 'Target column meta not found').toBeTruthy();
     const targetColumn = columns.nth(targetMeta!.index);
+
+    // Wait for network stability before final DOM assertion
+    await page.waitForLoadState('networkidle', { timeout: 10000 });
+
     await expect(targetColumn.locator(`[data-appointment-id="${cardId}"]`)).toBeVisible({ timeout: 15000 });
   });
 });

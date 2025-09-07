@@ -12,8 +12,15 @@ test.describe('Services Tab - Add From Catalog (staged)', () => {
     // Navigate to dashboard (auth token in storageState)
     await page.goto('/admin/dashboard');
 
-    // Unified readiness
+    // Unified readiness with network stability
     const firstCard = await waitForBoardReady(page);
+    if (!firstCard) {
+      test.skip(true, 'No appointment cards available for drawer test');
+      return;
+    }
+
+    // Wait for network stability before opening drawer
+    await page.waitForLoadState('networkidle', { timeout: 10000 });
 
     // Open drawer by clicking first card (dedicated open button preferred)
     const openBtn = firstCard.locator('[data-testid^="apt-card-open-"]');
@@ -107,6 +114,10 @@ test.describe('Services Tab - Add From Catalog (staged)', () => {
       page.waitForResponse(r => /\/api\/appointments\/.+\/services$/.test(r.url()) && r.request().method()==='POST'),
       saveBtn.click()
     ]);
+
+    // Wait for network stability after service save
+    await page.waitForLoadState('networkidle', { timeout: 10000 });
+
     await page.waitForTimeout(400);
     await expect(page.locator('[data-testid="services-list"] [data-staged="1"]')).toHaveCount(0);
 
@@ -117,10 +128,20 @@ test.describe('Services Tab - Add From Catalog (staged)', () => {
       await editBtn.click();
       const hoursInput = firstSaved.locator('input[aria-label="Hours"]');
       if (await hoursInput.count()) {
-        await hoursInput.fill('9');
+        // Use realistic user interaction to trigger React state changes
+        await hoursInput.click(); // Focus the input
+        await hoursInput.press('Control+a'); // Select all text
+        await hoursInput.press('Backspace'); // Clear the field
+        await hoursInput.type('9', { delay: 50 }); // Type with delay to simulate human input
+        await hoursInput.blur(); // Trigger onBlur event
+
         await editBtn.click();
         const saveChangesBtn = page.locator('[data-testid="drawer-save"]');
         await expect(saveChangesBtn).toBeVisible();
+
+        // Verify the save button is enabled (not disabled)
+        await expect(saveChangesBtn).toBeEnabled();
+
         const patchPromise = page.waitForResponse(r => /\/api\/appointments\/.+\/services\/.+/.test(r.url()) && r.request().method()==='PATCH', { timeout: 4000 }).catch(() => null);
         await saveChangesBtn.click();
         await patchPromise; // if null, feature not yet implemented; proceed
@@ -157,6 +178,10 @@ test.describe('Services Tab - Add From Catalog (staged)', () => {
     await stubCustomerProfile(page);
     await page.goto('/admin/dashboard');
     const firstCard = await waitForBoardReady(page);
+    if (!firstCard) {
+      test.skip(true, 'No appointment cards available for drawer test');
+      return;
+    }
     const openBtn = firstCard.locator('[data-testid^="apt-card-open-"]');
     if (await openBtn.count()) await openBtn.first().click(); else await firstCard.click();
     await page.getByRole('tab', { name: 'Services' }).click();

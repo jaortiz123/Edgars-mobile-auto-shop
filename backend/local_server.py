@@ -1392,6 +1392,7 @@ def _resolve_tenant_context():
                                 user_sub == "advisor"
                                 or user_sub == "test-user-e2e"
                                 or user_sub == "e2e"
+                                or user_sub == "dev-user"
                             ) and resolved_tenant == "00000000-0000-0000-0000-000000000001":
                                 # E2E bypass: allow advisor access to test tenant
                                 print(
@@ -1707,7 +1708,7 @@ def _strong_etag(kind: str, row: Dict[str, Any], editable_fields: list[str]) -> 
 
 def _get_customer_row(cur, cid: int):
     cur.execute(
-        "SELECT id, name, email, phone, is_vip, address, full_name, tags, notes, sms_consent, to_char(GREATEST(updated_at, created_at),'YYYY-MM-DD"
+        "SELECT id, name, email, phone, is_vip, address, to_char(GREATEST(updated_at, created_at),'YYYY-MM-DD"
         "T"
         "HH24:MI:SS.US') AS ts FROM customers WHERE id=%s",
         (cid,),
@@ -1927,7 +1928,7 @@ if "patch_customer" not in app.view_functions:
                 current = _strong_etag(
                     "customer",
                     row,
-                    ["name", "full_name", "email", "phone", "tags", "notes", "sms_consent"],
+                    ["name", "email", "phone", "is_vip", "address"],
                 )
                 if inm != current:
                     resp, status = _error(
@@ -1941,7 +1942,6 @@ if "patch_customer" not in app.view_functions:
                         k: payload.get(k)
                         for k in [
                             "name",
-                            "full_name",
                             "email",
                             "phone",
                             "tags",
@@ -1966,7 +1966,6 @@ if "patch_customer" not in app.view_functions:
                         {
                             "id": row.get("id"),
                             "name": row.get("name"),  # deprecated, kept for compatibility
-                            "full_name": row.get("full_name") or row.get("name"),
                             "email": row.get("email"),
                             "phone": row.get("phone"),
                             "address": row.get("address"),  # deprecated, kept for compatibility
@@ -1985,7 +1984,6 @@ if "patch_customer" not in app.view_functions:
                         {
                             "id": row.get("id"),
                             "name": row.get("name"),  # deprecated, kept for compatibility
-                            "full_name": row.get("full_name") or row.get("name"),
                             "email": row.get("email"),
                             "phone": row.get("phone"),
                             "address": row.get("address"),  # deprecated, kept for compatibility
@@ -2026,7 +2024,7 @@ if "patch_customer" not in app.view_functions:
                 new_etag = _strong_etag(
                     "customer",
                     row2,
-                    ["name", "full_name", "email", "phone", "tags", "notes", "sms_consent"],
+                    ["name", "email", "phone", "is_vip", "address"],
                 )
                 diff: Dict[str, Dict[str, Any]] = {}
                 for k, new_val in effective.items():
@@ -2046,7 +2044,6 @@ if "patch_customer" not in app.view_functions:
                     {
                         "id": row2.get("id"),
                         "name": row2.get("name"),  # deprecated, kept for compatibility
-                        "full_name": row2.get("full_name") or row2.get("name"),
                         "email": row2.get("email"),
                         "phone": row2.get("phone"),
                         "address": row2.get("address"),  # deprecated, kept for compatibility
@@ -2355,10 +2352,42 @@ def _e2e_mcp_vehicle_mock():  # pragma: no cover - test-only helper
                 request.args.get("e2e_mock") == "1" or request.headers.get("X-Test-MCP-Mock") == "1"
             )
         ):
+            # Check for test reset header
+            if request.headers.get("X-Test-Reset-Memory") == "1":
+                global _MCP_VIN_MEM, _MCP_PLATE_MEM
+                _MCP_VIN_MEM.clear()
+                _MCP_PLATE_MEM.clear()
+
             body = request.get_json(silent=True) or {}
+            vin = body.get("vin")
+            license_plate = body.get("license_plate")
+
+            # Validate VIN duplicates even in mock mode
+            if vin and vin in _MCP_VIN_MEM:
+                return (
+                    jsonify({"error": {"code": "conflict", "message": "VIN already exists"}}),
+                    409,
+                )
+
+            # Validate license plate duplicates even in mock mode
+            if license_plate and license_plate in _MCP_PLATE_MEM:
+                return (
+                    jsonify(
+                        {"error": {"code": "conflict", "message": "License plate already exists"}}
+                    ),
+                    409,
+                )
+
             import time as _t
 
             vid = int(_t.time() * 1000) % 1_000_000_000
+
+            # Add to memory sets to track duplicates
+            if vin:
+                _MCP_VIN_MEM.add(vin)
+            if license_plate:
+                _MCP_PLATE_MEM.add(license_plate)
+
             resp = jsonify(
                 {
                     "id": vid,
@@ -2366,8 +2395,8 @@ def _e2e_mcp_vehicle_mock():  # pragma: no cover - test-only helper
                     "make": body.get("make"),
                     "model": body.get("model"),
                     "year": body.get("year"),
-                    "vin": body.get("vin"),
-                    "license_plate": body.get("license_plate"),
+                    "vin": vin,
+                    "license_plate": license_plate,
                     "notes": body.get("notes"),
                 }
             )
@@ -10418,7 +10447,7 @@ def unified_customer_profile(cust_id: str):
         empty = {
             "customer": {
                 "id": cust_id,
-                "full_name": "Memory User",
+                "name": "Memory User",
                 "phone": None,
                 "email": None,
                 "created_at": None,
@@ -10441,9 +10470,9 @@ def unified_customer_profile(cust_id: str):
             # Step 3: Set tenant context for database operations
             cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
 
-            # Customer row - using exact same query as PATCH endpoint for ETag compatibility
+            # Customer row - using only columns that exist in database
             cur.execute(
-                "SELECT id, name, email, phone, is_vip, address, full_name, tags, notes, sms_consent, to_char(GREATEST(updated_at, created_at),'YYYY-MM-DD"
+                "SELECT id, name, email, phone, is_vip, address, to_char(GREATEST(updated_at, created_at),'YYYY-MM-DD"
                 "T"
                 "HH24:MI:SS.US') AS ts FROM customers WHERE id=%s",
                 (int(cust_id),),
@@ -10577,18 +10606,16 @@ def unified_customer_profile(cust_id: str):
             etag_data = {
                 "id": customer.get("id"),  # Use raw ID (int) as PATCH does
                 "name": customer.get("name"),  # Use raw name as PATCH does
-                "full_name": customer.get("full_name"),
                 "email": customer.get("email"),
                 "phone": customer.get("phone"),
-                "tags": customer.get("tags", []),
-                "notes": customer.get("notes"),
-                "sms_consent": customer.get("sms_consent", False),
+                "is_vip": customer.get("is_vip", False),
+                "address": customer.get("address"),
                 "ts": customer.get("ts"),
             }
             etag = _strong_etag(
                 "customer",
                 etag_data,
-                ["name", "full_name", "email", "phone", "tags", "notes", "sms_consent"],
+                ["name", "email", "phone", "is_vip", "address"],
             )
             # Use full ETag format for header and frontend compatibility
             etag_for_comparison = etag
@@ -10598,18 +10625,13 @@ def unified_customer_profile(cust_id: str):
             "id": str(customer.get("id")),  # Convert to string for frontend
             "name": customer.get("name")
             or "Unknown Customer",  # Apply same fallback as original query
-            "full_name": customer.get("full_name")
-            or customer.get("name")
-            or "Unknown Customer",  # PR1 field
             "phone": customer.get("phone"),
             "email": customer.get("email"),
+            "address": customer.get("address"),
+            "is_vip": bool(customer.get("is_vip", False)),
             "created_at": (
                 customer.get("created_at").isoformat() + "Z" if customer.get("created_at") else None
             ),
-            "tags": customer.get("tags", [])
-            or (["VIP"] if customer.get("is_vip") else []),  # PR1 field
-            "notes": customer.get("notes"),  # PR1 field
-            "sms_consent": bool(customer.get("sms_consent", False)),  # PR1 field
             "_etag": (
                 etag_for_comparison.replace('W/"', "").replace('"', "")
                 if etag_for_comparison.startswith('W/"')

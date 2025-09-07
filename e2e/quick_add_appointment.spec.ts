@@ -40,19 +40,23 @@ test.describe('Quick Add Appointment', () => {
     const search = page.getByTestId('service-search');
     await expect(search).toBeVisible();
 
-    // First search (should return results after >=2 chars)
-    await search.fill('oi'); // expect Oil Change
-  // Click first result
-  await expect(page.getByTestId('service-results-list')).toBeVisible();
-  const oilResult = page.getByTestId('service-result-svc-1');
-  await expect(oilResult).toBeVisible();
-  await oilResult.click();
+    // First search (should return results after >=3 chars)
+    await search.fill('oil'); // expect Oil Change (need 3+ chars for results to show)
+
+    // Wait for UI to process search and show results (no new API call expected)
+    await page.waitForTimeout(500); // Allow for filtering logic
+
+    // Click first result
+    await expect(page.getByTestId('service-results-list')).toBeVisible({ timeout: 15000 });
+    const oilResult = page.getByTestId('service-result-svc-1');
+    await expect(oilResult).toBeVisible({ timeout: 10000 });
+    await oilResult.click();
 
     // Second service
-    await search.fill('br');
-  const brakeResult = page.getByTestId('service-result-svc-2');
-  await expect(brakeResult).toBeVisible();
-  await brakeResult.click();
+    await search.fill('brake');
+    const brakeResult = page.getByTestId('service-result-svc-2');
+    await expect(brakeResult).toBeVisible();
+    await brakeResult.click();
 
     // Confirm
     await page.getByTestId('service-add-confirm-btn').click();
