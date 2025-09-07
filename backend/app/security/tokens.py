@@ -92,12 +92,20 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str) 
         - __Host prefix: Additional security for HTTPS environments
     """
     # Set Access Token Cookie (15-minute expiry)
+    # Evaluate secure flag from environment when available
+    import os
+
+    _env = (os.getenv("APP_ENV") or os.getenv("FLASK_ENV") or os.getenv("ENV") or "").lower()
+    _secure = _env in ("prod", "production") or (
+        os.getenv("FORCE_SECURE_COOKIES", "").lower() in ("1", "true", "yes")
+    )
+
     response.set_cookie(
         ACCESS_COOKIE_NAME,
         access_token,
         max_age=ACCESS_TOKEN_EXPIRY_MINUTES * 60,  # 15 minutes in seconds
         httponly=True,  # Fixed: lowercase 'httponly'
-        secure=False,  # Allow HTTP for development
+        secure=_secure,  # HTTPS in production
         samesite="Lax",  # CSRF protection
         path="/",
     )
@@ -108,7 +116,7 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str) 
         refresh_token,
         max_age=REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60,  # 14 days in seconds
         httponly=True,  # Fixed: lowercase 'httponly'
-        secure=False,  # Allow HTTP for development
+        secure=_secure,  # HTTPS in production
         samesite="Lax",  # CSRF protection
         path="/",
     )
@@ -191,12 +199,19 @@ def clear_auth_cookies(response: Response) -> None:
     Args:
         response: Flask Response object to clear cookies on
     """
+    # Evaluate secure flag similarly to set_auth_cookies
+    import os
+
+    _env = (os.getenv("APP_ENV") or os.getenv("FLASK_ENV") or os.getenv("ENV") or "").lower()
+    _secure = _env in ("prod", "production") or (
+        os.getenv("FORCE_SECURE_COOKIES", "").lower() in ("1", "true", "yes")
+    )
     response.set_cookie(
         ACCESS_COOKIE_NAME,
         "",
         expires=0,
         httponly=True,  # Fixed: lowercase 'httponly'
-        secure=False,  # Allow HTTP for development
+        secure=_secure,  # HTTPS in production
         samesite="Lax",
         path="/",
     )
@@ -206,7 +221,7 @@ def clear_auth_cookies(response: Response) -> None:
         "",
         expires=0,
         httponly=True,  # Fixed: lowercase 'httponly'
-        secure=False,  # Allow HTTP for development
+        secure=_secure,  # HTTPS in production
         samesite="Lax",
         path="/",
     )

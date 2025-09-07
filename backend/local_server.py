@@ -157,6 +157,27 @@ JWT_ALG = os.getenv("JWT_ALG", "HS256")
 # unless an endpoint explicitly requires strict auth (e.g. messaging endpoints).
 DEV_NO_AUTH = os.getenv("DEV_NO_AUTH", "true").lower() == "true"
 
+
+# ----------------------------------------------------------------------------
+# Cookie security helper
+# ----------------------------------------------------------------------------
+def _secure_cookies_enabled() -> bool:
+    """Return True when cookies must be set with Secure attribute.
+
+    Enabled automatically when APP_ENV/FLASK_ENV/ENV indicates production, or
+    when FORCE_SECURE_COOKIES=true. Disabled during tests.
+    """
+    try:
+        if app.config.get("TESTING"):
+            return False
+    except Exception:
+        pass
+    env = (os.getenv("APP_ENV") or os.getenv("FLASK_ENV") or os.getenv("ENV") or "").lower()
+    if env in ("prod", "production"):
+        return True
+    return os.getenv("FORCE_SECURE_COOKIES", "").lower() in ("1", "true", "yes")
+
+
 # ---------------------------------------------------------------------------
 # Performance instrumentation constants
 # ---------------------------------------------------------------------------
@@ -3394,12 +3415,13 @@ def admin_login():
         token = token.decode("utf-8")
     resp, status = _ok({"token": token, "user": {"username": username, "role": role}})
     try:
+        _secure = _secure_cookies_enabled()
         resp.set_cookie(
             "__Host_access_token",
             token,
             max_age=8 * 3600,
             httponly=True,
-            secure=False,
+            secure=_secure,
             samesite="Lax",
             path="/",
         )
@@ -3409,7 +3431,7 @@ def admin_login():
             xsrf,
             max_age=8 * 3600,
             httponly=False,
-            secure=False,
+            secure=_secure,
             samesite="Lax",
             path="/",
         )
@@ -3443,13 +3465,14 @@ def logout():
     resp = make_response("")
     resp.status_code = 204
     try:
+        _secure = _secure_cookies_enabled()
         # Access token (httpOnly)
         resp.set_cookie(
             "__Host_access_token",
             "",
             expires=0,
             httponly=True,
-            secure=False,
+            secure=_secure,
             samesite="Lax",
             path="/",
         )
@@ -3460,7 +3483,7 @@ def logout():
                 "",
                 expires=0,
                 httponly=True,
-                secure=False,
+                secure=_secure,
                 samesite="Lax",
                 path="/",
             )
@@ -3472,7 +3495,7 @@ def logout():
             "",
             expires=0,
             httponly=False,
-            secure=False,
+            secure=_secure,
             samesite="Lax",
             path="/",
         )
@@ -3550,8 +3573,16 @@ def customer_register():
     name = (body.get("name") or email.split("@")[0] or "Customer").strip()
     if not email or not password:
         return _error(HTTPStatus.BAD_REQUEST, "invalid_request", "Email and password required")
-    if len(password) < 6:
-        return _error(HTTPStatus.BAD_REQUEST, "invalid_request", "Password too short (min 6)")
+    # Enforce strong password policy (Priority 2)
+    try:
+        from backend.security_core import validate_password_strength
+
+        ok_pw, msg = validate_password_strength(password)
+        if not ok_pw:
+            return _error(HTTPStatus.BAD_REQUEST, "invalid_request", msg)
+    except Exception:
+        if len(password) < 8:
+            return _error(HTTPStatus.BAD_REQUEST, "invalid_request", "Password too short (min 8)")
 
     conn, use_memory, err = safe_conn()
     if err:
@@ -3771,12 +3802,13 @@ def customer_login():
     token = _issue_customer_token(cust_id)
     resp, status = _ok({"token": token, "customer": {"id": cust_id, "email": email, "name": name}})
     try:
+        _secure = _secure_cookies_enabled()
         resp.set_cookie(
             "__Host_access_token",
             token,
             max_age=8 * 3600,
             httponly=True,
-            secure=False,
+            secure=_secure,
             samesite="Lax",
             path="/",
         )
@@ -3786,7 +3818,7 @@ def customer_login():
             xsrf,
             max_age=8 * 3600,
             httponly=False,
-            secure=False,
+            secure=_secure,
             samesite="Lax",
             path="/",
         )
@@ -11294,12 +11326,13 @@ def get_csrf_token():
     token = _os_mod_for_csrf.urandom(16).hex()
     resp, status = _ok({"csrfToken": token})
     try:
+        _secure = _secure_cookies_enabled()
         resp.set_cookie(
             "XSRF-TOKEN",
             token,
             max_age=8 * 3600,
             httponly=False,
-            secure=False,
+            secure=_secure,
             samesite="Lax",
             path="/",
         )
@@ -11340,3 +11373,153 @@ def _csrf_protect():
                     )
     except Exception:
         return None
+
+
+# ----------------------------------------------------------------------------
+# Password Reset Endpoints
+# ----------------------------------------------------------------------------
+@app.route("/api/auth/request-password-reset", methods=["POST"])
+def request_password_reset():
+    """Request a password reset token. Always responds 204 (no user enumeration)."""
+    body = request.get_json(silent=True) or {}
+    email = (body.get("email") or "").strip().lower()
+    # Rate limit by IP+email key
+    try:
+        remote = request.remote_addr or "127.0.0.1"
+        email_key = email or "anon"
+        rate_limit(f"auth_pwreset_request:{remote}:{email_key}", limit=5, window=300)
+    except Exception:
+        pass
+    try:
+        conn, use_memory, err = safe_conn()
+        if not err and not use_memory and conn:
+            # Resolve tenant context
+            tenant_header = request.headers.get("X-Tenant-Id") or (body.get("tenant_id") or "")
+            tenant_id_val = None
+            if tenant_header:
+                with conn:
+                    with conn.cursor() as cur:
+                        import re as _re
+
+                        uuid_pattern = (
+                            r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                        )
+                        if _re.match(uuid_pattern, tenant_header, _re.IGNORECASE):
+                            cur.execute(
+                                "SELECT id::text FROM tenants WHERE id = %s::uuid", (tenant_header,)
+                            )
+                        else:
+                            cur.execute(
+                                "SELECT id::text FROM tenants WHERE slug = %s", (tenant_header,)
+                            )
+                        r = cur.fetchone()
+                        if r:
+                            try:
+                                tenant_id_val = r.get("id")
+                            except Exception:
+                                tenant_id_val = r[0]
+            if not tenant_id_val:
+                # Best-effort default tenant
+                tenant_id_val = "00000000-0000-0000-0000-000000000001"
+
+            from backend.app.security import reset_tokens as rt
+
+            with conn:
+                # Optional cleanup of expired tokens
+                try:
+                    rt.cleanup_expired_tokens(conn)
+                except Exception:
+                    pass
+                # Look up user and create token if present (do not reveal result)
+                user = rt.get_user_by_email(email, tenant_id_val, conn) if email else None
+                if user and user.get("id"):
+                    try:
+                        _token = rt.create_reset_request(user["id"], tenant_id_val, conn)
+                        # Intentionally do not return the token; in real deployment, email it.
+                        log.info(
+                            "Password reset token generated for user=%s tenant=%s",
+                            user["id"],
+                            tenant_id_val,
+                        )
+                    except Exception as _e:
+                        log.warning("reset_request_failed: %s", _e)
+    except Exception:
+        pass
+    return ("", 204)
+
+
+@app.route("/api/auth/reset-password", methods=["POST"])
+def reset_password():
+    """Reset password given a valid reset token. Returns 204 on success."""
+    body = request.get_json(silent=True) or {}
+    email = (body.get("email") or "").strip().lower()
+    token = (body.get("token") or "").strip()
+    new_password = body.get("new_password") or ""
+    # Rate limit attempts
+    try:
+        remote = request.remote_addr or "127.0.0.1"
+        rate_limit(f"auth_pwreset_complete:{remote}:{email or 'anon'}", limit=5, window=300)
+    except Exception:
+        pass
+    # Validate password strength first
+    try:
+        from backend.security_core import validate_password_strength
+
+        ok_pw, msg = validate_password_strength(new_password)
+        if not ok_pw:
+            return _error(HTTPStatus.BAD_REQUEST, "invalid_request", msg)
+    except Exception:
+        if len(new_password) < 8:
+            return _error(HTTPStatus.BAD_REQUEST, "invalid_request", "Password too short (min 8)")
+
+    conn, use_memory, err = safe_conn()
+    if err or use_memory or not conn:
+        return _error(HTTPStatus.SERVICE_UNAVAILABLE, "unavailable", "database unavailable")
+
+    # Resolve tenant
+    tenant_header = request.headers.get("X-Tenant-Id") or (body.get("tenant_id") or "")
+    if not tenant_header:
+        tenant_header = "00000000-0000-0000-0000-000000000001"
+
+    from backend.app.security import reset_tokens as rt
+    from backend.app.security.passwords import hash_password as _bcrypt_hash
+
+    with conn:
+        with conn.cursor() as cur:
+            # Resolve tenant id
+            import re as _re
+
+            uuid_pattern = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            if _re.match(uuid_pattern, tenant_header, _re.IGNORECASE):
+                cur.execute("SELECT id::text FROM tenants WHERE id = %s::uuid", (tenant_header,))
+            else:
+                cur.execute("SELECT id::text FROM tenants WHERE slug = %s", (tenant_header,))
+            r = cur.fetchone()
+            if not r:
+                return _error(HTTPStatus.BAD_REQUEST, "invalid_request", "Invalid tenant")
+            try:
+                tenant_id_val = r.get("id")
+            except Exception:
+                tenant_id_val = r[0]
+
+    # Validate token and update password
+    with conn:
+        user = rt.get_user_by_email(email, tenant_id_val, conn)
+        if not user or not user.get("id"):
+            # generic response to avoid enumeration
+            return _error(HTTPStatus.BAD_REQUEST, "invalid_request", "Invalid token or request")
+        user_id = user["id"]
+        if not rt.validate_reset_token(str(user_id), token, tenant_id_val, conn):
+            return _error(HTTPStatus.BAD_REQUEST, "invalid_request", "Invalid token or request")
+        # Update password
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE customer_auth SET password_hash=%s WHERE customer_id=%s",
+                (_bcrypt_hash(new_password), user_id),
+            )
+        # Mark token used
+        try:
+            rt.mark_token_used(str(user_id), token, tenant_id_val, conn)
+        except Exception:
+            pass
+    return ("", 204)
