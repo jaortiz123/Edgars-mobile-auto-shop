@@ -55,13 +55,13 @@ export default function AdminLayout() {
   return (
   <div className="admin-neobrutal overlay-faint flex min-h-screen">
       {/* Sidebar - Hidden on mobile, shown on desktop */}
-  <aside role="navigation" aria-label="Admin navigation" className="hidden md:block w-64 nb-surface bg-white/85 backdrop-blur-sm">
+  <aside role="navigation" aria-label="Admin sidebar navigation" className="hidden md:block w-64 nb-surface bg-white/85 backdrop-blur-sm">
         <div className="flex flex-col h-full">
           {/* Header */}
-          <header className="px-sp-6 py-sp-4 nb-border border-b">
+          <div className="px-sp-6 py-sp-4 nb-border border-b">
             <h1 className="text-fs-2 font-bold">Edgar's Admin</h1>
             <p className="text-fs-0 text-muted-foreground">Mobile Auto Shop</p>
-          </header>
+          </div>
 
           {/* Navigation */}
           <nav className="flex-1 px-sp-4 py-sp-6 space-y-sp-1">
@@ -107,7 +107,7 @@ export default function AdminLayout() {
           {/* Mobile navigation header */}
           <header className="md:hidden px-sp-4 py-sp-3 nb-border border-b bg-white/95 backdrop-blur-sm">
             <h1 className="text-fs-2 font-bold">Edgar's Admin</h1>
-            <nav role="navigation" aria-label="Mobile admin navigation" className="flex mt-2 gap-sp-1 overflow-x-auto">
+            <nav role="navigation" aria-label="Mobile navigation menu" className="flex mt-2 gap-sp-1 overflow-x-auto">
               {navigation.map((item) => (
                 <Link
                   key={item.name}

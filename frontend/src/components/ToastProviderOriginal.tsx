@@ -185,5 +185,5 @@ export const useToast = () => {
   return context;
 };
 
-const ToastProvider = ToastProviderComponent;
+// Re-export the named provider as default for convenience
 export default ToastProvider;

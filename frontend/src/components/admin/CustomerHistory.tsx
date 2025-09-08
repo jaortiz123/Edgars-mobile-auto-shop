@@ -32,6 +32,13 @@ export default function CustomerHistory({ customerId, onAppointmentClick }: Cust
       }
       const data = await getCustomerHistory(customerId);
       setHistoryData(data);
+      // Expand the latest year by default so contents are visible without extra interaction
+      const years = (data?.data?.pastAppointments || [])
+        .map(a => new Date(a.start).getFullYear());
+      if (years.length > 0) {
+        const maxYear = Math.max(...years);
+        setExpandedYears(new Set([maxYear]));
+      }
     } catch (err) {
       const msg = (err as Error)?.message || '';
       // Heuristic: backend returns this message for missing / invalid token
@@ -50,7 +57,6 @@ export default function CustomerHistory({ customerId, onAppointmentClick }: Cust
 
   useEffect(() => {
     fetchHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId]);
 
   const handleRetry = () => fetchHistory();
@@ -109,7 +115,7 @@ export default function CustomerHistory({ customerId, onAppointmentClick }: Cust
 
   if (loading) {
     return (
-      <div className="space-y-4 animate-pulse">
+      <div className="space-y-4 animate-pulse" role="status" aria-busy="true" aria-live="polite">
         {/* Skeleton loader */}
         <div className="h-4 bg-gray-200 rounded w-1/3"></div>
         <div className="space-y-2">
@@ -127,8 +133,8 @@ export default function CustomerHistory({ customerId, onAppointmentClick }: Cust
 
   if (error) {
     return (
-      <div className="text-center py-8">
-        <div className="text-red-600 mb-4">{error}</div>
+      <div className="text-center py-8" role="region" aria-live="assertive">
+        <div className="text-red-600 mb-4" role="alert">{error}</div>
         {unauthorized && (
           <div className="text-sm text-gray-500 mb-4 max-w-md mx-auto px-4">
             You appear to be unauthorized to view history. Ensure you are logged in as an Advisor. If this is a
@@ -149,15 +155,16 @@ export default function CustomerHistory({ customerId, onAppointmentClick }: Cust
 
   if (!historyData?.data?.pastAppointments?.length) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <main className="text-center py-8 text-gray-500" role="main">
         <div className="text-lg mb-2">No appointment history</div>
-        <div className="text-sm">This customer has no completed appointments yet.</div>
-      </div>
+        <p className="text-sm">This customer has no completed appointments yet.</p>
+      </main>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <section className="space-y-4" role="region" aria-label="Customer history">
+  <h2 className="text-base font-semibold text-gray-800">Appointment history</h2>
       <div className="text-sm font-medium text-gray-700">
         {historyData.data.pastAppointments.length} past appointment{historyData.data.pastAppointments.length !== 1 ? 's' : ''}
       </div>
@@ -236,6 +243,6 @@ export default function CustomerHistory({ customerId, onAppointmentClick }: Cust
           </div>
         ))}
       </div>
-    </div>
+  </section>
   );
 }

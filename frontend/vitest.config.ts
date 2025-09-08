@@ -44,12 +44,12 @@ export default defineConfig({
     retry: 2, // Retry flaky tests up to 2 times
 
     // 🔧 Worker management to prevent runaway processes
-    pool: 'threads',
+    // Use forks for reliable V8 coverage emission across workers
+    pool: 'forks',
     poolOptions: {
-      threads: {
-        maxThreads: 4,
-        minThreads: 1,
-        useAtomics: true
+      forks: {
+        maxForks: 4,
+        minForks: 1
       }
     },
 
@@ -76,8 +76,27 @@ export default defineConfig({
 
     // 🎯 Coverage thresholds to prevent regression
     coverage: {
+      enabled: process.env.NO_COVERAGE === '1' ? false : true,
+      provider: 'v8',
       reporter: ['text', 'lcov', 'json', 'json-summary'],
       reportsDirectory: './coverage',
+  // Emit coverage reports even if tests fail
+  reportOnFailure: true,
+      clean: true,
+      // Include all files under src for baseline metrics
+      all: true,
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+  'src/tests/**',
+  'src/test/**',
+  'src/mocks/**',
+  'src/pages/e2e/**',
+  '**/*.stories.*',
+  '**/*.d.ts',
+  // Exclude backup/scratch files that may contain invalid syntax
+  '**/*.backup.*',
+  'src/components/admin/AppointmentCardRobust.backup.tsx'
+      ],
       thresholds: {
         lines: 80,
         branches: 80,

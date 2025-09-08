@@ -106,8 +106,8 @@ describe('Accessibility Implementation', () => {
       const main = screen.getByRole('main');
       expect(main).toBeInTheDocument();
 
-      // Check for navigation landmark
-      const nav = screen.getByRole('navigation');
+  // Check for navigation landmark (disambiguate by name as there are multiple navs)
+  const nav = screen.getByRole('navigation', { name: 'Main navigation' });
       expect(nav).toBeInTheDocument();
 
       // Check for footer/contentinfo landmark
@@ -122,7 +122,7 @@ describe('Accessibility Implementation', () => {
         </TestWrapper>
       );
 
-      const nav = screen.getByRole('navigation');
+  const nav = screen.getByRole('navigation', { name: 'Main navigation' });
       expect(nav).toHaveAttribute('aria-label', 'Main navigation');
     });
   });

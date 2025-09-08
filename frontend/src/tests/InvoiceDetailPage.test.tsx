@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, beforeAll, vi } from 'vite
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AccessibilityProvider } from '@/contexts/AccessibilityProvider';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/test/server/mswServer';
 import userEvent from '@testing-library/user-event';
@@ -20,15 +21,17 @@ function renderWithRouter(id: string) {
   }
   const qc = new QueryClient();
   return render(
-    <ToastProvider>
-      <QueryClientProvider client={qc}>
-        <MemoryRouter initialEntries={[`/admin/invoices/${id}`]}>
-          <Routes>
-            <Route path="/admin/invoices/:id" element={<InvoiceDetailPage />} />
-          </Routes>
-        </MemoryRouter>
-      </QueryClientProvider>
-    </ToastProvider>
+    <AccessibilityProvider>
+      <ToastProvider>
+        <QueryClientProvider client={qc}>
+          <MemoryRouter initialEntries={[`/admin/invoices/${id}`]}>
+            <Routes>
+              <Route path="/admin/invoices/:id" element={<InvoiceDetailPage />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </ToastProvider>
+    </AccessibilityProvider>
   );
 }
 
