@@ -261,7 +261,8 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
         <div className="flex flex-1 overflow-hidden">
             <div className="w-60 border-r flex flex-col">
               <div className="p-3">
-              <input data-testid="service-search" ref={searchRef} value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search within category…" className="w-full border rounded px-3 py-2 text-sm" />
+                <label htmlFor="service-search" className="block text-xs font-medium mb-1">Search Services</label>
+                <input id="service-search" data-testid="service-search" ref={searchRef} value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search within category…" className="w-full border rounded px-3 py-2 text-sm" />
               </div>
               {/* Quick results panel: only show for longer queries to avoid duplicate text clashes in tests */}
               {query.length >= 3 && filtered.length > 0 && (
@@ -283,7 +284,7 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
                 </div>
               )}
             <div className="flex-1 overflow-auto pb-2">
-              {loading && <div className="px-3 py-2 text-xs text-gray-500">Loading…</div>}
+              {loading && <div className="px-3 py-2 text-xs text-muted-foreground">Loading…</div>}
               {error && <div className="px-3 py-2 text-xs text-red-600">{error}</div>}
               {!loading && !error && (
                 <ul className="space-y-1 px-2" data-testid="service-categories">
@@ -291,7 +292,7 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
                     <li key={cat}>
                       <button onClick={()=>setSelectedCategory(cat)} className={`w-full text-left px-3 py-2 rounded text-sm border hover:bg-gray-50 ${active?'bg-gray-100 border-gray-400':'border-transparent'} text-gray-800`}>
                         <span className="font-medium mr-2">{cat.replace(/_/g,' ')}</span>
-                        <span className="text-xs text-gray-500">{count}</span>
+                        <span className="text-xs text-muted-foreground">{count}</span>
                       </button>
                     </li>
                   );})}
@@ -300,7 +301,7 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
             </div>
           </div>
           <div className="flex-1 flex flex-col">
-            <div className="px-5 py-2 border-b bg-gray-50 text-sm text-gray-600 flex items-center justify-between">
+            <div className="px-5 py-2 border-b bg-gray-50 text-sm text-secondary flex items-center justify-between">
               <div>{selectedCategory || 'All'} • {filtered.length} item{filtered.length!==1 && 's'}</div>
               {!flattenSingleOther && (
                 <div className="flex gap-2">
@@ -310,9 +311,9 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
               )}
             </div>
             <div className="flex-1 overflow-auto">
-              {loading && <div className="p-5 text-sm text-gray-500">Loading services…</div>}
+              {loading && <div className="p-5 text-sm text-muted-foreground">Loading services…</div>}
               {error && <div className="p-5 text-sm text-red-600">{error}</div>}
-              {!loading && !error && filtered.length === 0 && <div className="p-6 text-sm text-gray-500">No services match.</div>}
+              {!loading && !error && filtered.length === 0 && <div className="p-6 text-sm text-muted-foreground">No services match.</div>}
               {!loading && !error && filtered.length > 0 && (
                 <div
                   data-testid="service-list"
@@ -322,7 +323,7 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
                   // Do NOT auto-focus first row on container focus; ArrowDown should move focus to first row per test expectation.
                 >
                   {!flattenSingleOther && expandedGroups.size === 0 && (
-                    <div className="p-6 text-sm text-gray-500 select-none">
+                    <div className="p-6 text-sm text-muted-foreground select-none">
                       No subcategory expanded yet. Click a subcategory name on the left, a chevron on the right, or use the "Expand all" button to view services.
                     </div>
                   )}
@@ -339,7 +340,7 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
                           >
                             <div className="min-w-0">
                               <div className="font-medium text-sm truncate">{s.name}</div>
-                              <div className="text-xs text-gray-500 mt-0.5 flex gap-2 flex-wrap">
+                              <div className="text-xs text-muted-foreground mt-0.5 flex gap-2 flex-wrap">
                                 <span>{s.category.replace(/_/g,' ')}</span>
                                 <span>•</span>
                                 <span>Hours: {formatHours(s.default_hours)}</span>
@@ -348,7 +349,7 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
                               </div>
                             </div>
                             <div className="flex items-center gap-3">
-                              <span className="text-xs text-gray-400">{s.display_order ?? ''}</span>
+                              <span className="text-xs text-muted-foreground">{s.display_order ?? ''}</span>
                               <button
                                 onClick={(e)=>{ e.stopPropagation(); handleAdd(s); }}
                                 className="text-xs px-2 py-1 border rounded hover:bg-blue-100"
@@ -364,8 +365,8 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
                     return (
                       <div key={groupName} className="mb-2">
                         <button type="button" className="w-full flex items-center justify-between py-2 px-2 rounded-xl hover:bg-gray-50 text-gray-800" onClick={()=>toggleGroup(groupName)} data-testid={`group-toggle-${groupName}`}>
-                          <span className="flex items-center gap-2"><span className="text-gray-500">{open? <ChevronDown className="h-4 w-4"/>:<ChevronRight className="h-4 w-4"/>}</span><span className="font-medium truncate">{groupName}</span></span>
-                          <span className="text-xs text-gray-500">{items.length}</span>
+                          <span className="flex items-center gap-2"><span className="text-muted-foreground">{open? <ChevronDown className="h-4 w-4"/>:<ChevronRight className="h-4 w-4"/>}</span><span className="font-medium truncate">{groupName}</span></span>
+                          <span className="text-xs text-muted-foreground">{items.length}</span>
                         </button>
                         {open && (
                           <ul className="divide-y ml-6">
@@ -380,7 +381,7 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
                                 >
                                   <div className="min-w-0">
                                     <div className="font-medium text-sm truncate">{s.name}</div>
-                                    <div className="text-xs text-gray-500 mt-0.5 flex gap-2 flex-wrap">
+                                    <div className="text-xs text-muted-foreground mt-0.5 flex gap-2 flex-wrap">
                                       <span>{s.category.replace(/_/g,' ')}</span>
                                       <span>•</span>
                                       <span>Hours: {formatHours(s.default_hours)}</span>
@@ -389,7 +390,7 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-3">
-                                    <span className="text-xs text-gray-400">{s.display_order ?? ''}</span>
+                                    <span className="text-xs text-muted-foreground">{s.display_order ?? ''}</span>
                                     <button
                                       onClick={(e)=>{ e.stopPropagation(); handleAdd(s); }}
                                       className="text-xs px-2 py-1 border rounded hover:bg-blue-100"
@@ -407,7 +408,7 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
               )}
             </div>
     <div className="px-5 py-2 border-t flex justify-between items-center">
-              <div className="text-xs text-gray-500" data-testid="selected-count">{selected.length} selected</div>
+              <div className="text-xs text-muted-foreground" data-testid="selected-count">{selected.length} selected</div>
               <div className="flex gap-2">
                 <button onClick={onClose} className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50">Close</button>
                 {onConfirm && (

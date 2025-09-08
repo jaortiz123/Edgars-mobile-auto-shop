@@ -90,8 +90,9 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
           </div>
           <div className="p-4 space-y-4 overflow-auto">
             <div className="space-y-1">
-              <label className="text-sm font-medium">Amount</label>
+              <label htmlFor="payment-amount" className="text-sm font-medium">Amount</label>
               <input
+                id="payment-amount"
                 data-testid="payment-amount-input"
                 type="number"
                 step="0.01"
@@ -109,14 +110,13 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium">Method</label>
+              <label htmlFor="payment-method" className="text-sm font-medium">Method</label>
               <select
+                id="payment-method"
                 data-testid="payment-method-select"
                 value={method}
                 onChange={e => setMethod(e.target.value)}
                 className="w-full border rounded px-3 py-2 bg-white"
-                aria-label="Payment method"
-                title="Payment method"
               >
                 <option value="cash">Cash</option>
                 <option value="card">Card</option>
@@ -125,21 +125,21 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium">Date Received</label>
+              <label htmlFor="payment-date" className="text-sm font-medium">Date Received</label>
               <input
+                id="payment-date"
                 data-testid="payment-date-input"
                 type="date"
                 value={receivedDate}
                 onChange={e => setReceivedDate(e.target.value)}
                 className="w-full border rounded px-3 py-2"
                 required
-                aria-label="Date received"
-                title="Date received"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium flex justify-between">Notes<span className="text-xs font-normal text-gray-400">Optional</span></label>
+              <label htmlFor="payment-notes" className="text-sm font-medium flex justify-between">Notes<span className="text-xs font-normal text-gray-400">Optional</span></label>
               <textarea
+                id="payment-notes"
                 data-testid="payment-note-textarea"
                 value={note}
                 onChange={e => setNote(e.target.value)}

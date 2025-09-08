@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { setToastPush } from '@/lib/toast';
+import { useAccessibility } from '@/contexts/AccessibilityProvider';
 
 interface ToastMsg {
   id: number;
@@ -37,6 +38,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   // Map toast id -> timer handle so we can reset on repeat push
   const timersRef = useRef<Map<number, TimerHandle>>(new Map());
 
+  // Use global accessibility provider for announcements
+  const { announceError, announceSuccess, announceInfo } = useAccessibility();
+
   const actuallyRemove = useCallback((id: number) => {
     setItems((prev) => prev.filter((i) => i.id !== id));
     timersRef.current.delete(id);
@@ -67,6 +71,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         // Update existing toast in place (text/kind may change), and reset timer
         setItems((prev) => prev.map((t) => (t.id === existingId ? { ...t, kind: m.kind, text: m.text, closing: false } : t)));
         scheduleDismiss(existingId);
+
+        // Announce the updated toast via global accessibility provider
+        switch (m.kind) {
+          case 'error':
+            announceError(m.text);
+            break;
+          case 'success':
+            announceSuccess(m.text);
+            break;
+          default:
+            announceInfo(m.text);
+        }
         return;
       }
     }
@@ -76,7 +92,19 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setItems((prev) => [...prev, msg]);
     if (m.key) keyToIdRef.current.set(m.key, id);
     scheduleDismiss(id);
-  }, [scheduleDismiss]);
+
+    // Announce new toast via global accessibility provider
+    switch (m.kind) {
+      case 'error':
+        announceError(m.text);
+        break;
+      case 'success':
+        announceSuccess(m.text);
+        break;
+      default:
+        announceInfo(m.text);
+    }
+  }, [scheduleDismiss, announceError, announceSuccess, announceInfo]);
 
   // Register push for programmatic toast API once
   useEffect(() => {
@@ -94,27 +122,19 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     };
   }, [push]);
 
-  return (
+    return (
     <ToastCtx.Provider value={{
       push,
       success: (text: string, opts?: { key?: string }) => push({ kind: 'success', text, key: opts?.key }),
       error: (text: string, opts?: { key?: string }) => push({ kind: 'error', text, key: opts?.key })
     }}>
       {children}
-      {/* ARIA live region for screen reader announcements */}
-      <div
-        aria-live="polite"
-        aria-atomic="true"
-        className="absolute -top-full left-0 w-1 h-1 overflow-hidden opacity-0"
-      >
-        {items.length > 0 && items[items.length - 1].text}
-      </div>
+      {/* Toast visual container - accessibility handled by global provider */}
       <div className="fixed bottom-4 right-4 flex flex-col gap-2 z-50">
         {items.map((i) => (
           <div
             key={i.id}
             role="alert"
-            aria-live="assertive"
             className={`rounded-md px-4 py-2 shadow-md text-white transition-all duration-300 transform ${
               i.kind === 'error' ? 'bg-red-600' : i.kind === 'success' ? 'bg-green-600' : 'bg-gray-800'
             } ${i.closing ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'}`}

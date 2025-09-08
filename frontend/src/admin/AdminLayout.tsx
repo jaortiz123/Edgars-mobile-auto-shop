@@ -55,13 +55,13 @@ export default function AdminLayout() {
   return (
   <div className="admin-neobrutal overlay-faint flex min-h-screen">
       {/* Sidebar - Hidden on mobile, shown on desktop */}
-  <aside className="hidden md:block w-64 nb-surface bg-white/85 backdrop-blur-sm">
+  <aside role="navigation" aria-label="Admin navigation" className="hidden md:block w-64 nb-surface bg-white/85 backdrop-blur-sm">
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="px-sp-6 py-sp-4 nb-border border-b">
+          <header className="px-sp-6 py-sp-4 nb-border border-b">
             <h1 className="text-fs-2 font-bold">Edgar's Admin</h1>
-            <p className="text-fs-0 opacity-70">Mobile Auto Shop</p>
-          </div>
+            <p className="text-fs-0 text-muted-foreground">Mobile Auto Shop</p>
+          </header>
 
           {/* Navigation */}
           <nav className="flex-1 px-sp-4 py-sp-6 space-y-sp-1">
@@ -80,7 +80,7 @@ export default function AdminLayout() {
                 <item.icon
                   className={`
                     mr-sp-3 h-5 w-5 flex-shrink-0
-                    ${item.current ? '' : 'opacity-70 group-hover:opacity-100'}
+                    ${item.current ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'}
                   `}
                 />
                 {item.name}
@@ -89,25 +89,25 @@ export default function AdminLayout() {
           </nav>
 
           {/* Footer */}
-          <div className="px-sp-4 py-sp-4 nb-border border-t">
+          <footer className="px-sp-4 py-sp-4 nb-border border-t">
             <button
               onClick={logout}
               className="group flex items-center w-full px-sp-3 py-sp-2 text-fs-1 font-medium rounded-md nb-surface hover:nb-shadow transition-all"
             >
-              <LogOut className="mr-sp-3 h-5 w-5 opacity-70 group-hover:opacity-100" />
+              <LogOut className="mr-sp-3 h-5 w-5 text-muted-foreground group-hover:text-primary" />
               Sign out
             </button>
-          </div>
+          </footer>
         </div>
       </aside>
 
       {/* Main content */}
-  <main className="flex-1 overflow-auto bg-transparent">
+  <main role="main" className="flex-1 overflow-auto bg-transparent">
         <CardPreferencesProvider>
           {/* Mobile navigation header */}
-          <div className="md:hidden px-sp-4 py-sp-3 nb-border border-b bg-white/95 backdrop-blur-sm">
+          <header className="md:hidden px-sp-4 py-sp-3 nb-border border-b bg-white/95 backdrop-blur-sm">
             <h1 className="text-fs-2 font-bold">Edgar's Admin</h1>
-            <nav className="flex mt-2 gap-sp-1 overflow-x-auto">
+            <nav role="navigation" aria-label="Mobile admin navigation" className="flex mt-2 gap-sp-1 overflow-x-auto">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
@@ -125,10 +125,10 @@ export default function AdminLayout() {
                 </Link>
               ))}
             </nav>
-          </div>
+          </header>
 
           <div className="px-sp-8 py-sp-6">
-            <Suspense fallback={<div className="p-sp-2 text-fs-0 opacity-70">Loading admin module…</div>}>
+            <Suspense fallback={<div className="p-sp-2 text-fs-0 text-muted-foreground">Loading admin module…</div>}>
               <Outlet />
             </Suspense>
           </div>

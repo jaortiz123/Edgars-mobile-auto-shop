@@ -243,7 +243,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ mode, initial, appoin
             <label className="block text-sm font-medium text-gray-700">Customer</label>
             <div className="px-3 py-2 border rounded bg-gray-50 text-sm" data-testid="preset-customer-display">
               <span className="font-medium">{presetCustomer.name}</span>
-              <span className="block text-xs text-gray-500">
+              <span className="block text-xs text-muted-foreground">
                 {presetCustomer.phone || presetCustomer.email || 'Customer selected'}
               </span>
             </div>
@@ -255,7 +255,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ mode, initial, appoin
               <label className="block text-sm font-medium text-gray-700">Customer</label>
               <div className="px-3 py-2 border rounded bg-gray-50 text-sm">
                 <span className="font-medium">{selectedCustomer?.name || '—'}</span>
-                <span className="block text-xs text-gray-500">{selectedCustomer?.phone || selectedCustomer?.email || ''}</span>
+                <span className="block text-xs text-muted-foreground">{selectedCustomer?.phone || selectedCustomer?.email || ''}</span>
               </div>
             </div>
           ) : (
@@ -373,7 +373,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ mode, initial, appoin
           >Add Service</button>
         </div>
         {services.length === 0 && (
-          <p className="text-xs text-gray-500">No services added</p>
+          <p className="text-xs text-muted-foreground">No services added</p>
         )}
         {services.length > 0 && (
           <ul className="divide-y border rounded bg-white">
@@ -381,7 +381,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ mode, initial, appoin
               <li key={s.id} className="flex items-center justify-between px-3 py-2 text-sm">
                 <div className="flex flex-col flex-1">
                   <span className="font-medium">{s.name}</span>
-                  <span className="text-xs text-gray-500 flex gap-2">
+                  <span className="text-xs text-muted-foreground flex gap-2">
                     {s.category && <span>{s.category}</span>}
                     {s.base_labor_rate != null && <span>${s.base_labor_rate.toFixed(2)}</span>}
                   </span>

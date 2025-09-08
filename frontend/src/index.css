@@ -5,6 +5,7 @@
 @import './styles/spacing.css';
 @import './styles/accessibilityEnhancements.css';
 @import './styles/microInteractions.css';
+@import './styles/wcagColors.css';
 /* admin-neobrutal.css is now lazy-loaded by the AdminLayout to avoid affecting the public site */
 
 /* Smooth scrolling for premium UX with reduced motion support */
@@ -40,7 +41,7 @@ html {
     --secondary-foreground: 222.2 47.4% 11.2%;
 
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted-foreground: 222.2 25% 35%; /* Enhanced from 46.9% to 35% for better contrast */
 
     --accent: 210 40% 96.1%; /* Action Orange for CTAs */
     --accent-foreground: 222.2 47.4% 11.2%;

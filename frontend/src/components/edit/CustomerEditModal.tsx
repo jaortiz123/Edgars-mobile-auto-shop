@@ -41,15 +41,18 @@ export function CustomerEditModal({ open, onClose, profile }: Props) {
     <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50" data-testid="customer-edit-modal">
       <form onSubmit={submit} className="bg-white rounded shadow p-6 w-full max-w-md space-y-4" aria-label="Edit Customer">
         <h2 className="text-lg font-semibold">Edit Customer</h2>
-        <label className="block text-sm font-medium">Full Name
-          <input value={fullName} onChange={e => setFullName(e.target.value)} className="mt-1 w-full border rounded px-2 py-1" />
-        </label>
-        <label className="block text-sm font-medium">Phone
-          <input value={phone ?? ''} onChange={e => setPhone(e.target.value)} className="mt-1 w-full border rounded px-2 py-1" />
-        </label>
-        <label className="block text-sm font-medium">Email
-          <input value={email ?? ''} onChange={e => setEmail(e.target.value)} className="mt-1 w-full border rounded px-2 py-1" />
-        </label>
+        <div>
+          <label htmlFor="edit-customer-name" className="block text-sm font-medium">Full Name</label>
+          <input id="edit-customer-name" value={fullName} onChange={e => setFullName(e.target.value)} className="mt-1 w-full border rounded px-2 py-1" />
+        </div>
+        <div>
+          <label htmlFor="edit-customer-phone" className="block text-sm font-medium">Phone</label>
+          <input id="edit-customer-phone" value={phone ?? ''} onChange={e => setPhone(e.target.value)} className="mt-1 w-full border rounded px-2 py-1" />
+        </div>
+        <div>
+          <label htmlFor="edit-customer-email" className="block text-sm font-medium">Email</label>
+          <input id="edit-customer-email" value={email ?? ''} onChange={e => setEmail(e.target.value)} className="mt-1 w-full border rounded px-2 py-1" />
+        </div>
         {mutation.isError && <div className="text-sm text-red-600" role="alert">Update failed</div>}
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="px-3 py-2 border rounded" disabled={mutation.isPending}>Cancel</button>

@@ -130,13 +130,13 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({ id, date, status, serv
             }}
           >
             <div className="font-medium">{dtLocal(date)}</div>
-            <div className="text-xs opacity-70">{status}</div>
+            <div className="text-xs text-muted-foreground">{status}</div>
             <div className="text-xs mt-1">{services.map(s => s.name).join(', ')}</div>
           </button>
           {invoice && (
             <div className="text-right text-sm pl-3">
               <div>Total: {money(invoice.total)}</div>
-              <div className="opacity-70">Paid: {money(invoice.paid)} • Unpaid: {money(invoice.unpaid)}</div>
+              <div className="text-muted-foreground">Paid: {money(invoice.paid)} • Unpaid: {money(invoice.unpaid)}</div>
             </div>
           )}
           {hasInvoice && (
@@ -193,10 +193,11 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({ id, date, status, serv
         <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-20" role="dialog" aria-modal="true" data-testid="email-modal" onClick={() => { if(!sending) setEmailOpen(false); }}>
           <div className="bg-white rounded-md p-4 w-full max-w-sm shadow" onClick={e => e.stopPropagation()}>
             <h2 className="text-base font-semibold mb-3">Email Receipt</h2>
-            <label className="block text-sm mb-2">
-              <span className="block mb-1">Recipient Email</span>
-              <input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full border rounded px-2 py-1 text-sm" data-testid="email-input" placeholder="customer@example.com" />
-            </label>
+            <h2 className="text-base font-semibold mb-3">Email Receipt</h2>
+            <div className="block text-sm mb-2">
+              <label htmlFor="receipt-email" className="block mb-1">Recipient Email</label>
+              <input id="receipt-email" type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full border rounded px-2 py-1 text-sm" data-testid="email-input" placeholder="customer@example.com" />
+            </div>
             <div className="flex justify-end gap-2 mt-3">
               <button type="button" className="text-sm px-3 py-1 rounded border" onClick={() => !sending && setEmailOpen(false)}>Cancel</button>
               <button type="button" className="text-sm px-3 py-1 rounded bg-blue-600 text-white disabled:opacity-50" disabled={!email || sending} onClick={submitEmail} data-testid="send-email-btn">{sending ? 'Sending...' : 'Send'}</button>

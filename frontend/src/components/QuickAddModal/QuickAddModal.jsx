@@ -18,7 +18,7 @@ import ConflictWarning from '../admin/ConflictWarning';
 import { getTemplates, applyTemplateToFormData } from '../../services/templateService';
 import { getLastAppointmentSettings, createOneClickAppointment, saveLastAppointmentSettings } from '../../utils/shortcut';
 import { buildQuickAddPayload } from './buildQuickAddPayload';
-import { checkConflict } from '../../lib/api';
+// Remove static import to fix bundle splitting - will use dynamic import for all api calls
 import { getAvailableSlots, clearAvailabilityCache } from '../../services/availabilityService';
 import { formatDate, getRelativeDate } from '../../utils/dateUtils';
 import './QuickAddModal.css';
@@ -168,6 +168,8 @@ const QuickAddModal = ({
     let timeoutId;
     const checkForConflicts = async () => {
       try {
+        // Use dynamic import to prevent bundle splitting issues
+        const { checkConflict } = await import('../../lib/api');
         const { conflict: hasConflict, conflictingAppointment } = await checkConflict({
           date: formData.appointmentDate,
           time: formData.appointmentTime,

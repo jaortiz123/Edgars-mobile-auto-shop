@@ -106,7 +106,9 @@ export default function CustomersPage() {
     <div className="flex flex-col h-full" data-testid="customers-page">
       <h1 className="text-2xl font-semibold mb-4">Customers</h1>
       <div className="mb-2">
+        <label htmlFor="customers-search" className="block text-sm font-medium mb-1">Search Customers</label>
         <input
+          id="customers-search"
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Search by plate, name, phone, or email…"
@@ -121,16 +123,16 @@ export default function CustomersPage() {
         </div>
       )}
       {error && <div className="text-sm text-red-600 mb-3" data-testid="customers-error">{error}</div>}
-      {loading && <div className="text-sm text-gray-500 mb-3" data-testid="customers-loading">Searching…</div>}
+      {loading && <div className="text-sm text-muted-foreground mb-3" data-testid="customers-loading">Searching…</div>}
       <div className="flex-1" data-testid="customers-content">
         {state === 'initial' && (
           <div className="p-4 space-y-4" data-testid="customers-initial">
-            <div className="text-gray-500 text-sm">Type above to search for customers by name, contact, or plate.</div>
+            <div className="text-muted-foreground text-sm">Type above to search for customers by name, contact, or plate.</div>
             {recent && recent.length > 0 && (
               <div data-testid="recent-customers-section">
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-sm font-semibold text-gray-700">Recent Customers</h2>
-                  <span className="text-xs text-gray-400">Last {recent.length}</span>
+                  <span className="text-xs text-muted-foreground">Last {recent.length}</span>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-testid="recent-customers-grid">
                   {recent.map(rc => {
@@ -161,14 +163,14 @@ export default function CustomersPage() {
               </div>
             )}
             {recent && recent.length === 0 && (
-              <div className="text-xs text-gray-400" data-testid="recent-customers-empty">No recent customers found.</div>
+              <div className="text-xs text-muted-foreground" data-testid="recent-customers-empty">No recent customers found.</div>
             )}
           </div>
         )}
           {state !== 'initial' && (
             <div data-testid="customer-results">
               {state === 'empty' && (
-                <div className="text-gray-500 text-sm p-6" data-testid="customers-empty">No customers matched your search.</div>
+                <div className="text-muted-foreground text-sm p-6" data-testid="customers-empty">No customers matched your search.</div>
               )}
               {state === 'results' && (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-testid="customers-results-grid">

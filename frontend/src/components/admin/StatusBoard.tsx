@@ -1,11 +1,12 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, lazy, Suspense } from 'react';
 import StatusColumn from './StatusColumn';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { format } from 'date-fns';
-import CardCustomizationModal from './CardCustomizationModal';
+// Lazy load heavy components to reduce bundle size
+const CardCustomizationModal = lazy(() => import('./CardCustomizationModal'));
+const BoardFilterPopover = lazy(() => import('./BoardFilterPopover').then(m => ({ default: m.BoardFilterPopover })));
 import { BoardFilterProvider, useBoardFilters } from '@/contexts/BoardFilterContext';
-import { BoardFilterPopover } from './BoardFilterPopover';
 import { useBoardStore } from '@/state/useBoardStore';
 import { useToast } from '@/components/ui/Toast';
 import type { BoardCard, BoardColumn } from '@/types/models';
@@ -169,13 +170,13 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
         <div className="flex items-center justify-between gap-6 flex-wrap">
           <div>
             <h1 className="nb-dashboard-title"><span className="nb-dashboard-title-icon" aria-hidden>🔧</span>Edgar's Shop Dashboard</h1>
-            <p className="text-lg font-medium mt-2 opacity-80">{getTimeGreeting()}, Edgar • {format(new Date(), 'EEEE, MMMM do')}</p>
+            <p className="text-lg font-medium mt-2 text-secondary">{getTimeGreeting()}, Edgar • {format(new Date(), 'EEEE, MMMM do')}</p>
           </div>
           <div className="flex items-stretch gap-6">
             <div className="nb-surface nb-border px-4 py-3 flex flex-col justify-center min-w-[120px]">
-              <p className="text-sm font-medium opacity-70">Jobs Today</p>
+              <p className="text-sm font-medium text-muted-foreground">Jobs Today</p>
               <p className="text-3xl font-bold">{completedToday.length}/{totalJobs}</p>
-              <p className="text-xs opacity-60">completed</p>
+              <p className="text-xs text-muted-foreground">completed</p>
             </div>
             <div className="flex items-center">
               <button
@@ -202,7 +203,7 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
                 <div className="w-10 h-10 rounded-full flex items-center justify-center border nb-border">⚠️</div>
                 <div className="flex-1">
                   <p className="font-bold text-lg">{overdueAppointments.length} appointment{overdueAppointments.length > 1 ? 's' : ''} need attention</p>
-                  <p className="text-sm opacity-70">{overdueAppointments[0].servicesSummary} is {overdueAppointments[0].minutesLate}m overdue</p>
+                  <p className="text-sm text-muted-foreground">{overdueAppointments[0].servicesSummary} is {overdueAppointments[0].minutesLate}m overdue</p>
                 </div>
                 <button className="nb-btn-primary px-4 py-2 font-medium rounded-md">Take Action</button>
               </div>
@@ -213,7 +214,7 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
                 <div className="w-10 h-10 rounded-full flex items-center justify-center border nb-border">🔧</div>
                 <div className="flex-1">
                   <p className="font-bold text-lg">Next up: {nextAppointment.servicesSummary}</p>
-                  <p className="text-sm opacity-70">{nextAppointment.customerName} • Starting in {nextAppointment.timeUntilStart}m</p>
+                  <p className="text-sm text-muted-foreground">{nextAppointment.customerName} • Starting in {nextAppointment.timeUntilStart}m</p>
                 </div>
                 <button className="nb-btn-primary px-4 py-2 font-medium rounded-md">Prep</button>
               </div>
@@ -243,7 +244,9 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
       >
   {minimalHero && (
           <div className="absolute top-2 right-4 z-20 flex items-center gap-2">
-            <BoardFilterPopover />
+            <Suspense fallback={<div className="w-8 h-8 animate-pulse bg-gray-200 rounded"></div>}>
+              <BoardFilterPopover />
+            </Suspense>
             <button
               title="Customize cards"
               aria-label="Customize cards"
@@ -253,13 +256,17 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
             >⚙️</button>
           </div>
         )}
-  {!__debugDisableModal && <CardCustomizationModal open={showCustomize} onClose={() => setShowCustomize(false)} />}
+  {!__debugDisableModal && (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CardCustomizationModal open={showCustomize} onClose={() => setShowCustomize(false)} />
+    </Suspense>
+  )}
         {boardError && (
           <div className="mx-4 mt-4 mb-2 border border-danger-300 bg-danger-50 text-danger-800 px-4 py-3 rounded-md flex items-start gap-3">
             <span>⚠️</span>
             <div className="flex-1">
               <p className="font-semibold">Failed to load board</p>
-              <p className="text-sm opacity-80">{boardError.message}</p>
+              <p className="text-sm text-secondary">{boardError.message}</p>
               <button
                 onClick={() => triggerRefresh()}
                 className="mt-2 nb-chip" data-variant="primary"
@@ -303,10 +310,10 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
                         {cardList.map((c: BoardCard) => (
                           <div key={c.id} data-appointment-id={c.id} data-testid={`apt-card-${c.id}`} className="nb-card p-2 border mb-2 rounded bg-white shadow-sm">
                             <div className="text-xs font-semibold">{c.headline || c.servicesSummary || c.id}</div>
-                            {__debugSimpleCards ? null : <div className="text-[10px] opacity-70">{c.customerName}</div>}
+                            {__debugSimpleCards ? null : <div className="text-[10px] text-muted-foreground">{c.customerName}</div>}
                           </div>
                         ))}
-                        {cardList.length === 0 && <div className="text-xs opacity-60 nb-card nb-card-empty" data-status="empty">No items</div>}
+                        {cardList.length === 0 && <div className="text-xs text-muted-foreground nb-card nb-card-empty" data-status="empty">No items</div>}
                       </div>
                     </div>
                   );
@@ -327,7 +334,7 @@ function InnerStatusBoard({ onOpen, minimalHero, __debugDisableModal, __debugDis
           )}
         </div>
         {isFetchingBoard && !showInitialSkeleton && !boardError && (
-          <div className="mt-4 mx-4 text-xs opacity-70">Refreshing…</div>
+          <div className="mt-4 mx-4 text-xs text-muted-foreground">Refreshing…</div>
         )}
       </div>
       <BulkActionToolbar

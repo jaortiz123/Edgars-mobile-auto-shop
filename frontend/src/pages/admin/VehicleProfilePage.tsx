@@ -75,7 +75,7 @@ export default function VehicleProfilePage() {
         {header ? (
           <div className="space-y-1">
             <div className="font-semibold text-lg">{header.year ?? '—'} {header.make ?? ''} {header.model ?? ''} {header.trim ?? ''}</div>
-            <div className="text-xs opacity-70">VIN: {header.vin || '—'} • Plate: {header.plate || '—'}</div>
+            <div className="text-xs text-muted-foreground">VIN: {header.vin || '—'} • Plate: {header.plate || '—'}</div>
           </div>
         ) : (
           <div className="animate-pulse h-12" />
@@ -149,7 +149,7 @@ function RowSkeleton() { return <div className="p-3 animate-pulse h-14" />; }
 function StatCard({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="p-3 rounded-xl border">
-      <div className="text-xs opacity-70">{label}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
       <div className="text-lg font-semibold">{value}</div>
     </div>
   );

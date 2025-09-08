@@ -11,22 +11,24 @@ export default function PublicLayout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      {/* NEW URGENCY BANNER */}
-      <div className="bg-primary text-primary-foreground py-2 px-4 text-center text-xs sm:text-sm font-semibold">
-        <p>
-          <span className="bg-accent text-accent-foreground rounded-md px-2 py-0.5 mr-2">SAVE $25</span>
-          Book your first service today! Next available appointment is in 2 Hours.
-        </p>
-      </div>
-      {/* HEADER */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-sm">
-        <div className="container flex h-20 items-center justify-between">
-          <Link to="/" className="text-2xl font-black text-primary">
-            Edgar's Mobile Auto Shop Repair
-          </Link>
+      {/* NEW URGENCY BANNER - Part of header for assistive technology */}
+      <header role="banner" className="sticky top-0 z-50 w-full">
+        {/* Promotional banner */}
+        <div className="bg-primary text-primary-foreground py-2 px-4 text-center text-xs sm:text-sm font-semibold">
+          <p>
+            <span className="bg-accent text-accent-foreground rounded-md px-2 py-0.5 mr-2">SAVE $25</span>
+            Book your first service today! Next available appointment is in 2 Hours.
+          </p>
+        </div>
+        {/* Main header */}
+        <div className="border-b bg-background/95 backdrop-blur-sm">
+          <div className="container flex h-20 items-center justify-between">
+            <Link to="/" className="text-2xl font-black text-primary">
+              Edgar's Mobile Auto Shop Repair
+            </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden items-center gap-6 md:flex">
+            {/* Desktop Navigation */}
+            <nav role="navigation" aria-label="Main navigation" className="hidden items-center gap-6 md:flex">
             <a href="tel:555-123-4567" className="text-base font-medium flex items-center gap-2 text-muted-foreground transition-colors hover:text-primary">
                 <Phone size={16} />
                 (555) 123-4567
@@ -55,20 +57,21 @@ export default function PublicLayout() {
             </Button>
           </nav>
 
-          {/* Mobile Navigation */}
-          <MobileMenu />
+            {/* Mobile Navigation */}
+            <MobileMenu />
+          </div>
         </div>
       </header>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1">
+      <main role="main" className="flex-1">
         <Suspense fallback={<div className="flex h-96 items-center justify-center font-semibold">Loading...</div>}>
           <Outlet />
         </Suspense>
       </main>
 
       {/* FOOTER */}
-      <footer className="bg-primary text-primary-foreground">
+      <footer role="contentinfo" className="bg-primary text-primary-foreground">
         <div className="container grid grid-cols-1 md:grid-cols-3 gap-8 py-16 text-center md:text-left">
           {/* Col 1: Brand */}
           <div className="md:col-span-1">
@@ -76,14 +79,14 @@ export default function PublicLayout() {
             <p className="mt-2 text-primary-foreground/80">Expert auto repair, delivered to your door.</p>
           </div>
           {/* Col 2: Navigation (Aligned) */}
-          <div className="md:justify-self-center">
+          <nav role="navigation" aria-label="Footer navigation" className="md:justify-self-center">
             <h4 className="font-semibold uppercase tracking-wider">Navigation</h4>
             <ul className="mt-4 space-y-2 text-primary-foreground/80">
               <li><a href="/" className="hover:underline">Home</a></li>
               <li><a href="/#services" className="hover:underline">Services</a></li>
               <li><a href="/booking" className="hover:underline">Book Now</a></li>
             </ul>
-          </div>
+          </nav>
           {/* Col 3: Contact (Aligned) */}
           <div className="md:justify-self-end">
             <h4 className="font-semibold uppercase tracking-wider">Contact</h4>
