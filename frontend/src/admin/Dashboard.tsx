@@ -552,7 +552,7 @@ export function Dashboard() {
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-500 mx-auto mb-sp-3"></div>
-          <p className="text-fs-3 font-medium text-gray-600">Loading your dashboard...</p>
+          <p className="text-fs-3 font-medium text-secondary">Loading your dashboard...</p>
         </div>
       </div>
     );
@@ -627,21 +627,21 @@ export function Dashboard() {
                         <div className="font-bold text-fs-2 text-gray-900">
                           {nextAppointment.customer}
                         </div>
-                        <div className="text-gray-600 mt-sp-1 text-fs-0 sm:text-fs-1">
+                        <div className="text-secondary mt-sp-1 text-fs-0 sm:text-fs-1">
                           🚗 {nextAppointment.vehicle}
                         </div>
-                        <div className="text-gray-600 text-fs-0 sm:text-fs-1">
+                        <div className="text-secondary text-fs-0 sm:text-fs-1">
                           🔧 {nextAppointment.service}
                         </div>
-                        <div className="text-gray-500 text-fs-0 mt-sp-2">
+                        <div className="text-muted-foreground text-fs-0 mt-sp-2">
                           📞 {nextAppointment.phone}
                         </div>
                       </div>
                     ) : (
                       <div className="text-center py-sp-3">
                         <div className="text-fs-5 sm:text-fs-6 mb-sp-2">✅</div>
-                        <div className="font-medium text-fs-2 text-gray-600">All caught up!</div>
-                        <div className="text-fs-0 text-gray-500">No more appointments today</div>
+                        <div className="font-medium text-fs-2 text-secondary">All caught up!</div>
+                        <div className="text-fs-0 text-muted-foreground">No more appointments today</div>
                       </div>
                     )}
                   </CardContent>
@@ -650,7 +650,7 @@ export function Dashboard() {
                 {/* Big Action Buttons */}
                 <Card>
                   <CardContent className="p-sp-4 sm:p-sp-4">
-                    <h3 className="text-fs-3 font-bold text-gray-600 mb-sp-3">⚡ Schedule New Service</h3>
+                    <h3 className="text-fs-3 font-bold text-secondary mb-sp-3">⚡ Schedule New Service</h3>
                     {nextAvailableSlot && (
                       <div className="mb-sp-3 text-center text-gray-700">
                         Next available slot: <span className="font-bold text-blue-600">{format(nextAvailableSlot, 'h:mm a')}</span>

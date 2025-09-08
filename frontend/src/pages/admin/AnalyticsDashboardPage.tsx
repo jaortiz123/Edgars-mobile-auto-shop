@@ -41,7 +41,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
     setChannel(val);
   };
 
-  if (state.loading) return <div className="p-4 text-sm text-gray-500" data-testid="analytics-loading">Loading analytics…</div>;
+  if (state.loading) return <div className="p-4 text-sm text-muted-foreground" data-testid="analytics-loading">Loading analytics…</div>;
   if (state.error) return <div className="p-4 text-sm text-red-600" data-testid="analytics-error">Error: {state.error}</div>;
   if (!state.data) return <div className="p-4 text-sm" data-testid="analytics-empty">No data.</div>;
 
@@ -51,7 +51,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-xl font-semibold">Messaging Analytics</h1>
         <div className="flex flex-wrap items-center gap-3">
-          <label className="text-sm text-gray-600 flex items-center gap-1">
+          <label className="text-sm text-secondary flex items-center gap-1">
             <span>Range</span>
             <select value={range} onChange={onChangeRange} className="border rounded px-2 py-1 text-sm bg-white">
               <option value="7d">Last 7 Days</option>
@@ -60,7 +60,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
               <option value="180d">Last 180 Days</option>
             </select>
           </label>
-          <label className="text-sm text-gray-600 flex items-center gap-1">
+          <label className="text-sm text-secondary flex items-center gap-1">
             <span>Channel</span>
             <select value={channel} onChange={onChangeChannel} className="border rounded px-2 py-1 text-sm bg-white">
               <option value="all">All</option>
