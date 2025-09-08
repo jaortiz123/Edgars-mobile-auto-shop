@@ -1,0 +1,310 @@
+# API Consistency Findings
+
+Generated: 2025-09-07 18:06:07
+
+## 1) Inconsistent Responses (Envelope)
+
+Total: 157 (No: 101, Partial: 56)
+
+- [No] GET /api/__pycache__/test_invoice_exports.cpython-39-pytest-7.1.1.pyc — Consumer: Internal
+- [No] GET /api/__pycache__/test_invoice_workflow.cpython-39-pytest-7.1.1.pyc — Consumer: Internal
+- [No] GET /api/__pycache__/test_vehicle_profile.cpython-39-pytest-7.1.1.pyc — Consumer: Internal
+- [No] POST /api/admin/appointments/<appt_id>/invoice — Consumer: Frontend
+- [No] GET /api/admin/appointments/apt1/move — Consumer: Frontend
+- [No] GET /api/admin/customers — Consumer: Frontend
+- [No] GET /api/admin/customers/1 — Consumer: Frontend
+- [No] GET /api/admin/customers/1/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/1001/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/1101/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/123 — Consumer: Frontend
+- [No] GET /api/admin/customers/123/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/123456/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/1301/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/1401/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/1501/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/1601/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/1701/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/1801/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/1901/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/424242/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/5001/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/5101/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/9001/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/9002/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/9003/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/999998/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/999999/profile — Consumer: Frontend
+- [No] PATCH /api/admin/customers/<cid> — Consumer: Frontend
+- [No] GET /api/admin/customers/<cust_id> — Consumer: Frontend
+- [No] GET /api/admin/customers/<cust_id>/profile — Consumer: Frontend
+- [No] GET /api/admin/customers/<id> — Consumer: Frontend
+- [No] GET /api/admin/customers/cust-1 — Consumer: Frontend
+- [No] GET /api/admin/customers/cust-2 — Consumer: Frontend
+- [No] GET /api/admin/customers/missing-cust — Consumer: Frontend
+- [No] GET /api/admin/invoices/<invoice_id> — Consumer: Internal
+- [No] GET /api/admin/invoices/<invoice_id>/estimate.html — Consumer: Internal
+- [No] POST /api/admin/invoices/<invoice_id>/payments — Consumer: Internal
+- [No] GET /api/admin/invoices/<invoice_id>/receipt.html — Consumer: Internal
+- [No] GET /api/admin/invoices/<invoice_id>/receipt.pdf — Consumer: Internal
+- [No] POST /api/admin/invoices/<invoice_id>/send — Consumer: Internal
+- [No] POST /api/admin/invoices/<invoice_id>/void — Consumer: Internal
+- [No] GET /api/admin/invoices/does-not-exist — Consumer: Internal
+- [No] GET /api/admin/invoices/inv-1/estimate.html — Consumer: Internal
+- [No] GET /api/admin/invoices/inv-1/estimate.pdf — Consumer: Internal
+- [No] GET /api/admin/invoices/inv-1/receipt.html — Consumer: Internal
+- [No] GET /api/admin/invoices/inv-1/receipt.pdf — Consumer: Internal
+- [No] GET /api/admin/invoices/inv-1/send — Consumer: Internal
+- [No] GET /api/admin/invoices/inv-own-guard — Consumer: Internal
+- [No] GET /api/admin/invoices/inv-test/estimate.html — Consumer: Internal
+- [No] GET /api/admin/invoices/inv-test/estimate.pdf — Consumer: Internal
+- [No] GET /api/admin/invoices/inv-test/receipt.html — Consumer: Internal
+- [No] GET /api/admin/invoices/inv-test/receipt.pdf — Consumer: Internal
+- [No] GET /api/admin/invoices/inv-test/send — Consumer: Internal
+- [No] POST /api/admin/login — Consumer: Internal
+- [No] GET|POST /api/admin/message-templates — Consumer: Internal
+- [No] DELETE|GET|PATCH /api/admin/message-templates/<tid> — Consumer: Internal
+- [No] GET /api/admin/recent-customers — Consumer: Internal
+- [No] GET /api/admin/reports — Consumer: Internal
+- [No] POST /api/admin/staff/memberships — Consumer: Internal
+- [No] POST /api/admin/template-usage — Consumer: Internal
+- [No] GET /api/admin/template-usage. — Consumer: Internal
+- [No] GET /api/admin/vehicles/00000000-0000-0000-0000-000000000000/profile — Consumer: Frontend
+- [No] GET /api/admin/vehicles/1 — Consumer: Frontend
+- [No] GET /api/admin/vehicles/123/profile — Consumer: Frontend
+- [No] GET /api/admin/vehicles/456 — Consumer: Frontend
+- [No] GET /api/admin/vehicles/999999/profile — Consumer: Frontend
+- [No] GET /api/admin/vehicles/<id>/profile — Consumer: Frontend
+- [No] POST /api/admin/vehicles/<vid>/transfer — Consumer: Frontend
+- [No] GET /api/admin/vehicles/veh-1/profile — Consumer: Frontend
+- [No] GET /api/appointments — Consumer: Frontend
+- [No] GET /api/appointments/123/messages — Consumer: Frontend
+- [No] GET /api/appointments/123/messages/999 — Consumer: Frontend
+- [No] GET /api/appointments/123/messages/msg-1 — Consumer: Frontend
+- [No] GET /api/appointments/999/messages — Consumer: Frontend
+- [No] GET /api/appointments/:id/messages — Consumer: Frontend
+- [No] GET /api/appointments/:id/messages/:message_id — Consumer: Frontend
+- [No] POST /api/appointments/<appt_id>/check-in — Consumer: Frontend
+- [No] POST /api/appointments/<appt_id>/check-out — Consumer: Frontend
+- [No] DELETE|PATCH /api/appointments/<appt_id>/messages/<message_id> — Consumer: Frontend
+- [No] GET /api/auth — Consumer: Frontend
+- [No] POST /api/auth/logout — Consumer: Frontend
+- [No] POST /api/auth/request-password-reset — Consumer: Internal
+- [No] POST /api/auth/reset-password — Consumer: Internal
+- [No] GET /api/csrf-token — Consumer: Frontend
+- [No] GET /api/customers/123/history — Consumer: Internal
+- [No] GET /api/customers/999/history — Consumer: Internal
+- [No] GET /api/customers/<customer_id>/history — Consumer: Internal
+- [No] POST /api/customers/login — Consumer: Frontend
+- [No] POST /api/customers/register — Consumer: Frontend
+- [No] GET /api/debug/routes — Consumer: Internal
+- [No] GET /api/java/text/SimpleDateFormat.html> — Consumer: Internal
+- [No] POST /api/logout — Consumer: Internal
+- [No] GET /api/non_existent_endpoint — Consumer: Internal
+- [No] GET /api/projects/status/github/psycopg/psycopg2 — Consumer: Internal
+- [No] GET /api/tenant — Consumer: Internal
+- [No] GET /api/test_invoice_workflow.py::test_invoice_full_workflow — Consumer: Internal
+- [No] GET /api/wincrypt/ns-wincrypt-crypt_algorithm_identifier — Consumer: Internal
+- [No] POST /appointments/<appt_id>/check-in — Consumer: Internal
+- [No] POST /appointments/<appt_id>/check-out — Consumer: Internal
+- [No] GET|OPTIONS|PUT /customers/profile — Consumer: Internal
+- [Partial] GET / — Consumer: Frontend
+- [Partial] GET|POST /admin/appointments — Consumer: Internal
+- [Partial] DELETE /admin/appointments/<appt_id> — Consumer: Internal
+- [Partial] PATCH /admin/appointments/<appt_id>/move — Consumer: Internal
+- [Partial] GET /admin/appointments/board — Consumer: Internal
+- [Partial] GET /admin/appointments/today — Consumer: Internal
+- [Partial] GET /admin/cars-on-premises — Consumer: Internal
+- [Partial] GET /admin/customers/<cust_id>/visits — Consumer: Internal
+- [Partial] GET /admin/customers/search — Consumer: Internal
+- [Partial] GET /admin/dashboard/stats — Consumer: Internal
+- [Partial] GET /admin/vehicles/<license_plate>/visits — Consumer: Internal
+- [Partial] GET /api/admin — Consumer: Frontend
+- [Partial] GET /api/admin/analytics/templates — Consumer: Internal
+- [Partial] GET|POST /api/admin/appointments — Consumer: Frontend
+- [Partial] DELETE|GET|PATCH /api/admin/appointments/<appt_id> — Consumer: Frontend
+- [Partial] PATCH /api/admin/appointments/<appt_id>/move — Consumer: Frontend
+- [Partial] GET /api/admin/appointments/<id> — Consumer: Frontend
+- [Partial] GET /api/admin/appointments/<id>/move — Consumer: Frontend
+- [Partial] GET /api/admin/appointments/board — Consumer: Frontend
+- [Partial] GET /api/admin/appointments/today — Consumer: Frontend
+- [Partial] GET /api/admin/cars-on-premises — Consumer: Internal
+- [Partial] GET /api/admin/customers/<cust_id>/visits — Consumer: Frontend
+- [Partial] GET /api/admin/customers/<id>/visits — Consumer: Frontend
+- [Partial] GET /api/admin/customers/search — Consumer: Frontend
+- [Partial] GET /api/admin/dashboard/stats — Consumer: Frontend
+- [Partial] GET /api/admin/invoices — Consumer: Internal
+- [Partial] POST /api/admin/invoices/<invoice_id>/add-package — Consumer: Internal
+- [Partial] GET /api/admin/invoices/<invoice_id>/estimate.pdf — Consumer: Internal
+- [Partial] GET /api/admin/reports/appointments.csv — Consumer: Internal
+- [Partial] GET /api/admin/reports/payments.csv — Consumer: Internal
+- [Partial] GET|POST /api/admin/service-operations — Consumer: Frontend
+- [Partial] DELETE|PATCH /api/admin/service-operations/<service_id> — Consumer: Frontend
+- [Partial] GET /api/admin/technicians — Consumer: Internal
+- [Partial] POST /api/admin/vehicles — Consumer: Frontend
+- [Partial] GET /api/admin/vehicles/<license_plate>/visits — Consumer: Frontend
+- [Partial] GET /api/admin/vehicles/<plate>/visits — Consumer: Frontend
+- [Partial] GET /api/admin/vehicles/<vehicle_id>/profile — Consumer: Frontend
+- [Partial] GET|PATCH /api/admin/vehicles/<vid> — Consumer: Frontend
+- [Partial] GET|PATCH /api/appointments/<appt_id> — Consumer: Frontend
+- [Partial] POST /api/appointments/<appt_id>/complete — Consumer: Frontend
+- [Partial] GET|POST /api/appointments/<appt_id>/messages — Consumer: Frontend
+- [Partial] POST /api/appointments/<appt_id>/ready — Consumer: Frontend
+- [Partial] GET|POST /api/appointments/<appt_id>/services — Consumer: Frontend
+- [Partial] DELETE|PATCH /api/appointments/<appt_id>/services/<service_id> — Consumer: Frontend
+- [Partial] POST /api/appointments/<appt_id>/start — Consumer: Frontend
+- [Partial] GET /api/appointments/<id> — Consumer: Frontend
+- [Partial] POST /api/customers — Consumer: Frontend
+- [Partial] GET /api/customers/<id>/history — Consumer: Internal
+- [Partial] GET /api/customers/lookup — Consumer: Internal
+- [Partial] GET|OPTIONS|PUT /api/customers/profile — Consumer: Internal
+- [Partial] GET|PATCH /appointments/<appt_id> — Consumer: Internal
+- [Partial] POST /appointments/<appt_id>/complete — Consumer: Internal
+- [Partial] POST /appointments/<appt_id>/ready — Consumer: Internal
+- [Partial] POST /appointments/<appt_id>/start — Consumer: Internal
+- [Partial] GET /customers/<cust_id>/history — Consumer: Internal
+- [Partial] GET /health — Consumer: Internal
+
+## 2) Missing Pagination on Likely List Responses (GET)
+
+Total: 102
+
+- GET|POST /admin/appointments — Reason: plural — Consumer: Internal
+- GET /admin/appointments/board — Reason: keyword — Consumer: Internal
+- GET /admin/appointments/today — Reason: keyword — Consumer: Internal
+- GET /admin/cars-on-premises — Reason: plural — Consumer: Internal
+- GET /admin/customers/<cust_id>/visits — Reason: plural — Consumer: Internal
+- GET /admin/customers/search — Reason: keyword — Consumer: Internal
+- GET /admin/dashboard/stats — Reason: plural — Consumer: Internal
+- GET /admin/vehicles/<license_plate>/visits — Reason: plural — Consumer: Internal
+- GET|POST /api/admin/appointments — Reason: plural — Consumer: Frontend
+- DELETE|GET|PATCH /api/admin/appointments/<appt_id> — Reason: plural — Consumer: Frontend
+- GET /api/admin/appointments/<id> — Reason: plural — Consumer: Frontend
+- GET /api/admin/appointments/<id>/move — Reason: keyword — Consumer: Frontend
+- GET /api/admin/appointments/apt1/move — Reason: keyword — Consumer: Frontend
+- GET /api/admin/appointments/board — Reason: keyword — Consumer: Frontend
+- GET /api/admin/appointments/today — Reason: keyword — Consumer: Frontend
+- GET /api/admin/cars-on-premises — Reason: plural — Consumer: Internal
+- GET /api/admin/customers — Reason: plural — Consumer: Frontend
+- GET /api/admin/customers/1 — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/1/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/1001/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/1101/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/123 — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/123/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/123456/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/1301/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/1401/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/1501/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/1601/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/1701/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/1801/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/1901/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/424242/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/5001/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/5101/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/9001/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/9002/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/9003/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/999998/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/999999/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/<cust_id> — Reason: plural — Consumer: Frontend
+- GET /api/admin/customers/<cust_id>/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/<cust_id>/visits — Reason: plural — Consumer: Frontend
+- GET /api/admin/customers/<id> — Reason: plural — Consumer: Frontend
+- GET /api/admin/customers/<id>/visits — Reason: plural — Consumer: Frontend
+- GET /api/admin/customers/cust-1 — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/cust-2 — Reason: keyword — Consumer: Frontend
+- GET /api/admin/customers/missing-cust — Reason: keyword — Consumer: Frontend
+- GET /api/admin/dashboard/stats — Reason: plural — Consumer: Frontend
+- GET /api/admin/invoices/<invoice_id> — Reason: plural — Consumer: Internal
+- GET /api/admin/invoices/<invoice_id>/estimate.html — Reason: keyword — Consumer: Internal
+- GET /api/admin/invoices/<invoice_id>/estimate.pdf — Reason: keyword — Consumer: Internal
+- GET /api/admin/invoices/<invoice_id>/receipt.html — Reason: keyword — Consumer: Internal
+- GET /api/admin/invoices/<invoice_id>/receipt.pdf — Reason: keyword — Consumer: Internal
+- GET /api/admin/invoices/does-not-exist — Reason: keyword — Consumer: Internal
+- GET /api/admin/invoices/inv-1/estimate.html — Reason: keyword — Consumer: Internal
+- GET /api/admin/invoices/inv-1/estimate.pdf — Reason: keyword — Consumer: Internal
+- GET /api/admin/invoices/inv-1/receipt.html — Reason: keyword — Consumer: Internal
+- GET /api/admin/invoices/inv-1/receipt.pdf — Reason: keyword — Consumer: Internal
+- GET /api/admin/invoices/inv-1/send — Reason: keyword — Consumer: Internal
+- GET /api/admin/invoices/inv-own-guard — Reason: keyword — Consumer: Internal
+- GET /api/admin/invoices/inv-test/estimate.html — Reason: keyword — Consumer: Internal
+- GET /api/admin/invoices/inv-test/estimate.pdf — Reason: keyword — Consumer: Internal
+- GET /api/admin/invoices/inv-test/receipt.html — Reason: keyword — Consumer: Internal
+- GET /api/admin/invoices/inv-test/receipt.pdf — Reason: keyword — Consumer: Internal
+- GET /api/admin/invoices/inv-test/send — Reason: keyword — Consumer: Internal
+- GET|POST /api/admin/message-templates — Reason: plural — Consumer: Internal
+- DELETE|GET|PATCH /api/admin/message-templates/<tid> — Reason: plural — Consumer: Internal
+- GET /api/admin/reports — Reason: plural — Consumer: Internal
+- GET /api/admin/reports/appointments.csv — Reason: keyword — Consumer: Internal
+- GET /api/admin/reports/payments.csv — Reason: keyword — Consumer: Internal
+- GET /api/admin/vehicles/00000000-0000-0000-0000-000000000000/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/vehicles/1 — Reason: keyword — Consumer: Frontend
+- GET /api/admin/vehicles/123/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/vehicles/456 — Reason: keyword — Consumer: Frontend
+- GET /api/admin/vehicles/999999/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/vehicles/<id>/profile — Reason: keyword — Consumer: Frontend
+- GET /api/admin/vehicles/<license_plate>/visits — Reason: plural — Consumer: Frontend
+- GET /api/admin/vehicles/<plate>/visits — Reason: plural — Consumer: Frontend
+- GET /api/admin/vehicles/<vehicle_id>/profile — Reason: keyword — Consumer: Frontend
+- GET|PATCH /api/admin/vehicles/<vid> — Reason: plural — Consumer: Frontend
+- GET /api/admin/vehicles/veh-1/profile — Reason: keyword — Consumer: Frontend
+- GET /api/appointments — Reason: plural — Consumer: Frontend
+- GET /api/appointments/123/messages — Reason: plural — Consumer: Frontend
+- GET /api/appointments/123/messages/999 — Reason: keyword — Consumer: Frontend
+- GET /api/appointments/123/messages/msg-1 — Reason: keyword — Consumer: Frontend
+- GET /api/appointments/999/messages — Reason: plural — Consumer: Frontend
+- GET /api/appointments/:id/messages — Reason: plural — Consumer: Frontend
+- GET /api/appointments/:id/messages/:message_id — Reason: keyword — Consumer: Frontend
+- GET|PATCH /api/appointments/<appt_id> — Reason: plural — Consumer: Frontend
+- GET|POST /api/appointments/<appt_id>/messages — Reason: plural — Consumer: Frontend
+- GET|POST /api/appointments/<appt_id>/services — Reason: plural — Consumer: Frontend
+- GET /api/appointments/<id> — Reason: plural — Consumer: Frontend
+- GET /api/customers/123/history — Reason: keyword — Consumer: Internal
+- GET /api/customers/999/history — Reason: keyword — Consumer: Internal
+- GET /api/customers/<customer_id>/history — Reason: keyword — Consumer: Internal
+- GET /api/customers/<id>/history — Reason: keyword — Consumer: Internal
+- GET /api/customers/lookup — Reason: keyword — Consumer: Internal
+- GET|OPTIONS|PUT /api/customers/profile — Reason: keyword — Consumer: Internal
+- GET /api/debug/routes — Reason: plural — Consumer: Internal
+- GET|PATCH /appointments/<appt_id> — Reason: plural — Consumer: Internal
+- GET /customers/<cust_id>/history — Reason: keyword — Consumer: Internal
+- GET|OPTIONS|PUT /customers/profile — Reason: keyword — Consumer: Internal
+
+## 3) Idempotency Gaps on State-Changing POST Endpoints
+
+Total: 33 (HIGH: 22, NORMAL: 11)
+
+- [HIGH] GET|POST /admin/appointments — Consumer: Internal
+- [HIGH] GET|POST /api/admin/appointments — Consumer: Frontend
+- [HIGH] POST /api/admin/appointments/<appt_id>/invoice — Consumer: Frontend
+- [HIGH] POST /api/admin/invoices/<invoice_id>/add-package — Consumer: Internal
+- [HIGH] POST /api/admin/invoices/<invoice_id>/payments — Consumer: Internal
+- [HIGH] POST /api/admin/invoices/<invoice_id>/send — Consumer: Internal
+- [HIGH] POST /api/admin/invoices/<invoice_id>/void — Consumer: Internal
+- [HIGH] GET|POST /api/admin/service-operations — Consumer: Frontend
+- [HIGH] POST /api/admin/vehicles — Consumer: Frontend
+- [HIGH] POST /api/admin/vehicles/<vid>/transfer — Consumer: Frontend
+- [HIGH] POST /api/appointments/<appt_id>/check-in — Consumer: Frontend
+- [HIGH] POST /api/appointments/<appt_id>/check-out — Consumer: Frontend
+- [HIGH] POST /api/appointments/<appt_id>/complete — Consumer: Frontend
+- [HIGH] GET|POST /api/appointments/<appt_id>/messages — Consumer: Frontend
+- [HIGH] POST /api/appointments/<appt_id>/ready — Consumer: Frontend
+- [HIGH] GET|POST /api/appointments/<appt_id>/services — Consumer: Frontend
+- [HIGH] POST /api/appointments/<appt_id>/start — Consumer: Frontend
+- [HIGH] POST /appointments/<appt_id>/check-in — Consumer: Internal
+- [HIGH] POST /appointments/<appt_id>/check-out — Consumer: Internal
+- [HIGH] POST /appointments/<appt_id>/complete — Consumer: Internal
+- [HIGH] POST /appointments/<appt_id>/ready — Consumer: Internal
+- [HIGH] POST /appointments/<appt_id>/start — Consumer: Internal
+- POST /api/admin/login — Consumer: Internal
+- GET|POST /api/admin/message-templates — Consumer: Internal
+- POST /api/admin/staff/memberships — Consumer: Internal
+- POST /api/admin/template-usage — Consumer: Internal
+- POST /api/auth/logout — Consumer: Frontend
+- POST /api/auth/request-password-reset — Consumer: Internal
+- POST /api/auth/reset-password — Consumer: Internal
+- POST /api/customers — Consumer: Frontend
+- POST /api/customers/login — Consumer: Frontend
+- POST /api/customers/register — Consumer: Frontend
+- POST /api/logout — Consumer: Internal
