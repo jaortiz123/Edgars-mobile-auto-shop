@@ -518,6 +518,135 @@ try:  # idempotent guard
 except Exception as _cors_init_e:  # pragma: no cover
     print(f"[cors-init] Failed initializing Flask-CORS: {_cors_init_e}")
 
+
+# ---------------------------------------------------------------------------
+# API Consistency Middleware: Correlation IDs, Error Envelope, Response Envelope
+# ---------------------------------------------------------------------------
+try:
+    import json as _json_mod
+    import uuid as _uuid_mod
+
+    from werkzeug.exceptions import HTTPException as _HTTPException
+
+    if not getattr(app, "_API_CONSISTENCY_INSTALLED", False):  # type: ignore[attr-defined]
+
+        @app.before_request  # type: ignore
+        def _assign_correlation_id():
+            """Ensure every request has a correlation ID.
+
+            Priority: use inbound X-Request-Id or X-Correlation-Id; else generate uuid4.
+            """
+            try:
+                cid = (
+                    request.headers.get("X-Request-Id")
+                    or request.headers.get("X-Correlation-Id")
+                    or str(_uuid_mod.uuid4())
+                )
+                g.correlation_id = cid
+            except Exception:
+                g.correlation_id = str(_uuid_mod.uuid4())
+
+        def _is_json_response(resp: Response) -> bool:
+            try:
+                mt = (resp.mimetype or "").lower()
+                if mt == "application/json":
+                    return True
+                # Fallback: Flask marks is_json when content-type is json
+                return bool(getattr(resp, "is_json", False))
+            except Exception:
+                return False
+
+        def _already_enveloped(obj) -> bool:
+            return isinstance(obj, dict) and {
+                "ok",
+                "data",
+                "error",
+            }.issubset(set(obj.keys()))
+
+        def _wrap_envelope(obj, ok: bool, status: int):
+            err = None
+            data = obj if ok else None
+            if not ok:
+                # best-effort error shape
+                if isinstance(obj, dict) and ("error" in obj or "message" in obj):
+                    msg = obj.get("error") or obj.get("message")
+                    err = {"code": status, "message": msg}
+                else:
+                    err = {"code": status, "message": str(obj)}
+            return {
+                "ok": bool(ok),
+                "data": data,
+                "error": err,
+                "correlation_id": getattr(g, "correlation_id", None),
+            }
+
+        @app.errorhandler(Exception)  # type: ignore
+        def _json_error_handler(e: Exception):
+            """Unified JSON error envelope for exceptions.
+
+            Non-HTTP errors -> 500; HTTPExceptions preserve code/description.
+            Non-JSON routes skip this handler if they returned a Response already.
+            """
+            status = 500
+            msg = "Internal Server Error"
+            if isinstance(e, _HTTPException):
+                status = int(getattr(e, "code", 500) or 500)
+                # Prefer description for user-facing message
+                msg = getattr(e, "description", msg) or msg
+            payload = _wrap_envelope({"message": msg}, ok=False, status=status)
+            resp = make_response(_json_mod.dumps(payload), status)
+            resp.mimetype = "application/json"
+            try:
+                # Always stamp correlation id header
+                resp.headers["X-Correlation-Id"] = getattr(g, "correlation_id", "?")
+            except Exception:
+                pass
+            return resp
+
+        @app.after_request  # type: ignore
+        def _standardize_json_envelope(resp: Response):
+            """Wrap JSON responses into the standard envelope shape.
+
+            Skips non-JSON responses (e.g., HTML/PDF/CSV). Preserves status code.
+            If response already has the envelope keys, only ensures correlation_id.
+            """
+            try:
+                # Correlation header for all responses
+                resp.headers.setdefault("X-Correlation-Id", getattr(g, "correlation_id", "?"))
+
+                if not _is_json_response(resp):
+                    return resp
+
+                # Decode current JSON body
+                body = None
+                try:
+                    body = resp.get_json(silent=True)
+                except Exception:
+                    body = None
+                if body is None:
+                    return resp  # can't safely transform
+
+                # Avoid double wrapping
+                if _already_enveloped(body):
+                    if not body.get("correlation_id"):
+                        body["correlation_id"] = getattr(g, "correlation_id", None)
+                        resp.set_data(_json_mod.dumps(body))
+                    return resp
+
+                ok = 200 <= (resp.status_code or 200) < 400
+                wrapped = _wrap_envelope(body, ok=ok, status=resp.status_code or 200)
+                resp.set_data(_json_mod.dumps(wrapped))
+                # Ensure correct content type
+                resp.mimetype = "application/json"
+                return resp
+            except Exception:
+                # On any failure, leave response unchanged
+                return resp
+
+        app._API_CONSISTENCY_INSTALLED = True  # type: ignore[attr-defined]
+except Exception as _api_consistency_e:  # pragma: no cover
+    print(f"[api-consistency] Failed to install middleware: {_api_consistency_e}")
+
 # Temporary debug marker to verify freshest code path is executing inside container
 print("!!! EXECUTING LATEST SERVER CODE !!!")  # DEBUG_MARKER_REMOVE_ME
 
