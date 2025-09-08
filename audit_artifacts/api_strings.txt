@@ -1,0 +1,614 @@
+backend/app_factory.py:47:    # app.register_blueprint(auth_bp, url_prefix='/api/auth')
+backend/app/middleware/tenant_context_examples.py:14:    @app.route("/api/admin/metrics/304-efficiency", methods=["GET"])
+backend/app/middleware/tenant_context_examples.py:18:        tracked = ["/api/customer/profile", "/api/vehicle/profile"]
+backend/app/middleware/tenant_context_examples.py:23:    @app.route("/api/admin/customers/<cid>", methods=["PATCH"])
+backend/app/middleware/tenant_context_examples.py:37:    @app.route("/api/admin/vehicles", methods=["POST"])
+backend/.pytest_cache/v/cache/nodeids:9:  "tests/api/test_invoice_workflow.py::test_invoice_full_workflow",
+backend/.pytest_cache/v/cache/lastfailed:30:  "tests/api/test_invoice_workflow.py::test_invoice_full_workflow": true
+backend/benchmark_service_operations.py:2:"""Benchmark script for /api/admin/service-operations endpoint.
+backend/benchmark_service_operations.py:43:    url = f"{base_url.rstrip('/')}/api/admin/service-operations"
+backend/tests/test_technician_progress.py:30:    r = client.post("/api/admin/appointments", json=payload)
+backend/tests/test_technician_progress.py:45:        "/api/admin/appointments",
+backend/tests/test_technician_progress.py:60:        f"/api/admin/appointments/{appt_id}",
+backend/tests/test_technician_progress.py:71:    r = client.patch(f"/api/admin/appointments/{appt_id}", json={"tech_id": tech_id})
+backend/tests/test_technician_progress.py:77:    board = client.get("/api/admin/appointments/board").get_json()
+backend/tests/test_technician_progress.py:86:    r1 = client.post(f"/api/appointments/{appt_id}/start")
+backend/tests/test_technician_progress.py:89:    board1 = client.get("/api/admin/appointments/board").get_json()
+backend/tests/test_technician_progress.py:93:    r2 = client.post(f"/api/appointments/{appt_id}/start")
+backend/tests/test_technician_progress.py:95:    board2 = client.get("/api/admin/appointments/board").get_json()
+backend/tests/test_technician_progress.py:102:    client.post(f"/api/appointments/{appt_id}/start")
+backend/tests/test_technician_progress.py:103:    r1 = client.post(f"/api/appointments/{appt_id}/complete")
+backend/tests/test_technician_progress.py:105:    board1 = client.get("/api/admin/appointments/board").get_json()
+backend/tests/test_technician_progress.py:108:    r2 = client.post(f"/api/appointments/{appt_id}/complete")
+backend/tests/test_technician_progress.py:110:    board2 = client.get("/api/admin/appointments/board").get_json()
+backend/tests/test_technician_progress.py:117:    client.post(f"/api/appointments/{appt_id}/start")
+backend/tests/test_technician_progress.py:118:    client.post(f"/api/appointments/{appt_id}/complete")
+backend/tests/test_technician_progress.py:119:    board = client.get("/api/admin/appointments/board").get_json()
+backend/tests/test_get_single_appointment.py:43:    resp = client.get(f"/api/admin/appointments/{appt_id}")
+backend/tests/test_invoice_generation.py:78:    resp = client.post(f"/api/admin/appointments/{appt_id}/invoice")
+backend/tests/test_invoice_generation.py:83:    resp2 = client.post(f"/api/admin/appointments/{appt_id}/invoice")
+backend/tests/test_invoice_generation.py:110:    resp = client.post(f"/api/admin/appointments/{missing_id}/invoice")
+backend/tests/test_board_memory_regression.py:25:        "/api/admin/appointments",
+backend/tests/test_board_memory_regression.py:37:    board = client.get("/api/admin/appointments/board").get_json()
+backend/tests/test_csrf_cookie_auth.py:57:    r_login = client.post("/api/admin/login", json={"username": "advisor", "password": "x"})
+backend/tests/test_csrf_cookie_auth.py:67:        "/api/admin/appointments",
+backend/tests/test_csrf_cookie_auth.py:78:        "/api/admin/appointments",
+backend/tests/test_move_endpoint.py:40:    url = f"/api/admin/appointments/apt1/move"
+backend/tests/test_move_endpoint.py:68:        "/api/admin/appointments/apt1/move", json={"status": "IN_PROGRESS", "position": 1}
+backend/tests/test_customer_profile.py:2:"""Tests for /api/admin/customers/<id> customer profile endpoint.
+backend/tests/test_customer_profile.py:261:    resp = client.get("/api/admin/customers/cust-1", headers=auth_headers())
+backend/tests/test_customer_profile.py:277:        "/api/admin/customers/cust-1?include=appointmentDetails", headers=auth_headers()
+backend/tests/test_customer_profile.py:296:    resp = client.get("/api/admin/customers/cust-1?include=foobar", headers=auth_headers())
+backend/tests/test_customer_profile.py:334:    resp = client.get("/api/admin/customers/missing-cust", headers=auth_headers())
+backend/tests/test_customer_profile.py:384:        "/api/admin/customers/cust-2?include=appointmentDetails", headers=auth_headers()
+backend/tests/test_stats.py:7:    r = client.get("/api/admin/dashboard/stats")
+backend/tests/test_stats.py:37:    r = client.get("/api/admin/dashboard/stats")
+backend/tests/test_stats.py:62:    r = client.get("/api/admin/dashboard/stats")
+backend/tests/test_stats.py:76:    r = client.get("/api/admin/dashboard/stats")
+backend/tests/test_stats.py:88:    r = client.get("/api/admin/dashboard/stats")
+backend/tests/test_stats.py:102:    r = client.get("/api/admin/dashboard/stats")
+backend/tests/test_customer_history_new.py:73:    response = client.get("/api/customers/999/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_new.py:126:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_new.py:137:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_new.py:162:    response = no_auto_auth_client.get("/api/customers/123/history")
+backend/tests/test_customer_history_new.py:171:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_new.py:184:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_profile_alias.py:2:"""Regression test for /api/customers/profile route alias.
+backend/tests/test_profile_alias.py:22:        resp = c.get("/api/customers/profile")
+backend/tests/test_service_operations_error_contract_v2.py:8:    ok = client.get("/api/admin/service-operations")
+backend/tests/test_service_operations_error_contract_v2.py:13:        "/api/admin/service-operations",
+backend/tests/test_invoice_add_package.py:4:ADD_ENDPOINT = "/api/admin/invoices/{}/add-package"
+backend/tests/test_rbac_matrix.py:17:    ("GET", "/api/admin/invoices/inv-test/estimate.pdf"),
+backend/tests/test_rbac_matrix.py:18:    ("GET", "/api/admin/invoices/inv-test/receipt.pdf"),
+backend/tests/test_rbac_matrix.py:19:    ("GET", "/api/admin/invoices/inv-test/estimate.html"),
+backend/tests/test_rbac_matrix.py:20:    ("GET", "/api/admin/invoices/inv-test/receipt.html"),
+backend/tests/test_rbac_matrix.py:21:    ("POST", "/api/admin/invoices/inv-test/send"),
+backend/tests/test_rbac_matrix.py:22:    ("GET", "/api/admin/vehicles/123/profile?customer_id=456"),  # triggers ownership decorator
+backend/tests/test_ownership_guards.py:69:        f"/api/admin/vehicles/{veh_id}/profile?customer_id={other_customer}",
+backend/tests/test_ownership_guards.py:106:    url = f"/api/admin/invoices/inv-own-guard/{endpoint}"
+backend/tests/test_appointments_filters.py:66:    r = client.get(f"/api/admin/appointments?{param}")
+backend/tests/test_appointments_filters.py:90:    r1 = client.get("/api/admin/appointments?limit=0")
+backend/tests/test_appointments_filters.py:93:    r2 = client.get("/api/admin/appointments?offset=-1")
+backend/tests/test_errors.py:17:    r = client.post("/api/admin/appointments/board")
+backend/tests/test_customer_history_debug.py:22:    response = no_auto_auth_client.get("/api/customers/123/history")
+backend/tests/test_telemetry_quota.py:36:        "/api/admin/template-usage",
+backend/tests/test_telemetry_quota.py:83:            "/api/admin/template-usage",
+backend/tests/test_services.py:22:        "/api/admin/appointments",
+backend/tests/test_services.py:54:    resp = client.get(f"/api/appointments/{appt_id}/services")
+backend/tests/test_services.py:82:    appt_resp = client.post("/api/admin/appointments", json=appointment_data)
+backend/tests/test_services.py:86:        resp = client.post(f"/api/appointments/{appt_id}/services", json=service_data)
+backend/tests/test_services.py:102:    resp = client.post(f"/api/appointments/{appt_id}/services", json=service_data)
+backend/tests/test_services.py:111:    resp = client.get(f"/api/appointments/{appt_id}/services")
+backend/tests/test_services.py:114:    resp = client.post(f"/api/appointments/{appt_id}/services", json={"name": "Test"})
+backend/tests/test_services.py:118:    resp = client.patch(f"/api/appointments/{appt_id}/services/{service_id}", json={"notes": "x"})
+backend/tests/test_services.py:121:    resp = client.delete(f"/api/appointments/{appt_id}/services/{service_id}")
+backend/tests/test_services.py:129:    resp = client.post(f"/api/appointments/{appt_id}/services", json={"name": ""})
+backend/tests/test_services.py:132:    resp = client.post(f"/api/appointments/{appt_id}/services", json={})
+backend/tests/test_services.py:135:    resp = client.post(f"/api/appointments/{appt_id}/services", json={"name": "Valid Service"})
+backend/tests/test_services.py:147:        f"/api/appointments/{appt_id}/services",
+backend/tests/test_services.py:155:        f"/api/appointments/{appt_id}/services/{service_id}",
+backend/tests/test_services.py:171:        f"/api/appointments/{appt_id}/services",
+backend/tests/test_services.py:177:    del_resp = client.delete(f"/api/appointments/{appt_id}/services/{service_id}")
+backend/tests/test_services.py:184:    del_resp2 = client.delete(f"/api/appointments/{appt_id}/services/{service_id}")
+backend/tests/test_services.py:197:    del_resp = client.delete(f"/api/appointments/{appt_id}/services/{missing_id}")
+backend/tests/test_local_server.py:7:    """Test the /api/admin/appointments/board endpoint with a valid request."""
+backend/tests/test_local_server.py:8:    response = client.get("/api/admin/appointments/board")
+backend/tests/test_local_server.py:16:    """Test the /api/admin/appointments/board endpoint with an empty dataset."""
+backend/tests/test_local_server.py:20:    response = client.get("/api/admin/appointments/board")
+backend/tests/test_local_server.py:28:    """Test the /api/admin/dashboard/stats endpoint with a valid request."""
+backend/tests/test_local_server.py:29:    response = client.get("/api/admin/dashboard/stats")
+backend/tests/test_local_server.py:38:    """Test the /api/admin/dashboard/stats endpoint with a database error."""
+backend/tests/test_local_server.py:40:    response = client.get("/api/admin/dashboard/stats")
+backend/tests/test_patch_edits.py:119:        f"/api/admin/customers/{cid}", json={"name": "New Name"}, headers={"If-Match": et}
+backend/tests/test_patch_edits.py:139:    r = client.patch(f"/api/admin/customers/{cid}", json={"name": "X"}, headers={"If-Match": stale})
+backend/tests/test_patch_edits.py:154:        f"/api/admin/customers/{cid}", json={"email": "bad@@example"}, headers={"If-Match": et}
+backend/tests/test_patch_edits.py:175:    r = client.patch(f"/api/admin/vehicles/{vid}", json={"make": "Tesla"}, headers={"If-Match": et})
+backend/tests/test_patch_edits.py:191:        f"/api/admin/vehicles/{vid}", json={"make": "X"}, headers={"If-Match": 'W/"stale"'}
+backend/tests/test_patch_edits.py:207:    r = client.patch(f"/api/admin/vehicles/{vid}", json={"vin": "SHORT"}, headers={"If-Match": et})
+backend/tests/test_patch_edits.py:224:    r = client.patch(f"/api/admin/customers/{cid}", json={"name": "X"})  # no If-Match
+backend/tests/test_patch_edits.py:237:    r = client.patch(f"/api/admin/vehicles/{vid}", json={"make": "X"})
+backend/tests/test_patch_edits.py:248:    r = client.patch("/api/admin/customers/1", json={"name": "X"})
+backend/tests/test_patch_edits.py:257:    r = client.patch("/api/admin/vehicles/1", json={"make": "X"})
+backend/tests/test_patch_edits.py:269:    resp = client.get(f"/api/admin/vehicles/{vid}")
+backend/tests/test_patch_edits.py:286:        f"/api/admin/customers/{cid}",
+backend/tests/test_patch_edits.py:312:        f"/api/admin/vehicles/{vid}",
+backend/tests/test_patch_edits.py:342:        f"/api/admin/customers/{cid}", json={"name": "Same Name"}, headers={"If-Match": et}
+backend/tests/test_appointments_api.py:14:    r = client.get("/api/admin/appointments")
+backend/tests/test_appointments_api.py:71:    r = client.get("/api/admin/appointments")
+backend/tests/test_appointments_api.py:121:    r = client.get("/api/admin/appointments?limit=250")
+backend/tests/test_appointments_api.py:142:    r = client.get("/api/admin/appointments?cursor=abc123&offset=10")
+backend/tests/test_appointments_api.py:196:    r = client.get("/api/admin/appointments")
+backend/tests/test_appointments_api.py:215:    r = client.get("/api/admin/appointments?from=invalid-date")
+backend/tests/test_appointments_api.py:225:    r = client.get("/api/admin/appointments?to=not-a-date")
+backend/tests/test_appointments_api.py:247:        r = client.get(f"/api/admin/appointments?from={bad_date}")
+backend/tests/test_appointments_api.py:250:        r = client.get(f"/api/admin/appointments?to={bad_date}")
+backend/tests/test_appointments_api.py:276:        r = client.get(f"/api/admin/appointments?from={valid_date}")
+backend/tests/test_appointments_api.py:279:        r = client.get(f"/api/admin/appointments?to={valid_date}")
+backend/tests/test_appointments_api.py:286:    r = client.get("/api/admin/appointments?limit=1")
+backend/tests/test_appointments_api.py:289:    r = client.get("/api/admin/appointments?limit=200")
+backend/tests/test_appointments_api.py:293:    r = client.get("/api/admin/appointments?limit=0")
+backend/tests/test_appointments_api.py:296:    r = client.get("/api/admin/appointments?limit=201")
+backend/tests/test_appointments_api.py:299:    r = client.get("/api/admin/appointments?limit=-1")
+backend/tests/test_appointments_api.py:306:    r = client.get("/api/admin/appointments?offset=0")
+backend/tests/test_appointments_api.py:309:    r = client.get("/api/admin/appointments?offset=1000")
+backend/tests/test_appointments_api.py:313:    r = client.get("/api/admin/appointments?offset=-1")
+backend/tests/test_appointments_api.py:340:    r = client.get(f"/api/admin/appointments?{query_string}")
+backend/tests/test_appointments_api.py:379:    r = client.get("/api/admin/appointments?cursor=some-cursor&offset=10")
+backend/tests/test_service_operations_fallback.py:75:    resp = client.get("/api/admin/service-operations")
+backend/tests/test_analytics_seed.py:40:    r = client.get("/api/admin/analytics/templates?range=7d&flush=1")
+backend/tests/test_recent_customers.py:2:"""Tests for /api/admin/recent-customers endpoint.
+backend/tests/test_recent_customers.py:93:    resp = client.get("/api/admin/recent-customers", headers=auth_headers())
+backend/tests/test_recent_customers.py:121:    resp = client.get("/api/admin/recent-customers?limit=5", headers=auth_headers())
+backend/tests/test_recent_customers.py:130:    resp = client.get("/api/admin/recent-customers?limit=999", headers=auth_headers())
+backend/tests/test_recent_customers.py:158:    resp = client.get("/api/admin/recent-customers", headers=auth_headers())
+backend/tests/test_schema.sql:228:-- Customer authentication (basic) used by /api/customers/register and /login
+backend/tests/test_tenant_membership_enforcement.py:53:        "/api/customers/register",
+backend/tests/test_tenant_membership_enforcement.py:64:        f"/api/admin/customers/{cust_id}/profile",
+backend/tests/test_tenant_membership_enforcement.py:104:        "/api/customers/register",
+backend/tests/test_tenant_membership_enforcement.py:115:    r_login = client.post("/api/admin/login", json={"username": "advisor", "password": "pw"})
+backend/tests/test_tenant_membership_enforcement.py:121:        f"/api/admin/customers/{cust_id}/profile",
+Binary file backend/tests/utils/__pycache__/error_contract.cpython-39.pyc matches
+backend/tests/utils/error_contract.py:14:        base_path: Endpoint path (e.g. '/api/admin/service-operations').
+backend/tests/test_csv_exports.py:5:- GET /api/admin/reports/appointments.csv
+backend/tests/test_csv_exports.py:6:- GET /api/admin/reports/payments.csv
+backend/tests/test_csv_exports.py:127:        response = client.get("/api/admin/reports/appointments.csv")
+backend/tests/test_csv_exports.py:134:        response = client.get("/api/admin/reports/payments.csv")
+backend/tests/test_csv_exports.py:153:            response = client.get("/api/admin/reports/appointments.csv", headers=owner_headers)
+backend/tests/test_csv_exports.py:171:            response = client.get("/api/admin/reports/appointments.csv", headers=advisor_headers)
+backend/tests/test_csv_exports.py:188:            response = client.get("/api/admin/reports/appointments.csv", headers=accountant_headers)
+backend/tests/test_csv_exports.py:196:        response = client.get("/api/admin/reports/appointments.csv", headers=technician_headers)
+backend/tests/test_csv_exports.py:212:        response = client.get("/api/admin/reports/appointments.csv", headers=owner_headers)
+backend/tests/test_csv_exports.py:227:        response = client.get("/api/admin/reports/payments.csv", headers=owner_headers)
+backend/tests/test_csv_exports.py:238:            "/api/admin/reports/appointments.csv?from=invalid-date", headers=owner_headers
+backend/tests/test_csv_exports.py:250:            "/api/admin/reports/appointments.csv?status=INVALID_STATUS", headers=owner_headers
+backend/tests/test_csv_exports.py:271:                "/api/admin/reports/appointments.csv?from=2024-01-01&to=2024-01-31",
+backend/tests/test_csv_exports.py:297:            response = client.get("/api/admin/reports/appointments.csv", headers=owner_headers)
+backend/tests/test_csv_exports.py:337:            response = client.get("/api/admin/reports/payments.csv", headers=owner_headers)
+backend/tests/test_csv_exports.py:370:            response = client.get("/api/admin/reports/appointments.csv", headers=owner_headers)
+backend/tests/test_csv_exports.py:399:            response = client.get("/api/admin/reports/appointments.csv", headers=owner_headers)
+backend/tests/test_csv_exports.py:423:            response = client.get("/api/admin/reports/payments.csv", headers=owner_headers)
+backend/tests/test_csv_exports.py:447:            response = client.get("/api/admin/reports/appointments.csv", headers=owner_headers)
+backend/tests/test_csv_exports.py:467:            response = client.get("/api/admin/reports/payments.csv", headers=owner_headers)
+backend/tests/test_csv_exports.py:483:            response = client.get("/api/admin/reports/appointments.csv", headers=owner_headers)
+backend/tests/test_csv_exports.py:496:            response = client.get("/api/admin/reports/payments.csv", headers=owner_headers)
+backend/tests/test_csv_exports.py:518:            response = client.get("/api/admin/reports/appointments.csv", headers=owner_headers)
+backend/tests/test_csv_exports.py:543:            response = client.get("/api/admin/reports/payments.csv", headers=owner_headers)
+backend/tests/test_csv_exports.py:587:            response = client.get("/api/admin/reports/appointments.csv", headers=owner_headers)
+backend/tests/test_invoice_error_contract.py:12:        "/api/admin/invoices/inv-1/receipt.html",
+backend/tests/test_invoice_error_contract.py:20:        "/api/admin/invoices/inv-1/estimate.html",
+backend/tests/test_invoice_error_contract.py:28:        "/api/admin/invoices/inv-1/receipt.pdf",
+backend/tests/test_invoice_error_contract.py:36:        "/api/admin/invoices/inv-1/estimate.pdf",
+backend/tests/test_invoice_error_contract.py:44:        r = client.post(f"/api/admin/invoices/inv-1/send?test_error={key}", json={})
+backend/tests/test_template_analytics.py:31:    r = client.get("/api/admin/analytics/templates?range=7d&flush=1")
+backend/tests/test_template_analytics.py:91:    r = client.get("/api/admin/analytics/templates?range=7d&flush=1")
+backend/tests/test_template_analytics.py:105:    r = client.get("/api/admin/analytics/templates?range=30d&channel=sms")
+backend/tests/test_template_analytics.py:115:    r1 = client.get("/api/admin/analytics/templates?range=7d&limit=5")
+backend/tests/test_template_analytics.py:120:    r2 = client.get("/api/admin/analytics/templates?range=7d&limit=5")
+Binary file backend/tests/__pycache__/test_ownership_guards.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_move_endpoint.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_technicians_endpoint.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_auth_harness.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_csv_exports.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_csrf_cookie_auth.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_customer_history_old.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_appointments_filters.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_service_operations_error_contract.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_invoice_error_contract.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_invoice_add_package.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_local_server.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_template_analytics.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_create_appointment_primary_operation.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_admin_api.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_customer_history_clean.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_profile_edit_error_contract.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_patch_edits.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_board_memory_regression.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_services.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_integration_database.cpython-39.pyc matches
+Binary file backend/tests/__pycache__/test_telemetry_quota.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_customer_search.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_invoice_payments.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_analytics_seed.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_invoice_void.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_unified_customer_profile.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_customer_history_broken.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_invoice_generation.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_messages.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_customer_profile.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_rbac_matrix.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_recent_customers.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_customer_history_new.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_board_fallbacks.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_service_operations_error_contract_v2.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_appointments_api.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_customer_history_working.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_profile_alias.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_tenant_membership_enforcement.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_stats.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_technician_progress.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_appointment_conflicts_and_validation.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_errors.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_service_operations_fallback.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_admin_service_operations.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_customer_history_debug.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_template_usage.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_customer_history_simple.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_invoice_list.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_message_template_suggestions.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_vehicle_conflict.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_customer_auth.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_logging_circuit_breaker.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_get_single_appointment.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_customer_history.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_unified_customer_profile.cpython-39.pyc matches
+Binary file backend/tests/__pycache__/test_invoice_get_single.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_integration_database.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/__pycache__/test_request_id_and_logging.cpython-39-pytest-7.1.1.pyc matches
+backend/tests/test_customer_search.py:2:"""Tests for /api/admin/customers/search endpoint.
+backend/tests/test_customer_search.py:83:    resp = client.get("/api/admin/customers/search?q=PLT1", headers=auth_headers())
+backend/tests/test_customer_search.py:96:    resp = client.get("/api/admin/customers/search?q=PLT1", headers=auth_headers())
+backend/tests/test_customer_search.py:105:    resp = client.get("/api/admin/customers/search?q=PLT2", headers=auth_headers())
+backend/tests/test_customer_search.py:119:    resp = client.get("/api/admin/customers/search?q=PLT", headers=auth_headers())
+backend/tests/test_customer_search.py:131:    resp = client.get("/api/admin/customers/search?q=PLT&filter=vip", headers=auth_headers())
+backend/tests/test_customer_search.py:141:    resp = client.get("/api/admin/customers/search?q=PLT&filter=overdue", headers=auth_headers())
+backend/tests/test_customer_search.py:152:    resp = client.get("/api/admin/customers/search?q=PLT&filter=bogus", headers=auth_headers())
+backend/tests/test_customer_search.py:164:    resp = client.get("/api/admin/customers/search?q=PLT", headers=auth_headers())
+backend/tests/test_customer_search.py:182:    resp = client.get(f"/api/admin/customers/search?q=PLT&sortBy={param}", headers=auth_headers())
+backend/tests/test_customer_search.py:190:    resp = client.get("/api/admin/customers/search?q=PLT&sortBy=bogus", headers=auth_headers())
+backend/tests/test_request_id_and_logging.py:23:        "/api/admin/customers/999999/profile", headers={REQUEST_ID_HEADER: inbound_id}
+backend/tests/test_request_id_and_logging.py:34:    resp = client.get("/api/admin/customers/999998/profile")
+backend/tests/test_request_id_and_logging.py:58:            "/api/admin/customers/5001/profile", headers={REQUEST_ID_HEADER: inbound_rid}
+backend/tests/test_request_id_and_logging.py:98:    resp = client.get("/api/admin/customers/5101/profile")
+backend/tests/test_password_policy.py:39:        "/api/customers/register",
+backend/tests/test_invoice_get_single.py:37:    resp = client.get(f"/api/admin/invoices/{invoice_id}")
+backend/tests/test_invoice_get_single.py:50:    resp = client.get("/api/admin/invoices/does-not-exist")
+backend/tests/test_service_operations_error_contract.py:22:    ok = client.get("/api/admin/service-operations")
+backend/tests/test_service_operations_error_contract.py:32:        resp = client.get(f"/api/admin/service-operations?test_error={key}")
+backend/tests/test_message_template_suggestions.py:71:            "/api/admin/message-templates?appointment_status=Work Complete", headers=auth_headers()
+backend/tests/test_message_template_suggestions.py:85:            "/api/admin/message-templates?appointment_status=Unmapped_Status",
+backend/tests/test_message_template_suggestions.py:97:        resp = client.get("/api/admin/message-templates", headers=auth_headers())
+backend/tests/test_appointment_conflicts_and_validation.py:28:    r1 = client.post("/api/admin/appointments", json=payload1)
+backend/tests/test_appointment_conflicts_and_validation.py:38:    r2 = client.post("/api/admin/appointments", json=payload2)
+backend/tests/test_appointment_conflicts_and_validation.py:56:    rA = client.post("/api/admin/appointments", json=payloadA)
+backend/tests/test_appointment_conflicts_and_validation.py:68:    rB = client.post("/api/admin/appointments", json=payloadB)
+backend/tests/test_appointment_conflicts_and_validation.py:77:    rPatch = client.patch(f"/api/admin/appointments/{idB}", json=patch_payload)
+backend/tests/test_appointment_conflicts_and_validation.py:92:    r = client.post("/api/admin/appointments", json=payload)
+backend/tests/test_appointment_conflicts_and_validation.py:108:    r_ok = client.post("/api/admin/appointments", json=payload_ok)
+backend/tests/test_appointment_conflicts_and_validation.py:114:    r_patch = client.patch(f"/api/admin/appointments/{appt_id}", json=patch_payload)
+backend/tests/test_admin_service_operations.py:6:    resp = client.get("/api/admin/service-operations")
+backend/tests/test_admin_service_operations.py:33:    resp = client.get("/api/admin/service-operations?sort=display_order&dir=desc")
+backend/tests/test_admin_service_operations.py:43:    resp = client.get("/api/admin/service-operations?legacy=1")
+backend/tests/test_customer_history_old.py:88:    response = client.get("/api/customers/999/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_old.py:141:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_old.py:199:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_old.py:234:    response = no_auto_auth_client.get("/api/customers/123/history")
+backend/tests/test_customer_history_old.py:261:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_old.py:306:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_broken.py:88:    response = client.get("/api/customers/999/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_broken.py:141:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_broken.py:199:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_broken.py:234:    response = client.get("/api/customers/123/history")
+backend/tests/test_customer_history_broken.py:261:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_broken.py:306:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_create_appointment_primary_operation.py:61:    """POST /api/admin/appointments should 400 when primary_operation_id does not exist."""
+backend/tests/test_create_appointment_primary_operation.py:69:    resp = client.post("/api/admin/appointments", json=payload)
+backend/tests/test_create_appointment_primary_operation.py:88:    resp = client.post("/api/admin/appointments", json=payload)
+backend/tests/test_board_fallbacks.py:64:    resp = client.get("/api/admin/appointments/board")
+backend/tests/test_board_fallbacks.py:92:    resp = client.get("/api/admin/appointments/board")
+backend/tests/test_customer_history.py:73:    response = client.get("/api/customers/999/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history.py:129:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history.py:142:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history.py:167:    response = client.get("/api/customers/123/history")
+backend/tests/test_customer_history.py:176:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history.py:189:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_invoice_void.py:34:    resp = client.post(f"/api/admin/invoices/{invoice_id}/void")
+backend/tests/test_invoice_void.py:52:        f"/api/admin/invoices/{invoice_id}/payments", json={"amountCents": 4000, "method": "cash"}
+backend/tests/test_invoice_void.py:55:    void_resp = client.post(f"/api/admin/invoices/{invoice_id}/void")
+backend/tests/test_invoice_void.py:71:    first = client.post(f"/api/admin/invoices/{invoice_id}/void")
+backend/tests/test_invoice_void.py:73:    second = client.post(f"/api/admin/invoices/{invoice_id}/void")
+backend/tests/test_invoice_void.py:88:        f"/api/admin/invoices/{invoice_id}/payments", json={"amountCents": 5000, "method": "cash"}
+backend/tests/test_invoice_void.py:92:    void = client.post(f"/api/admin/invoices/{invoice_id}/void")
+backend/tests/api/test_invoice_workflow.py:15:        "/api/admin/appointments",
+backend/tests/api/test_invoice_workflow.py:32:        f"/api/appointments/{appt_id}/services",
+backend/tests/api/test_invoice_workflow.py:43:    gen_resp = client.post(f"/api/admin/appointments/{appt_id}/invoice")
+backend/tests/api/test_invoice_workflow.py:50:    detail_resp = client.get(f"/api/admin/invoices/{invoice_id}")
+backend/tests/api/test_invoice_workflow.py:61:            f"/api/admin/invoices/{invoice_id}/payments",
+backend/tests/api/test_invoice_workflow.py:67:    final_resp = client.get(f"/api/admin/invoices/{invoice_id}")
+backend/tests/api/test_invoice_exports.py:13:        "/api/admin/appointments",
+backend/tests/api/test_invoice_exports.py:25:        f"/api/appointments/{appt_id}/services",
+backend/tests/api/test_invoice_exports.py:29:    inv_resp = client.post(f"/api/admin/appointments/{appt_id}/invoice")
+backend/tests/api/test_invoice_exports.py:40:    r_html = client.get(f"/api/admin/invoices/{invoice_id}/receipt.html")
+backend/tests/api/test_invoice_exports.py:46:    e_html = client.get(f"/api/admin/invoices/{invoice_id}/estimate.html")
+backend/tests/api/test_invoice_exports.py:51:    r_pdf = client.get(f"/api/admin/invoices/{invoice_id}/receipt.pdf")
+backend/tests/api/test_invoice_exports.py:57:    e_pdf = client.get(f"/api/admin/invoices/{invoice_id}/estimate.pdf")
+backend/tests/api/test_invoice_exports.py:63:        f"/api/admin/invoices/{invoice_id}/send",
+backend/tests/api/test_invoice_exports.py:75:    resp = client.get(f"/api/admin/invoices/{bad_id}/receipt.html")
+backend/tests/api/test_invoice_exports.py:77:    resp_pdf = client.get(f"/api/admin/invoices/{bad_id}/receipt.pdf")
+backend/tests/api/test_invoice_exports.py:79:    send_resp = client.post(f"/api/admin/invoices/{bad_id}/send")
+backend/tests/api/test_invoice_exports.py:94:        "/api/admin/appointments",
+backend/tests/api/test_invoice_exports.py:106:        f"/api/appointments/{appt_id}/services",
+backend/tests/api/test_invoice_exports.py:109:    inv_resp = client.post(f"/api/admin/appointments/{appt_id}/invoice")
+backend/tests/api/test_invoice_exports.py:119:        f"/api/admin/invoices/{invoice_id}/receipt.html",
+backend/tests/api/test_invoice_exports.py:120:        f"/api/admin/invoices/{invoice_id}/estimate.html",
+backend/tests/api/test_invoice_exports.py:121:        f"/api/admin/invoices/{invoice_id}/receipt.pdf",
+backend/tests/api/test_invoice_exports.py:122:        f"/api/admin/invoices/{invoice_id}/estimate.pdf",
+backend/tests/api/test_invoice_exports.py:123:        f"/api/admin/invoices/{invoice_id}/send",
+Binary file backend/tests/api/__pycache__/test_invoice_exports.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/api/__pycache__/test_vehicle_profile.cpython-39-pytest-7.1.1.pyc matches
+Binary file backend/tests/api/__pycache__/test_invoice_workflow.cpython-39-pytest-7.1.1.pyc matches
+backend/tests/api/test_vehicle_profile.py:4:# Tests for GET /api/admin/vehicles/<id>/profile
+backend/tests/api/test_vehicle_profile.py:22:            "/api/admin/appointments",
+backend/tests/api/test_vehicle_profile.py:42:            f"/api/appointments/{appt_id}/services",
+backend/tests/api/test_vehicle_profile.py:53:    resp = client.get(f"/api/admin/vehicles/{vehicle_id}/profile")
+backend/tests/api/test_vehicle_profile.py:66:    first = client.get(f"/api/admin/vehicles/{vehicle_id}/profile")
+backend/tests/api/test_vehicle_profile.py:70:        f"/api/admin/vehicles/{vehicle_id}/profile", headers={"If-None-Match": etag}
+backend/tests/api/test_vehicle_profile.py:77:    first = client.get(f"/api/admin/vehicles/{vehicle_id}/profile?page_size=3")
+backend/tests/api/test_vehicle_profile.py:81:    second = client.get(f"/api/admin/vehicles/{vehicle_id}/profile?page_size=3&cursor={cursor}")
+backend/tests/api/test_vehicle_profile.py:89:    resp = client.get("/api/admin/vehicles/00000000-0000-0000-0000-000000000000/profile")
+backend/tests/api/test_vehicle_profile.py:95:    first = client.get(f"/api/admin/vehicles/{vehicle_id}/profile?page_size=2")
+backend/tests/api/test_vehicle_profile.py:98:        f"/api/admin/vehicles/{vehicle_id}/profile?page_size=2&cursor={cur}&from=2000-01-01&to=1999-01-01"
+backend/tests/api/test_vehicle_profile.py:113:            "/api/admin/vehicles/999999/profile", headers={"X-Test-NoAuth": "1"}
+backend/tests/test_customer_history_working.py:94:    response = client.get("/api/customers/999/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_working.py:147:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_working.py:205:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_working.py:240:    response = no_auto_auth_client.get("/api/customers/123/history")
+backend/tests/test_customer_history_working.py:267:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_working.py:312:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_simple.py:12:    response = no_auto_auth_client.get("/api/customers/123/history")
+backend/tests/test_technicians_endpoint.py:2:"""Tests for /api/admin/technicians endpoint.
+backend/tests/test_technicians_endpoint.py:65:    resp = client.get("/api/admin/technicians", headers=auth_headers())
+backend/tests/test_technicians_endpoint.py:79:    resp = client.get("/api/admin/technicians?includeInactive=true", headers=auth_headers())
+backend/tests/test_technicians_endpoint.py:89:    resp = client.get("/api/admin/technicians", headers=auth_headers(role="Owner"))
+backend/tests/test_auth_harness.py:54:            if not rule.startswith("/api/admin/"):
+backend/tests/test_customer_auth.py:18:        "/api/customers/register", json={"email": email, "password": password, "name": "Test User"}
+backend/tests/test_customer_auth.py:27:    r2 = client.post("/api/customers/login", json={"email": email, "password": password})
+backend/tests/test_customer_auth.py:34:        f"/api/admin/customers/{cust_id}/profile", headers={"Authorization": f"Bearer {token2}"}
+backend/tests/test_customer_auth.py:44:    client.post("/api/customers/register", json={"email": email, "password": password})
+backend/tests/test_customer_auth.py:45:    bad = client.post("/api/customers/login", json={"email": email, "password": "nope"})
+backend/tests/test_customer_auth.py:54:    first = client.post("/api/customers/register", json={"email": email, "password": password})
+backend/tests/test_customer_auth.py:56:    second = client.post("/api/customers/register", json={"email": email, "password": password})
+backend/tests/test_customer_history_clean.py:74:    response = client.get("/api/customers/999/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_clean.py:127:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_clean.py:140:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_clean.py:165:    response = no_auto_auth_client.get("/api/customers/123/history")
+backend/tests/test_customer_history_clean.py:174:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_customer_history_clean.py:187:    response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
+backend/tests/test_integration_database.py:228:        response = client.get("/api/admin/dashboard/stats")
+backend/tests/test_vehicle_conflict.py:29:    r1 = client.post("/api/admin/appointments", json=payload1)
+backend/tests/test_vehicle_conflict.py:37:    r2 = client.post("/api/admin/appointments", json=payload2)
+backend/tests/test_profile_edit_error_contract.py:17:        "/api/admin/customers/123/profile",
+backend/tests/test_profile_edit_error_contract.py:25:        "/api/admin/vehicles/veh-1/profile",
+backend/tests/test_profile_edit_error_contract.py:33:        "/api/admin/customers/123",
+backend/tests/test_profile_edit_error_contract.py:42:        "/api/admin/vehicles/456",
+backend/tests/test_admin_api.py:49:    r_login = client.post("/api/admin/login", json={"username": "owner", "password": "pw"})
+backend/tests/test_admin_api.py:56:    """Test the GET /api/admin/appointments endpoint."""
+backend/tests/test_admin_api.py:59:        "/api/admin/appointments",
+backend/tests/test_admin_api.py:79:    """Test the GET /api/admin/appointments endpoint with filters."""
+backend/tests/test_admin_api.py:82:        "/api/admin/appointments?status=scheduled&limit=10",
+backend/tests/test_admin_api.py:98:    response = client.get("/api/non_existent_endpoint")
+backend/tests/test_invoice_list.py:48:    resp = client.get("/api/admin/invoices?page=1&pageSize=2")
+backend/tests/test_invoice_list.py:64:    resp = client.get("/api/admin/invoices?customerId=1")
+backend/tests/test_invoice_list.py:80:    client.post(f"/api/admin/invoices/{ids[0]}/void")
+backend/tests/test_invoice_list.py:81:    resp = client.get("/api/admin/invoices?status=VOID")
+backend/tests/test_template_usage.py:2:"""Telemetry endpoint tests for /api/admin/template-usage.
+backend/tests/test_template_usage.py:84:    r1 = client.post("/api/admin/template-usage", headers=auth_headers(), json=payload)
+backend/tests/test_template_usage.py:92:    r2 = client.post("/api/admin/template-usage", headers=auth_headers(), json=payload)
+backend/tests/test_logging_circuit_breaker.py:19:    resp = client.get("/api/admin/customers/999998/profile", headers={REQUEST_ID_HEADER: inbound})
+backend/tests/test_unified_customer_profile.py:39:    r = client.get("/api/admin/customers/424242/profile", headers=auth_headers())
+backend/tests/test_unified_customer_profile.py:70:        "/api/admin/customers/1001/profile?include_invoices=true", headers=auth_headers()
+backend/tests/test_unified_customer_profile.py:114:    r = client.get("/api/admin/customers/1101/profile?limit_appointments=5", headers=auth_headers())
+backend/tests/test_unified_customer_profile.py:120:        "/api/admin/customers/1101/profile?vehicle_id=2102&limit_appointments=10",
+backend/tests/test_unified_customer_profile.py:131:        "/api/admin/customers/123456/profile?limit_appointments=bad", headers=auth_headers()
+backend/tests/test_unified_customer_profile.py:141:        "/api/admin/customers/123/profile?limit_appointments=500", headers=auth_headers()
+backend/tests/test_unified_customer_profile.py:151:    r = client.get("/api/admin/customers/1/profile", headers={"Authorization": f"Bearer {token}"})
+backend/tests/test_unified_customer_profile.py:167:    r1 = client.get("/api/admin/customers/1301/profile", headers=auth_headers())
+backend/tests/test_unified_customer_profile.py:172:        "/api/admin/customers/1301/profile", headers={**auth_headers(), "If-None-Match": etag}
+backend/tests/test_unified_customer_profile.py:190:    r1 = client.get("/api/admin/customers/1901/profile", headers=auth_headers())
+backend/tests/test_unified_customer_profile.py:195:        "/api/admin/customers/1901/profile", headers={**auth_headers(), "If-None-Match": etag_a}
+backend/tests/test_unified_customer_profile.py:206:        "/api/admin/customers/1901/profile", headers={**auth_headers(), "If-None-Match": etag_a}
+backend/tests/test_unified_customer_profile.py:233:    r1 = client.get(f"/api/admin/customers/{cust_id}/profile", headers=auth_headers())
+backend/tests/test_unified_customer_profile.py:237:        f"/api/admin/customers/{cust_id}/profile",
+backend/tests/test_unified_customer_profile.py:242:        f"/api/admin/customers/{cust_id}/profile",
+backend/tests/test_unified_customer_profile.py:268:        "/api/admin/customers/1401/profile?from="
+backend/tests/test_unified_customer_profile.py:284:    r = client.get("/api/admin/customers/1501/profile?vehicle_id=9999", headers=auth_headers())
+backend/tests/test_unified_customer_profile.py:303:        "/api/admin/customers/1601/profile?limit_appointments=3", headers=auth_headers()
+backend/tests/test_unified_customer_profile.py:314:        f"/api/admin/customers/1601/profile?limit_appointments=3&cursor={next_cursor}",
+backend/tests/test_unified_customer_profile.py:324:            f"/api/admin/customers/1601/profile?limit_appointments=3&cursor={page2['page']['next_cursor']}",
+backend/tests/test_unified_customer_profile.py:337:    r = client.get("/api/admin/customers/1701/profile?cursor=not_base64", headers=auth_headers())
+backend/tests/test_unified_customer_profile.py:355:        "/api/admin/customers/1801/profile?limit_appointments=2", headers=auth_headers()
+backend/tests/test_unified_customer_profile.py:363:        f"/api/admin/customers/1801/profile?limit_appointments=2&cursor={cursor}&from={from_date}",
+backend/tests/test_unified_customer_profile.py:427:    r1 = client.get("/api/admin/customers/9001/profile", headers=auth_headers())
+backend/tests/test_unified_customer_profile.py:435:    r2 = client.get("/api/admin/customers/9002/profile", headers=auth_headers())
+backend/tests/test_unified_customer_profile.py:443:    r3 = client.get("/api/admin/customers/9003/profile", headers=auth_headers())
+backend/tests/test_unified_customer_profile.py:455:    r = client.get("/api/admin/customers/1/profile", headers={"Authorization": f"Bearer {token}"})
+backend/tests/test_invoice_payments.py:35:        f"/api/admin/invoices/{invoice_id}/payments", json={"amountCents": 5000, "method": "card"}
+backend/tests/test_invoice_payments.py:52:        f"/api/admin/invoices/{invoice_id}/payments", json={"amountCents": 4200, "method": "cash"}
+backend/tests/test_invoice_payments.py:68:        f"/api/admin/invoices/{invoice_id}/payments", json={"amountCents": 4000, "method": "card"}
+backend/tests/test_invoice_payments.py:84:        f"/api/admin/invoices/{invoice_id}/payments", json={"amountCents": 1000, "method": "cash"}
+backend/tests/test_invoice_payments.py:89:        f"/api/admin/invoices/{invoice_id}/payments", json={"amountCents": 100, "method": "cash"}
+backend/tests/test_messages.py:6:- GET /api/appointments/:id/messages
+backend/tests/test_messages.py:7:- POST /api/appointments/:id/messages
+backend/tests/test_messages.py:8:- PATCH /api/appointments/:id/messages/:message_id
+backend/tests/test_messages.py:9:- DELETE /api/appointments/:id/messages/:message_id
+backend/tests/test_messages.py:86:        """Test GET /api/appointments/:id/messages - successful response."""
+backend/tests/test_messages.py:110:        response = client.get("/api/appointments/123/messages", headers=auth_headers("Owner"))
+backend/tests/test_messages.py:123:        """Test GET /api/appointments/:id/messages - appointment not found."""
+backend/tests/test_messages.py:126:        response = client.get("/api/appointments/999/messages", headers=auth_headers("Owner"))
+backend/tests/test_messages.py:132:        """Test GET /api/appointments/:id/messages - no authentication."""
+backend/tests/test_messages.py:133:        response = client.get("/api/appointments/123/messages")
+backend/tests/test_messages.py:139:        """Test POST /api/appointments/:id/messages - successful creation."""
+backend/tests/test_messages.py:149:            "/api/appointments/123/messages", headers=auth_headers("Owner"), json=message_data
+backend/tests/test_messages.py:159:        """Test POST /api/appointments/:id/messages - invalid channel."""
+backend/tests/test_messages.py:163:            "/api/appointments/123/messages", headers=auth_headers("Owner"), json=message_data
+backend/tests/test_messages.py:171:        """Test POST /api/appointments/:id/messages - empty message body."""
+backend/tests/test_messages.py:175:            "/api/appointments/123/messages", headers=auth_headers("Owner"), json=message_data
+backend/tests/test_messages.py:183:        """Test POST /api/appointments/:id/messages - Tech role cannot create messages."""
+backend/tests/test_messages.py:187:            "/api/appointments/123/messages", headers=auth_headers("Tech"), json=message_data
+backend/tests/test_messages.py:194:        """Test PATCH /api/appointments/:id/messages/:message_id - successful update."""
+backend/tests/test_messages.py:201:            "/api/appointments/123/messages/msg-1", headers=auth_headers("Owner"), json=update_data
+backend/tests/test_messages.py:210:        """Test PATCH /api/appointments/:id/messages/:message_id - invalid status."""
+backend/tests/test_messages.py:214:            "/api/appointments/123/messages/msg-1", headers=auth_headers("Owner"), json=update_data
+backend/tests/test_messages.py:222:        """Test PATCH /api/appointments/:id/messages/:message_id - message not found."""
+backend/tests/test_messages.py:229:            "/api/appointments/123/messages/999", headers=auth_headers("Owner"), json=update_data
+backend/tests/test_messages.py:236:        """Test DELETE /api/appointments/:id/messages/:message_id - successful deletion."""
+backend/tests/test_messages.py:241:            "/api/appointments/123/messages/msg-1", headers=auth_headers("Owner")
+backend/tests/test_messages.py:248:        """Test DELETE /api/appointments/:id/messages/:message_id - message not found."""
+backend/tests/test_messages.py:253:            "/api/appointments/123/messages/999", headers=auth_headers("Owner")
+backend/tests/test_messages.py:260:        """Test DELETE /api/appointments/:id/messages/:message_id - Tech role cannot delete."""
+backend/tests/test_messages.py:262:            "/api/appointments/123/messages/msg-1", headers=auth_headers("Tech")
+backend/tests/test_messages.py:279:            "/api/appointments/123/messages", headers=auth_headers("Advisor"), json=message_data
+backend/tests/test_messages.py:294:        response = client.get("/api/appointments/123/messages", headers=auth_headers("Tech"))
+backend/lambda_packages/reminder_function/asn1crypto/cms.py:116:        # https://docs.microsoft.com/en-us/windows/win32/api/wincrypt/ns-wincrypt-crypt_algorithm_identifier
+backend/lambda_packages/reminder_function/dateutil/parser/_parser.py:29:  <https://docs.oracle.com/javase/6/docs/api/java/text/SimpleDateFormat.html>`_
+backend/lambda_packages/reminder_function_updated/asn1crypto/cms.py:116:        # https://docs.microsoft.com/en-us/windows/win32/api/wincrypt/ns-wincrypt-crypt_algorithm_identifier
+backend/lambda_packages/reminder_function_updated/dateutil/parser/_parser.py:29:  <https://docs.oracle.com/javase/6/docs/api/java/text/SimpleDateFormat.html>`_
+backend/lambda_packages/sms_migration/asn1crypto/cms.py:116:        # https://docs.microsoft.com/en-us/windows/win32/api/wincrypt/ns-wincrypt-crypt_algorithm_identifier
+backend/lambda_packages/sms_migration/dateutil/parser/_parser.py:29:  <https://docs.oracle.com/javase/6/docs/api/java/text/SimpleDateFormat.html>`_
+backend/lambda_packages/booking_update/psycopg2_binary-2.9.9.dist-info/METADATA:108:.. |appveyor| image:: https://ci.appveyor.com/api/projects/status/github/psycopg/psycopg2?branch=master&svg=true
+backend/lambda_packages/sms_opt_out/asn1crypto/cms.py:116:        # https://docs.microsoft.com/en-us/windows/win32/api/wincrypt/ns-wincrypt-crypt_algorithm_identifier
+backend/lambda_packages/sms_opt_out/dateutil/parser/_parser.py:29:  <https://docs.oracle.com/javase/6/docs/api/java/text/SimpleDateFormat.html>`_
+Binary file backend/__pycache__/early_profile_routes.cpython-39.pyc matches
+Binary file backend/__pycache__/local_server.cpython-39.pyc matches
+Binary file backend/__pycache__/tenant_middleware.cpython-39.pyc matches
+backend/tenant_middleware.py:36:        3. URL path: /api/tenant/{slug}/...
+backend/tenant_middleware.py:52:        if not tenant_slug and request.path.startswith("/api/tenant/"):
+backend/tenant_middleware.py:75:            if request.path.startswith("/api/"):
+backend/tenant_middleware.py:243:@app.route('/api/customers')
+backend/tenant_middleware.py:253:@app.route('/api/customers', methods=['POST'])
+backend/libs/psycopg2_binary-2.9.9.dist-info/METADATA:108:.. |appveyor| image:: https://ci.appveyor.com/api/projects/status/github/psycopg/psycopg2?branch=master&svg=true
+backend/local_server.py:11:"""Early import (best-effort) of micro-module ensuring /api/customers/profile route
+backend/local_server.py:66:    @_fb_app.route("/api/customers/profile", methods=["GET", "PUT", "OPTIONS"])  # type: ignore
+backend/local_server.py:67:    @_fb_app.route("/api/customers/profile/", methods=["GET", "PUT", "OPTIONS"])  # type: ignore
+backend/local_server.py:101:        "[bootstrap-profile] Installed fallback /api/customers/profile alias (early module import failed)"
+backend/local_server.py:266:        self, rule, endpoint=None, view_func=None, provide_automatic_options=None, **options
+backend/local_server.py:334:                        endpoint=ep,
+backend/local_server.py:353:            endpoint=endpoint,
+backend/local_server.py:503:                r"/api/*": {"origins": cors_origins},
+backend/local_server.py:527:    _needed = {"/api/customers/profile", "/api/customers/profile/"}
+backend/local_server.py:661:        if request.path in ("/api/customers/profile", "/customers/profile"):
+backend/local_server.py:667:            if p.startswith("/api/appointments/") and "/messages" in p:
+backend/local_server.py:670:            if p.startswith("/api/admin/reports/") and p.endswith(".csv"):
+backend/local_server.py:1089:        "/api/customers/profile",
+backend/local_server.py:1090:        endpoint="api_customer_profile",
+backend/local_server.py:1102:    if "/api/customers/profile" not in current_rules:
+backend/local_server.py:1104:            "/api/customers/profile",
+backend/local_server.py:1105:            endpoint="api_customer_profile_noslash",
+backend/local_server.py:1136:            "/api/customers/profile",
+backend/local_server.py:1155:            if request.path.rstrip("/") == "/api/customers/profile":
+backend/local_server.py:1158:        # Universal OPTIONS fallback for /api/* when no specific route handles it
+backend/local_server.py:1159:        if request.method == "OPTIONS" and request.path.startswith("/api/"):
+backend/local_server.py:1187:        if not p.startswith("/api/admin/appointments/"):
+backend/local_server.py:1215:            if path_now.startswith("/api/admin/service-operations"):
+backend/local_server.py:1339:                        (pth.rstrip("/") == "/api/customers/register" and method == "POST")
+backend/local_server.py:1340:                        or (pth.rstrip("/") == "/api/customers/login" and method == "POST")
+backend/local_server.py:1341:                        or (pth.rstrip("/") == "/api/admin/login" and method == "POST")
+backend/local_server.py:1383:                    is_history_endpoint = pth_norm.startswith(
+backend/local_server.py:1384:                        "/api/customers/"
+backend/local_server.py:1387:                    is_history_endpoint = False
+backend/local_server.py:1637:    @app.route("/api/admin/metrics/304-efficiency", methods=["GET"])
+backend/local_server.py:1650:            "/api/customer/profile",  # example canonicalized path
+backend/local_server.py:1651:            "/api/vehicle/profile",  # example canonicalized path
+backend/local_server.py:1667:                    template = "/api/customer/profile"
+backend/local_server.py:1669:                    template = "/api/vehicle/profile"
+backend/local_server.py:1936:    @app.route("/api/admin/customers/<cid>", methods=["PATCH"])
+backend/local_server.py:2115:    @app.route("/api/admin/vehicles", methods=["POST"])
+backend/local_server.py:2402:            and (request.path or "").rstrip("/") == "/api/admin/vehicles"
+backend/local_server.py:2463:    @app.route("/api/admin/vehicles/<vid>", methods=["GET"])
+backend/local_server.py:2508:    @app.route("/api/admin/vehicles/<vid>", methods=["PATCH"])
+backend/local_server.py:2661:    @app.route("/api/admin/vehicles/<vid>/transfer", methods=["POST"])
+backend/local_server.py:2794:    @app.route("/api/customers/lookup", methods=["GET"])
+backend/local_server.py:2909:    @app.route("/api/admin/invoices", methods=["GET"])
+backend/local_server.py:3016:    @app.route("/api/admin/invoices/<invoice_id>/estimate.pdf", methods=["GET"])
+backend/local_server.py:3104:@app.route("/api/admin/invoices/<invoice_id>/receipt.pdf", methods=["GET"])
+backend/local_server.py:3184:@app.route("/api/admin/invoices/<invoice_id>/estimate.html", methods=["GET"])
+backend/local_server.py:3239:@app.route("/api/admin/invoices/<invoice_id>/receipt.html", methods=["GET"])
+backend/local_server.py:3294:@app.route("/api/admin/invoices/<invoice_id>/send", methods=["POST"])
+backend/local_server.py:3417:@app.route("/api/admin/login", methods=["POST"])
+backend/local_server.py:3485:@app.route("/api/logout", methods=["POST"])  # primary endpoint
+backend/local_server.py:3486:@app.route("/api/auth/logout", methods=["POST"])  # backward-compat alias
+backend/local_server.py:3585:@app.route("/api/customers/register", methods=["POST"])
+backend/local_server.py:3743:@app.route("/api/admin/staff/memberships", methods=["POST"])
+backend/local_server.py:3790:@app.route("/api/customers/login", methods=["POST"])
+backend/local_server.py:4319:    if status == 404 and request.path in ("/api/customers/profile", "/api/customers/profile/"):
+backend/local_server.py:4332:    # Late defensive fallback for intermittent /api/customers/profile 404 prior to route registration
+backend/local_server.py:4333:    if status == 404 and request.path.rstrip("/") == "/api/customers/profile":
+backend/local_server.py:4368:@app.route("/api/admin/appointments/<appt_id>/invoice", methods=["POST"])
+backend/local_server.py:4464:@app.route("/api/admin/invoices/<invoice_id>", methods=["GET"])
+backend/local_server.py:4579:@app.route("/api/admin/invoices/<invoice_id>/payments", methods=["POST"])
+backend/local_server.py:4721:@app.route("/api/admin/invoices/<invoice_id>/void", methods=["POST"])
+backend/local_server.py:4880:@app.route("/api/admin/appointments/board", methods=["GET"])
+backend/local_server.py:5189:@app.route("/api/appointments/<appt_id>/messages", methods=["GET", "POST"])
+backend/local_server.py:5324:@app.route("/api/appointments/<appt_id>/messages/<message_id>", methods=["PATCH", "DELETE"])
+backend/local_server.py:5468:@app.route("/api/admin/message-templates", methods=["GET"])
+backend/local_server.py:5541:@app.route("/api/admin/message-templates", methods=["POST"])
+backend/local_server.py:5586:@app.route("/api/admin/message-templates/<tid>", methods=["GET"])
+backend/local_server.py:5602:@app.route("/api/admin/message-templates/<tid>", methods=["PATCH"])
+backend/local_server.py:5647:@app.route("/api/admin/message-templates/<tid>", methods=["DELETE"])
+backend/local_server.py:5739:@app.route("/api/admin/template-usage", methods=["POST"])
+backend/local_server.py:5912:@app.route("/api/admin/technicians", methods=["GET"])
+backend/local_server.py:5996:@app.route("/api/admin/analytics/templates", methods=["GET"])
+backend/local_server.py:6219:@app.route("/api/admin/appointments/<appt_id>/move", methods=["PATCH"])
+backend/local_server.py:6347:@app.route("/api/appointments/<appt_id>", methods=["GET", "PATCH"])
+backend/local_server.py:6356:# Provide admin namespace alias for same handler (consistency with board endpoint under /api/admin)
+backend/local_server.py:6357:@app.route("/api/admin/appointments/<appt_id>", methods=["GET", "PATCH"])
+backend/local_server.py:6370:@app.route("/api/appointments/<appt_id>/services", methods=["GET", "POST"])
+backend/local_server.py:6554:@app.route("/api/appointments/<appt_id>/services/<service_id>", methods=["PATCH", "DELETE"])
+backend/local_server.py:7479:@app.route("/api/appointments/<appt_id>/start", methods=["POST"])
+backend/local_server.py:7504:@app.route("/api/appointments/<appt_id>/ready", methods=["POST"])
+backend/local_server.py:7527:@app.route("/api/appointments/<appt_id>/complete", methods=["POST"])
+backend/local_server.py:7555:@app.route("/api/admin/appointments", methods=["GET"])
+backend/local_server.py:7713:@app.route("/api/admin/appointments", methods=["POST"])
+backend/local_server.py:8282:@app.route("/api/admin/appointments/<appt_id>", methods=["DELETE"])
+backend/local_server.py:8347:@app.route("/api/customers/<customer_id>/history", methods=["GET"])
+backend/local_server.py:8445:@app.route("/api/admin/service-operations", methods=["GET"])
+backend/local_server.py:8675:@app.route("/api/admin/service-operations", methods=["POST"])
+backend/local_server.py:8863:@app.route("/api/admin/service-operations/<service_id>", methods=["PATCH"])
+backend/local_server.py:9006:@app.route("/api/admin/service-operations/<service_id>", methods=["DELETE"])
+backend/local_server.py:9071:@app.route("/api/admin/service-packages", methods=["GET"])
+backend/local_server.py:9233:@app.route("/api/admin/invoices/<invoice_id>/add-package", methods=["POST"])
+backend/local_server.py:9429:@app.route("/api/admin/reports/appointments.csv", methods=["GET"])
+backend/local_server.py:9596:@app.route("/api/admin/reports/payments.csv", methods=["GET"])
+backend/local_server.py:9692:                    "GET /api/admin/appointments/board",
+backend/local_server.py:9693:                    "GET /api/admin/appointments",
+backend/local_server.py:9694:                    "POST /api/admin/appointments",
+backend/local_server.py:9695:                    "DELETE /api/admin/appointments/<id>",
+backend/local_server.py:9696:                    "PATCH /api/admin/appointments/<id>/move",
+backend/local_server.py:9697:                    "GET /api/admin/customers/search",
+backend/local_server.py:9698:                    "GET /api/admin/customers/<id>/visits",
+backend/local_server.py:9699:                    "GET /api/admin/vehicles/<plate>/visits",
+backend/local_server.py:9700:                    "GET /api/appointments/<id>",
+backend/local_server.py:9701:                    "PATCH /api/appointments/<id>",
+backend/local_server.py:9702:                    "GET /api/customers/<id>/history",
+backend/local_server.py:9703:                    "GET /api/admin/reports/appointments.csv",
+backend/local_server.py:9715:@app.route("/api/admin/dashboard/stats", methods=["GET"])
+backend/local_server.py:9851:@app.route("/api/admin/customers/search", methods=["GET"])
+backend/local_server.py:10014:@app.route("/api/admin/recent-customers", methods=["GET"])
+backend/local_server.py:10155:@app.route("/api/admin/customers/<cust_id>", methods=["GET"])
+backend/local_server.py:10414:# We have observed intermittent 404 responses for /api/customers/profile during
+backend/local_server.py:10422:    @app.route("/api/debug/routes", methods=["GET"])
+backend/local_server.py:10427:                if r.endpoint == "static":
+backend/local_server.py:10444:        needed = ["/api/customers/profile", "/api/customers/profile/"]
+backend/local_server.py:10468:@app.route("/api/admin/customers/<cust_id>/profile", methods=["GET"])
+backend/local_server.py:10860:@app.route("/api/admin/customers/<cust_id>/visits", methods=["GET"])
+backend/local_server.py:10907:@app.route("/api/admin/vehicles/<license_plate>/visits", methods=["GET"])
+backend/local_server.py:10953:@app.route("/api/admin/cars-on-premises", methods=["GET"])
+backend/local_server.py:10979:@app.route("/api/admin/vehicles/<vehicle_id>/profile", methods=["GET"])
+backend/local_server.py:11160:@app.route("/api/admin/appointments/today", methods=["GET"])
+backend/local_server.py:11212:@app.route("/api/appointments/<appt_id>/check-in", methods=["POST"])
+backend/local_server.py:11268:@app.route("/api/appointments/<appt_id>/check-out", methods=["POST"])
+backend/local_server.py:11401:@app.route("/api/csrf-token", methods=["GET"])
+backend/local_server.py:11458:@app.route("/api/auth/request-password-reset", methods=["POST"])
+backend/local_server.py:11528:@app.route("/api/auth/reset-password", methods=["POST"])
+backend/asn1crypto/cms.py:116:        # https://docs.microsoft.com/en-us/windows/win32/api/wincrypt/ns-wincrypt-crypt_algorithm_identifier
+backend/seeds/seed_analytics_events.sql:2:-- Purpose: provide varied data for /api/admin/analytics/templates dashboard
+backend/seeds/seed_s1.sql:68:  -- Test lookup customer with multiple vehicles for /api/customers/lookup endpoint
+backend/early_profile_routes.py:1:"""Early micro-module to guarantee critical /api/customers/profile routes register
+backend/early_profile_routes.py:38:@app.route("/api/customers/profile", methods=["GET", "PUT", "OPTIONS"])
+backend/early_profile_routes.py:39:@app.route("/api/customers/profile/", methods=["GET", "PUT", "OPTIONS"])
+backend/validate_customer_history.py:23:    response = requests.get(f"{base_url}/api/customers/123/history")
+backend/validate_customer_history.py:32:        response = requests.get(f"{base_url}/api/customers/123/history", timeout=5)
+backend/validate_customer_history.py:45:    response = requests.get(f"{base_url}/api/customers/123/history", headers=headers)
+backend/server.log:23:127.0.0.1 - - [29/Aug/2025 14:47:19] "[35m[1mPOST /api/customers/register HTTP/1.1[0m" 500 -
+backend/server.log:27:127.0.0.1 - - [29/Aug/2025 14:47:19] "[35m[1mPOST /api/customers/login HTTP/1.1[0m" 500 -
+Binary file backend/dateutil/parser/__pycache__/_parser.cpython-39.pyc matches
+backend/dateutil/parser/_parser.py:29:  <https://docs.oracle.com/javase/6/docs/api/java/text/SimpleDateFormat.html>`_

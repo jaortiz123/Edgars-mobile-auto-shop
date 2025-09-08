@@ -1,0 +1,67 @@
+frontend/src/components/admin/AppointmentDrawer.tsx:341:                  const fresh = await bundleQuery.refetch();
+frontend/src/components/admin/StatusBoard.tsx:47:  const triggerRefresh = React.useCallback(() => { try { void boardQuery.refetch(); } catch { /* ignore */ } }, [boardQuery]);
+frontend/src/components/appointments/ServiceCatalogModal.tsx:32:      const res = await fetch('/api/admin/service-operations');
+frontend/src/contexts/AuthContext.tsx:46:      const response = await fetch('/api/customers/login', {
+frontend/src/contexts/AuthContext.tsx:74:      await fetch('/api/auth/logout', {
+frontend/src/contexts/AuthContext.tsx:92:      const response = await fetch('/api/customers/register', {
+frontend/src/examples/CompletionAnimationExamples.tsx:38:      await fetch(`/api/appointments/${appointmentId}/complete`, {
+frontend/src/hooks/useCustomerProfileInfinite.ts:36:      const response = await fetch(url, { headers });
+frontend/src/hooks/useOptimisticVehicleEdit.ts:43:      const res = await fetch(`/api/admin/vehicles/${vehicleId}`, {
+frontend/src/hooks/useOptimisticVehicleEdit.ts:49:        const latestRes = await fetch(`/api/admin/vehicles/${vehicleId}`);
+frontend/src/hooks/useOptimisticVehicleEdit.ts:75:          const retryRes = await fetch(`/api/admin/vehicles/${vehicleId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+frontend/src/lib/api.ts:105:export const http = axios.create({
+frontend/src/lib/api.ts:685:  if (axios.isAxiosError(err)) {
+frontend/src/lib/vehicleApi.ts:119:  const response = await fetch(`${API_BASE}/vehicles/${vehicleId}/transfer`, {
+frontend/src/lib/vehicleApi.ts:63:  const response = await fetch(`${API_BASE}/vehicles`, {
+frontend/src/lib/vehicleApi.ts:89:  const response = await fetch(`${API_BASE}/vehicles/${vehicleId}`, {
+frontend/src/main.tsx:70:    await axios.get('/api/csrf-token', { withCredentials: true });
+frontend/src/pages/admin/CustomerProfilePage.tsx:186:      const response = await fetch(`/api/admin/customers/${customer!.id}`, {
+frontend/src/pages/admin/CustomerProfilePage.tsx:287:      const response = await fetch(`/api/admin/customers/${customer.id}`, {
+frontend/src/pages/admin/InvoiceDetailPage.tsx:110:        {!notFound && <Button variant="outline" onClick={() => refetch()}>Retry</Button>}
+frontend/src/pages/admin/InvoiceDetailPage.tsx:51:  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+frontend/src/pages/admin/InvoiceDetailPage.tsx:94:  const onRefresh = useCallback(() => { refetch(); }, [refetch]);
+frontend/src/pages/admin/MessageTemplatesPage.tsx:81:    refetch();
+frontend/src/pages/admin/MessageTemplatesPage.tsx:92:      refetch();
+frontend/src/services/api.ts:4:const client = axios.create();
+frontend/src/services/authService.ts:85:    const response = await fetch(url, fetchOptions);
+frontend/src/services/availabilityService.js:212:      const resp = await fetch(`/api/admin/appointments?date=${dateString}`, {
+frontend/src/services/revenueService.js:32:    const statsResponse = await fetch('/api/admin/dashboard/stats');
+frontend/src/services/revenueService.js:41:    const appointmentsResponse = await fetch(`/api/admin/appointments?from=${today}T00:00:00Z&to=${today}T23:59:59Z&status=COMPLETED`);
+frontend/src/services/summaryService.js:30:    const statsResponse = await fetch('/api/admin/dashboard/stats');
+frontend/src/services/summaryService.js:39:    const appointmentsResponse = await fetch(`/api/admin/appointments?from=${dateStr}T00:00:00Z&to=${dateStr}T23:59:59Z&status=COMPLETED`);
+frontend/src/services/telemetry.ts:263:      fetch(this.cfg.endpoint, {
+frontend/src/tests/integration/debug-notification.it.tsx:21:      const response = await fetch('/notifications', {
+frontend/src/tests/integration/errorScenarios-canonical.it.tsx:113:                const response = await fetch('/api/admin/dashboard/stats');
+frontend/src/tests/integration/errorScenarios-canonical.it.tsx:173:                  fetch('/api/appointments/board'),
+frontend/src/tests/integration/errorScenarios-canonical.it.tsx:242:                const response = await fetch('/api/admin/dashboard/stats');
+frontend/src/tests/integration/errorScenarios-canonical.it.tsx:289:          fetch('/api/admin/dashboard/stats')
+frontend/src/tests/integration/errorScenarios-canonical.it.tsx:48:              const response = await fetch('/api/appointments/123', {
+frontend/src/tests/integration/happyPath.it.tsx:470:      const response = await fetch('http://localhost:3001/api/admin/appointments/board');
+frontend/src/tests/integration/harness.it.tsx:113:    const response = await fetch('http://localhost:3001/api/admin/dashboard/stats');
+frontend/src/tests/integration/harness.it.tsx:33:    const response = await fetch('http://localhost:3001/api/admin/appointments/board');
+frontend/src/tests/integration/harness.it.tsx:52:    const response = await fetch('http://localhost:3001/api/admin/appointments', {
+frontend/src/tests/integration/harness.it.tsx:67:    const response = await fetch('http://localhost:3001/api/admin/appointments/apt-1/status', {
+frontend/src/tests/integration/harness.it.tsx:82:    const getResponse = await fetch('http://localhost:3001/api/appointments/apt-1/services');
+frontend/src/tests/integration/harness.it.tsx:98:    const createResponse = await fetch('http://localhost:3001/api/appointments/apt-1/services', {
+frontend/src/tests/integration/notifications-clean.it.tsx:149:        const response = await fetch('http://localhost:3000/notifications', {
+frontend/src/tests/integration/notifications-clean.it.tsx:50:      const response = await fetch('http://localhost:3000/notifications', {
+frontend/src/tests/integration/notifications-complete.it.tsx:150:      const response = await fetch('/notifications', {
+frontend/src/tests/integration/notifications-complete.it.tsx:57:      const response = await fetch('/notifications', {
+frontend/src/tests/integration/notifications-debug-timing.it.tsx:28:      const response = await fetch('/notifications', {
+frontend/src/tests/integration/notifications-final.it.tsx:131:      const response = await fetch('/notifications', {
+frontend/src/tests/integration/notifications-final.it.tsx:22:      const response = await fetch('/notifications', {
+frontend/src/tests/integration/notifications-final.it.tsx:76:      const response = await fetch('/notifications', {
+frontend/src/tests/integration/notifications-fixed.it.tsx:356:              const response = await fetch('/notifications', {
+frontend/src/tests/integration/notifications-fixed.it.tsx:71:      const response = await fetch('/notifications', {
+frontend/src/tests/integration/notifications-simplified.it.tsx.backup:440:      const response = await fetch('/notifications', {
+frontend/src/tests/integration/notifications-simplified.it.tsx.backup:56:      const response = await fetch('/notifications', {
+frontend/src/tests/integration/notifications-ultra-simple.it.tsx:29:      const response = await fetch('/notifications', {
+frontend/src/tests/integration/notifications-ultra-simple.it.tsx:91:      const response = await fetch('/notifications', {
+frontend/src/tests/integration/notifications-working.it.tsx:148:      const response = await fetch('/notifications', {
+frontend/src/tests/integration/notifications-working.it.tsx:29:      const response = await fetch('/notifications', {
+frontend/src/tests/integration/notifications-working.it.tsx:88:      const response = await fetch('/notifications', {
+frontend/src/tests/integration/notifications.it.tsx:476:              const response = await fetch('http://localhost:3000/notifications', {
+frontend/src/tests/integration/notifications.it.tsx:62:  const response = await fetch('http://localhost:3000/notifications', {
+frontend/src/tests/integration/simple-notification-test.it.tsx:21:      const response = await fetch('/notifications', {
+frontend/src/utils/authRobustness.ts:224:    return fetch(url, {
+frontend/tests/hooks/useCustomerProfile.test.ts:46:  await result.current.refetch();

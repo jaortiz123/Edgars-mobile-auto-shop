@@ -306,3 +306,9 @@ audit_artifacts/security/
 audit_artifacts/inventory_auth_matches.txt
 audit_artifacts/*.txt
 audit_artifacts/*.json
+
+# Allow committed discovery artifacts for Audit #4
+!audit_artifacts/api_routes.txt
+!audit_artifacts/api_strings.txt
+!audit_artifacts/frontend_api_calls.txt
+!audit_artifacts/data_flow.png
