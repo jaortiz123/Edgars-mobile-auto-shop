@@ -312,3 +312,8 @@ audit_artifacts/*.json
 !audit_artifacts/api_strings.txt
 !audit_artifacts/frontend_api_calls.txt
 !audit_artifacts/data_flow.png
+
+# Allow specific coverage baseline artifacts
+!audit_artifacts/coverage_frontend_summary.json
+!audit_artifacts/coverage_frontend_lcov.info
+!audit_artifacts/coverage_backend.json
