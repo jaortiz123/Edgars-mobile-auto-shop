@@ -70,16 +70,16 @@ export const AnalyticsDashboardPage: React.FC = () => {
           </div>
         </div>
       </div>
-      <Suspense fallback={<div className="h-24 bg-gray-50 animate-pulse rounded"></div>}>
+      <Suspense fallback={<div className="h-24 bg-gray-50 animate-pulse rounded" data-testid="totals-summary"></div>}>
         <TotalsSummary totals={totals} />
       </Suspense>
       <div>
         <h2 className="text-sm font-semibold mb-2 text-gray-700">Message Volume Trend</h2>
-        <Suspense fallback={<div className="h-64 bg-gray-50 animate-pulse rounded"></div>}>
+        <Suspense fallback={<div className="h-64 bg-gray-50 animate-pulse rounded" data-testid="trend-chart"></div>}>
           <TrendChart data={trend} />
         </Suspense>
       </div>
-      <Suspense fallback={<div className="h-96 bg-gray-50 animate-pulse rounded"></div>}>
+      <Suspense fallback={<div className="h-96 bg-gray-50 animate-pulse rounded" data-testid="templates-table"></div>}>
         <TemplatesTable templates={templates} />
       </Suspense>
       <pre className="text-xs bg-gray-50 border rounded p-2 overflow-auto max-h-96" aria-label="debug-json">

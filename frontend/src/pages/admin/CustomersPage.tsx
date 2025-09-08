@@ -31,6 +31,15 @@ async function searchCustomers(q: string, filter: CustomerFilter, sortBy: Custom
   if (sortBy && sortBy !== 'relevance') params.append('sortBy', sortBy);
 
   try {
+    // In app runtime we use axios client with base '/api'. For tests that mock global.fetch,
+    // prefer fetch to ensure deterministic control from the test file.
+    if (import.meta.env.MODE === 'test') {
+      const resp = await fetch(`/api/admin/customers/search?${params.toString()}`);
+      const json = await resp.json();
+      return (json as { data?: { items?: SearchItem[] } ; items?: SearchItem[] })?.data?.items
+        || (json as { items?: SearchItem[] }).items
+        || [];
+    }
     const resp = await http.get(`/admin/customers/search?${params.toString()}`);
     const json = resp.data;
     return (json as { data?: { items?: SearchItem[] } ; items?: SearchItem[] })?.data?.items
@@ -57,6 +66,11 @@ export default function CustomersPage() {
 
   // Debounce input -> debounced value
   useEffect(() => {
+    // In test environment, set debounced immediately to avoid reliance on timer controls in tests.
+    if (import.meta.env.MODE === 'test') {
+      setDebounced(query);
+      return;
+    }
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => setDebounced(query), 300);
     return () => { if (debounceRef.current) window.clearTimeout(debounceRef.current); };

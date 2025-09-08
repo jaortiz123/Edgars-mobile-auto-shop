@@ -157,8 +157,9 @@ describe('CustomersPage (Phase 1)', () => {
     const input = screen.getByTestId('customers-search') as HTMLInputElement;
   await user.type(input, 'nav');
   await screen.findByTestId('customer-card-c9');
-    const card = await screen.findByTestId('customer-card-c9');
-    const viewBtn = within(card).getByTestId('customer-view-history');
+  const card = await screen.findByTestId('customer-card-c9');
+  // Use accessible role+name to target the View Full History button reliably
+  const viewBtn = within(card).getByRole('button', { name: /view full history/i });
     await user.click(viewBtn);
     expect(await screen.findByTestId('customer-history-page')).toBeInTheDocument();
   });
