@@ -106,7 +106,9 @@ export default function CustomersPage() {
     <div className="flex flex-col h-full" data-testid="customers-page">
       <h1 className="text-2xl font-semibold mb-4">Customers</h1>
       <div className="mb-2">
+        <label htmlFor="customers-search" className="block text-sm font-medium mb-1">Search Customers</label>
         <input
+          id="customers-search"
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Search by plate, name, phone, or email…"

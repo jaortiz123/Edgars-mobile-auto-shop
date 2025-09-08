@@ -51,23 +51,23 @@ export const AnalyticsDashboardPage: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-xl font-semibold">Messaging Analytics</h1>
         <div className="flex flex-wrap items-center gap-3">
-          <label className="text-sm text-secondary flex items-center gap-1">
-            <span>Range</span>
-            <select value={range} onChange={onChangeRange} className="border rounded px-2 py-1 text-sm bg-white">
+          <div className="text-sm text-secondary flex items-center gap-1">
+            <label htmlFor="analytics-range">Range</label>
+            <select id="analytics-range" value={range} onChange={onChangeRange} className="border rounded px-2 py-1 text-sm bg-white">
               <option value="7d">Last 7 Days</option>
               <option value="30d">Last 30 Days</option>
               <option value="90d">Last 90 Days</option>
               <option value="180d">Last 180 Days</option>
             </select>
-          </label>
-          <label className="text-sm text-secondary flex items-center gap-1">
-            <span>Channel</span>
-            <select value={channel} onChange={onChangeChannel} className="border rounded px-2 py-1 text-sm bg-white">
+          </div>
+          <div className="text-sm text-secondary flex items-center gap-1">
+            <label htmlFor="analytics-channel">Channel</label>
+            <select id="analytics-channel" value={channel} onChange={onChangeChannel} className="border rounded px-2 py-1 text-sm bg-white">
               <option value="all">All</option>
               <option value="sms">SMS</option>
               <option value="email">Email</option>
             </select>
-          </label>
+          </div>
         </div>
       </div>
       <Suspense fallback={<div className="h-24 bg-gray-50 animate-pulse rounded"></div>}>

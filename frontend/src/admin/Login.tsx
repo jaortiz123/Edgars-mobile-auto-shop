@@ -15,19 +15,29 @@ export default function Login() {
 
   return (
     <form onSubmit={submit} className="max-w-sm mx-auto mt-sp-20 space-y-sp-4">
-      <input
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        placeholder="Username"
-        className="border p-sp-2 w-full"
-      />
-      <input
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        placeholder="Password"
-        className="border p-sp-2 w-full"
-      />
+      <div>
+        <label htmlFor="admin-username" className="block text-sm font-medium mb-1">Username</label>
+        <input
+          id="admin-username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="Username"
+          className="border p-sp-2 w-full"
+          required
+        />
+      </div>
+      <div>
+        <label htmlFor="admin-password" className="block text-sm font-medium mb-1">Password</label>
+        <input
+          id="admin-password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Password"
+          className="border p-sp-2 w-full"
+          required
+        />
+      </div>
       <button type="submit" className="bg-blue-500 text-white px-sp-4 py-sp-2">Login</button>
     </form>
   )

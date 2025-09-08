@@ -261,7 +261,8 @@ export const ServiceCatalogModal: React.FC<Props> = ({ open, onClose, onAdd, onC
         <div className="flex flex-1 overflow-hidden">
             <div className="w-60 border-r flex flex-col">
               <div className="p-3">
-              <input data-testid="service-search" ref={searchRef} value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search within category…" className="w-full border rounded px-3 py-2 text-sm" />
+                <label htmlFor="service-search" className="block text-xs font-medium mb-1">Search Services</label>
+                <input id="service-search" data-testid="service-search" ref={searchRef} value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search within category…" className="w-full border rounded px-3 py-2 text-sm" />
               </div>
               {/* Quick results panel: only show for longer queries to avoid duplicate text clashes in tests */}
               {query.length >= 3 && filtered.length > 0 && (

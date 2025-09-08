@@ -457,29 +457,29 @@ const AppointmentsPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="appt-modal-start" className="block text-sm font-medium text-gray-700 mb-1">
                     Start Time *
                   </label>
                   <input
+                    id="appt-modal-start"
                     type="datetime-local"
                     value={formData.start_ts ? new Date(formData.start_ts).toISOString().slice(0, 16) : ''}
                     onChange={(e) => setFormData({ ...formData, start_ts: new Date(e.target.value).toISOString() })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
-                    aria-label="Appointment start time"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="appt-modal-end" className="block text-sm font-medium text-gray-700 mb-1">
                     End Time
                   </label>
                   <input
+                    id="appt-modal-end"
                     type="datetime-local"
                     value={formData.end_ts ? new Date(formData.end_ts).toISOString().slice(0, 16) : ''}
                     onChange={(e) => setFormData({ ...formData, end_ts: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    aria-label="Appointment end time"
                   />
                 </div>
 
