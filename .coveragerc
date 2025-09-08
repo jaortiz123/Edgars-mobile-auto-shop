@@ -1,0 +1,25 @@
+[run]
+source = backend
+branch = True
+omit =
+    */tests/*
+    */test_*
+    */__pycache__/*
+    */venv/*
+    */site-packages/*
+    backend/migrations/*
+
+[report]
+fail_under = 85
+show_missing = True
+skip_covered = False
+sort = Cover
+
+[paths]
+source = backend
+
+[html]
+directory = audit_artifacts/htmlcov
+
+[xml]
+output = audit_artifacts/coverage_backend.xml
