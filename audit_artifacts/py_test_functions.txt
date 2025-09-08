@@ -1,0 +1,395 @@
+backend/catalog_seed/tests/test_generator.py:17:def test_derive_hours_rounding_and_floor():
+backend/catalog_seed/tests/test_generator.py:23:def test_generate_insert_pretty_and_upsert():
+backend/catalog_seed/tests/test_generator.py:41:def test_row_validation_enforces_category_and_levels():
+backend/database_helper.py:75:def test_database_connection():
+backend/test_reminder_system.py:17:def test_reminder_system():
+backend/tests/api/test_invoice_exports.py:36:def test_invoice_export_endpoints(client):
+backend/tests/api/test_invoice_exports.py:72:def test_invoice_export_not_found(client):
+backend/tests/api/test_invoice_exports.py:83:def test_invoice_export_rbac_forbidden(monkeypatch, client, no_auto_auth_client):
+backend/tests/api/test_invoice_workflow.py:7:def test_invoice_full_workflow(client):
+backend/tests/api/test_vehicle_profile.py:106:def test_vehicle_profile_rbac_forbidden(no_auto_auth_client):
+backend/tests/api/test_vehicle_profile.py:49:def test_vehicle_profile_basic_shape_and_stats(client):
+backend/tests/api/test_vehicle_profile.py:64:def test_vehicle_profile_etag_flow(client):
+backend/tests/api/test_vehicle_profile.py:75:def test_vehicle_profile_pagination_no_duplicates(client):
+backend/tests/api/test_vehicle_profile.py:88:def test_vehicle_profile_not_found(client):
+backend/tests/api/test_vehicle_profile.py:93:def test_vehicle_profile_cursor_precedence_over_dates(client):
+backend/tests/domain/test_invoice_generation.py:13:def test_validate_appointment_invalid(status):
+backend/tests/domain/test_invoice_generation.py:19:def test_validate_appointment_duplicate():
+backend/tests/domain/test_invoice_generation.py:28:def test_create_line_item_rounding():
+backend/tests/domain/test_invoice_generation.py:35:def test_build_line_items_and_totals_empty():
+backend/tests/domain/test_invoice_generation.py:43:def test_build_line_items_and_totals_multiple():
+backend/tests/domain/test_invoice_generation.py:56:def test_create_initial_invoice_state():
+backend/tests/domain/test_invoice_generation.py:8:def test_validate_appointment_ok():
+backend/tests/domain/test_invoice_payments.py:28:def test_full_payment_sets_paid():
+backend/tests/domain/test_invoice_payments.py:36:def test_partial_payment_sets_partially_paid():
+backend/tests/domain/test_invoice_payments.py:43:def test_multiple_partial_payments_then_paid():
+backend/tests/domain/test_invoice_payments.py:54:def test_invalid_amount(amount):
+backend/tests/domain/test_invoice_payments.py:61:def test_overpayment():
+backend/tests/domain/test_invoice_payments.py:68:def test_payment_on_paid_invoice():
+backend/tests/domain/test_invoice_payments.py:76:def test_payment_on_void_invoice():
+backend/tests/domain/test_invoice_void.py:27:def test_void_draft_invoice():
+backend/tests/domain/test_invoice_void.py:34:def test_void_partially_paid_preserves_due():
+backend/tests/domain/test_invoice_void.py:41:def test_void_already_void():
+backend/tests/domain/test_invoice_void.py:48:def test_void_paid_disallowed():
+backend/tests/domain/test_invoice_void.py:55:def test_amount_due_preserved_documented_quirk():
+backend/tests/test_admin_api.py:55:def test_get_admin_appointments(client):
+backend/tests/test_admin_api.py:78:def test_get_admin_appointments_with_filters(client):
+backend/tests/test_admin_api.py:95:def test_error_handler(client):
+backend/tests/test_admin_service_operations.py:32:def test_service_operations_sort_desc(client):
+backend/tests/test_admin_service_operations.py:41:def test_service_operations_legacy_wrapper(client):
+backend/tests/test_admin_service_operations.py:5:def test_service_operations_includes_new_fields_and_default_sort(client):
+backend/tests/test_analytics_seed.py:28:def test_analytics_endpoint_after_seed(client, db_connection):
+backend/tests/test_analytics_seed.py:9:def test_analytics_seed_populates_events(db_connection):  # depends on pg_container base seed
+backend/tests/test_appointment_conflicts_and_validation.py:19:def test_create_conflict_same_tech(client, db_connection, future_start):
+backend/tests/test_appointment_conflicts_and_validation.py:46:def test_edit_conflict_same_tech(client, db_connection, future_start):
+backend/tests/test_appointment_conflicts_and_validation.py:83:def test_create_validation_error_paid_exceeds_total(client, db_connection, future_start):
+backend/tests/test_appointment_conflicts_and_validation.py:98:def test_edit_validation_error_paid_exceeds_total(client, db_connection, future_start):
+backend/tests/test_appointments_api.py:111:def test_get_admin_appointments_rejects_limit_over_200(client, monkeypatch):
+backend/tests/test_appointments_api.py:132:def test_get_admin_appointments_rejects_cursor_plus_offset(client, monkeypatch):
+backend/tests/test_appointments_api.py:153:def test_get_admin_appointments_orders_by_id_when_same_start_ts(client, monkeypatch):
+backend/tests/test_appointments_api.py:213:def test_get_admin_appointments_invalid_from_date_format_returns_400(client):
+backend/tests/test_appointments_api.py:223:def test_get_admin_appointments_invalid_to_date_format_returns_400(client):
+backend/tests/test_appointments_api.py:233:def test_get_admin_appointments_malformed_date_formats_return_400(client):
+backend/tests/test_appointments_api.py:25:def test_get_admin_appointments_orders_by_start_ts_asc_id_asc(client, monkeypatch):
+backend/tests/test_appointments_api.py:254:def test_get_admin_appointments_valid_date_formats_accepted(client, monkeypatch):
+backend/tests/test_appointments_api.py:283:def test_get_admin_appointments_limit_validation_edge_cases(client):
+backend/tests/test_appointments_api.py:303:def test_get_admin_appointments_offset_validation_edge_cases(client):
+backend/tests/test_appointments_api.py:317:def test_get_admin_appointments_all_filters_combined(client, monkeypatch):
+backend/tests/test_appointments_api.py:377:def test_get_admin_appointments_cursor_offset_conflict_returns_400(client):
+backend/tests/test_appointments_api.py:8:def test_get_admin_appointments_returns_empty_list_if_no_db(client, monkeypatch):
+backend/tests/test_appointments_filters.py:59:def test_filters_applied(client, monkeypatch, param, expected_sql_fragment, expected_param):
+backend/tests/test_appointments_filters.py:86:def test_invalid_limit_offset(client, monkeypatch):
+backend/tests/test_appointments_list.py:7:def test_get_appointments():
+backend/tests/test_auth_harness.py:99:def test_guarded_admin_routes_require_auth(unauth_client, method: str, path: str):
+backend/tests/test_board_fallbacks.py:44:def test_board_fallbacks_nulls(client, monkeypatch):
+backend/tests/test_board_fallbacks.py:72:def test_board_fallbacks_empty_string(client, monkeypatch):
+backend/tests/test_board_memory_regression.py:20:def test_board_shows_memory_created_appointment(client):
+backend/tests/test_container_setup.py:36:def test_container_setup():
+backend/tests/test_create_appointment_primary_operation.py:60:def test_create_appointment_rejects_invalid_primary_operation_id(client, monkeypatch):
+backend/tests/test_create_appointment_primary_operation.py:80:def test_create_appointment_allows_absent_primary_operation_id(client, monkeypatch):
+backend/tests/test_csrf_cookie_auth.py:26:def test_cookie_auth_and_csrf_block(client):
+backend/tests/test_csv_exports.py:125:    def test_appointments_export_requires_auth(self, client):
+backend/tests/test_csv_exports.py:132:    def test_payments_export_requires_auth(self, client):
+backend/tests/test_csv_exports.py:140:    def test_appointments_export_owner_access(
+backend/tests/test_csv_exports.py:158:    def test_appointments_export_advisor_access(
+backend/tests/test_csv_exports.py:175:    def test_appointments_export_accountant_access(
+backend/tests/test_csv_exports.py:192:    def test_appointments_export_technician_denied(self, mock_auth, client, technician_headers):
+backend/tests/test_csv_exports.py:205:    def test_appointments_export_rate_limit_enforced(
+backend/tests/test_csv_exports.py:220:    def test_payments_export_rate_limit_enforced(
+backend/tests/test_csv_exports.py:233:    def test_appointments_export_invalid_date_format(self, mock_auth, client, owner_headers):
+backend/tests/test_csv_exports.py:245:    def test_appointments_export_invalid_status(self, mock_auth, client, owner_headers):
+backend/tests/test_csv_exports.py:257:    def test_appointments_export_valid_date_range(
+backend/tests/test_csv_exports.py:284:    def test_appointments_csv_header_format(
+backend/tests/test_csv_exports.py:324:    def test_payments_csv_header_format(
+backend/tests/test_csv_exports.py:357:    def test_appointments_csv_data_format(
+backend/tests/test_csv_exports.py:388:    def test_appointments_export_empty_dataset(self, mock_auth, client, owner_headers):
+backend/tests/test_csv_exports.py:412:    def test_payments_export_empty_dataset(self, mock_auth, client, owner_headers):
+backend/tests/test_csv_exports.py:434:    def test_appointments_export_content_disposition(
+backend/tests/test_csv_exports.py:454:    def test_payments_export_content_disposition(
+backend/tests/test_csv_exports.py:476:    def test_appointments_export_db_unavailable(self, mock_auth, client, owner_headers):
+backend/tests/test_csv_exports.py:489:    def test_payments_export_db_unavailable(self, mock_auth, client, owner_headers):
+backend/tests/test_csv_exports.py:505:    def test_appointments_export_audit_logging(
+backend/tests/test_csv_exports.py:530:    def test_payments_export_audit_logging(
+backend/tests/test_csv_exports.py:556:    def test_csv_rfc4180_compliance(self, mock_auth, client, owner_headers):
+backend/tests/test_customer_auth.py:14:def test_customer_register_and_login_flow(client):
+backend/tests/test_customer_auth.py:41:def test_customer_login_wrong_password(client):
+backend/tests/test_customer_auth.py:51:def test_customer_register_conflict(client):
+backend/tests/test_customer_history_broken.py:154:def test_get_customer_history_returns_past_appointments_with_payments(
+backend/tests/test_customer_history_broken.py:232:def test_get_customer_history_requires_authentication(client):
+backend/tests/test_customer_history_broken.py:241:def test_get_customer_history_only_returns_completed_appointments(client, auth_headers, mock_db):
+backend/tests/test_customer_history_broken.py:277:def test_get_customer_history_orders_by_date_desc(client, auth_headers, mock_db):
+backend/tests/test_customer_history_broken.py:44:def test_get_customer_history_returns_404_for_nonexistent_customer(
+backend/tests/test_customer_history_broken.py:96:def test_get_customer_history_returns_empty_for_customer_with_no_appointments(
+backend/tests/test_customer_history_clean.py:136:def test_get_customer_history_returns_past_appointments_with_payments(
+backend/tests/test_customer_history_clean.py:163:def test_get_customer_history_requires_authentication(no_auto_auth_client):
+backend/tests/test_customer_history_clean.py:172:def test_get_customer_history_only_returns_completed_appointments(client, auth_headers, fake_db):
+backend/tests/test_customer_history_clean.py:185:def test_get_customer_history_orders_by_date_desc(client, auth_headers, fake_db):
+backend/tests/test_customer_history_clean.py:30:def test_get_customer_history_returns_404_for_nonexistent_customer(
+backend/tests/test_customer_history_clean.py:82:def test_get_customer_history_returns_empty_for_customer_with_no_appointments(
+backend/tests/test_customer_history_debug.py:12:def test_simple():
+backend/tests/test_customer_history_debug.py:20:def test_get_customer_history_requires_authentication(no_auto_auth_client):
+backend/tests/test_customer_history_new.py:133:def test_get_customer_history_returns_past_appointments_with_payments(
+backend/tests/test_customer_history_new.py:160:def test_get_customer_history_requires_authentication(no_auto_auth_client):
+backend/tests/test_customer_history_new.py:169:def test_get_customer_history_only_returns_completed_appointments(client, auth_headers, fake_db):
+backend/tests/test_customer_history_new.py:182:def test_get_customer_history_orders_by_date_desc(client, auth_headers, fake_db):
+backend/tests/test_customer_history_new.py:29:def test_get_customer_history_returns_404_for_nonexistent_customer(
+backend/tests/test_customer_history_new.py:81:def test_get_customer_history_returns_empty_for_customer_with_no_appointments(
+backend/tests/test_customer_history_old.py:154:def test_get_customer_history_returns_past_appointments_with_payments(
+backend/tests/test_customer_history_old.py:232:def test_get_customer_history_requires_authentication(no_auto_auth_client):
+backend/tests/test_customer_history_old.py:241:def test_get_customer_history_only_returns_completed_appointments(client, auth_headers, mock_db):
+backend/tests/test_customer_history_old.py:277:def test_get_customer_history_orders_by_date_desc(client, auth_headers, mock_db):
+backend/tests/test_customer_history_old.py:44:def test_get_customer_history_returns_404_for_nonexistent_customer(
+backend/tests/test_customer_history_old.py:96:def test_get_customer_history_returns_empty_for_customer_with_no_appointments(
+backend/tests/test_customer_history_simple.py:10:def test_get_customer_history_requires_authentication(no_auto_auth_client):
+backend/tests/test_customer_history_simple.py:5:def test_simple():
+backend/tests/test_customer_history_working.py:102:def test_get_customer_history_returns_empty_for_customer_with_no_appointments(
+backend/tests/test_customer_history_working.py:160:def test_get_customer_history_returns_past_appointments_with_payments(
+backend/tests/test_customer_history_working.py:238:def test_get_customer_history_requires_authentication(no_auto_auth_client):
+backend/tests/test_customer_history_working.py:247:def test_get_customer_history_only_returns_completed_appointments(client, auth_headers, mock_db):
+backend/tests/test_customer_history_working.py:283:def test_get_customer_history_orders_by_date_desc(client, auth_headers, mock_db):
+backend/tests/test_customer_history_working.py:50:def test_get_customer_history_returns_404_for_nonexistent_customer(
+backend/tests/test_customer_history.py:138:def test_get_customer_history_returns_past_appointments_with_payments(
+backend/tests/test_customer_history.py:165:def test_get_customer_history_requires_authentication(client):
+backend/tests/test_customer_history.py:174:def test_get_customer_history_only_returns_completed_appointments(client, auth_headers, fake_db):
+backend/tests/test_customer_history.py:187:def test_get_customer_history_orders_by_date_desc(client, auth_headers, fake_db):
+backend/tests/test_customer_history.py:29:def test_get_customer_history_returns_404_for_nonexistent_customer(
+backend/tests/test_customer_history.py:84:def test_get_customer_history_returns_empty_for_customer_with_no_appointments(
+backend/tests/test_customer_profile.py:259:def test_profile_default_lightweight(client, auth_headers, mock_db, monkeypatch):
+backend/tests/test_customer_profile.py:274:def test_profile_expanded_details(client, auth_headers, mock_db, monkeypatch):
+backend/tests/test_customer_profile.py:294:def test_profile_invalid_include(client, auth_headers, mock_db, monkeypatch):
+backend/tests/test_customer_profile.py:302:def test_profile_not_found(client, auth_headers, mock_db, monkeypatch):
+backend/tests/test_customer_profile.py:340:def test_profile_vip_overdue_logic(client, auth_headers, mock_db, monkeypatch):
+backend/tests/test_customer_search.py:103:def test_customer_search_vip_explicit_flag(client, auth_headers, mock_db):
+backend/tests/test_customer_search.py:112:def test_customer_search_overdue_logic(client, auth_headers, mock_db):
+backend/tests/test_customer_search.py:126:def test_customer_search_filter_vip(client, auth_headers, mock_db):
+backend/tests/test_customer_search.py:138:def test_customer_search_filter_overdue(client, auth_headers, mock_db):
+backend/tests/test_customer_search.py:148:def test_customer_search_filter_invalid_ignored(client, auth_headers, mock_db):
+backend/tests/test_customer_search.py:161:def test_customer_search_sort_default_relevance(client, auth_headers, mock_db):
+backend/tests/test_customer_search.py:180:def test_customer_search_sort_variants(client, auth_headers, mock_db, param, expected_fragment):
+backend/tests/test_customer_search.py:188:def test_customer_search_sort_invalid_falls_back(client, auth_headers, mock_db):
+backend/tests/test_customer_search.py:81:def test_customer_search_basic_shape(client, auth_headers, mock_db):
+backend/tests/test_customer_search.py:94:def test_customer_search_vip_via_spend_threshold(client, auth_headers, mock_db):
+backend/tests/test_enhanced_notification_function.py:116:    def test_send_notification_invalid_phone(self, mock_sns):
+backend/tests/test_enhanced_notification_function.py:139:    def test_format_reminder_message_with_location(self):
+backend/tests/test_enhanced_notification_function.py:155:    def test_format_confirmation_message_with_location(self):
+backend/tests/test_enhanced_notification_function.py:168:    def test_lambda_handler_with_records(self, mock_sns):
+backend/tests/test_enhanced_notification_function.py:195:    def test_lambda_handler_with_sns_records(self, mock_sns):
+backend/tests/test_enhanced_notification_function.py:224:    def test_publish_to_topic_with_metadata(self, mock_sns):
+backend/tests/test_enhanced_notification_function.py:249:    def test_error_handling_missing_sns_topic(self):
+backend/tests/test_enhanced_notification_function.py:33:    def test_validate_and_format_phone_us_number(self):
+backend/tests/test_enhanced_notification_function.py:54:    def test_send_notification_direct_sms(self, mock_sns):
+backend/tests/test_enhanced_notification_function.py:85:    def test_send_notification_fallback_to_topic(self, mock_sns):
+backend/tests/test_errors.py:15:def test_method_not_allowed_returns_json_envelope(client):
+backend/tests/test_errors.py:4:def test_404_returns_json_envelope(client):
+backend/tests/test_get_single_appointment.py:11:def test_get_single_appointment_details(client, db_connection):
+backend/tests/test_integration_database.py:127:    def test_appointment_service_relationships(self, db_connection):
+backend/tests/test_integration_database.py:163:    def test_can_insert_and_query_data(self, db_connection):
+backend/tests/test_integration_database.py:17:    def test_database_connection(self, db_connection):
+backend/tests/test_integration_database.py:225:    def test_fake_db_fixture_works(self, fake_db, client):
+backend/tests/test_integration_database.py:240:    def test_testcontainers_dependency_available(self):
+backend/tests/test_integration_database.py:250:    def test_docker_availability_check(self):
+backend/tests/test_integration_database.py:26:    def test_seed_data_loaded(self, db_connection):
+backend/tests/test_integration_database.py:261:    def test_schema_file_exists(self):
+backend/tests/test_integration_database.py:271:    def test_seed_file_exists(self):
+backend/tests/test_integration_database.py:281:    def test_database_constraints_enforcement(self, db_connection):
+backend/tests/test_integration_database.py:312:    def test_performance_benchmarks(self, db_connection):
+backend/tests/test_integration_database.py:342:    def test_transaction_rollback_safety(self, db_connection):
+backend/tests/test_integration_database.py:379:    def test_sql_injection_prevention(self, db_connection):
+backend/tests/test_integration_database.py:396:    def test_container_startup_performance(self, pg_container):
+backend/tests/test_integration_database.py:411:    def test_multiple_concurrent_queries(self, pg_container):
+backend/tests/test_integration_database.py:450:    def test_data_integrity_under_stress(self, db_connection):
+backend/tests/test_integration_database.py:48:    def test_foreign_key_constraints(self, db_connection):
+backend/tests/test_integration_database.py:491:    def test_resource_cleanup_verification(self, pg_container):
+backend/tests/test_integration_database.py:525:    def test_large_data_handling(self, db_connection):
+backend/tests/test_integration_database.py:553:    def test_timeout_and_recovery(self, pg_container):
+backend/tests/test_integration_database.py:572:    def test_schema_validation_completeness(self):
+backend/tests/test_integration_database.py:593:    def test_seed_data_completeness(self):
+backend/tests/test_integration_database.py:611:    def test_cross_platform_compatibility(self):
+backend/tests/test_integration_database.py:623:    def test_environment_variable_handling(self, pg_container):
+backend/tests/test_integration_database.py:649:    def test_memory_leak_detection(self, pg_container):
+backend/tests/test_integration_database.py:677:    def test_error_recovery_scenarios(self, pg_container):
+backend/tests/test_integration_database.py:71:    def test_appointment_status_enum(self, db_connection):
+backend/tests/test_integration_database.py:717:    def test_performance_under_load(self, pg_container):
+backend/tests/test_integration_database.py:752:    def test_data_consistency_verification(self, db_connection):
+backend/tests/test_integration_database.py:90:    def test_complex_joins_work(self, db_connection):
+backend/tests/test_invoice_add_package.py:100:def test_add_package_not_a_package(client):
+backend/tests/test_invoice_add_package.py:114:def test_add_package_missing_package(client):
+backend/tests/test_invoice_add_package.py:125:def test_add_package_empty_package(client):
+backend/tests/test_invoice_add_package.py:22:def test_add_package_success_sum_only(client):
+backend/tests/test_invoice_add_package.py:59:def test_add_package_with_override_scaling(client):
+backend/tests/test_invoice_add_package.py:89:def test_add_package_invalid_state(client):
+backend/tests/test_invoice_error_contract.py:17:def test_invoice_estimate_html_forced_errors(client):
+backend/tests/test_invoice_error_contract.py:25:def test_invoice_receipt_pdf_forced_errors(client):
+backend/tests/test_invoice_error_contract.py:33:def test_invoice_estimate_pdf_forced_errors(client):
+backend/tests/test_invoice_error_contract.py:41:def test_invoice_send_forced_errors(client):
+backend/tests/test_invoice_error_contract.py:9:def test_invoice_receipt_html_forced_errors(client):
+backend/tests/test_invoice_generation.py:106:def test_generate_invoice_not_found_endpoint(client, pg_container):
+backend/tests/test_invoice_generation.py:37:def test_generate_invoice_success(pg_container):  # ensure container/env ready
+backend/tests/test_invoice_generation.py:57:def test_generate_invoice_invalid_state(pg_container):
+backend/tests/test_invoice_generation.py:69:def test_generate_invoice_endpoint(client, pg_container):  # reuse client fixture from conftest
+backend/tests/test_invoice_generation.py:89:def test_generate_invoice_zero_services(pg_container):
+backend/tests/test_invoice_get_single.py:29:def test_get_invoice_happy_path(pg_container):
+backend/tests/test_invoice_get_single.py:48:def test_get_invoice_not_found(pg_container):
+backend/tests/test_invoice_list.py:41:def test_list_invoices_basic(pg_container):
+backend/tests/test_invoice_list.py:57:def test_list_invoices_filter_customer(pg_container):
+backend/tests/test_invoice_list.py:71:def test_list_invoices_filter_status(pg_container):
+backend/tests/test_invoice_payments.py:26:def test_partial_payment_sets_partially_paid(pg_container):
+backend/tests/test_invoice_payments.py:44:def test_full_payment_sets_paid(pg_container):
+backend/tests/test_invoice_payments.py:60:def test_overpayment_rejected(pg_container):
+backend/tests/test_invoice_payments.py:75:def test_payment_on_paid_invoice_rejected(pg_container):
+backend/tests/test_invoice_snapshot_trigger.py:7:def test_invoice_snapshot_trigger_populates_fields(pg_container):
+backend/tests/test_invoice_void.py:26:def test_void_draft_invoice(pg_container):
+backend/tests/test_invoice_void.py:43:def test_void_partially_paid_invoice(pg_container):
+backend/tests/test_invoice_void.py:64:def test_void_already_void_invoice(pg_container):
+backend/tests/test_invoice_void.py:79:def test_void_paid_invoice_rejected(pg_container):
+backend/tests/test_local_server.py:15:def test_get_board_empty_dataset(client, mocker):
+backend/tests/test_local_server.py:27:def test_get_stats_happy_path(client, fake_db):
+backend/tests/test_local_server.py:37:def test_get_stats_db_error(client, mocker):
+backend/tests/test_local_server.py:6:def test_get_board_happy_path(client):
+backend/tests/test_logging_circuit_breaker.py:16:def test_request_id_lowercase_uuidv4_enforced(client):
+backend/tests/test_logging_circuit_breaker.py:29:def test_logging_circuit_breaker_trips_and_recovers(client, monkeypatch, caplog):
+backend/tests/test_message_template_suggestions.py:62:    def test_with_status_returns_suggested(self, client, auth_headers, mock_db):
+backend/tests/test_message_template_suggestions.py:81:    def test_unknown_status_has_empty_suggested(self, client, auth_headers, mock_db):
+backend/tests/test_message_template_suggestions.py:94:    def test_no_status_param_no_suggested_key(self, client, auth_headers, mock_db):
+backend/tests/test_messages.py:122:    def test_get_messages_appointment_not_found(self, client, auth_headers, mock_db):
+backend/tests/test_messages.py:131:    def test_get_messages_no_auth(self, client, mock_db):
+backend/tests/test_messages.py:138:    def test_create_message_success(self, client, auth_headers, mock_db):
+backend/tests/test_messages.py:158:    def test_create_message_invalid_channel(self, client, auth_headers, mock_db):
+backend/tests/test_messages.py:170:    def test_create_message_empty_body(self, client, auth_headers, mock_db):
+backend/tests/test_messages.py:182:    def test_create_message_tech_role_forbidden(self, client, auth_headers, mock_db):
+backend/tests/test_messages.py:193:    def test_update_message_status_success(self, client, auth_headers, mock_db):
+backend/tests/test_messages.py:209:    def test_update_message_invalid_status(self, client, auth_headers, mock_db):
+backend/tests/test_messages.py:221:    def test_update_message_not_found(self, client, auth_headers, mock_db):
+backend/tests/test_messages.py:235:    def test_delete_message_success(self, client, auth_headers, mock_db):
+backend/tests/test_messages.py:247:    def test_delete_message_not_found(self, client, auth_headers, mock_db):
+backend/tests/test_messages.py:259:    def test_delete_message_tech_role_forbidden(self, client, auth_headers, mock_db):
+backend/tests/test_messages.py:268:    def test_role_based_access_advisor_can_write(self, client, auth_headers, mock_db):
+backend/tests/test_messages.py:284:    def test_role_based_access_tech_can_read(self, client, auth_headers, mock_db):
+backend/tests/test_messages.py:85:    def test_get_messages_success(self, client, auth_headers, mock_db):
+backend/tests/test_migrations.py:187:def test_migration_verification_sql_helper():
+backend/tests/test_migrations.py:242:def test_migration_ensures_no_null_start_ts_for_valid_appointments():
+backend/tests/test_migrations.py:37:def test_canonical_timestamps_migration_handles_start_ts_nulls():
+backend/tests/test_move_endpoint.py:34:def test_invalid_transition(
+backend/tests/test_move_endpoint.py:51:def test_rate_limited(client):
+backend/tests/test_notification_function.py:105:    def test_send_notification_confirmation(self, mock_sns):
+backend/tests/test_notification_function.py:137:    def test_send_notification_reminder(self, mock_sns):
+backend/tests/test_notification_function.py:155:    def test_format_confirmation_message(self):
+backend/tests/test_notification_function.py:164:    def test_format_reminder_message(self):
+backend/tests/test_notification_function.py:174:    def test_sns_error_handling(self, mock_sns):
+backend/tests/test_notification_function.py:32:    def test_lambda_handler_direct_invocation(self, mock_sns):
+backend/tests/test_notification_function.py:63:    def test_lambda_handler_eventbridge_records(self, mock_sns):
+backend/tests/test_notification_function.py:91:    def test_lambda_handler_missing_sns_topic(self):
+backend/tests/test_ownership_guards.py:62:def test_vehicle_profile_ownership_violation(client):
+backend/tests/test_ownership_guards.py:81:def test_invoice_export_ownership_violation(monkeypatch, client, endpoint):
+backend/tests/test_password_policy.py:15:def test_registration_rejects_weak_password(client):
+backend/tests/test_patch_edits.py:113:def test_customer_patch_success_creates_audit(client):
+backend/tests/test_patch_edits.py:134:def test_customer_patch_conflict_no_audit(client):
+backend/tests/test_patch_edits.py:148:def test_customer_patch_validation_error(client):
+backend/tests/test_patch_edits.py:169:def test_vehicle_patch_success_audit(client):
+backend/tests/test_patch_edits.py:185:def test_vehicle_patch_conflict(client):
+backend/tests/test_patch_edits.py:201:def test_vehicle_patch_validation(client):
+backend/tests/test_patch_edits.py:220:def test_customer_patch_missing_if_match(client):
+backend/tests/test_patch_edits.py:232:def test_vehicle_patch_missing_if_match(client):
+backend/tests/test_patch_edits.py:245:def test_customer_patch_forbidden(monkeypatch, client):
+backend/tests/test_patch_edits.py:255:def test_vehicle_patch_forbidden(monkeypatch, client):
+backend/tests/test_patch_edits.py:264:def test_vehicle_get_basic_etag(client):
+backend/tests/test_patch_edits.py:279:def test_customer_audit_diff_structure(client):
+backend/tests/test_patch_edits.py:305:def test_vehicle_audit_diff_structure(client):
+backend/tests/test_patch_edits.py:331:def test_customer_patch_noop_no_audit(client):
+backend/tests/test_profile_alias.py:19:def test_profile_alias_requires_auth_and_is_not_404():
+backend/tests/test_profile_edit_error_contract.py:14:def test_customer_profile_contract(client):
+backend/tests/test_profile_edit_error_contract.py:22:def test_vehicle_profile_contract(client):
+backend/tests/test_profile_edit_error_contract.py:30:def test_patch_customer_contract(client):
+backend/tests/test_profile_edit_error_contract.py:39:def test_patch_vehicle_contract(client):
+backend/tests/test_rbac_matrix.py:50:def test_rbac_matrix(method: str, path: str, role: str, rbac_client, rbac_utils):
+backend/tests/test_recent_customers.py:118:def test_recent_customers_custom_limit(client, auth_headers, mock_db):
+backend/tests/test_recent_customers.py:128:def test_recent_customers_limit_cap(client, auth_headers, mock_db):
+backend/tests/test_recent_customers.py:137:def test_recent_customers_vip_and_overdue_logic(client, auth_headers, mock_db):
+backend/tests/test_recent_customers.py:89:def test_recent_customers_default_limit(client, auth_headers, mock_db):
+backend/tests/test_reminder_function.py:103:    def test_is_reminder_already_sent_not_sent(self):
+backend/tests/test_reminder_function.py:115:    def test_is_reminder_already_sent_already_sent(self):
+backend/tests/test_reminder_function.py:124:    def test_is_reminder_already_sent_failed_status(self):
+backend/tests/test_reminder_function.py:134:    def test_send_appointment_reminder(self, mock_sns):
+backend/tests/test_reminder_function.py:165:    def test_track_notification(self, mock_datetime):
+backend/tests/test_reminder_function.py:184:    def test_track_notification_with_error(self):
+backend/tests/test_reminder_function.py:204:    def test_lambda_handler_success(
+backend/tests/test_reminder_function.py:262:    def test_lambda_handler_already_sent(
+backend/tests/test_reminder_function.py:298:    def test_lambda_handler_missing_environment_variables(self):
+backend/tests/test_reminder_function.py:30:    def test_get_db_connection(self, mock_boto3):
+backend/tests/test_reminder_function.py:65:    def test_query_upcoming_appointments(self, mock_datetime):
+backend/tests/test_request_id_and_logging.py:18:def test_request_id_echo_with_inbound_header(client):
+backend/tests/test_request_id_and_logging.py:32:def test_request_id_generated_when_missing(client):
+backend/tests/test_request_id_and_logging.py:43:def test_api_request_log_contains_correlated_request_id(client, caplog):
+backend/tests/test_request_id_and_logging.py:78:def test_logging_failure_does_not_break_request(client, monkeypatch):
+backend/tests/test_robustness_containerized_db.py:116:    def test_concurrent_connections(self, pg_container):
+backend/tests/test_robustness_containerized_db.py:151:    def test_database_constraints_enforcement(self, db_connection):
+backend/tests/test_robustness_containerized_db.py:183:    def test_performance_benchmarks(self, db_connection):
+backend/tests/test_robustness_containerized_db.py:213:    def test_transaction_rollback_safety(self, db_connection):
+backend/tests/test_robustness_containerized_db.py:22:    def test_testcontainers_dependency_available(self):
+backend/tests/test_robustness_containerized_db.py:250:    def test_container_resource_cleanup(self, pg_container):
+backend/tests/test_robustness_containerized_db.py:261:    def test_sql_injection_prevention(self, db_connection):
+backend/tests/test_robustness_containerized_db.py:278:    def test_large_result_set_handling(self, db_connection):
+backend/tests/test_robustness_containerized_db.py:301:    def test_timezone_handling(self, db_connection):
+backend/tests/test_robustness_containerized_db.py:318:    def test_python_version_compatibility(self):
+backend/tests/test_robustness_containerized_db.py:32:    def test_docker_availability_check(self):
+backend/tests/test_robustness_containerized_db.py:328:    def test_required_packages_installed(self):
+backend/tests/test_robustness_containerized_db.py:341:    def test_file_path_handling(self):
+backend/tests/test_robustness_containerized_db.py:357:    def test_example_usage_patterns(self, db_connection):
+backend/tests/test_robustness_containerized_db.py:379:    def test_error_message_clarity(self):
+backend/tests/test_robustness_containerized_db.py:43:    def test_psycopg2_import_available(self):
+backend/tests/test_robustness_containerized_db.py:53:    def test_schema_file_exists(self):
+backend/tests/test_robustness_containerized_db.py:63:    def test_seed_file_exists(self):
+backend/tests/test_robustness_containerized_db.py:73:    def test_memory_usage_baseline(self):
+backend/tests/test_robustness_containerized_db.py:82:    def test_database_connection_with_real_container(self, pg_container):
+backend/tests/test_robustness_containerized_db.py:94:    def test_connection_pool_limits(self, pg_container):
+backend/tests/test_robustness_simple.py:107:def test_performance_benchmarks(db_connection):
+backend/tests/test_robustness_simple.py:138:def test_transaction_rollback_safety(db_connection):
+backend/tests/test_robustness_simple.py:16:def test_testcontainers_dependency_available():
+backend/tests/test_robustness_simple.py:176:def test_sql_injection_prevention(db_connection):
+backend/tests/test_robustness_simple.py:194:def test_timezone_handling(db_connection):
+backend/tests/test_robustness_simple.py:27:def test_docker_availability_check():
+backend/tests/test_robustness_simple.py:37:def test_schema_file_exists():
+backend/tests/test_robustness_simple.py:48:def test_seed_file_exists():
+backend/tests/test_robustness_simple.py:59:def test_database_connection_with_real_container(pg_container):
+backend/tests/test_robustness_simple.py:72:def test_database_constraints_enforcement(db_connection):
+backend/tests/test_service_operations_error_contract_v2.py:6:def test_service_operations_error_contract(client):
+backend/tests/test_service_operations_error_contract.py:20:def test_service_operations_forced_errors(client):
+backend/tests/test_service_operations_fallback.py:45:def test_service_operations_retry_new_column(monkeypatch, client):
+backend/tests/test_services.py:106:def test_services_endpoints_exist(client):
+backend/tests/test_services.py:125:def test_service_validation_rules(client):
+backend/tests/test_services.py:139:def test_patch_service_update_and_total(client):
+backend/tests/test_services.py:165:def test_delete_service_and_404_after(client):
+backend/tests/test_services.py:188:def test_delete_nonexistent_service_returns_404(client):
+backend/tests/test_services.py:50:def test_get_services_empty(client):
+backend/tests/test_services.py:60:def test_create_service_success_memory_mode(client):
+backend/tests/test_services.py:97:def test_create_service_missing_name(client):
+backend/tests/test_simple_migration.py:9:def test_simple_migration_verification():
+backend/tests/test_stats.py:100:def test_avg_cycle_time_metric(client, fake_db):
+backend/tests/test_stats.py:118:def test_format_duration_hours():
+backend/tests/test_stats.py:35:def test_get_stats_with_new_metrics(client, fake_db):
+backend/tests/test_stats.py:58:def test_stats_returns_500_envelope_on_db_down(client, monkeypatch):
+backend/tests/test_stats.py:6:def test_get_stats_happy_path(client, fake_db):
+backend/tests/test_stats.py:69:def test_stats_redis_cache_fallback(client, fake_db, monkeypatch):
+backend/tests/test_stats.py:86:def test_unpaid_total_calculation(client, fake_db):
+backend/tests/test_technician_progress.py:100:def test_complete_sets_completed_at_once(client, db_connection, tech_id):
+backend/tests/test_technician_progress.py:115:def test_board_includes_progress_fields(client, db_connection, tech_id):
+backend/tests/test_technician_progress.py:42:def test_create_with_invalid_tech_rejected(client, db_connection):
+backend/tests/test_technician_progress.py:55:def test_assign_invalid_tech_rejected(client, db_connection):
+backend/tests/test_technician_progress.py:69:def test_assign_valid_tech_and_board_reflects(client, db_connection, tech_id):
+backend/tests/test_technician_progress.py:83:def test_start_sets_started_at_once(client, db_connection, tech_id):
+backend/tests/test_technicians_endpoint.py:63:def test_default_excludes_inactive(client, auth_headers, mock_db):
+backend/tests/test_technicians_endpoint.py:76:def test_include_inactive_flag(client, auth_headers, mock_db):
+backend/tests/test_technicians_endpoint.py:86:def test_requires_auth_role(client, auth_headers, mock_db):
+backend/tests/test_telemetry_quota.py:29:def test_telemetry_quota_hard_limit(monkeypatch):
+backend/tests/test_telemetry_quota.py:44:def test_telemetry_quota_soft_limit_warning(monkeypatch, caplog):
+backend/tests/test_template_analytics.py:103:def test_channel_filter(client, db_connection):
+backend/tests/test_template_analytics.py:113:def test_cache_behavior(client, db_connection):
+backend/tests/test_template_analytics.py:29:def test_empty_range_returns_zeroes(client, db_connection, now_utc, clear_usage_events):
+backend/tests/test_template_analytics.py:55:def test_basic_aggregation(client, db_connection, clear_usage_events):
+backend/tests/test_template_usage.py:50:def test_template_usage_idempotent(client, auth_headers, mock_db):
+backend/tests/test_tenant_membership_enforcement.py:43:def test_customer_forbidden_across_tenant(client):
+backend/tests/test_tenant_membership_enforcement.py:95:def test_advisor_forbidden_across_tenant(client):
+backend/tests/test_unified_customer_profile.py:129:def test_profile_invalid_limit(client):
+backend/tests/test_unified_customer_profile.py:139:def test_profile_limit_over_100(client):
+backend/tests/test_unified_customer_profile.py:148:def test_rbac_forbidden(client):
+backend/tests/test_unified_customer_profile.py:157:def test_etag_flow(client, db_connection):
+backend/tests/test_unified_customer_profile.py:181:def test_etag_round_trip_change(client, db_connection):
+backend/tests/test_unified_customer_profile.py:217:def test_etag_no_change_stability(client, db_connection):
+backend/tests/test_unified_customer_profile.py:254:def test_date_filtering(client, db_connection):
+backend/tests/test_unified_customer_profile.py:278:def test_vehicle_ownership_validation(client, db_connection):
+backend/tests/test_unified_customer_profile.py:290:def test_cursor_pagination_flow(client, db_connection):
+backend/tests/test_unified_customer_profile.py:332:def test_invalid_cursor(client, db_connection):
+backend/tests/test_unified_customer_profile.py:343:def test_cursor_precedence_over_dates(client, db_connection):
+backend/tests/test_unified_customer_profile.py:371:def test_profile_stats_edge_cases(client, db_connection):
+backend/tests/test_unified_customer_profile.py:38:def test_profile_not_found(client):
+backend/tests/test_unified_customer_profile.py:452:def test_rbac_forbidden_other_role(client):
+backend/tests/test_unified_customer_profile.py:46:def test_profile_basic(client, db_connection):
+backend/tests/test_unified_customer_profile.py:89:def test_profile_limit_and_filter(client, db_connection):
+backend/tests/test_validation.py:25:def test_validate_happy_path():
+backend/tests/test_validation.py:42:def test_validate_past_start_rejected():
+backend/tests/test_validation.py:48:def test_validate_transition_invalid():
+backend/tests/test_validation.py:55:def test_validate_paid_exceeds_total():
+backend/tests/test_validation.py:63:def test_find_conflicts_returns_ids():
+backend/tests/test_validation.py:73:def test_find_conflicts_vehicle():
+backend/tests/test_vehicle_conflict.py:19:def test_create_vehicle_conflict(client, db_connection, future_start):
+backend/validate_customer_history.py:15:def test_customer_history_endpoint():

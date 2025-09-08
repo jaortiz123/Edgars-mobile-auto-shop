@@ -16,3 +16,28 @@ Re-run the scan:
 Notes:
 
 - Login endpoints are expected to be unguarded (e.g., /api/admin/login). Alias routes without /api are propagated to their underlying handlers when they simply return another function call.
+
+
+---
+
+## Test Coverage Inventory (Audit #5 - Phase 1)
+
+This section tracks outputs from the Test Coverage Gaps audit inventory.
+
+Artifacts:
+
+- js_test_files.txt — Deduplicated list of all JS/TS unit/integration/E2E test files discovered under `frontend/`, `e2e/`, and top-level `tests/`.
+- py_test_functions.txt — List of Python test function definitions (with file:line) discovered under `backend/`.
+
+Re-generate locally:
+
+- JS/TS files (zsh):
+	- find frontend -type f \( -name "*.test.ts" -o -name "*.test.tsx" -o -name "*.spec.ts" -o -name "*.spec.tsx" -o -name "*.test.js" -o -name "*.test.jsx" -o -name "*.spec.js" -o -name "*.spec.jsx" \)
+	- find e2e -type f \( -name "*.spec.ts" -o -name "*.spec.tsx" -o -name "*.test.ts" -o -name "*.test.tsx" \)
+	- find tests -type f \( -name "*.test.js" -o -name "*.test.ts" -o -name "*.spec.ts" \)
+- Python functions:
+	- grep -R --line-number -E '^[[:space:]]*def[[:space:]]+test_[A-Za-z0-9_]+' backend
+
+Notes:
+
+- Node modules are not included when re-generating via the above commands (paths are scoped to project folders).

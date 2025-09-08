@@ -1,0 +1,12 @@
+Area,Key Requirement,Representative Tests (files),Notes
+Appointments,Create/edit validation & conflicts,backend/tests/test_appointment_conflicts_and_validation.py; e2e/appointments.spec.ts,Has both unit/integration and e2e coverage
+Appointments,Admin list pagination & filters,backend/tests/test_appointments_api.py,Unit-level API shape & validation
+Invoices,End-to-end invoice lifecycle,e2e/invoice-lifecycle.spec.ts; backend/tests/api/test_invoice_workflow.py,Cross-checks API and UI
+Customers,Customer profile basics & a11y,frontend/tests/pages/CustomerProfilePage.accessibility.test.tsx; backend/tests/test_customer_profile.py,Front+back consistency
+Vehicles,Vehicle profile API & UI,e2e/vehicle-management.spec.ts; backend/tests/api/test_vehicle_profile.py,Includes pagination/etag
+Messaging,Message thread compose & suggestions,frontend/src/tests/MessageThread.test.tsx; backend/tests/test_messages.py,UI interactions plus API contract
+Board,Drag-and-drop optimistic updates,e2e/board-move-optimistic.spec.ts; frontend/src/tests/board/quickAssignTech.optimistic.test.tsx,State and UI flows
+Auth,CSRF cookie auth & role guards,e2e/csrf-cookie-auth.spec.ts; backend/tests/test_auth_harness.py,Critical auth paths
+Analytics,Dashboard stats & templates,frontend/src/tests/analytics/AnalyticsDashboardPage.test.tsx; backend/tests/test_template_analytics.py,Stats aggregation
+Exports,CSV exports by role & format,backend/tests/test_csv_exports.py,Format and RBAC
+API Consistency,Envelope, pagination, idempotency,scripts/smoke_api_consistency.py,Post-merge middleware checks
