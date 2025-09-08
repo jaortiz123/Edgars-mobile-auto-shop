@@ -264,259 +264,272 @@ if not getattr(app, "_duplicate_silencer_installed", False):  # type: ignore[att
 
     def _safe_add_url_rule(
         self, rule, endpoint=None, view_func=None, provide_automatic_options=None, **options
-    ):  # type: ignore
+    ):  # type: ignore[no-untyped-def]
         try:
-            ep = endpoint or (getattr(view_func, "__name__", None) if view_func else None)
-            existing = self.view_functions.get(ep) if ep else None
-
-            # When an endpoint already exists with a different function, merge methods
-            # and reuse the existing view_func to avoid AssertionError while still
-            # allowing additional HTTP methods / options to be registered.
-            if existing is not None and view_func is not None and existing is not view_func:
-                # In test mode, prefer the latest function implementation to ensure
-                # code changes take effect without restarting the process.
-                try:
-                    if getattr(self, "config", {}).get("TESTING"):
-                        self.view_functions[ep] = view_func
-                        try:
-                            self.logger.debug(
-                                "duplicate_route_replaced", extra={"endpoint": ep, "rule": rule}
-                            )
-                        except Exception:
-                            pass
-                        # No need to add a new rule since endpoint name is unchanged
-                        return
-                except Exception:
-                    pass
-                # Compute merged methods for this rule/endpoint
-                new_methods = set()
-                if "methods" in options and options["methods"]:
-                    try:
-                        new_methods = {str(m).upper() for m in options["methods"]}
-                    except Exception:
-                        new_methods = set()
-
-                existing_methods = set()
-                try:
-                    for r in getattr(self.url_map, "_rules", []) or []:
-                        if getattr(r, "endpoint", None) == ep and getattr(r, "rule", None) == rule:
-                            if getattr(r, "methods", None):
-                                existing_methods |= {str(m).upper() for m in r.methods}
-                            # If the new registration requests strict_slashes=False, apply it
-                            if options.get("strict_slashes") is False:
-                                try:
-                                    r.strict_slashes = False
-                                except Exception:
-                                    pass
-                except Exception:
-                    pass
-
-                merged = (
-                    (existing_methods | new_methods) if (existing_methods or new_methods) else set()
-                )
-                # Respect provide_automatic_options unless explicitly disabled; ensure OPTIONS present for CORS
-                if provide_automatic_options is not False and (merged or new_methods):
-                    merged.add("OPTIONS")
-
-                # If we have something to merge, register using the existing view func
-                if merged:
-                    opts = dict(options)
-                    opts["methods"] = sorted(merged)
-                    try:
-                        self.logger.debug(
-                            "duplicate_route_merge",
-                            extra={"endpoint": ep, "rule": rule, "methods": list(merged)},
-                        )
-                    except Exception:
-                        pass
-                    return _orig_add_url_rule(
-                        rule,
-                        endpoint=ep,
-                        view_func=existing,
-                        provide_automatic_options=provide_automatic_options,
-                        **opts,
-                    )
-
-                # Nothing to merge; silently keep the first definition
-                try:
-                    self.logger.debug(
-                        "duplicate_route_keep_existing", extra={"endpoint": ep, "rule": rule}
-                    )
-                except Exception:
-                    pass
-                return
-        except Exception:
-            # On any unexpected error, fall back to original behavior
-            pass
-        return _orig_add_url_rule(
-            rule,
-            endpoint=endpoint,
-            view_func=view_func,
-            provide_automatic_options=provide_automatic_options,
-            **options,
-        )
-
-    app.add_url_rule = _MethodType(_safe_add_url_rule, app)  # type: ignore
-    app._duplicate_silencer_installed = True  # type: ignore[attr-defined]
-
-
-# ---------------------------------------------------------------------------
-# Setup-hook registration silencer (idempotent + post-first-request safe)
-#
-# Tests may importlib.reload(this_module) after the app has already served at
-# least one request via the shared test client. Flask disallows calling
-# before_request/after_request once the first request has been handled.
-#
-# To keep reloads safe and avoid AssertionError, wrap the registration methods
-# so that after the app has begun serving requests, subsequent attempts to
-# register hooks are no-ops and simply return the function unchanged.
-# ---------------------------------------------------------------------------
-if not getattr(app, "_setup_hooks_silencer_installed", False):  # type: ignore[attr-defined]
-    _orig_before_request = app.before_request  # type: ignore
-    _orig_after_request = app.after_request  # type: ignore
-    _orig_route = app.route  # type: ignore
-    _orig_errorhandler = app.errorhandler  # type: ignore
-    _orig_register_error_handler = app.register_error_handler  # type: ignore
-
-    def _safe_before_request(self, func):  # type: ignore
-        try:
-            return _orig_before_request(func)
+            return _orig_add_url_rule(
+                rule,
+                endpoint=endpoint,
+                view_func=view_func,
+                provide_automatic_options=provide_automatic_options,
+                **options,
+            )
         except AssertionError:
+            # Silently ignore duplicate registrations during reloads
             try:
-                app.logger.debug(
-                    "before_request_registration_skipped",
-                    extra={"func": getattr(func, "__name__", str(func))},
-                )
+                if endpoint and endpoint in self.view_functions:
+                    existing = self.view_functions.get(endpoint)
+                    # keep first-registered view; skip conflicting re-register
+                    if existing is not view_func:
+                        return None
             except Exception:
-                pass
-            return func
-
-    def _safe_after_request(self, func):  # type: ignore
-        try:
-            return _orig_after_request(func)
-        except AssertionError:
-            try:
-                app.logger.debug(
-                    "after_request_registration_skipped",
-                    extra={"func": getattr(func, "__name__", str(func))},
-                )
-            except Exception:
-                pass
-            return func
-
-    # Monkey-patch the app methods
-    from types import MethodType as _SetupMethodType  # type: ignore
-
-    app.before_request = _SetupMethodType(_safe_before_request, app)  # type: ignore
-    app.after_request = _SetupMethodType(_safe_after_request, app)  # type: ignore
-
-    def _safe_route(self, rule, **options):  # type: ignore
-        try:
-            return _orig_route(rule, **options)
-        except AssertionError:
-            # Return a no-op decorator if routes are being (re)registered after first request
-            def _noop_decorator(func):  # type: ignore
-                try:
-                    self.logger.debug(
-                        "route_registration_skipped",
-                        extra={"rule": rule, "options": list(options.keys())},
-                    )
-                except Exception:
-                    pass
-                return func
-
-            return _noop_decorator
-
-    app.route = _SetupMethodType(_safe_route, app)  # type: ignore
-
-    def _safe_errorhandler(self, *args, **kwargs):  # type: ignore
-        try:
-            return _orig_errorhandler(*args, **kwargs)
-        except AssertionError:
-            # Late registration — return a decorator that leaves the function unchanged
-            def _noop_decorator(func):  # type: ignore
-                try:
-                    self.logger.debug(
-                        "errorhandler_registration_skipped",
-                        extra={"args": [str(a) for a in args[:1]]},
-                    )
-                except Exception:
-                    pass
-                return func
-
-            return _noop_decorator
-
-    def _safe_register_error_handler(self, *args, **kwargs):  # type: ignore
-        try:
-            return _orig_register_error_handler(*args, **kwargs)
-        except AssertionError:
-            try:
-                self.logger.debug(
-                    "register_error_handler_skipped",
-                    extra={"args": [str(a) for a in args[:1]]},
-                )
-            except Exception:
-                pass
+                return None
             return None
 
-    app.errorhandler = _SetupMethodType(_safe_errorhandler, app)  # type: ignore
-    app.register_error_handler = _SetupMethodType(_safe_register_error_handler, app)  # type: ignore
-    app._setup_hooks_silencer_installed = True  # type: ignore[attr-defined]
+    app.add_url_rule = _MethodType(_safe_add_url_rule, app)
+    app._duplicate_silencer_installed = True  # type: ignore[attr-defined]
 
-
-# Per-request instance logging to prove single-instance behavior during E2E runs.
-@app.before_request  # type: ignore
-def _instance_request_marker():  # pragma: no cover (diagnostic)
-    try:
-        app.logger.debug(
-            "instance_request",
-            extra={
-                "instance": APP_INSTANCE_ID,
-                "method": request.method,
-                "path": request.path,
-            },
-        )
-    except Exception:
-        pass
-
-
-# After Flask app (variable 'app') is instantiated above, initialize CORS once.
-try:  # idempotent guard
-    if not getattr(app, "_CORS_INITIALIZED", False):  # type: ignore
-        _env = (os.getenv("APP_ENV") or os.getenv("FLASK_ENV") or os.getenv("ENV") or "").lower()
-        if _env in {"prod", "production", "staging"}:
-            ALLOWED_ORIGINS = {os.getenv("FRONTEND_ORIGIN", "https://app.example.com")}
-            cors_origins = list(ALLOWED_ORIGINS)
-            cors_credentials = True
-        else:
-            ALLOWED_ORIGINS = {
-                "http://localhost:5173",
-                "http://127.0.0.1:5173",
-                "http://frontend:5173",  # Docker service name
-            }
-            cors_origins = list(ALLOWED_ORIGINS)
-            cors_credentials = False
-        print(f"[CORS DEBUG] Configuring CORS for origins: {ALLOWED_ORIGINS}")
+# ---------------------------------------------------------------------------
+# CORS initialization (single place)
+# ---------------------------------------------------------------------------
+ALLOWED_ORIGINS = {
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
+}
+try:  # pragma: no cover - environment-dependent
+    if not getattr(app, "_CORS_INITIALIZED", False):  # type: ignore[attr-defined]
         CORS(
             app,
-            resources={
-                r"/api/*": {"origins": cors_origins},
-                r"/customers/*": {"origins": cors_origins},
-            },
-            supports_credentials=cors_credentials,
+            resources={r"/api/*": {"origins": list(ALLOWED_ORIGINS)}},
+            supports_credentials=True,
+            methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
             allow_headers=[
                 "Authorization",
                 "Content-Type",
                 "X-Request-Id",
                 "X-Tenant-Id",
                 "x-tenant-id",
+                "X-Correlation-Id",
+                "X-Idempotency-Key",
             ],
-            methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-            expose_headers=["X-Debug-App-Instance"],
+            expose_headers=[
+                "X-Debug-App-Instance",
+                "X-App-Version",
+                "X-Idempotency-Status",
+                "X-Correlation-Id",
+                "X-Request-Id",
+            ],
         )
-        app._CORS_INITIALIZED = True  # type: ignore
+        app._CORS_INITIALIZED = True  # type: ignore[attr-defined]
 except Exception as _cors_init_e:  # pragma: no cover
     print(f"[cors-init] Failed initializing Flask-CORS: {_cors_init_e}")
+
+
+# ---------------------------------------------------------------------------
+# API Consistency Middleware: Correlation IDs, Error Envelope, Response Envelope
+# ---------------------------------------------------------------------------
+try:
+    import json as _json_mod
+    import math as _math
+    import time as _time
+    import uuid as _uuid_mod
+
+    from werkzeug.exceptions import HTTPException as _HTTPException
+
+    if not getattr(app, "_API_CONSISTENCY_INSTALLED", False):  # type: ignore[attr-defined]
+
+        @app.before_request  # type: ignore
+        def _assign_correlation_id():
+            try:
+                cid = (
+                    request.headers.get("X-Request-Id")
+                    or request.headers.get("X-Correlation-Id")
+                    or str(_uuid_mod.uuid4())
+                )
+                g.correlation_id = cid
+            except Exception:
+                g.correlation_id = str(_uuid_mod.uuid4())
+
+        def _is_json_response(resp: Response) -> bool:
+            try:
+                mt = (resp.mimetype or "").lower()
+                if mt == "application/json":
+                    return True
+                return bool(getattr(resp, "is_json", False))
+            except Exception:
+                return False
+
+        def _already_enveloped(obj) -> bool:
+            return isinstance(obj, dict) and {"ok", "data", "error"}.issubset(set(obj.keys()))
+
+        # Pagination helpers
+        _DEFAULT_PAGE_SIZE = int(os.getenv("API_DEFAULT_PAGE_SIZE", "25"))
+        _MAX_PAGE_SIZE = int(os.getenv("API_MAX_PAGE_SIZE", "100"))
+
+        def _parse_pagination_args():
+            try:
+                page = int(request.args.get("page", "1"))
+            except Exception:
+                page = 1
+            try:
+                size = int(request.args.get("page_size", str(_DEFAULT_PAGE_SIZE)))
+            except Exception:
+                size = _DEFAULT_PAGE_SIZE
+            if page < 1:
+                page = 1
+            if size < 1:
+                size = _DEFAULT_PAGE_SIZE
+            if size > _MAX_PAGE_SIZE:
+                size = _MAX_PAGE_SIZE
+            return page, size
+
+        # Idempotency cache (in-memory)
+        _IDEMPOTENCY_TTL_SEC = int(os.getenv("API_IDEMPOTENCY_TTL_SEC", "86400"))
+        _idem_cache: dict[str, tuple[float, int, str]] = {}
+
+        def _critical_post_path(path: str) -> bool:
+            return bool(
+                re.search(
+                    r"/(payments|appointments|vehicles|invoices|service-operations)(/|$)", path
+                )
+            )
+
+        def _make_idem_key():
+            key = request.headers.get("Idempotency-Key") or request.headers.get("X-Idempotency-Key")
+            if not key:
+                return None
+            tenant = request.headers.get("X-Tenant-Id") or request.headers.get("x-tenant-id") or "-"
+            p = request.path
+            try:
+                body = request.get_data(cache=True) or b""
+            except Exception:
+                body = b""
+            h = hashlib.sha256()
+            h.update(p.encode())
+            h.update(b"|")
+            h.update(tenant.encode())
+            h.update(b"|")
+            h.update(body)
+            return f"{key}:{h.hexdigest()}"
+
+        @app.before_request  # type: ignore
+        def _idempotency_replay_check():
+            try:
+                if request.method.upper() != "POST":
+                    return None
+                if not _critical_post_path(request.path):
+                    return None
+                cache_key = _make_idem_key()
+                if not cache_key:
+                    return None
+                ent = _idem_cache.get(cache_key)
+                now = _time.time()
+                if not ent:
+                    return None
+                ts, status, body = ent
+                if now - ts > _IDEMPOTENCY_TTL_SEC:
+                    _idem_cache.pop(cache_key, None)
+                    return None
+                resp = make_response(body, status)
+                resp.mimetype = "application/json"
+                resp.headers["X-Idempotency-Status"] = "replayed"
+                resp.headers.setdefault("X-Correlation-Id", getattr(g, "correlation_id", "?"))
+                return resp
+            except Exception:
+                return None
+
+        def _wrap_envelope(obj, ok: bool, status: int, meta: dict | None = None):
+            err = None
+            data = obj if ok else None
+            if not ok:
+                if isinstance(obj, dict) and ("error" in obj or "message" in obj):
+                    msg = obj.get("error") or obj.get("message")
+                    err = {"code": status, "message": msg}
+                else:
+                    err = {"code": status, "message": str(obj)}
+            env = {
+                "ok": bool(ok),
+                "data": data,
+                "error": err,
+                "correlation_id": getattr(g, "correlation_id", None),
+            }
+            if meta:
+                env["meta"] = meta
+            return env
+
+        @app.errorhandler(Exception)  # type: ignore
+        def _json_error_handler(e: Exception):
+            status = 500
+            msg = "Internal Server Error"
+            if isinstance(e, _HTTPException):
+                status = int(getattr(e, "code", 500) or 500)
+                msg = getattr(e, "description", msg) or msg
+            payload = _wrap_envelope({"message": msg}, ok=False, status=status)
+            resp = make_response(_json_mod.dumps(payload), status)
+            resp.mimetype = "application/json"
+            resp.headers["X-Correlation-Id"] = getattr(g, "correlation_id", "?")
+            return resp
+
+        @app.after_request  # type: ignore
+        def _standardize_json_envelope(resp: Response):
+            try:
+                resp.headers.setdefault("X-Correlation-Id", getattr(g, "correlation_id", "?"))
+                if not _is_json_response(resp):
+                    return resp
+                body = None
+                try:
+                    body = resp.get_json(silent=True)
+                except Exception:
+                    body = None
+                if body is None:
+                    return resp
+                meta = None
+                if request.method.upper() == "GET" and isinstance(body, list):
+                    page, size = _parse_pagination_args()
+                    total = len(body)
+                    total_pages = max(1, _math.ceil(total / size))
+                    start = (page - 1) * size
+                    end = start + size
+                    body = body[start:end]
+                    meta = {
+                        "pagination": {
+                            "page": page,
+                            "page_size": size,
+                            "total": total,
+                            "total_pages": total_pages,
+                        }
+                    }
+                if _already_enveloped(body):
+                    if not body.get("correlation_id"):
+                        body["correlation_id"] = getattr(g, "correlation_id", None)
+                        resp.set_data(_json_mod.dumps(body))
+                    return resp
+                ok = 200 <= (resp.status_code or 200) < 400
+                wrapped = _wrap_envelope(body, ok=ok, status=resp.status_code or 200, meta=meta)
+                resp.set_data(_json_mod.dumps(wrapped))
+                resp.mimetype = "application/json"
+                try:
+                    if request.method.upper() == "POST" and _critical_post_path(request.path):
+                        cache_key = _make_idem_key()
+                        if cache_key:
+                            _idem_cache[cache_key] = (
+                                _time.time(),
+                                int(resp.status_code or 200),
+                                resp.get_data(as_text=True),
+                            )
+                            resp.headers["X-Idempotency-Status"] = resp.headers.get(
+                                "X-Idempotency-Status", "stored"
+                            )
+                except Exception:
+                    pass
+                return resp
+            except Exception:
+                return resp
+
+        app._API_CONSISTENCY_INSTALLED = True  # type: ignore[attr-defined]
+except Exception as _api_consistency_e:  # pragma: no cover
+    print(f"[api-consistency] Failed to install middleware: {_api_consistency_e}")
 
 # Temporary debug marker to verify freshest code path is executing inside container
 print("!!! EXECUTING LATEST SERVER CODE !!!")  # DEBUG_MARKER_REMOVE_ME
