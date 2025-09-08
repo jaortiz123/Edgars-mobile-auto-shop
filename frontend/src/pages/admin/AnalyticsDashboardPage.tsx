@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import { fetchTemplateAnalytics, TemplateAnalyticsResponse } from '../../lib/api';
-import TotalsSummary from '../../components/analytics/TotalsSummary';
-import TrendChart from '../../components/analytics/TrendChart';
-import TemplatesTable from '../../components/analytics/TemplatesTable';
+// Lazy load heavy chart components to reduce initial bundle size
+const TotalsSummary = lazy(() => import('../../components/analytics/TotalsSummary'));
+const TrendChart = lazy(() => import('../../components/analytics/TrendChart'));
+const TemplatesTable = lazy(() => import('../../components/analytics/TemplatesTable'));
 
 interface AsyncState<T> {
   loading: boolean;
@@ -69,12 +70,18 @@ export const AnalyticsDashboardPage: React.FC = () => {
           </label>
         </div>
       </div>
-      <TotalsSummary totals={totals} />
+      <Suspense fallback={<div className="h-24 bg-gray-50 animate-pulse rounded"></div>}>
+        <TotalsSummary totals={totals} />
+      </Suspense>
       <div>
         <h2 className="text-sm font-semibold mb-2 text-gray-700">Message Volume Trend</h2>
-        <TrendChart data={trend} />
+        <Suspense fallback={<div className="h-64 bg-gray-50 animate-pulse rounded"></div>}>
+          <TrendChart data={trend} />
+        </Suspense>
       </div>
-  <TemplatesTable templates={templates} />
+      <Suspense fallback={<div className="h-96 bg-gray-50 animate-pulse rounded"></div>}>
+        <TemplatesTable templates={templates} />
+      </Suspense>
       <pre className="text-xs bg-gray-50 border rounded p-2 overflow-auto max-h-96" aria-label="debug-json">
         {JSON.stringify(state.data, null, 2)}
       </pre>

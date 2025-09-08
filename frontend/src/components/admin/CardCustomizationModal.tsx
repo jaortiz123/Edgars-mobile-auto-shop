@@ -103,7 +103,7 @@ export default function CardCustomizationModal({ open, onClose }: Props) {
         <div className="flex flex-1 overflow-hidden">
           {/* Left: Live Preview */}
           <div className="flex-1 overflow-auto p-8 bg-[repeating-linear-gradient(0deg,#e5e7eb,#e5e7eb_1px,transparent_1px,transparent_24px),repeating-linear-gradient(90deg,#e5e7eb,#e5e7eb_1px,transparent_1px,transparent_24px)]">
-            <p className="text-xs font-semibold mb-3 opacity-70">Preview</p>
+            <p className="text-xs font-semibold mb-3 text-muted-foreground">Preview</p>
             <MultiSelectProvider>
               <div className="max-w-[300px]">
                 <EnhancedAppointmentCard card={demoCard} />

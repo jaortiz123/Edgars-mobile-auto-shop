@@ -1,0 +1,26 @@
+route,type,role,screen,entity,mode,loading,empty,error,forbidden,offline,notes
+/,public,none,Landing,marketing,other,Yes*,TBD,TBD,No,TBD,*A11y issues: missing landmarks; perf issues; Frontend verified
+/about,public,none,About,marketing,other,Yes,No,TBD,No,TBD,Company info - Frontend pattern similar to home
+/service-areas,public,none,ServiceAreas,marketing,other,Yes,No,TBD,No,TBD,Service coverage - Frontend pattern similar to home
+/booking,public,none,Booking,booking,other,Yes,N/A,TBD,No,TBD,Booking flow - Requires backend verification
+/confirmation,public,none,Confirmation,booking,other,Yes,N/A,TBD,No,TBD,Post-booking confirmation - Requires backend verification
+/emergency,public,none,Emergency,marketing,other,Yes,N/A,TBD,No,TBD,Emergency service CTA - Frontend pattern similar to home
+/login,auth,none,Login,auth,other,Yes*,N/A,TBD,No,TBD,*A11y issues: form labels; error announcements; Frontend verified
+/register,auth,none,Register,auth,other,Yes,N/A,TBD,No,TBD,User registration - Similar to login patterns
+/forgot-password,auth,none,ForgotPassword,auth,other,Yes,N/A,TBD,No,TBD,Password reset - Similar to login patterns
+/admin/login,auth,none,AdminLogin,auth,other,Yes*,N/A,TBD,No,TBD,*A11y issues: similar to login; Frontend verified
+/profile,protected,auth,Profile,account,other,Yes,N/A,TBD,No,TBD,Requires authentication - Backend verification needed
+/admin/dashboard,admin,admin,Dashboard,admin,other,Yes,N/A,TBD,Planned,TBD,Admin layout; auth required - Backend verification needed
+/admin/appointments,admin,admin,Appointments,appointments,list,Yes,Planned,Planned,Planned,Planned,Board/list views - Backend verification needed
+/admin/appointments/new,admin,admin,AppointmentsNew,appointments,other,Yes,N/A,Planned,Planned,Planned,Create flow - Backend verification needed
+/admin/analytics,admin,owner,Analytics,analytics,other,Yes,N/A,Planned,Implemented,Planned,Owner role required - Backend verification needed
+/admin/customers,admin,admin,Customers,customers,list,Yes,Planned,Planned,Planned,Planned,Search/list - Backend verification needed
+/admin/customers/:id,admin,admin,CustomerProfile,customers,detail,Yes,Planned,Planned,Planned,Planned,Detail view - Backend verification needed
+/admin/customers/:id/profile-foundation,admin,admin,CustomerProfileFoundation,customers,detail,Yes,Planned,Planned,Planned,Planned,Foundation screen - Backend verification needed
+/admin/vehicles/:id,admin,admin,VehicleProfile,vehicles,detail,Yes,Planned,Planned,Planned,Planned,Detail view - Backend verification needed
+/admin/services,admin,admin,Services,services,list,Yes,Planned,Planned,Planned,Planned,CRUD list - Backend verification needed
+/admin/templates,admin,admin,MessageTemplates,templates,list,Yes,Planned,Planned,Planned,Planned,CRUD list - Backend verification needed
+/admin/invoices,admin,admin,Invoices,invoices,list,Yes,Planned,Planned,Planned,Planned,CRUD/list - Backend verification needed
+/admin/invoices/:id,admin,admin,InvoiceDetail,invoices,detail,Yes,Planned,Planned,Planned,Planned,Detail view - Backend verification needed
+/admin/cache-efficiency,admin,owner,CacheEfficiency,admin,other,Yes,N/A,Planned,Implemented,Planned,Owner role required - Backend verification needed
+*,public,none,NotFound,system,other,N/A,N/A,N/A,N/A,N/A,Catch-all 404

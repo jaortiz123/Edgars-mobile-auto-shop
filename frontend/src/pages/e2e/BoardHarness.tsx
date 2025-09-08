@@ -23,11 +23,11 @@ const SlimStatusBoard: React.FC = () => {
               {colCards.map(c => (
                 <div key={c.id} data-appointment-id={c.id} data-testid={`apt-card-${c.id}`} className="nb-card p-2 border mb-2 rounded bg-white shadow-sm">
                   <div className="text-xs font-semibold">{c.headline || c.servicesSummary || c.id}</div>
-                  <div className="text-[10px] opacity-70">{c.customerName}</div>
+                  <div className="text-[10px] text-muted-foreground">{c.customerName}</div>
                   <div className="text-[10px] font-mono mt-1" data-status-label>{c.status}</div>
                 </div>
               ))}
-              {colCards.length === 0 && <div className="text-[10px] opacity-50">None</div>}
+              {colCards.length === 0 && <div className="text-[10px] text-muted-foreground">None</div>}
             </div>
           </div>
         );
@@ -62,13 +62,13 @@ const FullBoardLazy: React.FC = () => {
     });
     return () => { mounted = false; };
   }, []);
-  if (!Comp) return <div data-full-loading className="text-xs opacity-60">Loading full board…</div>;
+  if (!Comp) return <div data-full-loading className="text-xs text-muted-foreground">Loading full board…</div>;
   // Dynamically imported StatusBoard component (expects onOpen(id: string))
   const C = Comp as React.ComponentType<{ onOpen?: (id: string) => void; minimalHero?: boolean }>;
   // Lazy load AppointmentDrawer component
   const AppointmentDrawer = React.lazy(() => import('../../components/admin/AppointmentDrawer'));
   return (
-    <React.Suspense fallback={<div data-ad-loading className="text-xs opacity-50">Loading drawer…</div>}>
+    <React.Suspense fallback={<div data-ad-loading className="text-xs text-muted-foreground">Loading drawer…</div>}>
       <C onOpen={(id: string) => setDrawerId(id)} minimalHero />
       <AppointmentDrawer
         open={!!drawerId}

@@ -130,13 +130,13 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({ id, date, status, serv
             }}
           >
             <div className="font-medium">{dtLocal(date)}</div>
-            <div className="text-xs opacity-70">{status}</div>
+            <div className="text-xs text-muted-foreground">{status}</div>
             <div className="text-xs mt-1">{services.map(s => s.name).join(', ')}</div>
           </button>
           {invoice && (
             <div className="text-right text-sm pl-3">
               <div>Total: {money(invoice.total)}</div>
-              <div className="opacity-70">Paid: {money(invoice.paid)} • Unpaid: {money(invoice.unpaid)}</div>
+              <div className="text-muted-foreground">Paid: {money(invoice.paid)} • Unpaid: {money(invoice.unpaid)}</div>
             </div>
           )}
           {hasInvoice && (

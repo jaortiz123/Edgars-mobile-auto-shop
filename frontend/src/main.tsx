@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContextRobust';
 import { BoardStoreProvider } from './state/BoardStoreProvider';
 import { ToastProvider } from './components/ui/Toast';
 import { ConflictProvider } from './conflict/ConflictProvider';
+import { AccessibilityProvider } from './contexts/AccessibilityProvider';
 import App from './App';
 import { BookingDrawerProvider } from './contexts/BookingDrawerContext';
 import './index.css';
@@ -47,15 +48,17 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ConflictProvider>
-          <ToastProvider>
-            <BoardStoreProvider>
-              <BookingDrawerProvider>
-                <App />
-              </BookingDrawerProvider>
-            </BoardStoreProvider>
-          </ToastProvider>
-        </ConflictProvider>
+        <AccessibilityProvider>
+          <ConflictProvider>
+            <ToastProvider>
+              <BoardStoreProvider>
+                <BookingDrawerProvider>
+                  <App />
+                </BookingDrawerProvider>
+              </BoardStoreProvider>
+            </ToastProvider>
+          </ConflictProvider>
+        </AccessibilityProvider>
       </AuthProvider>
     </QueryClientProvider>
   </StrictMode>,
