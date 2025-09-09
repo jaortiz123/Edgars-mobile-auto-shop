@@ -1,0 +1,40 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run targeted vitest for UI state coverage",
+			"type": "shell",
+			"command": "cd frontend && npm run test -- --run src/tests/ui-state-coverage.test.tsx --reporter=verbose",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Re-run targeted vitest for UI state coverage",
+			"type": "shell",
+			"command": "cd frontend && npm run test -- --run src/tests/ui-state-coverage.test.tsx --reporter=verbose",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Run full frontend vitest suite without coverage",
+			"type": "shell",
+			"command": "cd frontend && npm run test -- --run --reporter=verbose",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Re-run failing vitest specs only (no coverage)",
+			"type": "shell",
+			"command": "cd frontend && npx vitest run --run tests/hooks/useCustomerProfile.test.ts src/tests/analytics/AnalyticsDashboardPage.test.tsx --reporter=verbose",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Run full frontend vitest suite (no coverage)",
+			"type": "shell",
+			"command": "cd frontend && npx vitest run --run --reporter=verbose",
+			"isBackground": false,
+			"group": "build"
+		}
+	]
+}
