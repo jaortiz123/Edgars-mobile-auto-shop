@@ -8349,7 +8349,25 @@ def create_appointment():
                 },
             )
     # Return the complete created appointment
-    return _ok({"appointment": appointment_dict, "id": new_id}, HTTPStatus.CREATED)
+    # Some tests defensively look for data["appointment"]["id"] OR data["id"].
+    # We also observed a failing path where the test derived appt_id as None, implying
+    # the expected keys weren't visible at the first level of the envelope. To be
+    # maximally backward compatible (and guard against any downstream double-wrapping
+    # middleware), construct the final envelope explicitly and log it for diagnostics.
+    response_payload = {"appointment": appointment_dict, "id": new_id}
+    try:
+        print(
+            f"[APPT_DEBUG] Final create_appointment payload keys: {list(response_payload.keys())}"
+        )
+        app.logger.error(f"[APPT_DEBUG] Final create_appointment payload: {response_payload}")
+    except Exception:
+        pass
+    # Manually build the standard success envelope instead of using _ok to avoid any
+    # accidental double-wrapping (i.e. data.data.*) that would cause tests to miss the id.
+    return (
+        jsonify({"data": response_payload, "meta": {"request_id": _req_id()}}),
+        HTTPStatus.CREATED,
+    )
 
 
 @app.route("/api/admin/appointments/<appt_id>", methods=["DELETE"])
