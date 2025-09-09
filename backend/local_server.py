@@ -4702,6 +4702,8 @@ def create_invoice_payment(invoice_id: str):
     # Memory fallback
     conn, use_memory, err = safe_conn()
     if (not conn and use_memory) or (err and not conn):
+        # Mutate global payment list in this fallback path
+        global _MEM_PAYMENTS
         if amount_cents <= 0:
             return _error(
                 HTTPStatus.BAD_REQUEST, "invalid_amount", "Payment amount must be positive"
