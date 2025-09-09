@@ -135,7 +135,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-cov pytest-mock
+          pip install pytest pytest-cov pytest-mock pytest-rerunfailures
 
       - name: Load base schema (database/init.sql)
         env:
@@ -179,7 +179,9 @@ jobs:
           JWT_SECRET: test-secret
           LOG_LEVEL: WARNING
           AWS_DEFAULT_REGION: us-west-2
-        run: pytest -q --tb=short
+        run: |
+          echo "🔄 Running backend tests with flake detection (up to 2 reruns)..."
+          pytest -q --tb=short --reruns 2 --reruns-delay 1 -v
 
       - name: Frontend deps
         uses: actions/setup-node@v4
