@@ -2450,7 +2450,6 @@ def _e2e_mcp_vehicle_mock():  # pragma: no cover - test-only helper
         ):
             # Check for test reset header
             if request.headers.get("X-Test-Reset-Memory") == "1":
-                global _MCP_VIN_MEM, _MCP_PLATE_MEM
                 _MCP_VIN_MEM.clear()
                 _MCP_PLATE_MEM.clear()
 
@@ -4671,6 +4670,7 @@ def create_invoice_payment(invoice_id: str):
         )
         _MEM_INVOICES[invoice_id] = mem_inv  # type: ignore
         try:
+            global _MEM_PAYMENTS
             if _MEM_PAYMENTS is None:
                 _MEM_PAYMENTS = []
             _MEM_PAYMENTS.append(
@@ -4682,6 +4682,7 @@ def create_invoice_payment(invoice_id: str):
                 }
             )  # type: ignore
         except Exception:
+            global _MEM_PAYMENTS
             _MEM_PAYMENTS = [
                 {
                     "invoice_id": invoice_id,
