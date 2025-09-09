@@ -190,10 +190,9 @@ jobs:
       - name: Install frontend deps
         working-directory: frontend
         run: npm ci
-
       - name: Run frontend unit tests
         working-directory: frontend
-  run: npm run test:ci
+        run: npm run test:ci
 
   e2e-tests:
     name: E2E Tests (Playwright)
@@ -614,3 +613,52 @@ jobs:
         run: |
           echo "Pinging staging health endpoint: ${STAGING_HEALTHCHECK_URL}"
           curl -f -sS "${STAGING_HEALTHCHECK_URL}" -o /dev/null
+
+  api-smoke-test:
+    name: API Smoke Test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend deps
+        working-directory: backend
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Launch local server (memory mode)
+        env:
+          FALLBACK_TO_MEMORY: "true"
+          LOG_LEVEL: WARNING
+          JWT_SECRET: smoke-secret
+        run: |
+          set -euo pipefail
+          python backend/local_server.py &
+          echo $! > server.pid
+          echo "Waiting for local server health..."
+          for i in {1..30}; do
+            if curl -fsS http://localhost:3001/health > /dev/null 2>&1; then
+              echo "Server is up"; break; fi
+            sleep 1
+          done
+          curl -fsS http://localhost:3001/health || (echo 'Health check failed' && exit 1)
+
+      - name: Run API smoke script
+        env:
+          PYTHONPATH: backend
+        run: |
+          python scripts/smoke_api_consistency.py
+
+      - name: Teardown
+        if: always()
+        run: |
+          if [ -f server.pid ]; then kill $(cat server.pid) || true; fi
