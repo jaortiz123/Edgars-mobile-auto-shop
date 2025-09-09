@@ -1,0 +1,15 @@
+# Mutation Testing Configuration for Edgar's Mobile Auto Shop Backend
+# Focus: High-value security module - passwords.py
+
+# Target specific file for proof of concept
+paths_to_mutate:
+  - "app/security/passwords.py"
+
+# Test discovery configuration
+test_command: "python -m pytest tests/test_app_security_passwords_unit.py -v --tb=short"
+
+# Exclude patterns (none needed for targeted scan)
+paths_to_exclude: []
+
+# Backup configuration
+backup: true

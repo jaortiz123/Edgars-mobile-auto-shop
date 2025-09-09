@@ -8390,16 +8390,10 @@ def create_appointment():
         pass
     # Manually build the standard success envelope instead of using _ok to avoid any
     # accidental double-wrapping (i.e. data.data.*) that would cause tests to miss the id.
-    # Backward compatibility: some legacy tests or clients may expect the id at the root level
-    # (payload["id"]) in addition to under data["appointment"]["id"] or data["id"].
-    final_payload = {"data": response_payload, "meta": {"request_id": _req_id()}, "id": new_id}
-    try:
-        app.logger.error(
-            f"[APPT_DEBUG] Final response (with root id) keys: {list(final_payload.keys())}"
-        )
-    except Exception:
-        pass
-    return jsonify(final_payload), HTTPStatus.CREATED
+    return (
+        jsonify({"data": response_payload, "meta": {"request_id": _req_id()}}),
+        HTTPStatus.CREATED,
+    )
 
 
 @app.route("/api/admin/appointments/<appt_id>", methods=["DELETE"])

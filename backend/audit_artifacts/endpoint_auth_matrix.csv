@@ -1,0 +1,2 @@
+rule,method,expected_status,note
+/api/admin/test,GET,401,test

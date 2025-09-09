@@ -219,6 +219,8 @@ def validate_password_strength(password: str) -> Tuple[bool, str]:
 # Legacy support - check if old SHA256 hashes need migration
 def is_bcrypt_hash(password_hash: str) -> bool:
     """Check if a password hash is bcrypt format."""
+    if not password_hash:
+        return False
     return password_hash.startswith("$2b$") or password_hash.startswith("$2a$")
 
 
