@@ -4618,6 +4618,8 @@ def get_invoice(invoice_id: str):
 def create_invoice_payment(invoice_id: str):
     # Enforce Advisor-level auth for invoice payment creation
     require_auth_role("Advisor")
+    # Declare global list we mutate below
+    global _MEM_PAYMENTS
 
     # Step 2: Resolve active tenant from request context
     if not g.tenant_id:
@@ -4671,9 +4673,8 @@ def create_invoice_payment(invoice_id: str):
         )
         _MEM_INVOICES[invoice_id] = mem_inv  # type: ignore
         try:
-            global _MEM_PAYMENTS
             if _MEM_PAYMENTS is None:
-                _MEM_PAYMENTS = []
+                _MEM_PAYMENTS = []  # type: ignore
             _MEM_PAYMENTS.append(
                 {
                     "invoice_id": invoice_id,
@@ -4683,15 +4684,14 @@ def create_invoice_payment(invoice_id: str):
                 }
             )  # type: ignore
         except Exception:
-            global _MEM_PAYMENTS
-            _MEM_PAYMENTS = [
+            _MEM_PAYMENTS = [  # type: ignore
                 {
                     "invoice_id": invoice_id,
                     "amount_cents": amount_cents,
                     "method": method,
                     "note": note,
                 }
-            ]  # type: ignore
+            ]
         return _ok(
             {
                 "invoice": mem_inv,
