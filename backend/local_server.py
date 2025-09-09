@@ -4412,7 +4412,8 @@ def handle_rate_limited(e):  # pragma: no cover - exercised via tests
 def generate_invoice(appt_id: str):
     # Enforce Advisor-level auth for invoice generation
     require_auth_role("Advisor")
-    global _MEM_INVOICES, _MEM_INVOICE_SEQ, _MEM_PAYMENTS  # ensure we mutate module globals
+    # Only declare globals that are assigned within this function
+    global _MEM_INVOICES, _MEM_INVOICE_SEQ  # mutate module globals we increment/assign here
     # Explicit debug to verify route registration and execution
     try:
         print(
