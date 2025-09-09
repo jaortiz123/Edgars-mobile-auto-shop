@@ -29,8 +29,8 @@ export default defineConfig({
   test: {
     // Single environment (jsdom). Deprecated environmentMatchGlobs removed.
     environment: 'jsdom',
-  testTimeout: 5000, // reduced for stabilization
-  hookTimeout: 3000,
+  testTimeout: 5000, // Unified timeout post-decomposition
+  hookTimeout: 3000, // Consistent hook timeout
     // Pre-setup ensures act flag is set before React loads.
     setupFiles: ['src/tests/preActEnv.ts','src/tests/setup.ts'],
 
@@ -76,7 +76,8 @@ export default defineConfig({
 
     // 🎯 Coverage thresholds to prevent regression
     coverage: {
-      enabled: process.env.NO_COVERAGE === '1' ? false : true,
+      // Coverage now always enabled; NO_COVERAGE escape hatch removed
+      enabled: true,
       provider: 'v8',
       reporter: ['text', 'lcov', 'json', 'json-summary'],
       reportsDirectory: './coverage',
@@ -98,7 +99,7 @@ export default defineConfig({
   'src/components/admin/AppointmentCardRobust.backup.tsx'
       ],
       thresholds: {
-        // Temporarily lowered during stabilization (PR #1). Later PRs will restore.
+        // Restored gating thresholds after test suite expansion
         lines: 60,
         branches: 60,
         functions: 60,
