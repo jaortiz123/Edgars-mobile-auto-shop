@@ -1,0 +1,532 @@
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AppointmentFormModal } from '../../components/admin/AppointmentFormModal';
+
+// Mock all external dependencies
+vi.mock('@/hooks/useTechnicians', () => ({
+  useTechnicians: () => ({
+    data: [
+      { id: 'tech-1', name: 'John Smith', specialties: ['Brakes'] },
+      { id: 'tech-2', name: 'Jane Doe', specialties: ['Engine'] }
+    ],
+    isLoading: false
+  })
+}));
+
+vi.mock('@/hooks/useServiceOperations', () => ({
+  useServiceOperations: () => ({
+    data: [
+      { id: 'op-1', name: 'Oil Change', keywords: ['oil', 'maintenance'] },
+      { id: 'op-2', name: 'Brake Service', keywords: ['brakes', 'pads'] },
+      { id: 'op-3', name: 'Engine Repair', keywords: ['engine', 'repair'] }
+    ],
+    isLoading: false
+  })
+}));
+
+vi.mock('../../services/templateService.js', () => ({
+  getTemplates: () => Promise.resolve([
+    {
+      id: 'template-1',
+      name: 'Quick Oil Change',
+      fields: {
+        serviceType: 'Oil Change',
+        estimatedDuration: '1 hour',
+        primaryOperationId: 'op-1'
+      }
+    },
+    {
+      id: 'template-2',
+      name: 'Brake Service',
+      fields: {
+        serviceType: 'Brake Service',
+        estimatedDuration: '2 hours',
+        primaryOperationId: 'op-2'
+      }
+    }
+  ])
+}));
+
+vi.mock('../../lib/availabilityService', () => ({
+  getAvailableSlots: () => Promise.resolve([
+    { date: '2024-01-15', time: '9:00 AM' },
+    { date: '2024-01-15', time: '10:00 AM' },
+    { date: '2024-01-16', time: '2:00 PM' }
+  ])
+}));
+
+vi.mock('../../lib/api', () => ({
+  checkConflict: () => Promise.resolve({
+    conflict: false,
+    conflictingAppointment: null
+  })
+}));
+
+const createQueryClient = () => new QueryClient({
+  defaultOptions: {
+    queries: { retry: false },
+    mutations: { retry: false }
+  }
+});
+
+const renderWithProviders = (component: React.ReactElement) => {
+  const queryClient = createQueryClient();
+  return render(
+    <QueryClientProvider client={queryClient}>
+      {component}
+    </QueryClientProvider>
+  );
+};
+
+describe('AppointmentFormModal', () => {
+  const defaultProps = {
+    isOpen: true,
+    onClose: vi.fn(),
+    onSubmit: vi.fn(),
+    onQuickSchedule: vi.fn(),
+    isSubmitting: false
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('Basic Rendering', () => {
+    it('renders modal when open', () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      expect(screen.getByText('New Appointment')).toBeInTheDocument();
+      expect(screen.getByLabelText(/customer name/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/phone/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    });
+
+    it('does not render when closed', () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} isOpen={false} />);
+
+      expect(screen.queryByText('New Appointment')).not.toBeInTheDocument();
+    });
+
+    it('renders all form sections', () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      // Customer section
+      expect(screen.getByText('Customer Information')).toBeInTheDocument();
+
+      // Vehicle section
+      expect(screen.getByText('Vehicle Information')).toBeInTheDocument();
+
+      // Service section
+      expect(screen.getByText('Service Details')).toBeInTheDocument();
+
+      // Appointment section
+      expect(screen.getByText('Appointment Details')).toBeInTheDocument();
+    });
+  });
+
+  describe('Form Interactions', () => {
+    it('updates customer name field', () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      const nameInput = screen.getByLabelText(/customer name/i);
+      fireEvent.change(nameInput, { target: { value: 'John Doe' } });
+
+      expect(nameInput).toHaveValue('John Doe');
+    });
+
+    it('updates phone field', () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      const phoneInput = screen.getByLabelText(/phone/i);
+      fireEvent.change(phoneInput, { target: { value: '555-1234' } });
+
+      expect(phoneInput).toHaveValue('555-1234');
+    });
+
+    it('updates email field', () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      const emailInput = screen.getByLabelText(/email/i);
+      fireEvent.change(emailInput, { target: { value: 'john@example.com' } });
+
+      expect(emailInput).toHaveValue('john@example.com');
+    });
+
+    it('updates vehicle make selection', () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      const makeSelect = screen.getByLabelText(/vehicle make/i);
+      fireEvent.change(makeSelect, { target: { value: 'Toyota' } });
+
+      expect(makeSelect).toHaveValue('Toyota');
+    });
+
+    it('updates service type field', () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      const serviceInput = screen.getByLabelText(/service type/i);
+      fireEvent.change(serviceInput, { target: { value: 'Oil Change' } });
+
+      expect(serviceInput).toHaveValue('Oil Change');
+    });
+  });
+
+  describe('Service Operations', () => {
+    it('displays service operations list', async () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Oil Change')).toBeInTheDocument();
+        expect(screen.getByText('Brake Service')).toBeInTheDocument();
+        expect(screen.getByText('Engine Repair')).toBeInTheDocument();
+      });
+    });
+
+    it('filters service operations based on search', async () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      const searchInput = screen.getByPlaceholderText(/search services/i);
+      fireEvent.change(searchInput, { target: { value: 'brake' } });
+
+      await waitFor(() => {
+        expect(screen.getByText('Brake Service')).toBeInTheDocument();
+        expect(screen.queryByText('Oil Change')).not.toBeInTheDocument();
+      });
+    });
+
+    it('selects service operation', async () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      await waitFor(() => {
+        const oilChangeOption = screen.getByText('Oil Change');
+        fireEvent.click(oilChangeOption);
+      });
+
+      // Service should be selected and form updated
+      expect(screen.getByDisplayValue('Oil Change')).toBeInTheDocument();
+    });
+  });
+
+  describe('Template System', () => {
+    it('loads and displays templates', async () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Quick Oil Change')).toBeInTheDocument();
+        expect(screen.getByText('Brake Service')).toBeInTheDocument();
+      });
+    });
+
+    it('applies template when selected', async () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      await waitFor(() => {
+        const template = screen.getByText('Quick Oil Change');
+        fireEvent.click(template);
+      });
+
+      // Template fields should be applied
+      expect(screen.getByDisplayValue('Oil Change')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('1 hour')).toBeInTheDocument();
+    });
+  });
+
+  describe('Technician Assignment', () => {
+    it('displays technician options', async () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('John Smith')).toBeInTheDocument();
+        expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+      });
+    });
+
+    it('allows technician selection', async () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      await waitFor(() => {
+        const techOption = screen.getByText('John Smith');
+        fireEvent.click(techOption);
+      });
+
+      // Technician should be selected
+      const techSelect = screen.getByLabelText(/assign technician/i);
+      expect(techSelect).toHaveValue('tech-1');
+    });
+  });
+
+  describe('Vehicle Catalog', () => {
+    it('shows vehicle make options', () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      const makeSelect = screen.getByLabelText(/vehicle make/i);
+      fireEvent.click(makeSelect);
+
+      // Should show common makes from catalog
+      expect(screen.getByRole('option', { name: /toyota/i })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /honda/i })).toBeInTheDocument();
+    });
+
+    it('updates model options when make is selected', () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      const makeSelect = screen.getByLabelText(/vehicle make/i);
+      fireEvent.change(makeSelect, { target: { value: 'Toyota' } });
+
+      // Model options should update based on make
+      const modelSelect = screen.getByLabelText(/vehicle model/i);
+      expect(modelSelect).toBeEnabled();
+    });
+
+    it('handles year filtering for models', () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      const yearInput = screen.getByLabelText(/vehicle year/i);
+      fireEvent.change(yearInput, { target: { value: '2020' } });
+
+      const makeSelect = screen.getByLabelText(/vehicle make/i);
+      fireEvent.change(makeSelect, { target: { value: 'Toyota' } });
+
+      // Model options should be filtered by year
+      const modelSelect = screen.getByLabelText(/vehicle model/i);
+      expect(modelSelect).toBeEnabled();
+    });
+  });
+
+  describe('Appointment Scheduling', () => {
+    it('shows available time slots', () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      const timeSelect = screen.getByLabelText(/appointment time/i);
+      fireEvent.click(timeSelect);
+
+      // Should show predefined time slots
+      expect(screen.getByRole('option', { name: /8:00 AM/i })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /9:00 AM/i })).toBeInTheDocument();
+    });
+
+    it('shows duration options', () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      const durationSelect = screen.getByLabelText(/estimated duration/i);
+      fireEvent.click(durationSelect);
+
+      // Should show duration options
+      expect(screen.getByRole('option', { name: /30 minutes/i })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /1 hour/i })).toBeInTheDocument();
+    });
+
+    it('handles emergency appointment type', () => {
+      renderWithProviders(
+        <AppointmentFormModal {...defaultProps} initialAppointmentType="emergency" />
+      );
+
+      // Emergency appointments should bypass availability checking
+      expect(screen.getByDisplayValue('emergency')).toBeInTheDocument();
+    });
+  });
+
+  describe('Form Validation', () => {
+    it('shows validation errors for required fields', async () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      const submitButton = screen.getByRole('button', { name: /schedule appointment/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/customer name is required/i)).toBeInTheDocument();
+        expect(screen.getByText(/phone number is required/i)).toBeInTheDocument();
+      });
+    });
+
+    it('validates email format', async () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      const emailInput = screen.getByLabelText(/email/i);
+      fireEvent.change(emailInput, { target: { value: 'invalid-email' } });
+
+      const submitButton = screen.getByRole('button', { name: /schedule appointment/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/please enter a valid email/i)).toBeInTheDocument();
+      });
+    });
+
+    it('validates phone format', async () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      const phoneInput = screen.getByLabelText(/phone/i);
+      fireEvent.change(phoneInput, { target: { value: '123' } });
+
+      const submitButton = screen.getByRole('button', { name: /schedule appointment/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/please enter a valid phone number/i)).toBeInTheDocument();
+      });
+    });
+
+    it('clears errors when user corrects input', async () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      // Trigger validation error
+      const submitButton = screen.getByRole('button', { name: /schedule appointment/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/customer name is required/i)).toBeInTheDocument();
+      });
+
+      // Fix the error
+      const nameInput = screen.getByLabelText(/customer name/i);
+      fireEvent.change(nameInput, { target: { value: 'John Doe' } });
+
+      // Error should be cleared
+      await waitFor(() => {
+        expect(screen.queryByText(/customer name is required/i)).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Form Submission', () => {
+    const fillValidForm = async () => {
+      const nameInput = screen.getByLabelText(/customer name/i);
+      const phoneInput = screen.getByLabelText(/phone/i);
+      const emailInput = screen.getByLabelText(/email/i);
+      const serviceInput = screen.getByLabelText(/service type/i);
+      const dateInput = screen.getByLabelText(/appointment date/i);
+      const timeSelect = screen.getByLabelText(/appointment time/i);
+      const durationSelect = screen.getByLabelText(/estimated duration/i);
+
+      fireEvent.change(nameInput, { target: { value: 'John Doe' } });
+      fireEvent.change(phoneInput, { target: { value: '555-123-4567' } });
+      fireEvent.change(emailInput, { target: { value: 'john@example.com' } });
+      fireEvent.change(serviceInput, { target: { value: 'Oil Change' } });
+      fireEvent.change(dateInput, { target: { value: '2024-01-15' } });
+      fireEvent.change(timeSelect, { target: { value: '9:00 AM' } });
+      fireEvent.change(durationSelect, { target: { value: '1 hour' } });
+    };
+
+    it('submits form with valid data', async () => {
+      const onSubmit = vi.fn();
+      renderWithProviders(<AppointmentFormModal {...defaultProps} onSubmit={onSubmit} />);
+
+      await fillValidForm();
+
+      const submitButton = screen.getByRole('button', { name: /schedule appointment/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+          customerName: 'John Doe',
+          customerPhone: '555-123-4567',
+          customerEmail: 'john@example.com',
+          serviceType: 'Oil Change',
+          appointmentDate: '2024-01-15',
+          appointmentTime: '9:00 AM',
+          estimatedDuration: '1 hour'
+        }));
+      });
+    });
+
+    it('shows loading state when submitting', async () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} isSubmitting={true} />);
+
+      const submitButton = screen.getByRole('button', { name: /scheduling/i });
+      expect(submitButton).toBeDisabled();
+    });
+
+    it('prevents submission when form is invalid', async () => {
+      const onSubmit = vi.fn();
+      renderWithProviders(<AppointmentFormModal {...defaultProps} onSubmit={onSubmit} />);
+
+      // Leave form empty
+      const submitButton = screen.getByRole('button', { name: /schedule appointment/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(onSubmit).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('Modal Controls', () => {
+    it('calls onClose when X button is clicked', () => {
+      const onClose = vi.fn();
+      renderWithProviders(<AppointmentFormModal {...defaultProps} onClose={onClose} />);
+
+      const closeButton = screen.getByRole('button', { name: /close/i });
+      fireEvent.click(closeButton);
+
+      expect(onClose).toHaveBeenCalled();
+    });
+
+    it('calls onQuickSchedule when quick schedule button is clicked', () => {
+      const onQuickSchedule = vi.fn();
+      renderWithProviders(<AppointmentFormModal {...defaultProps} onQuickSchedule={onQuickSchedule} />);
+
+      const quickButton = screen.getByRole('button', { name: /quick schedule/i });
+      fireEvent.click(quickButton);
+
+      expect(onQuickSchedule).toHaveBeenCalled();
+    });
+
+    it('calls onClose when cancel button is clicked', () => {
+      const onClose = vi.fn();
+      renderWithProviders(<AppointmentFormModal {...defaultProps} onClose={onClose} />);
+
+      const cancelButton = screen.getByRole('button', { name: /cancel/i });
+      fireEvent.click(cancelButton);
+
+      expect(onClose).toHaveBeenCalled();
+    });
+  });
+
+  describe('Advanced Features', () => {
+    it('handles other vehicle make selection', () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      const makeSelect = screen.getByLabelText(/vehicle make/i);
+      fireEvent.change(makeSelect, { target: { value: 'Other' } });
+
+      // Should show custom make input
+      const customMakeInput = screen.getByLabelText(/specify other make/i);
+      expect(customMakeInput).toBeInTheDocument();
+    });
+
+    it('handles other vehicle model selection', () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      const makeSelect = screen.getByLabelText(/vehicle make/i);
+      fireEvent.change(makeSelect, { target: { value: 'Toyota' } });
+
+      const modelSelect = screen.getByLabelText(/vehicle model/i);
+      fireEvent.change(modelSelect, { target: { value: 'Other' } });
+
+      // Should show custom model input
+      const customModelInput = screen.getByLabelText(/specify other model/i);
+      expect(customModelInput).toBeInTheDocument();
+    });
+
+    it('handles notes field', () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      const notesInput = screen.getByLabelText(/notes/i);
+      fireEvent.change(notesInput, { target: { value: 'Customer requested early morning slot' } });
+
+      expect(notesInput).toHaveValue('Customer requested early morning slot');
+    });
+
+    it('handles service address field', () => {
+      renderWithProviders(<AppointmentFormModal {...defaultProps} />);
+
+      const addressInput = screen.getByLabelText(/service address/i);
+      fireEvent.change(addressInput, { target: { value: '123 Main St, City, State' } });
+
+      expect(addressInput).toHaveValue('123 Main St, City, State');
+    });
+  });
+});

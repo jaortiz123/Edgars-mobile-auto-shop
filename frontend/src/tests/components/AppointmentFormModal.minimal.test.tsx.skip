@@ -1,0 +1,94 @@
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import { vi, describe, it, expect } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// Minimal test to debug the hanging issue
+describe('AppointmentFormModal Minimal Debug', () => {
+  it('should be able to import the module without hanging', async () => {
+    // Test 1: Can we import the component at all?
+    expect(true).toBe(true);
+  });
+
+  it('should be able to dynamically import component', async () => {
+    // Test 2: Can we dynamic import without hanging?
+    try {
+      const { default: AppointmentFormModal } = await import('../../components/admin/AppointmentFormModal');
+      expect(AppointmentFormModal).toBeDefined();
+    } catch (error) {
+      console.log('Import error:', error);
+      throw error;
+    }
+  });
+
+  it('should render with minimal props', async () => {
+    // Test 3: Mock all dependencies and try basic render
+    vi.mock('../../components/admin/TemplateSelector', () => ({
+      __esModule: true,
+      default: () => <div data-testid="template-selector">Template Selector</div>
+    }));
+
+    vi.mock('../../components/admin/ConflictWarning', () => ({
+      __esModule: true,
+      default: () => <div data-testid="conflict-warning">Conflict Warning</div>
+    }));
+
+    vi.mock('../../lib/api', () => ({
+      getTechnicians: vi.fn().mockResolvedValue([]),
+      getCustomers: vi.fn().mockResolvedValue([]),
+      getVehicles: vi.fn().mockResolvedValue([]),
+      checkConflict: vi.fn().mockResolvedValue({ conflict: false }),
+    }));
+
+    vi.mock('@/hooks/useTechnicians', () => ({
+      useTechnicians: () => ({ data: [], isLoading: false })
+    }));
+
+    vi.mock('@/hooks/useServiceOperations', () => ({
+      useServiceOperations: () => ({ data: [], isLoading: false })
+    }));
+
+    // Mock all UI components
+    vi.mock('@/components/ui/dialog', () => ({
+      Dialog: ({ children }: any) => <div data-testid="dialog">{children}</div>,
+      DialogContent: ({ children }: any) => <div>{children}</div>,
+      DialogHeader: ({ children }: any) => <div>{children}</div>,
+      DialogTitle: ({ children }: any) => <h2>{children}</h2>,
+    }));
+
+    vi.mock('@/components/ui/button', () => ({
+      Button: ({ children }: any) => <button>{children}</button>,
+    }));
+
+    vi.mock('@/components/ui/input', () => ({
+      Input: (props: any) => <input {...props} />,
+    }));
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+
+    try {
+      const { default: AppointmentFormModal } = await import('../../components/admin/AppointmentFormModal');
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AppointmentFormModal
+            isOpen={true}
+            onClose={() => {}}
+            onSubmit={() => {}}
+            onQuickSchedule={() => {}}
+          />
+        </QueryClientProvider>
+      );
+
+      expect(screen.getByTestId('dialog')).toBeInTheDocument();
+    } catch (error) {
+      console.log('Render error:', error);
+      throw error;
+    }
+  });
+});

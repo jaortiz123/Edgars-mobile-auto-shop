@@ -120,8 +120,9 @@ export const TemplateFormModal: React.FC<TemplateFormModalProps> = ({ mode, open
             {error && <div className="text-sm text-red-600" data-testid="template-form-error">{error}</div>}
             {mode === 'create' && (
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Slug<span className="text-red-500">*</span></label>
+                <label htmlFor="tpl-slug" className="block text-xs font-medium text-gray-600 mb-1">Slug<span className="text-red-500">*</span></label>
                 <input
+                  id="tpl-slug"
                   value={values.slug}
                   onChange={e => setField('slug', e.target.value)}
                   className="w-full border rounded px-2 py-1 text-sm font-mono"
@@ -132,8 +133,9 @@ export const TemplateFormModal: React.FC<TemplateFormModalProps> = ({ mode, open
               </div>
             )}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Label<span className="text-red-500">*</span></label>
+              <label htmlFor="tpl-label" className="block text-xs font-medium text-gray-600 mb-1">Label<span className="text-red-500">*</span></label>
               <input
+                id="tpl-label"
                 value={values.label}
                 onChange={e => setField('label', e.target.value)}
                 className="w-full border rounded px-2 py-1 text-sm"
@@ -143,8 +145,9 @@ export const TemplateFormModal: React.FC<TemplateFormModalProps> = ({ mode, open
             </div>
             <div className="flex gap-4 flex-wrap">
               <div className="flex-1 min-w-[150px]">
-                <label className="block text-xs font-medium text-gray-600 mb-1">Channel<span className="text-red-500">*</span></label>
+                <label htmlFor="tpl-channel" className="block text-xs font-medium text-gray-600 mb-1">Channel<span className="text-red-500">*</span></label>
                 <select
+                  id="tpl-channel"
                   value={values.channel}
                   onChange={e => setField('channel', e.target.value as 'sms' | 'email')}
                   className="w-full border rounded px-2 py-1 text-sm"
@@ -157,8 +160,9 @@ export const TemplateFormModal: React.FC<TemplateFormModalProps> = ({ mode, open
                 </select>
               </div>
               <div className="flex-1 min-w-[150px]">
-                <label className="block text-xs font-medium text-gray-600 mb-1">Category</label>
+                <label htmlFor="tpl-category" className="block text-xs font-medium text-gray-600 mb-1">Category</label>
                 <input
+                  id="tpl-category"
                   value={values.category}
                   onChange={e => setField('category', e.target.value)}
                   className="w-full border rounded px-2 py-1 text-sm"
@@ -178,8 +182,9 @@ export const TemplateFormModal: React.FC<TemplateFormModalProps> = ({ mode, open
               )}
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Body<span className="text-red-500">*</span></label>
+              <label htmlFor="tpl-body" className="block text-xs font-medium text-gray-600 mb-1">Body<span className="text-red-500">*</span></label>
               <textarea
+                id="tpl-body"
                 value={values.body}
                 onChange={e => setField('body', e.target.value)}
                 className="w-full border rounded px-2 py-2 text-sm font-mono min-h-[140px]"
