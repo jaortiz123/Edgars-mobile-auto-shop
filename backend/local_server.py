@@ -884,6 +884,10 @@ _async_log = _AsyncLogWorker(log)
 # In-memory fallback caches for simple E2E endpoints when DB schema is partial
 _MCP_VIN_MEM: set[str] = set()
 _MCP_PLATE_MEM: set[str] = set()
+# In-memory invoice/payment stores for fallback invoice flows
+_MEM_INVOICES: dict[str, dict] | None = None  # lazily initialized when used
+_MEM_INVOICE_SEQ = 0  # simple counter for invoice ids in memory mode
+_MEM_PAYMENTS: list[dict] | None = None  # initialized on first append
 
 # Rate limit globals
 RATE_LIMIT_PER_MINUTE = 60
@@ -4409,7 +4413,7 @@ def handle_rate_limited(e):  # pragma: no cover - exercised via tests
 def generate_invoice(appt_id: str):
     # Enforce Advisor-level auth for invoice generation
     require_auth_role("Advisor")
-    global _MEM_INVOICES, _MEM_INVOICE_SEQ, _MEM_PAYMENTS  # type: ignore
+    global _MEM_INVOICES, _MEM_INVOICE_SEQ, _MEM_PAYMENTS  # ensure we mutate module globals
     # Explicit debug to verify route registration and execution
     try:
         print(
@@ -4430,11 +4434,9 @@ def generate_invoice(appt_id: str):
         force_mem = False
     if force_mem or (not conn and use_memory) or (err and not conn):
         # In memory mode, accept the provided appointment id to unblock slim E2E flow
-        try:
-            _MEM_INVOICE_SEQ += 1  # type: ignore
-        except Exception:
-            _MEM_INVOICE_SEQ = 1  # type: ignore
-            _MEM_INVOICES = {}  # type: ignore
+        if _MEM_INVOICES is None:
+            _MEM_INVOICES = {}
+        _MEM_INVOICE_SEQ += 1
         # Compute total from memory services
         try:
             services = [s for s in _MEM_SERVICES if s.get("appointment_id") == appt_id]  # type: ignore
@@ -4585,11 +4587,7 @@ def get_invoice(invoice_id: str):
                         items = []
                 # Build payments from memory when available
                 try:
-                    pmts = [
-                        p
-                        for p in (_MEM_PAYMENTS or [])  # type: ignore
-                        if p.get("invoice_id") == invoice_id
-                    ]
+                    pmts = [p for p in (_MEM_PAYMENTS or []) if p.get("invoice_id") == invoice_id]
                 except Exception:
                     pmts = []
                 return _ok({"invoice": inv_payload, "lineItems": items, "payments": pmts})
@@ -4673,6 +4671,8 @@ def create_invoice_payment(invoice_id: str):
         )
         _MEM_INVOICES[invoice_id] = mem_inv  # type: ignore
         try:
+            if _MEM_PAYMENTS is None:
+                _MEM_PAYMENTS = []
             _MEM_PAYMENTS.append(
                 {
                     "invoice_id": invoice_id,
@@ -4719,6 +4719,8 @@ def create_invoice_payment(invoice_id: str):
         status = "PAID" if new_due == 0 else "PARTIALLY_PAID"
         inv.update({"amount_paid_cents": new_paid, "amount_due_cents": new_due, "status": status})
         try:
+            if _MEM_PAYMENTS is None:
+                _MEM_PAYMENTS = []
             _MEM_PAYMENTS.append(
                 {
                     "invoice_id": invoice_id,
