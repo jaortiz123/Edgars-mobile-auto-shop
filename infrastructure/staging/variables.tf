@@ -28,6 +28,43 @@ variable "desired_count" {
   default     = 1
 }
 
+# Auto Scaling Configuration Variables
+variable "min_capacity" {
+  description = "Minimum number of tasks for auto scaling"
+  type        = number
+  default     = 1
+}
+
+variable "max_capacity" {
+  description = "Maximum number of tasks for auto scaling"
+  type        = number
+  default     = 10
+}
+
+variable "cpu_target_value" {
+  description = "Target CPU utilization percentage for auto scaling"
+  type        = number
+  default     = 70
+}
+
+variable "memory_target_value" {
+  description = "Target memory utilization percentage for auto scaling"
+  type        = number
+  default     = 80
+}
+
+variable "alert_email" {
+  description = "Email address for CloudWatch alerts (optional)"
+  type        = string
+  default     = ""
+}
+
+variable "enable_pre_traffic_validation" {
+  description = "Enable pre-traffic validation Lambda hook for Blue/Green deployments"
+  type        = bool
+  default     = true
+}
+
 variable "ecr_repository_name" {
   description = "ECR repository name for backend image"
   type        = string

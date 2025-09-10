@@ -54,6 +54,7 @@
     "zustand": "^5.0.7"
   },
   "devDependencies": {
+    "@babel/traverse": "^7.25.0",
     "@eslint/js": "^9.25.0",
     "@testing-library/jest-dom": "^6.6.4",
     "@testing-library/react": "^16.3.0",
@@ -88,5 +89,18 @@
     "vitest": "^3.2.4",
     "vitest-fail-on-console": "^0.8.0",
     "whatwg-fetch": "^3.6.20"
+  },
+  "overrides": {
+    "@babel/traverse": "^7.25.0",
+    "json5": "^2.2.3",
+    "semver": "^7.7.2",
+    "trim-newlines": "^4.0.2",
+    "braces": "^3.0.3",
+    "cross-spawn": "^7.0.6",
+    "micromatch": "^4.0.8",
+    "got": "^13.0.0",
+    "@babel/helpers": "^7.28.3",
+    "word-wrap": "^1.2.5",
+    "brace-expansion": "^2.0.2"
   }
 }

@@ -11487,6 +11487,157 @@ def handle_unexpected_error(error):
     )
 
 
+# ----------------------------------------------------------------------------
+# Health Check Endpoints for Production Reliability
+# ----------------------------------------------------------------------------
+
+
+@app.route("/health", methods=["GET"])
+def health_check():
+    """Basic health check endpoint for load balancer health checks.
+
+    Returns 200 OK if the application is running and can handle requests.
+    This is a lightweight check that doesn't verify external dependencies.
+    """
+    return (
+        jsonify(
+            {
+                "status": "healthy",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "service": "edgar-auto-shop-backend",
+                "version": "1.0.0",
+                "instance_id": APP_INSTANCE_ID,
+            }
+        ),
+        200,
+    )
+
+
+@app.route("/ready", methods=["GET"])
+def readiness_check():
+    """Deep readiness check that verifies all critical dependencies.
+
+    This endpoint performs comprehensive checks including:
+    - Database connectivity
+    - Database query execution
+    - Critical environment variables
+
+    Returns 200 OK only when the service is fully ready to handle traffic.
+    Returns 503 Service Unavailable if any critical dependency is unavailable.
+    """
+    checks = {
+        "status": "ready",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "service": "edgar-auto-shop-backend",
+        "version": "1.0.0",
+        "instance_id": APP_INSTANCE_ID,
+        "checks": {},
+    }
+
+    overall_healthy = True
+
+    # Check 1: Database Connectivity
+    try:
+        conn = db_conn()
+        with conn.cursor() as cur:
+            # Simple query to verify database is responsive
+            cur.execute("SELECT 1 as health_check")
+            result = cur.fetchone()
+            if result and result.get("health_check") == 1:
+                checks["checks"]["database"] = {
+                    "status": "healthy",
+                    "message": "Database connection successful",
+                }
+            else:
+                checks["checks"]["database"] = {
+                    "status": "unhealthy",
+                    "message": "Database query returned unexpected result",
+                }
+                overall_healthy = False
+        conn.close()
+    except Exception as e:
+        checks["checks"]["database"] = {
+            "status": "unhealthy",
+            "message": f"Database connection failed: {str(e)}",
+        }
+        overall_healthy = False
+
+    # Check 2: Critical Environment Variables
+    required_env_vars = ["DATABASE_URL", "JWT_SECRET"]
+    env_check = {"status": "healthy", "missing": []}
+
+    for var in required_env_vars:
+        if not os.getenv(var):
+            env_check["missing"].append(var)
+            overall_healthy = False
+
+    if env_check["missing"]:
+        env_check["status"] = "unhealthy"
+        env_check["message"] = (
+            f"Missing required environment variables: {', '.join(env_check['missing'])}"
+        )
+    else:
+        env_check["message"] = "All required environment variables present"
+
+    checks["checks"]["environment"] = env_check
+
+    # Check 3: Application State
+    try:
+        # Verify Flask app is properly initialized
+        if app and hasattr(app, "url_map"):
+            route_count = len(list(app.url_map.iter_rules()))
+            checks["checks"]["application"] = {
+                "status": "healthy",
+                "message": f"Application initialized with {route_count} routes",
+            }
+        else:
+            checks["checks"]["application"] = {
+                "status": "unhealthy",
+                "message": "Application not properly initialized",
+            }
+            overall_healthy = False
+    except Exception as e:
+        checks["checks"]["application"] = {
+            "status": "unhealthy",
+            "message": f"Application state check failed: {str(e)}",
+        }
+        overall_healthy = False
+
+    # Update overall status
+    if not overall_healthy:
+        checks["status"] = "not_ready"
+        return jsonify(checks), 503
+
+    return jsonify(checks), 200
+
+
+@app.route("/health/live", methods=["GET"])
+def liveness_check():
+    """Liveness check for container orchestration.
+
+    This endpoint is used by container orchestrators (ECS, Kubernetes) to determine
+    if the container should be restarted. It performs minimal checks to avoid
+    false positives that could cause unnecessary restarts.
+    """
+    try:
+        # Basic application responsiveness check
+        current_time = datetime.now(timezone.utc)
+        return (
+            jsonify(
+                {
+                    "status": "alive",
+                    "timestamp": current_time.isoformat(),
+                    "service": "edgar-auto-shop-backend",
+                    "instance_id": APP_INSTANCE_ID,
+                }
+            ),
+            200,
+        )
+    except Exception as e:
+        # If we can't even return JSON, the application is severely compromised
+        return f"Liveness check failed: {str(e)}", 500
+
+
 # Optional: dump full route map after all routes are defined
 try:
     if os.getenv("DEBUG_ROUTES", "false").lower() == "true":

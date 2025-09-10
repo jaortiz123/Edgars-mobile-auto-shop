@@ -1,11 +1,39 @@
-# Use the official AWS Lambda Python base image for guaranteed compatibility.
-FROM public.ecr.aws/lambda/python:3.9
+# Use pinned digest for security and reproducible builds
+FROM public.ecr.aws/lambda/python:3.9@sha256:4ac7c7a02065ad8b90c7c3fc862b27bc0afe2e4024c9e0bdbfd89dc12a63c8f7
 
-# Install the required psycopg2 binary dependency.
-RUN pip install psycopg2-binary
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-# Copy the function handler code from the build context into the container.
-COPY booking_function.py ${LAMBDA_TASK_ROOT}
+# Install system updates and required dependencies with version pinning
+RUN yum update -y \
+    && yum install -y gcc postgresql-devel \
+    && yum clean all \
+    && rm -rf /var/cache/yum
+
+# Install the required psycopg2 binary dependency with version pinning
+RUN pip install --no-cache-dir --upgrade pip==24.0 \
+    && pip install --no-cache-dir psycopg2-binary==2.9.9
+
+# Create app directory with proper permissions
+RUN mkdir -p /var/task && chown -R appuser:appuser /var/task
+
+# Copy the function handler code from the build context into the container
+COPY --chown=appuser:appuser booking_function.py ${LAMBDA_TASK_ROOT}
+
+# Set proper permissions
+RUN chmod 644 ${LAMBDA_TASK_ROOT}/booking_function.py
+
+# Add health check (for local testing)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import booking_function; print('OK')" || exit 1
+
+# Switch to non-root user
+USER appuser
+
+# Set environment variables for security
+ENV PYTHONPATH=/var/task
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Set the command to execute. This tells Lambda which function to run.
 CMD [ "booking_function.lambda_handler" ]
