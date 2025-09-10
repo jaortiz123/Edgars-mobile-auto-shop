@@ -27,7 +27,7 @@
 ### Planning & Risk
 
 - [✅] Engagement acceptance & independence
-- [✅] Understanding the entity & environment (risk assessment)  
+- [✅] Understanding the entity & environment (risk assessment)
 - [✅] Materiality & performance materiality
 - [✅] Audit risk model (AR = IR × CR × DR; set DR = AR / (IR×CR))
 
@@ -78,7 +78,7 @@
 **Core idea (2–3 bullets):**
 
 - All API endpoints must return a standardized JSON envelope (e.g., `{ok, data, error, correlation_id}`).
-- Error responses must be handled globally by a unified middleware to ensure consistency.  
+- Error responses must be handled globally by a unified middleware to ensure consistency.
 - Raw responses (arrays, strings, non-enveloped objects) are forbidden as they create brittle frontend clients.
 
 **Anchor example:** The `GET /api/admin/invoices` endpoint initially returned a raw JSON array `[...]` instead of the required `{ "ok": true, "data": [...] }`.
@@ -144,7 +144,7 @@
 | 6 | Mixed weak areas (from error log) | Review AppointmentFormModal debt | | |
 | 7 | Full mixed set + light review | Final project retrospective | | |
 
-**Export to Sheets**  
+**Export to Sheets**
 *Rule: stop and write an error‑log note for every miss. Re‑quiz missed objectives within 48 hours.*
 
 ## 6) Exam Mechanics (small wins)

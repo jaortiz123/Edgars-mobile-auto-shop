@@ -1,0 +1,15 @@
+Area,Tooling,Current State,Notes
+IaC,None,Missing,No Terraform/CDK/Pulumi found; manual deployment via shell scripts
+Runtime,Docker Compose + ECS + Gunicorn,Hybrid,Local: docker-compose; Staging: AWS ECS; Production: Gunicorn 4 workers
+Network,Docker Networks + CloudFront,Basic Cloud,Docker networks locally; CloudFront CDN for staging; no VPC/WAF
+Data,PostgreSQL + Redis,AWS RDS + Docker,Local: docker containers; Production: AWS RDS with connection pooling + Redis
+CI/CD,GitHub Actions,Implemented,Unified CI with ECS deployment; 6 workflows; staging auto-deploy
+Observability,Basic Logging,Minimal,Gunicorn logs; health endpoints; no structured observability stack
+Containers,Multiple Dockerfiles,Present,Frontend: Node 20-alpine; Backend: Lambda/ECS/auth variants with multi-stage builds
+Secrets,Environment Variables + AWS,Mixed,Local: .env files; AWS: likely using ECS task secrets (not confirmed)
+Load Balancing,ECS + CloudFront,AWS Native,ECS service load balancing; CloudFront for static assets
+SSL/TLS,CloudFront,AWS Managed,CloudFront provides SSL termination; no custom cert management
+Monitoring,Health Checks,Basic,Health endpoints in place; ECS health checks; no comprehensive monitoring
+Backup,None,Missing,No automated backup or disaster recovery procedures identified
+Autoscaling,ECS Services,Basic,ECS service can scale; no auto-scaling policies confirmed
+Security,RLS + ECS IAM,Partial,Database RLS; ECS IAM roles; no comprehensive security hardening

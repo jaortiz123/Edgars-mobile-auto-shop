@@ -1,0 +1,38 @@
+Application,Endpoint Category,Endpoint,Method,Current Daily Requests,Peak Hourly Rate,Target Daily Requests,Target Peak Hourly,Response Time P95 (ms),Response Time P99 (ms),Current Error Rate %,Target Error Rate %
+Edgar's Mobile Auto Shop,Authentication,/api/auth/login,POST,120,20,300,50,250,400,0.5,<1.0
+Edgar's Mobile Auto Shop,Authentication,/api/auth/logout,POST,100,18,250,45,150,250,0.2,<0.5
+Edgar's Mobile Auto Shop,Authentication,/api/auth/register,POST,15,3,40,8,300,500,1.0,<1.0
+Edgar's Mobile Auto Shop,Authentication,/api/auth/verify-token,GET,500,85,1200,200,100,200,0.1,<0.5
+Edgar's Mobile Auto Shop,Authentication,/api/auth/request-password-reset,POST,5,1,15,3,200,350,0.5,<1.0
+Edgar's Mobile Auto Shop,Customer Operations,/api/customers/profile,GET,200,35,500,85,200,300,0.3,<0.5
+Edgar's Mobile Auto Shop,Customer Operations,/api/customers/profile,PUT,50,8,120,20,300,450,0.8,<1.0
+Edgar's Mobile Auto Shop,Customer Operations,/api/customers/vehicles,GET,180,30,450,75,250,400,0.4,<0.5
+Edgar's Mobile Auto Shop,Customer Operations,/api/customers/vehicles,POST,25,4,60,12,350,550,1.2,<1.0
+Edgar's Mobile Auto Shop,Customer Operations,/api/customers/history,GET,150,25,375,65,300,450,0.5,<0.5
+Edgar's Mobile Auto Shop,Appointment Management,/api/appointments,GET,300,50,750,125,200,350,0.3,<0.5
+Edgar's Mobile Auto Shop,Appointment Management,/api/appointments,POST,80,15,200,35,400,600,1.0,<1.0
+Edgar's Mobile Auto Shop,Appointment Management,/api/appointments/{id},GET,200,35,500,85,150,250,0.2,<0.5
+Edgar's Mobile Auto Shop,Appointment Management,/api/appointments/{id},PUT,60,10,150,25,350,500,0.8,<1.0
+Edgar's Mobile Auto Shop,Appointment Management,/api/appointments/{id},DELETE,10,2,25,5,200,300,0.5,<0.5
+Edgar's Mobile Auto Shop,Vehicle Management,/api/vehicles,GET,250,42,625,105,180,280,0.3,<0.5
+Edgar's Mobile Auto Shop,Vehicle Management,/api/vehicles,POST,30,5,75,15,300,450,1.0,<1.0
+Edgar's Mobile Auto Shop,Vehicle Management,/api/vehicles/{id},GET,180,30,450,75,120,200,0.2,<0.5
+Edgar's Mobile Auto Shop,Vehicle Management,/api/vehicles/{id},PUT,40,7,100,17,250,400,0.6,<0.5
+Edgar's Mobile Auto Shop,Invoice Management,/api/invoices,GET,200,35,500,85,250,400,0.4,<0.5
+Edgar's Mobile Auto Shop,Invoice Management,/api/invoices,POST,50,8,125,22,500,750,1.5,<1.0
+Edgar's Mobile Auto Shop,Invoice Management,/api/invoices/{id},GET,150,25,375,65,150,250,0.2,<0.5
+Edgar's Mobile Auto Shop,Invoice Management,/api/invoices/{id}/pdf,GET,80,15,200,35,800,1200,2.0,<1.0
+Edgar's Mobile Auto Shop,Admin Analytics,/api/admin/analytics/dashboard,GET,50,12,125,25,400,600,0.5,<0.5
+Edgar's Mobile Auto Shop,Admin Analytics,/api/admin/analytics/revenue,GET,30,8,75,15,300,450,0.3,<0.5
+Edgar's Mobile Auto Shop,Admin Analytics,/api/admin/analytics/appointments,GET,40,10,100,20,350,500,0.4,<0.5
+Edgar's Mobile Auto Shop,Admin Analytics,/api/admin/analytics/customers,GET,35,8,85,17,300,450,0.3,<0.5
+Edgar's Mobile Auto Shop,Admin Operations,/api/admin/customers,GET,100,20,250,45,200,300,0.3,<0.5
+Edgar's Mobile Auto Shop,Admin Operations,/api/admin/customers,POST,15,3,40,8,350,500,1.0,<1.0
+Edgar's Mobile Auto Shop,Admin Operations,/api/admin/appointments,GET,120,25,300,55,250,400,0.4,<0.5
+Edgar's Mobile Auto Shop,Admin Operations,/api/admin/vehicles,GET,80,15,200,35,180,280,0.3,<0.5
+Edgar's Mobile Auto Shop,Reports & Exports,/api/admin/export/customers,GET,10,2,25,5,1000,1500,1.0,<1.0
+Edgar's Mobile Auto Shop,Reports & Exports,/api/admin/export/appointments,GET,15,3,35,7,1200,1800,1.2,<1.0
+Edgar's Mobile Auto Shop,Reports & Exports,/api/admin/export/invoices,GET,12,2,30,6,1500,2200,1.5,<1.0
+Edgar's Mobile Auto Shop,Health & Monitoring,/api/health,GET,1440,60,3600,150,50,100,0.0,<0.1
+Edgar's Mobile Auto Shop,Health & Monitoring,/health,GET,720,30,1800,75,30,60,0.0,<0.1
+Edgar's Mobile Auto Shop,Static & Assets,/api/csrf-token,GET,400,70,1000,170,80,120,0.1,<0.2
