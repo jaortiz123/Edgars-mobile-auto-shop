@@ -193,16 +193,15 @@ jobs:
         working-directory: backend
         run: |
           echo "🔍 Running Bandit static analysis on Python code..."
-          # Create bandit config to exclude third-party deps and allow non-crypto hashes
-          cat > .bandit << EOF
-          [bandit]
-          exclude_dirs = ['./lambda_packages', './pg8000', './asn1crypto']
-          skips = ['B324']
-          EOF
-
+          # Generate comprehensive security report
           bandit -r . -f json -o ../audit_artifacts/bandit-results.json || true
-          echo "🔍 Running Bandit with focus on genuine security issues..."
-          bandit -r . --severity-level high -c .bandit || echo "⚠️ Security issues detected but pipeline continues for operational demo"
+
+          echo "🔍 Running focused security scan (excluding known safe patterns)..."
+          # For operational readiness, focus on critical security issues
+          # Allow weak hashes for non-cryptographic purposes (ETags, etc.)
+          bandit -r . --severity-level high --skip B324 || echo "⚠️ Non-blocking: Security findings documented for review"
+
+          echo "✅ Security scan complete - findings uploaded to artifacts for team review"
 
       - name: Run pip-audit (SCA - Python Dependencies)
         working-directory: backend
