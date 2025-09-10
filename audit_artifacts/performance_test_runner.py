@@ -331,11 +331,11 @@ class PerformanceTestRunner:
 
         # 3. N+1 suspect endpoint tests
         print("\n3️⃣ N+1 suspect endpoint tests...")
-        n1_results = self.test_n1_suspects()
+        self.test_n1_suspects()
 
         # 4. Concurrent load test
         print("\n4️⃣ Concurrent load test...")
-        load_results = self.concurrent_load_test(num_threads=3, requests_per_thread=5)
+        self.concurrent_load_test(num_threads=3, requests_per_thread=5)
 
         # 5. Analysis and results
         print("\n5️⃣ Analyzing results...")
