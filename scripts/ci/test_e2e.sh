@@ -3,6 +3,8 @@ set -Eeuo pipefail
 
 echo "🎭 E2E Tests (Playwright)"
 
+export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-west-2}"
+
 if ! curl -s http://localhost:3001/api/health > /dev/null 2>&1; then
   echo "Starting backend for E2E..."
   cd backend

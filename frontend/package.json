@@ -16,6 +16,7 @@
     "pretest": "pkill -f \"node .*vitest\" || true",
     "test": "vitest",
     "test:unit": "vitest",
+    "test:unit:ci": "vitest run --coverage",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --maxConcurrency=4",
     "test:coverage-json": "vitest run --coverage --coverage.reporter=json --maxConcurrency=4",

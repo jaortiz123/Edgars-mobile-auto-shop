@@ -10,6 +10,8 @@ trap 'cleanup' EXIT ERR INT
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
+: "${AWS_DEFAULT_REGION:=us-west-2}"
+
 : "${TEST_DB_PORT:=55432}"
 : "${DATABASE_URL:=postgresql://test_user:test_password@localhost:${TEST_DB_PORT}/test_db}"
 
