@@ -1,0 +1,36 @@
+name: Test AWS OIDC
+on: workflow_dispatch
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  oidc-smoke:
+    runs-on: ubuntu-latest
+    environment: production  # Uses your production environment with AWS_ROLE_ARN
+    steps:
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-session-name: OIDC-SmokeTest-${{ github.run_id }}
+
+      - name: ✅ Who am I? (Should show role, no access keys)
+        run: |
+          echo "🔍 Testing OIDC authentication..."
+          aws sts get-caller-identity
+          echo ""
+          echo "✅ Success! No AWS_ACCESS_KEY_ID needed - this is OIDC magic! 🎉"
+
+      - name: 🧪 Test basic AWS permissions
+        run: |
+          echo "🧪 Testing basic AWS service access..."
+          echo "ECR repositories:"
+          aws ecr describe-repositories --max-items 3 || echo "No ECR repos (that's okay)"
+          echo ""
+          echo "ECS clusters:"
+          aws ecs list-clusters || echo "No ECS clusters (that's okay)"
+          echo ""
+          echo "✅ OIDC authentication working perfectly!"

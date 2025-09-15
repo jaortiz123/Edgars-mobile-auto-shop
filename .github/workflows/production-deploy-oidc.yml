@@ -1,0 +1,184 @@
+name: Production Deployment with OIDC
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'docker-compose.yml'
+      - 'Dockerfile*'
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deployment (skip some checks)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  id-token: write   # Required for OIDC
+  contents: read
+  checks: read      # For status checks
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY_BACKEND: edgars-auto-shop-backend
+  ECR_REPOSITORY_FRONTEND: edgars-auto-shop-frontend
+
+jobs:
+  security-validation:
+    name: Security & Quality Gates
+    runs-on: ubuntu-latest
+    outputs:
+      security-passed: ${{ steps.security-check.outputs.passed }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Security validation
+        id: security-check
+        run: |
+          echo "🔍 Running security validation..."
+
+          # Check for sensitive data
+          if grep -r "password\|secret\|key" --include="*.py" --include="*.js" --include="*.ts" . | grep -v "test\|spec\|example"; then
+            echo "⚠️ Potential sensitive data found - manual review required"
+            echo "passed=false" >> $GITHUB_OUTPUT
+          else
+            echo "✅ No sensitive data patterns detected"
+            echo "passed=true" >> $GITHUB_OUTPUT
+          fi
+
+  build-and-deploy:
+    name: Build & Deploy to Production
+    needs: security-validation
+    if: needs.security-validation.outputs.security-passed == 'true' || github.event.inputs.force_deploy == 'true'
+    environment: production
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-Production-Deploy
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          echo "🔨 Building backend image..."
+
+          docker build -f Dockerfile.backend \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:latest \
+            .
+
+          echo "📤 Pushing backend image..."
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:latest
+
+      - name: Build and push frontend image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          echo "🔨 Building frontend image..."
+
+          docker build -f Dockerfile.frontend \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:latest \
+            .
+
+          echo "📤 Pushing frontend image..."
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:latest
+
+      - name: Deploy to ECS
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          echo "🚀 Deploying to production ECS..."
+
+          # Update ECS service with new image
+          aws ecs update-service \
+            --cluster ${{ secrets.ECS_CLUSTER_NAME }} \
+            --service ${{ secrets.ECS_SERVICE_BACKEND }} \
+            --force-new-deployment \
+            --task-definition ${{ secrets.ECS_TASK_DEFINITION_BACKEND }}
+
+          aws ecs update-service \
+            --cluster ${{ secrets.ECS_CLUSTER_NAME }} \
+            --service ${{ secrets.ECS_SERVICE_FRONTEND }} \
+            --force-new-deployment \
+            --task-definition ${{ secrets.ECS_TASK_DEFINITION_FRONTEND }}
+
+      - name: Wait for deployment completion
+        run: |
+          echo "⏳ Waiting for deployment to complete..."
+
+          aws ecs wait services-stable \
+            --cluster ${{ secrets.ECS_CLUSTER_NAME }} \
+            --services ${{ secrets.ECS_SERVICE_BACKEND }} ${{ secrets.ECS_SERVICE_FRONTEND }}
+
+          echo "✅ Deployment completed successfully!"
+
+      - name: Run health checks
+        run: |
+          echo "🏥 Running post-deployment health checks..."
+
+          # Wait a bit for services to fully start
+          sleep 30
+
+          # Health check endpoints (adjust URLs as needed)
+          BACKEND_URL="${{ secrets.BACKEND_URL }}/health"
+          FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
+
+          # Check backend health
+          if curl -f "$BACKEND_URL"; then
+            echo "✅ Backend health check passed"
+          else
+            echo "❌ Backend health check failed"
+            exit 1
+          fi
+
+          # Check frontend availability
+          if curl -f "$FRONTEND_URL"; then
+            echo "✅ Frontend health check passed"
+          else
+            echo "❌ Frontend health check failed"
+            exit 1
+          fi
+
+  deployment-notification:
+    name: Deployment Notification
+    needs: build-and-deploy
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deployment status notification
+        run: |
+          if [ "${{ needs.build-and-deploy.result }}" == "success" ]; then
+            echo "🎉 Production deployment successful!"
+            echo "🔗 Backend: ${{ secrets.BACKEND_URL }}"
+            echo "🔗 Frontend: ${{ secrets.FRONTEND_URL }}"
+            echo "📊 Commit: ${{ github.sha }}"
+            echo "👤 Deployed by: ${{ github.actor }}"
+          else
+            echo "❌ Production deployment failed!"
+            echo "🔍 Check the deployment logs for details"
+            echo "📊 Failed commit: ${{ github.sha }}"
+          fi
