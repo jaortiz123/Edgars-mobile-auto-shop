@@ -77,7 +77,12 @@ def pytest_collection_modifyitems(config, items):
     """Auto-assign markers based on test names and current mode."""
     for item in items:
         # Auto-mark tests based on naming conventions
-        if "integration" in item.nodeid or "e2e" in item.nodeid:
+        path_str = str(item.fspath)
+
+        if "tests/api/" in path_str or "tests/domain/" in path_str:
+            item.add_marker(pytest.mark.integration)
+            item.add_marker(pytest.mark.slow)
+        elif "integration" in item.nodeid or "e2e" in item.nodeid:
             item.add_marker(pytest.mark.integration)
             item.add_marker(pytest.mark.slow)
         elif "unit" in item.nodeid or not any(

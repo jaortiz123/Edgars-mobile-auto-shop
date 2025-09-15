@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@test-utils';
 import { describe, it, expect, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { AccessibilityProvider } from '@/contexts/AccessibilityProvider';

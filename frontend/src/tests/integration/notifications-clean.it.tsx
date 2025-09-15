@@ -5,11 +5,14 @@
  */
 
 import React from 'react';
-import { render, screen, act, waitFor } from '@testing-library/react';
+import { render, screen, act, waitFor } from '@test-utils';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/server/mswServer';
+
+beforeAll(() => vi.useFakeTimers());
+afterAll(() => vi.useRealTimers());
 
 // NOTE: Removed custom flushPromises helper; rely on Testing Library's waitFor.
 

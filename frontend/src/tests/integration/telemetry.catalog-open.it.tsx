@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { render, waitFor } from '@test-utils';
 import React from 'react';
 
 let lastRequestId: string | undefined;

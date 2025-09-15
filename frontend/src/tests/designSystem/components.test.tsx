@@ -1,7 +1,7 @@
 // Design System Component Tests (JSdom Environment)
 // P1-T-013: Separated from utils for proper environment isolation
 
-import { render, screen } from '@testing-library/react';
+import { render, screen } from '@test-utils';
 import { test, expect, describe } from 'vitest';
 import React from 'react';
 

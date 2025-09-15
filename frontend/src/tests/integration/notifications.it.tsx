@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@test-utils';
 import { setupUserEvent } from '@/tests/testUtils/userEventHelper';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/server/mswServer';
@@ -17,6 +17,10 @@ import React from 'react';
 beforeEach(() => {
   try { vi.useFakeTimers(); } catch { /* already in fake timer mode */ }
   vi.setSystemTime(new Date('2024-01-15T14:00:00Z'));
+});
+
+afterEach(() => {
+  try { vi.useRealTimers(); } catch { /* ignore */ }
 });
 
 // Mock appointment data 15 minutes from now

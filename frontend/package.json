@@ -14,7 +14,8 @@
     "preview": "vite preview",
     "preview:spa": "npm run build && npx serve -s dist",
     "pretest": "pkill -f \"node .*vitest\" || true",
-    "test": "vitest run --maxConcurrency=4",
+    "test": "vitest",
+    "test:unit": "vitest",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --maxConcurrency=4",
     "test:coverage-json": "vitest run --coverage --coverage.reporter=json --maxConcurrency=4",
@@ -26,6 +27,8 @@
     "test:ci": "VITEST_STRICT_CONSOLE=true vitest --run --reporter=verbose --silent=false --maxConcurrency=4",
     "test:ci-serial": "VITEST_STRICT_CONSOLE=true vitest --run --reporter=verbose --silent=false --maxConcurrency=1",
     "test:a11y": "vitest run src/tests/accessibility.test.tsx --reporter=verbose --maxConcurrency=4",
+    "test:e2e": "playwright test",
+    "test:e2e:list": "playwright test --list",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "clean": "rm -rf node_modules/.cache .vite .next dist",
     "typecheck": "tsc -p tsconfig.typecheck.json --pretty"

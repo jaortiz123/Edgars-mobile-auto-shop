@@ -1,22 +1,17 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, waitFor } from '@test-utils';
+import { Routes, Route } from 'react-router-dom';
 
 import VehicleProfilePage from '@/pages/admin/VehicleProfilePage';
 import * as vehicleProfileHook from '@/hooks/useVehicleProfile';
 
 function renderWithRoute(path = '/admin/vehicles/veh-1') {
-  const qc = new QueryClient();
   return render(
-    <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path="/admin/vehicles/:id" element={<VehicleProfilePage />} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>
+    <Routes>
+      <Route path="/admin/vehicles/:id" element={<VehicleProfilePage />} />
+    </Routes>,
+    { router: { initialEntries: [path] } },
   );
 }
 

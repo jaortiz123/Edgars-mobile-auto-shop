@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@test-utils';
 import userEvent from '@testing-library/user-event';
 import TemplatesTable from '../../components/analytics/TemplatesTable';
 import type { TemplateAnalyticsTemplate } from '../../types/analytics';

@@ -1,5 +1,5 @@
 // Sprint 1A Robustness: Design System JSX Environment Test
-import { render, screen } from '@testing-library/react';
+import { render, screen } from '@test-utils';
 import { test, expect, describe } from 'vitest';
 import React from 'react';
 

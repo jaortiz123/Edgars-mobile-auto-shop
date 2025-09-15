@@ -3,7 +3,7 @@ import type { BoardCard } from '@/types/models';
 import { BoardFilterProvider, useBoardFilters } from '@/contexts/BoardFilterContext';
 import { setBoardTechFilter } from '@/state/boardServerFilters';
 import React from 'react';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act } from '@test-utils';
 
 function wrapper({ children }: { children: React.ReactNode }) {
   return <BoardFilterProvider>{children}</BoardFilterProvider>;

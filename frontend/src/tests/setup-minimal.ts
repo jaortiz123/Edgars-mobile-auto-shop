@@ -10,7 +10,7 @@ import 'whatwg-fetch'
 
 import { expect, vi, beforeEach, afterEach } from 'vitest'
 import { toHaveNoViolations } from 'jest-axe'
-import { cleanup } from '@testing-library/react'
+import { cleanup } from '@test-utils'
 
 // Extend expect with accessibility matchers
 expect.extend(toHaveNoViolations)

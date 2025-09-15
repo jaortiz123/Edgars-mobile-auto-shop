@@ -77,33 +77,29 @@ export const toStatus = (s: string): AppointmentStatus =>
 // In production, the frontend is typically served behind the same origin as the API gateway.
 // In Docker/CI environment, connect directly to backend service
 
-// Environment detection with fallbacks
-const isDockerEnv = () => {
-  try {
-    // Check for Docker environment indicators using Vite env vars
-    const nodeEnv = import.meta.env.VITE_NODE_ENV || import.meta.env.NODE_ENV
-    const dockerEnv = import.meta.env.VITE_DOCKER_ENV
-
-    return nodeEnv === 'production' && dockerEnv === 'true'
-  } catch (error) {
-    console.warn('[API CONFIG] Environment detection error:', error)
-    return false
+// Safe environment detection that works in both Node and Browser
+const getApiUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    const viteEnv = (import.meta as any)?.env
+    if (viteEnv?.VITE_API_URL) {
+      return viteEnv.VITE_API_URL
+    }
+    return 'http://localhost:3001/api'
   }
+
+  if (typeof process !== 'undefined' && process.env?.API_URL) {
+    return process.env.API_URL
+  }
+
+  return 'http://localhost:3001/api'
 }
 
-// Fix: In Docker, frontend runs in browser and needs host-accessible URL
-const BASE = isDockerEnv() ? 'http://localhost:3001/api' : '/api'
+const API_BASE_URL = getApiUrl()
 
-console.log('[API CONFIG] Environment details:', {
-  VITE_NODE_ENV: import.meta.env.VITE_NODE_ENV,
-  NODE_ENV: import.meta.env.NODE_ENV,
-  VITE_DOCKER_ENV: import.meta.env.VITE_DOCKER_ENV,
-  isDocker: isDockerEnv(),
-  BASE_URL: BASE
-})
+console.log('[API CONFIG] Using URL:', API_BASE_URL)
 
 export const http = axios.create({
-  baseURL: BASE,
+  baseURL: API_BASE_URL,
   timeout: 10000,
   // Switch to cookie-based auth with CSRF protection
   withCredentials: false, // Disable for direct backend calls in Docker

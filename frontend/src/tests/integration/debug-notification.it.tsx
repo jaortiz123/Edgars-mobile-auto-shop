@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@test-utils';
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { server } from '../../test/server/mswServer';
 import { withErrorScenario } from '../../test/errorTestHelpersCanonical';

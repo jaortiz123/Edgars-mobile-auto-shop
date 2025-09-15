@@ -1,7 +1,7 @@
 // Test for Dashboard Stats v2 enhancements (T-025)
 import React from 'react';
 import { describe, it, beforeEach, vi, expect } from 'vitest';
-import { screen, render } from '@testing-library/react';
+import { screen, render } from '@test-utils';
 import userEvent from '@testing-library/user-event';
 import DashboardStats from '@/components/admin/DashboardStats';
 import { useBoardStore } from '@/state/useBoardStore';

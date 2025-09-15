@@ -1,9 +1,8 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@test-utils';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import VehicleProfilePage from '@/pages/admin/VehicleProfilePage';
 // Local deterministic fetch stub (avoids dependency on global MSW enhancedHandlers which lack this endpoint currently)
 let originalFetch: typeof fetch;
@@ -47,15 +46,11 @@ afterEach(() => { global.fetch = originalFetch; });
 
 
 function renderPage(path: string) {
-  const qc = new QueryClient();
   return render(
-    <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path="/admin/vehicles/:id" element={<VehicleProfilePage />} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>
+    <Routes>
+      <Route path="/admin/vehicles/:id" element={<VehicleProfilePage />} />
+    </Routes>,
+    { router: { initialEntries: [path] } },
   );
 }
 

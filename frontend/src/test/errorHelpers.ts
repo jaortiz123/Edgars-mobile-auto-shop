@@ -6,7 +6,7 @@
  */
 
 import { http, HttpResponse } from 'msw';
-import { act } from '@testing-library/react';
+import { act } from '@test-utils';
 import { server } from './server/mswServer';
 
 /**

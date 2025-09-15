@@ -5,7 +5,7 @@
  * and timeout safety to prevent hanging tests.
  */
 
-import { act } from '@testing-library/react';
+import { act } from '@test-utils';
 import { vi } from 'vitest';
 import { enableErrorScenario, disableErrorScenario, resetErrorScenarios } from './server/mswServer';
 import type { ErrorScenarioConfig } from './server/mswServer';

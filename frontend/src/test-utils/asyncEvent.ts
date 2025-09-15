@@ -7,7 +7,7 @@
 
 /* eslint-disable testing-library/prefer-user-event */
 
-import { act, fireEvent } from '@testing-library/react';
+import { act, fireEvent } from '@test-utils';
 
 /**
  * Wraps a callback function with React's act() utility to ensure proper

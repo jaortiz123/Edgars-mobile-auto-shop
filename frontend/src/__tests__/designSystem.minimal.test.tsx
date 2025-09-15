@@ -1,6 +1,6 @@
 // Sprint 1A Robustness: Minimal Design System JSX Test
 import '@testing-library/jest-dom/vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen } from '@test-utils';
 import { test, expect } from 'vitest';
 import React from 'react';
 

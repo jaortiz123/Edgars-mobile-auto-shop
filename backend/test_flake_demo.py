@@ -4,8 +4,16 @@ Quick test of pytest-rerunfailures functionality for flake detection.
 This script demonstrates how the plugin works with a simulated flaky test.
 """
 
+import os
 import random
 import time
+
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    os.getenv("DISABLE_FLAKE_DEMO", "false").lower() == "true",
+    reason="Flaky demo disabled for CI runs",
+)
 
 # Simulate a flaky test that fails intermittently
 _call_count = 0

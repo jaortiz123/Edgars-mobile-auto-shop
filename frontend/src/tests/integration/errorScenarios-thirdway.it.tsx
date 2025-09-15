@@ -19,7 +19,7 @@
 
 
 import { describe, it, expect, beforeAll, afterAll, vi, beforeEach } from 'vitest';
-import { screen, waitFor, render } from '@testing-library/react';
+import { screen, waitFor, render } from '@test-utils';
 import userEvent from '@testing-library/user-event';
 import {
   withErrorScenario,

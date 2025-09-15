@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@test-utils';
 import userEvent from '@testing-library/user-event';
 import { server } from '../../test/server/mswServer';
 import { TestAppWrapper } from '../../test/TestAppWrapper';

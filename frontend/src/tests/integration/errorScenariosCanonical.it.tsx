@@ -6,9 +6,9 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@test-utils';
 import userEvent from '@testing-library/user-event';
-import { act } from '@testing-library/react';
+import { act } from '@test-utils';
 
 import { TestAppWrapper } from '../test/TestAppWrapper';
 import { Dashboard } from '../admin/Dashboard';

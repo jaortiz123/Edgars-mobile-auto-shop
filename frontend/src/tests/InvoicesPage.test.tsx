@@ -1,17 +1,16 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, within, waitFor } from '@testing-library/react';
+import { render, screen, within, waitFor } from '@test-utils';
 import InvoicesPage from '@/pages/admin/InvoicesPage';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import * as api from '@/services/apiService';
 
 function renderInvoices() {
   return render(
-    <MemoryRouter initialEntries={['/admin/invoices']}>
-      <Routes>
-        <Route path="/admin/invoices" element={<InvoicesPage />} />
-      </Routes>
-    </MemoryRouter>
+    <Routes>
+      <Route path="/admin/invoices" element={<InvoicesPage />} />
+    </Routes>,
+    { router: { initialEntries: ['/admin/invoices'] } },
   );
 }
 

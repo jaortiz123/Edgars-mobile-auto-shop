@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - fix/ci-pipeline
+      - feature/**
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: './frontend/.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Setup
+        run: scripts/ci/setup.sh
+
+      - name: Lint
+        run: scripts/ci/lint.sh
+
+      - name: Unit
+        run: COVERAGE_MIN=50 scripts/ci/test_unit.sh
+
+      - name: Build
+        run: scripts/ci/build.sh
+
+      - name: Integration
+        run: scripts/ci/test_integration.sh
+
+      - name: E2E
+        run: scripts/ci/test_e2e.sh

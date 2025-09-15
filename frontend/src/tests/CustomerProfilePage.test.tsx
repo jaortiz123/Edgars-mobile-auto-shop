@@ -1,24 +1,19 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { waitFor } from '@testing-library/react';
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { waitFor } from '@test-utils';
+import { render, screen } from '@test-utils';
+import { Routes, Route } from 'react-router-dom';
 
 // Module under test
 import CustomerProfilePage from '@/pages/admin/CustomerProfilePage';
 import * as profileApi from '@/lib/customerProfileApi';
 
 function renderWithRoute(path = '/admin/customers/cust-1') {
-  const qc = new QueryClient();
   return render(
-    <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path="/admin/customers/:id" element={<CustomerProfilePage />} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>
+    <Routes>
+      <Route path="/admin/customers/:id" element={<CustomerProfilePage />} />
+    </Routes>,
+    { router: { initialEntries: [path] } },
   );
 }
 

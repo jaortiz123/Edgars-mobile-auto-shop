@@ -6,7 +6,7 @@
  * loading, empty, error, and success states with appropriate accessibility.
  */
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@test-utils';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { axe, toHaveNoViolations } from 'jest-axe';
