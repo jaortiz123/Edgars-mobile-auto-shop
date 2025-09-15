@@ -20,4 +20,7 @@ export FALLBACK_TO_MEMORY="false"
 export TEST_DATABASE_URL="${TEST_DATABASE_URL:-$DATABASE_URL}"
 
 echo "🧪 Running backend integration tests against ${DATABASE_URL}"
-pytest -m integration
+# run only integration tests
+pushd backend >/dev/null
+pytest -q -m integration --tb=short
+popd >/dev/null

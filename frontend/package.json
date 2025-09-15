@@ -17,6 +17,8 @@
     "test": "vitest",
     "test:unit": "vitest",
     "test:unit:ci": "vitest run --coverage",
+    "test:triage": "vitest --project triage",
+    "test:archived": "vitest --project archived",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --maxConcurrency=4",
     "test:coverage-json": "vitest run --coverage --coverage.reporter=json --maxConcurrency=4",

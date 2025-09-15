@@ -3,6 +3,8 @@ import os
 import psycopg2
 import pytest
 
+pytestmark = pytest.mark.integration
+
 
 def _ensure_tenant_and_owner(client):
     """Create a tenant and seed owner membership; return (tenant_id, token)."""

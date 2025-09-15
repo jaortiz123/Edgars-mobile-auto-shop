@@ -15,6 +15,8 @@ from unittest.mock import patch, MagicMock
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+pytestmark = pytest.mark.integration
+
 
 class TestContainerizedDatabaseRobustness:
     """Robustness tests for the containerized database system."""

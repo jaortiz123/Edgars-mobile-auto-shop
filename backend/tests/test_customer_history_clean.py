@@ -3,7 +3,7 @@ import jwt
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
-# Use shared client and fake_db fixtures from conftest
+# Use shared client and db_connection fixtures from conftest
 
 # Import JWT constants for testing
 try:
@@ -134,7 +134,7 @@ def test_get_customer_history_returns_empty_for_customer_with_no_appointments(
 
 
 def test_get_customer_history_returns_past_appointments_with_payments(
-    client, auth_headers, fake_db
+    client, auth_headers, db_connection
 ):
     """Test that customer history returns appointments with nested payments"""
     response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
@@ -169,7 +169,9 @@ def test_get_customer_history_requires_authentication(no_auto_auth_client):
     assert json_data["error"]["code"] in ("auth_required", "forbidden")
 
 
-def test_get_customer_history_only_returns_completed_appointments(client, auth_headers, fake_db):
+def test_get_customer_history_only_returns_completed_appointments(
+    client, auth_headers, db_connection
+):
     """Test that only COMPLETED, NO_SHOW, and CANCELED appointments are returned"""
     response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
 
@@ -182,7 +184,7 @@ def test_get_customer_history_only_returns_completed_appointments(client, auth_h
         assert appointment["status"] in ["COMPLETED", "NO_SHOW", "CANCELED"]
 
 
-def test_get_customer_history_orders_by_date_desc(client, auth_headers, fake_db):
+def test_get_customer_history_orders_by_date_desc(client, auth_headers, db_connection):
     """Test that appointments are ordered by start date descending"""
     response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
 

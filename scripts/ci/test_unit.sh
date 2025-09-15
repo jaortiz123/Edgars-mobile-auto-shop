@@ -16,10 +16,10 @@ export DISABLE_FLAKE_DEMO="true"
 
 echo "🧪 Unit Tests"
 
-echo "🧪 Running backend unit tests"
-cd backend
-FALLBACK_TO_MEMORY=true TEST_MODE=unit pytest -m unit -q || true
-cd ..
+# backend unit slice (no external DB/services)
+pushd backend >/dev/null
+pytest -q -m "not integration" --tb=short
+popd >/dev/null
 
 echo "🧪 Running frontend unit tests"
 cd frontend

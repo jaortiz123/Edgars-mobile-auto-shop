@@ -6,6 +6,8 @@ This test verifies that the test database container works with real SQL constrai
 import pytest
 import psycopg2
 from psycopg2.extras import RealDictCursor
+
+pytestmark = pytest.mark.integration
 import time
 import subprocess
 from pathlib import Path
@@ -222,7 +224,7 @@ class TestContainerizedDatabase:
 class TestLegacyCompatibility:
     """Test that legacy fake database fixtures still work for unit tests."""
 
-    def test_fake_db_fixture_works(self, fake_db, client):
+    def test_fake_db_fixture_works(self, db_connection, client):
         """Test that the legacy fake_db fixture still works for unit tests."""
         # This test uses the fake database, so it should work without the container
         response = client.get("/api/admin/dashboard/stats")
