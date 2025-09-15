@@ -208,7 +208,7 @@ jobs:
         run: |
           echo "🔍 Scanning Python dependencies for vulnerabilities..."
           pip-audit -r requirements.txt -f json -o ../audit_artifacts/pip-audit.json || true
-          pip-audit -r requirements.txt --desc --fail-on-violations
+          pip-audit -r requirements.txt --desc
 
       - name: Run Safety (Python Dependency Check)
         working-directory: backend
@@ -943,7 +943,7 @@ jobs:
   api-smoke-test:
     name: API Smoke Test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
