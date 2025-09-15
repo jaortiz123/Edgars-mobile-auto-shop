@@ -58,6 +58,57 @@ else:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+# ---- Make sqlite cursors context-manageable in unit tests ----
+class _CursorProxy:
+    def __init__(self, cur):
+        self._cur = cur
+
+    # allow normal cursor usage
+    def __getattr__(self, name):
+        return getattr(self._cur, name)
+
+    # enable `with` support
+    def __enter__(self):
+        return self._cur
+
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            self._cur.close()
+        except Exception:
+            pass
+
+
+class _CMConnection(sqlite3.Connection):
+    def cursor(self, *args, **kwargs):
+        cur = super().cursor(*args, **kwargs)
+        return _CursorProxy(cur)
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _sqlite_cursor_cm_patch():
+    """
+    Force sqlite3.connect(...) used in unit tests to return a connection whose
+    cursor supports the context manager protocol. Does not affect Postgres.
+    """
+    orig_connect = sqlite3.connect
+
+    def _connect(*args, **kwargs):
+        kwargs.setdefault("factory", _CMConnection)
+        # let test code pass a different factory if it wants
+        return orig_connect(*args, **kwargs)
+
+    sqlite3.connect = _connect
+    try:
+        yield
+    finally:
+        sqlite3.connect = orig_connect
+
+
+# ---- Belt & suspenders already in your pipeline ----
+# Ensure AWS region exists everywhere tests run
+os.environ.setdefault("AWS_DEFAULT_REGION", "us-west-2")
+
 # Global session state
 _PG_SESSION = {"db_url": None, "container": None, "env_vars": None}
 _SQLITE_SESSION = {"db_path": None, "connection": None}
