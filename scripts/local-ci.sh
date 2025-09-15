@@ -34,6 +34,13 @@ load_env() {
 }
 load_env ".env.test"
 
+export CI=true TZ=UTC PYTHONHASHSEED=0
+export UNIT_DB=sqlite
+export FALLBACK_TO_MEMORY=true
+export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-west-2}"
+export PYTHONPATH="backend${PYTHONPATH:+:$PYTHONPATH}"  # <- loads sitecustomize.py
+export PYTEST_ADDOPTS="--import-mode=importlib"
+
 echo "🚀 Local CI start"
 
 # Call shared scripts

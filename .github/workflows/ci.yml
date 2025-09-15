@@ -11,12 +11,17 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
+  COVERAGE_MIN: '50'
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
+  ci:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -25,29 +30,57 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version-file: './frontend/.nvmrc'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: 'frontend/package-lock.json'
+          cache-dependency-path: frontend/package-lock.json
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
+      # Single source of truth: call the same scripts used locally
       - name: Setup
         run: scripts/ci/setup.sh
 
       - name: Lint
         run: scripts/ci/lint.sh
 
-      - name: Unit
-        run: COVERAGE_MIN=50 scripts/ci/test_unit.sh
+      - name: Unit (coverage gate)
+        env:
+          COVERAGE_MIN: ${{ env.COVERAGE_MIN }}
+        run: scripts/ci/test_unit.sh
 
       - name: Build
         run: scripts/ci/build.sh
 
-      - name: Integration
+      - name: Integration (real Postgres)
         run: scripts/ci/test_integration.sh
 
-      - name: E2E
+      # Playwright dependencies & cache (prevents re-download each run)
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E (Playwright)
         run: scripts/ci/test_e2e.sh
+
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            test-results/**
+            playwright-report/**
+            **/test-results/**

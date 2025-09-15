@@ -10,11 +10,23 @@ trap 'cleanup' EXIT ERR INT
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
+export CI=true TZ=UTC PYTHONHASHSEED=0
+export UNIT_DB=sqlite
+export FALLBACK_TO_MEMORY=true
 export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-west-2}"
-export FALLBACK_TO_MEMORY="${FALLBACK_TO_MEMORY:-true}"
+export PYTHONPATH="backend${PYTHONPATH:+:$PYTHONPATH}"  # <- loads sitecustomize.py
+export PYTEST_ADDOPTS="--import-mode=importlib"
 export DISABLE_FLAKE_DEMO="true"
 
 echo "🧪 Unit Tests"
+
+# Kill future regressions (static gate)
+if command -v rg >/dev/null 2>&1; then
+  if rg -n "with\\s+.+\\.cursor\\(\\)\\s+as\\s+" backend | grep -vE "migrations|legacy" >/dev/null; then
+    echo "❌ 'with conn.cursor() as' breaks on SQLite. Use contextlib.closing."
+    exit 1
+  fi
+fi
 
 # backend unit slice (no external DB/services)
 pushd backend >/dev/null
