@@ -966,6 +966,12 @@ jobs:
           FALLBACK_TO_MEMORY: "true"
           LOG_LEVEL: WARNING
           JWT_SECRET: smoke-secret
+          # Force memory mode by using non-existent DB host (should fail fast and fallback)
+          POSTGRES_HOST: "nonexistent-db-host"
+          POSTGRES_PORT: "5432"
+          POSTGRES_DB: "test_autoshop"
+          POSTGRES_USER: "test_user"
+          POSTGRES_PASSWORD: "test_password"
         run: |
           set -euo pipefail
           python backend/local_server.py &
