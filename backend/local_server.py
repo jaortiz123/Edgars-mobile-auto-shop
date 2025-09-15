@@ -4909,11 +4909,26 @@ _REDIS_CLIENT = None
 def health():
     """Health check endpoint to verify service and database connectivity."""
     try:
-        conn = db_conn()
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT 1")
-        return jsonify({"status": "ok", "db": "up"})
+        conn, use_memory, err = safe_conn()
+        if err and not use_memory:
+            log.critical("Health check failed: Database connection failed")
+            return jsonify({"status": "error", "db": "down", "detail": str(err)}), 503
+
+        if conn:
+            # Database mode - verify connection
+            with conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1")
+            return jsonify({"status": "ok", "db": "up", "mode": "database"})
+        elif use_memory:
+            # Memory mode - no database required
+            return jsonify({"status": "ok", "db": "memory", "mode": "memory"})
+        else:
+            log.critical("Health check failed: No database connection and memory mode not enabled")
+            return (
+                jsonify({"status": "error", "db": "down", "detail": "No connection available"}),
+                503,
+            )
     except Exception as e:
         log.critical("Health check failed: %s", e)
         return jsonify({"status": "error", "db": "down", "detail": str(e)}), 503
