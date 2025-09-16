@@ -249,8 +249,13 @@ jobs:
 
       - name: Wait DB (compose)
         run: |
-          docker compose --env-file .env.ci exec -T db bash -lc \
-            'timeout 90 bash -c "until pg_isready -h localhost -p 5432 -U $$POSTGRES_USER -d $$POSTGRES_DB; do sleep 2; done"'
+          timeout 90 bash -c '
+            while ! docker compose --env-file .env.ci exec -T db pg_isready -h localhost -p 5432 -U test_user -d test_autoshop >/dev/null 2>&1; do
+              echo "Waiting for database..."
+              sleep 2
+            done
+          '
+          echo "Database is ready!"
 
       - name: Wait Backend (compose)
         run: |
