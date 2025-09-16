@@ -90,62 +90,42 @@ jobs:
       - name: Build
         run: scripts/ci/build.sh
 
-      - name: Install Postgres client tools
+      - name: Install Postgres client tools + jq
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          sudo apt-get install -y postgresql-client jq
+
+      - name: Sanity | Show DB URL (redacted)
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop
+        run: |
+          echo "$DATABASE_URL" | sed 's#//[^:]*:[^@]*@#//***:***@#'
 
       - name: Wait for Postgres (host)
         run: |
-          for i in {1..60}; do
-            if pg_isready -h 127.0.0.1 -p 55432 -U test_user -d test_autoshop; then exit 0; fi
-            sleep 1
-          done
-          echo "Postgres never became ready"; exit 1
+          timeout 90 bash -c 'until pg_isready -h 127.0.0.1 -p 55432 -U test_user -d test_autoshop; do sleep 2; done'
 
-      - name: Apply schema + migrations + seed
+      - name: Schema | init.sql → migrations → seed (host)
         env:
           PGPASSWORD: test_password
         run: |
-          psql -h 127.0.0.1 -p 55432 -U test_user -d test_autoshop -v ON_ERROR_STOP=1 -f database/init.sql
+          psql "host=127.0.0.1 port=55432 dbname=test_autoshop user=test_user" -v ON_ERROR_STOP=1 -f database/init.sql
           python backend/run_sql_migrations.py
-          psql -h 127.0.0.1 -p 55432 -U test_user -d test_autoshop -v ON_ERROR_STOP=1 -f backend/seeds/seed_s1.sql
-
-      - name: Sanity | Show env (redacted)
-        run: |
-          echo "DB URL (host): $(echo "${DATABASE_URL:-postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop}" | sed 's/:.*@/:***@/')"
-
-      - name: Sanity | Wait for Postgres (host)
-        run: |
-          for i in {1..90}; do
-            pg_isready -h 127.0.0.1 -p 55432 -U test_user -d test_autoshop && exit 0
-            sleep 1
-          done
-          echo "DB not ready"; exit 1
-
-      - name: Sanity | SELECT 1
-        env:
-          PGPASSWORD: test_password
-        run: |
-          psql "postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop" -c "SELECT 1;"
+          psql "host=127.0.0.1 port=55432 dbname=test_autoshop user=test_user" -v ON_ERROR_STOP=1 -f backend/seeds/seed_s1.sql
 
       - name: Start backend (host mode)
         env:
           DATABASE_URL: postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop
-          JWT_SECRET: test-secret
-          DEFAULT_TEST_TENANT: 00000000-0000-0000-0000-000000000001
-          APP_INSTANCE_ID: ci
-          SKIP_TENANT_ENFORCEMENT: "true"
           FALLBACK_TO_MEMORY: "false"
+          JWT_SECRET: dev_secret
         run: |
-          cd backend
-          nohup python run_server.py >/tmp/backend.log 2>&1 &
-          echo $! > ../backend.pid
-          cd ..
+          nohup python backend/local_server.py >/tmp/backend.log 2>&1 & echo $! > backend.pid
 
       - name: Sanity | Backend health (host)
         run: |
           timeout 90 bash -c 'until curl -fsS http://localhost:3001/health; do sleep 2; done'
+
+
 
       - name: Integration (real Postgres)
         env:
@@ -158,9 +138,7 @@ jobs:
 
       - name: Tail backend logs on failure
         if: failure()
-        run: |
-          echo "---- /tmp/backend.log (tail) ----"
-          tail -n 200 /tmp/backend.log || true
+        run: tail -n 200 /tmp/backend.log || true
 
       - name: Stop backend
         if: always()
@@ -182,40 +160,28 @@ jobs:
         working-directory: frontend
         run: npx playwright install --with-deps chromium
 
-      - name: Install Docker Compose
-        run: |
-          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-          docker-compose --version
-
       - name: Compose up
         run: |
           export $(grep -v '^#' .env.ci | xargs)
-          docker-compose up -d --build
+          docker compose up -d --build
 
-      - name: Sanity | Backend env has DATABASE_URL
+      - name: Sanity | Backend sees DATABASE_URL (compose)
         run: |
-          docker-compose exec -T backend /bin/sh -lc 'echo "DATABASE_URL=$DATABASE_URL" | sed "s#//[^:]*:[^@]*@#//***:***@#"'
+          docker compose exec -T backend /bin/sh -lc 'echo "DATABASE_URL=$DATABASE_URL" | sed "s#//[^:]*:[^@]*@#//***:***@#"'
 
-      - name: Sanity | Wait DB (compose)
+      - name: Wait for DB (compose network)
         run: |
-          docker-compose exec -T db bash -lc '
-            for i in {1..90}; do
-              pg_isready -h localhost -p 5432 -U test_user -d test_autoshop && exit 0
-              sleep 1
-            done
-            echo "DB not ready in compose"; exit 1
-          '
+          docker compose exec -T db bash -lc 'timeout 90 bash -c "until pg_isready -h localhost -p 5432 -U $$POSTGRES_USER -d $$POSTGRES_DB; do sleep 2; done"'
 
-      - name: Schema | migrations + seed (compose)
+      - name: Schema | init.sql → migrations → seed (compose)
         run: |
-          docker-compose exec -T backend psql "postgresql://test_user:test_password@db:5432/test_autoshop" -v ON_ERROR_STOP=1 -f /app/database/init.sql
-          docker-compose exec -T backend python run_sql_migrations.py
-          docker-compose exec -T backend psql "postgresql://test_user:test_password@db:5432/test_autoshop" -v ON_ERROR_STOP=1 -f /app/backend/seeds/seed_s1.sql
+          docker compose exec -T backend /bin/sh -lc 'psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f /app/database/init.sql'
+          docker compose exec -T backend /bin/sh -lc 'python /app/backend/run_sql_migrations.py'
+          docker compose exec -T backend /bin/sh -lc 'psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f /app/backend/seeds/seed_s1.sql'
 
       - name: Sanity | Backend health (compose)
         run: |
-          timeout 120 bash -c 'until curl -fsS http://localhost:3001/health; do sleep 3; done'
+          timeout 120 bash -c 'until curl -fsS http://localhost:3001/health; do sleep 2; done'
 
       - name: E2E (Playwright)
         env:
@@ -225,21 +191,13 @@ jobs:
       - name: Dump compose status on failure
         if: failure()
         run: |
-          docker-compose ps || true
-          echo "---- DB logs ----"
-          docker-compose logs db | tail -n 200 || true
-          echo "---- Backend logs ----"
-          docker-compose logs backend | tail -n 200 || true
+          docker compose ps || true
+          echo "---- DB logs ----"; docker compose logs db | tail -n 200 || true
+          echo "---- Backend logs ----"; docker compose logs backend | tail -n 200 || true
 
-      - name: Dump host Postgres logs (if service)
-        if: failure()
-        run: |
-          docker ps -a || true
-          sudo journalctl -u postgresql --no-pager -n 200 || true
-
-      - name: Cleanup compose
+      - name: Teardown compose
         if: always()
-        run: docker-compose down
+        run: docker compose down -v
 
       - name: Upload Playwright artifacts on failure
         if: failure()

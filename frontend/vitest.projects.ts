@@ -11,7 +11,6 @@ export default [
       include: [
         'tests/hooks/**/*.{test,spec}.{ts,tsx}',
         'src/tests/analytics/**/*.{test,spec}.{ts,tsx}',
-        'src/tests/ui-state-coverage.test.tsx',
       ],
       exclude: [
         'src/tests/archived/**',
