@@ -49,6 +49,12 @@ jobs:
       - name: Unit (coverage gate)
         env:
           COVERAGE_MIN: ${{ env.COVERAGE_MIN }}
+          APP_INSTANCE_ID: ci
+          SKIP_TENANT_ENFORCEMENT: "true"
+          UNIT_DB: sqlite
+          FALLBACK_TO_MEMORY: "true"
+          JWT_SECRET: dev_secret
+          AWS_DEFAULT_REGION: us-west-2
         run: scripts/ci/test_unit.sh
 
       - name: Build

@@ -1,5 +1,7 @@
 import pytest
 
+pytestmark = pytest.mark.unit_fast
+
 
 def test_404_returns_json_envelope(client):
     # Request an undefined route

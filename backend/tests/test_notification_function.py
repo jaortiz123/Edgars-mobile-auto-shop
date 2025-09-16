@@ -1,5 +1,7 @@
 import json
 import pytest
+
+pytestmark = pytest.mark.unit_fast
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
 import sys

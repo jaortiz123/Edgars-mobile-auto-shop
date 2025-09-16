@@ -361,7 +361,16 @@ try:
                 return False
 
         def _already_enveloped(obj) -> bool:
-            return isinstance(obj, dict) and {"ok", "data", "error"}.issubset(set(obj.keys()))
+            # Check for the full envelope format
+            if isinstance(obj, dict) and {"ok", "data", "error"}.issubset(set(obj.keys())):
+                return True
+            # Check for the _ok() format (data + meta)
+            if isinstance(obj, dict) and {"data", "meta"}.issubset(set(obj.keys())):
+                return True
+            # Check for the _error() format (error + meta)
+            if isinstance(obj, dict) and {"error", "meta"}.issubset(set(obj.keys())):
+                return True
+            return False
 
         # Pagination helpers
         _DEFAULT_PAGE_SIZE = int(os.getenv("API_DEFAULT_PAGE_SIZE", "25"))
