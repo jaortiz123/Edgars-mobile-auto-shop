@@ -1,0 +1,348 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - fix/ci-pipeline
+      - feature/**
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
+  COVERAGE_MIN: '26'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_DB: test_autoshop
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd="pg_isready -U test_user -d test_autoshop"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+
+    env:
+      # Set at job level for all steps
+      DATABASE_URL: postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop
+      DATABASE_URL_COMPOSE: postgresql://test_user:test_password@db:5432/test_autoshop
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: 55432
+      POSTGRES_DB: test_autoshop
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      JWT_SECRET: dev_secret
+      APP_INSTANCE_ID: ci
+      SKIP_TENANT_ENFORCEMENT: "true"
+      AWS_DEFAULT_REGION: us-west-2
+      PYTHONPATH: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install jq (for coverage gate)
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      # Single source of truth: call the same scripts used locally
+      - name: Setup
+        run: scripts/ci/setup.sh
+
+      - name: Guard | fail on pinned apk packages
+        run: |
+          if rg -n "apk add .*=[0-9]" frontend/Dockerfile backend/Dockerfile infrastructure/**/Dockerfile 2>/dev/null; then
+            echo "::error::Avoid pinning apk package versions; they expire in Alpine repos."
+            exit 1
+          fi
+
+      - name: Lint
+        run: scripts/ci/lint.sh
+
+      - name: Unit (coverage gate)
+        env:
+          COVERAGE_MIN: ${{ env.COVERAGE_MIN }}
+          APP_INSTANCE_ID: ci
+          SKIP_TENANT_ENFORCEMENT: "true"
+          UNIT_DB: sqlite
+          FALLBACK_TO_MEMORY: "true"
+          JWT_SECRET: dev_secret
+          AWS_DEFAULT_REGION: us-west-2
+        run: scripts/ci/test_unit.sh
+
+      - name: Sanity | Verify coverage scope
+        run: |
+          echo "Frontend coverage scope verification:"
+          cd frontend
+          echo "✅ Using: npm run test:unit:ci (--project unit)"
+          echo "Coverage file: $(ls -la coverage/coverage-summary.json 2>/dev/null || echo 'Not found yet')"
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fe-coverage
+          path: frontend/coverage
+
+      - name: Build
+        run: scripts/ci/build.sh
+
+      - name: Create .env + .env.ci (single source of truth)
+        run: |
+          cat > .env <<'EOF'
+          DATABASE_URL=postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop
+          DATABASE_URL_COMPOSE=postgresql://test_user:test_password@db:5432/test_autoshop
+          JWT_SECRET=dev_secret
+          POSTGRES_HOST=127.0.0.1
+          POSTGRES_PORT=55432
+          POSTGRES_DB=test_autoshop
+          POSTGRES_USER=test_user
+          POSTGRES_PASSWORD=test_password
+          APP_INSTANCE_ID=ci
+          SKIP_TENANT_ENFORCEMENT=true
+          FALLBACK_TO_MEMORY=false
+          AWS_DEFAULT_REGION=us-west-2
+          EOF
+          cp .env .env.ci
+          echo "Created .env and .env.ci files"
+
+      - name: Install Postgres client + jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client jq
+
+      - name: Debug Database Configuration
+        run: |
+          echo "=== Environment Variables ==="
+          env | grep -E "(DATABASE|POSTGRES)" | sed 's/PASSWORD=.*/PASSWORD=***/'
+
+          echo "=== .env file contents ==="
+          sed 's/PASSWORD=.*/PASSWORD=***/' .env
+
+          echo "=== Testing Connection ==="
+          PGPASSWORD=test_password psql -h 127.0.0.1 -p 55432 -U test_user -d test_autoshop -c "SELECT version();" || echo "Connection failed"
+
+      - name: Wait for Postgres (host 127.0.0.1:55432)
+        run: |
+          timeout 90 bash -c 'until pg_isready -h 127.0.0.1 -p 55432 -U test_user -d test_autoshop; do sleep 2; done'
+
+      - name: Schema | init.sql → migrations → seed
+        env:
+          PGPASSWORD: test_password
+        run: |
+          # Use DATABASE_URL consistently
+          export DATABASE_URL="postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop"
+
+          # Check connection first
+          psql "$DATABASE_URL" -c "SELECT 1" || {
+            echo "Failed to connect to database with DATABASE_URL"
+            exit 1
+          }
+
+          # Run schema if exists
+          if [ -f database/init.sql ]; then
+            echo "Running database/init.sql..."
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/init.sql
+          else
+            echo "No database/init.sql found, skipping"
+          fi
+
+          # Run migrations with proper Python path
+          echo "Running migrations..."
+          export PYTHONPATH="${PYTHONPATH}:$(pwd)/backend"
+          python backend/run_sql_migrations.py
+
+          # Run seed if exists
+          if [ -f backend/seeds/seed_s1.sql ]; then
+            echo "Running seed..."
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f backend/seeds/seed_s1.sql
+          else
+            echo "No backend/seeds/seed_s1.sql found, skipping"
+          fi
+
+      - name: Start backend (host mode)
+        run: |
+          # Backend will inherit job-level environment variables
+          echo "Starting backend with DATABASE_URL: $(echo "$DATABASE_URL" | sed 's/:.*@/:***@/')"
+
+          # Source the .env file for any additional variables
+          source .env
+
+          # Start backend in background
+          nohup python backend/local_server.py >/tmp/backend.log 2>&1 & echo $! > backend.pid
+          sleep 5
+
+          # Show initial logs
+          echo "=== Backend Initial Logs ==="
+          head -n 50 /tmp/backend.log || true
+
+      - name: Sanity | Backend health (host)
+        run: |
+          timeout 90 bash -c 'until curl -fsS http://localhost:3001/health; do
+            echo "Waiting for backend health..."
+            tail -n 10 /tmp/backend.log || true
+            sleep 2
+          done'
+          echo "Backend is healthy!"
+
+
+
+      - name: Integration (real Postgres)
+        run: scripts/ci/test_integration.sh
+
+      - name: Show Backend Logs on Failure
+        if: failure()
+        run: |
+          echo "=== Backend Logs (last 200 lines) ==="
+          tail -n 200 /tmp/backend.log || true
+
+          echo "=== Environment Variables ==="
+          env | grep -E "(DATABASE|POSTGRES)" | sed 's/PASSWORD=.*/PASSWORD=***/'
+
+      - name: Stop backend
+        if: always()
+        run: |
+          [[ -f backend.pid ]] && kill "$(cat backend.pid)" || true
+
+      # Playwright dependencies & cache (prevents re-download each run)
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Compose up
+        run: docker compose --env-file .env.ci up -d --build
+
+      - name: Wait DB (compose)
+        run: |
+          timeout 90 bash -c '
+            while ! docker compose --env-file .env.ci exec -T db pg_isready -h localhost -p 5432 -U test_user -d test_autoshop >/dev/null 2>&1; do
+              echo "Waiting for database..."
+              sleep 2
+            done
+          '
+          echo "Database is ready!"
+
+      - name: Wait Backend (compose)
+        run: |
+          echo "Waiting for backend to be ready..."
+          timeout 180 bash -c '
+            while true; do
+              # Check if Flask is available
+              if docker compose --env-file .env.ci exec -T backend /bin/sh -lc "python -c \"import flask; print(\\\"OK\\\")\"" 2>/dev/null; then
+                echo "Backend dependencies ready!"
+                break
+              fi
+              echo "Waiting for Flask and dependencies to be installed..."
+              sleep 5
+            done
+          '
+
+      - name: Schema | init → seed (compose setup)
+        env:
+          PGPASSWORD: test_password
+        run: |
+          # Initialize schema from host since database/ directory isn't mounted in backend container
+          export DATABASE_URL_COMPOSE="postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop"
+
+          # Run schema if exists
+          if [ -f database/init.sql ]; then
+            echo "Running database/init.sql from host..."
+            psql "$DATABASE_URL_COMPOSE" -v ON_ERROR_STOP=1 -f database/init.sql
+          else
+            echo "No database/init.sql found, skipping"
+          fi
+
+          # Run seed if exists
+          if [ -f backend/seeds/seed_s1.sql ]; then
+            echo "Running seed from host..."
+            psql "$DATABASE_URL_COMPOSE" -v ON_ERROR_STOP=1 -f backend/seeds/seed_s1.sql
+          else
+            echo "No backend/seeds/seed_s1.sql found, skipping"
+          fi
+
+      - name: Migrations (compose)
+        run: |
+          # Run migrations inside the backend container now that dependencies are ready
+          docker compose --env-file .env.ci exec -T backend /bin/sh -lc '
+            export DATABASE_URL="postgresql://test_user:test_password@db:5432/test_autoshop"
+
+            # Test connection
+            echo "Testing database connection..."
+            psql "$DATABASE_URL" -c "SELECT 1"
+
+            # Run migrations
+            echo "Running migrations from /app/run_sql_migrations.py..."
+            python /app/run_sql_migrations.py
+          '
+
+      - name: Sanity | Backend health (compose)
+        run: |
+          timeout 120 bash -c 'until curl -fsS http://localhost:3001/health; do
+            echo "Waiting for backend health..."
+            docker compose --env-file .env.ci logs backend | tail -n 20
+            sleep 3
+          done'
+          echo "Backend is healthy!"
+
+      - name: Run Playwright
+        env:
+          API_BASE_URL: http://localhost:3001
+        run: |
+          cd frontend
+          npx playwright test --reporter=line
+
+      - name: Dump compose status on failure
+        if: failure()
+        run: |
+          docker compose --env-file .env.ci ps || true
+          echo "---- DB logs ----"; docker compose --env-file .env.ci logs db | tail -n 200 || true
+          echo "---- Backend logs ----"; docker compose --env-file .env.ci logs backend | tail -n 200 || true
+
+      - name: Teardown compose
+        if: always()
+        run: docker compose --env-file .env.ci down -v
+
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            test-results/**
+            playwright-report/**
+            **/test-results/**

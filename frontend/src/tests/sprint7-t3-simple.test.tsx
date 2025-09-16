@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen } from '@test-utils'
 
 // Test basic path alias resolution
 import { getMinutesUntil } from '@/utils/time'

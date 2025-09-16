@@ -1,3 +1,5 @@
+import pytest
+
 print("Starting test file import")
 
 import pytest
@@ -9,6 +11,7 @@ import jwt
 print("jwt imported")
 
 
+@pytest.mark.integration
 def test_simple():
     """Simple test to verify pytest is working"""
     assert True
@@ -17,6 +20,7 @@ def test_simple():
 print("test_simple function defined")
 
 
+@pytest.mark.integration
 def test_get_customer_history_requires_authentication(no_auto_auth_client):
     """Test that the endpoint requires authentication"""
     response = no_auto_auth_client.get("/api/customers/123/history")

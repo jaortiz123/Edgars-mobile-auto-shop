@@ -39,6 +39,7 @@ def _create_basic_appt(client, tech_id=None):
     return js.get("id")
 
 
+@pytest.mark.integration
 def test_create_with_invalid_tech_rejected(client, db_connection):
     # db_connection fixture ensures container + schema present
     r = client.post(
@@ -52,6 +53,7 @@ def test_create_with_invalid_tech_rejected(client, db_connection):
     assert "tech_id" in (j["error"].get("message") or "").lower()
 
 
+@pytest.mark.integration
 def test_assign_invalid_tech_rejected(client, db_connection):
     # Create appt without tech
     appt_id = _create_basic_appt(client)
@@ -66,6 +68,7 @@ def test_assign_invalid_tech_rejected(client, db_connection):
     assert "tech_id" in (j["error"].get("message") or "").lower()
 
 
+@pytest.mark.integration
 def test_assign_valid_tech_and_board_reflects(client, db_connection, tech_id):
     appt_id = _create_basic_appt(client)
     r = client.patch(f"/api/admin/appointments/{appt_id}", json={"tech_id": tech_id})
@@ -80,6 +83,7 @@ def test_assign_valid_tech_and_board_reflects(client, db_connection, tech_id):
     assert card["techInitials"] in ("TT", None)  # initials optional if not committed
 
 
+@pytest.mark.integration
 def test_start_sets_started_at_once(client, db_connection, tech_id):
     appt_id = _create_basic_appt(client, tech_id=tech_id)
     # Start
@@ -97,6 +101,7 @@ def test_start_sets_started_at_once(client, db_connection, tech_id):
     assert started2 == started1
 
 
+@pytest.mark.integration
 def test_complete_sets_completed_at_once(client, db_connection, tech_id):
     appt_id = _create_basic_appt(client, tech_id=tech_id)
     client.post(f"/api/appointments/{appt_id}/start")
@@ -112,6 +117,7 @@ def test_complete_sets_completed_at_once(client, db_connection, tech_id):
     assert completed2 == completed1
 
 
+@pytest.mark.integration
 def test_board_includes_progress_fields(client, db_connection, tech_id):
     appt_id = _create_basic_appt(client, tech_id=tech_id)
     client.post(f"/api/appointments/{appt_id}/start")

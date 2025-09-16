@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+import pytest
+
 P2-T-003 Robustness Test Suite - Simplified Version
 Comprehensive testing for edge cases, error scenarios, and production readiness
 """
@@ -13,6 +15,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 
+@pytest.mark.integration
 def test_testcontainers_dependency_available():
     """Test that testcontainers dependency is available."""
     try:
@@ -24,6 +27,7 @@ def test_testcontainers_dependency_available():
         pytest.fail("testcontainers package is not installed")
 
 
+@pytest.mark.integration
 def test_docker_availability_check():
     """Test that Docker is available for container operations."""
     try:
@@ -34,6 +38,7 @@ def test_docker_availability_check():
         pytest.skip("Docker is not available")
 
 
+@pytest.mark.integration
 def test_schema_file_exists():
     """Test that required schema file exists."""
     schema_file = Path(__file__).parent / "test_schema.sql"
@@ -45,6 +50,7 @@ def test_schema_file_exists():
     assert "CREATE TABLE" in content.upper(), "Schema file doesn't contain table definitions"
 
 
+@pytest.mark.integration
 def test_seed_file_exists():
     """Test that required seed file exists."""
     seed_file = Path(__file__).parent / "seed.sql"
@@ -56,6 +62,7 @@ def test_seed_file_exists():
     assert "INSERT INTO" in content.upper(), "Seed file doesn't contain insert statements"
 
 
+@pytest.mark.integration
 def test_database_connection_with_real_container(pg_container):
     """Test actual database connection with real container."""
     db_url = pg_container["db_url"]
@@ -69,6 +76,7 @@ def test_database_connection_with_real_container(pg_container):
             assert "PostgreSQL" in result["version"]
 
 
+@pytest.mark.integration
 def test_database_constraints_enforcement(db_connection):
     """Test that database constraints are properly enforced."""
     with db_connection.cursor() as cur:
@@ -104,6 +112,7 @@ def test_database_constraints_enforcement(db_connection):
         db_connection.rollback()
 
 
+@pytest.mark.integration
 def test_performance_benchmarks(db_connection):
     """Test basic performance benchmarks."""
     with db_connection.cursor() as cur:
@@ -135,6 +144,7 @@ def test_performance_benchmarks(db_connection):
         assert len(results) > 0, "Should have joined results"
 
 
+@pytest.mark.integration
 def test_transaction_rollback_safety(db_connection):
     """Test transaction rollback behavior."""
     original_count = None
@@ -173,6 +183,7 @@ def test_transaction_rollback_safety(db_connection):
         assert final_count == original_count, "Rollback failed"
 
 
+@pytest.mark.integration
 def test_sql_injection_prevention(db_connection):
     """Test SQL injection prevention with parameterized queries."""
     malicious_input = "'; DROP TABLE customers; --"
@@ -191,6 +202,7 @@ def test_sql_injection_prevention(db_connection):
         assert count > 0, "Customers table was affected by injection attempt"
 
 
+@pytest.mark.integration
 def test_timezone_handling(db_connection):
     """Test timezone handling in database operations."""
     with db_connection.cursor() as cur:

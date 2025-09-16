@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useCustomerProfileInfinite } from '@/hooks/useCustomerProfileInfinite';
-import { vi } from 'vitest';
+import { vi, it, expect } from 'vitest';
 import React from 'react';
 
 function wrapper({ children }: { children: React.ReactNode }) {

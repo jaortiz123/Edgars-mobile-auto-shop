@@ -8,6 +8,8 @@ Validates:
 """
 import jwt
 import pytest
+
+pytestmark = pytest.mark.unit_fast
 from datetime import datetime, timezone
 
 try:

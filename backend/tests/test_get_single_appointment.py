@@ -4,10 +4,14 @@ import random
 import string
 
 
+import pytest
+
+
 def _rand_plate():
     return "PLT" + "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
 
 
+@pytest.mark.integration
 def test_get_single_appointment_details(client, db_connection):
     # Precondition: insert customer, vehicle, service_operation, appointment, appointment_service
     cur = db_connection.cursor()

@@ -15,6 +15,7 @@
     "dev:backend": "cd backend && POSTGRES_HOST=localhost python local_server.py",
     "dev:full": "concurrently \"npm run dev:services\" \"npm run dev:backend\" \"npm run dev:frontend\"",
     "stop": "./stop-dev.sh",
+    "ci:trigger": "git commit --allow-empty -m 'chore(ci): trigger CI' && git push",
     "psql": "docker compose exec db psql -U $POSTGRES_USER -d $POSTGRES_DB",
     "migrate": "docker compose exec -T db psql -U $POSTGRES_USER -d $POSTGRES_DB < backend/migrations/20250725_001_add_appt_status_and_lite_tables.sql",
     "seed": "docker compose exec -T db psql -U $POSTGRES_USER -d $POSTGRES_DB < backend/seeds/seed_s1.sql",

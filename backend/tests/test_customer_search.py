@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Tests for /api/admin/customers/search endpoint.
 
+import pytest
+
 Validates new enrichment fields:
 - totalSpent aggregation
 - lastServiceAt derived from completed appointments
@@ -78,6 +80,7 @@ def make_search_row(
     }
 
 
+@pytest.mark.integration
 def test_customer_search_basic_shape(client, auth_headers, mock_db):
     mock_db.fetchall.return_value = [make_search_row(1, visits=2, total_spent=150, last_visit=None)]
     resp = client.get("/api/admin/customers/search?q=PLT1", headers=auth_headers())
@@ -91,6 +94,7 @@ def test_customer_search_basic_shape(client, auth_headers, mock_db):
     assert first["isVip"] is False
 
 
+@pytest.mark.integration
 def test_customer_search_vip_via_spend_threshold(client, auth_headers, mock_db):
     mock_db.fetchall.return_value = [make_search_row(1, visits=20, total_spent=6000, is_vip=False)]
     resp = client.get("/api/admin/customers/search?q=PLT1", headers=auth_headers())
@@ -100,6 +104,7 @@ def test_customer_search_vip_via_spend_threshold(client, auth_headers, mock_db):
     assert first["totalSpent"] == 6000.0
 
 
+@pytest.mark.integration
 def test_customer_search_vip_explicit_flag(client, auth_headers, mock_db):
     mock_db.fetchall.return_value = [make_search_row(2, visits=3, total_spent=200, is_vip=True)]
     resp = client.get("/api/admin/customers/search?q=PLT2", headers=auth_headers())
@@ -109,6 +114,7 @@ def test_customer_search_vip_explicit_flag(client, auth_headers, mock_db):
     assert first["totalSpent"] == 200.0
 
 
+@pytest.mark.integration
 def test_customer_search_overdue_logic(client, auth_headers, mock_db):
     old_service = datetime(2024, 12, 1, tzinfo=timezone.utc)
     recent_service = datetime(2025, 7, 1, tzinfo=timezone.utc)
@@ -123,6 +129,7 @@ def test_customer_search_overdue_logic(client, auth_headers, mock_db):
     assert items[1]["isOverdueForService"] is False
 
 
+@pytest.mark.integration
 def test_customer_search_filter_vip(client, auth_headers, mock_db):
     # Only VIP row should survive HAVING when filter=vip
     vip_row = make_search_row(1, total_spent=6000, is_vip=False)  # derived vip
@@ -135,6 +142,7 @@ def test_customer_search_filter_vip(client, auth_headers, mock_db):
     assert items[0]["isVip"] is True
 
 
+@pytest.mark.integration
 def test_customer_search_filter_overdue(client, auth_headers, mock_db):
     overdue_row = make_search_row(3, total_spent=200, is_overdue=True)
     mock_db.fetchall.return_value = [overdue_row]
@@ -145,6 +153,7 @@ def test_customer_search_filter_overdue(client, auth_headers, mock_db):
     assert items[0]["isOverdueForService"] is True
 
 
+@pytest.mark.integration
 def test_customer_search_filter_invalid_ignored(client, auth_headers, mock_db):
     row1 = make_search_row(1, total_spent=10)
     row2 = make_search_row(2, total_spent=20)
@@ -158,6 +167,7 @@ def test_customer_search_filter_invalid_ignored(client, auth_headers, mock_db):
 # ----------------------- Sorting Tests ------------------------------------
 
 
+@pytest.mark.integration
 def test_customer_search_sort_default_relevance(client, auth_headers, mock_db):
     # Ensure default ordering path used when sortBy absent (relevance)
     mock_db.fetchall.return_value = [make_search_row(1), make_search_row(2)]
@@ -177,6 +187,7 @@ def test_customer_search_sort_default_relevance(client, auth_headers, mock_db):
         ("highest_lifetime_spend", "ORDER BY total_spent DESC"),
     ],
 )
+@pytest.mark.integration
 def test_customer_search_sort_variants(client, auth_headers, mock_db, param, expected_fragment):
     mock_db.fetchall.return_value = [make_search_row(1), make_search_row(2)]
     resp = client.get(f"/api/admin/customers/search?q=PLT&sortBy={param}", headers=auth_headers())
@@ -185,6 +196,7 @@ def test_customer_search_sort_variants(client, auth_headers, mock_db, param, exp
     assert expected_fragment in executed_sql
 
 
+@pytest.mark.integration
 def test_customer_search_sort_invalid_falls_back(client, auth_headers, mock_db):
     mock_db.fetchall.return_value = [make_search_row(1), make_search_row(2)]
     resp = client.get("/api/admin/customers/search?q=PLT&sortBy=bogus", headers=auth_headers())

@@ -3,7 +3,7 @@ import pytest
 import json
 
 
-def test_get_stats_happy_path(client, fake_db):
+def test_get_stats_happy_path(client, db_connection):
     r = client.get("/api/admin/dashboard/stats")
     assert r.status_code == 200
     j = r.get_json()
@@ -32,7 +32,7 @@ def test_get_stats_happy_path(client, fake_db):
     assert totals["avg_cycle_formatted"] is not None
 
 
-def test_get_stats_with_new_metrics(client, fake_db):
+def test_get_stats_with_new_metrics(client, db_connection):
     """Test the new v2 metrics specifically"""
     r = client.get("/api/admin/dashboard/stats")
     assert r.status_code == 200
@@ -66,7 +66,7 @@ def test_stats_returns_500_envelope_on_db_down(client, monkeypatch):
     assert "request_id" in j["meta"]
 
 
-def test_stats_redis_cache_fallback(client, fake_db, monkeypatch):
+def test_stats_redis_cache_fallback(client, db_connection, monkeypatch):
     """Test that stats work even when Redis is unavailable"""
     import backend.local_server as srv
 
@@ -83,7 +83,7 @@ def test_stats_redis_cache_fallback(client, fake_db, monkeypatch):
     assert "today_completed" in j["totals"]
 
 
-def test_unpaid_total_calculation(client, fake_db):
+def test_unpaid_total_calculation(client, db_connection):
     """Test that unpaid_total is calculated correctly"""
     r = client.get("/api/admin/dashboard/stats")
     assert r.status_code == 200
@@ -97,7 +97,7 @@ def test_unpaid_total_calculation(client, fake_db):
         assert decimal_places <= 2
 
 
-def test_avg_cycle_time_metric(client, fake_db):
+def test_avg_cycle_time_metric(client, db_connection):
     """Test average cycle time calculation and formatting"""
     r = client.get("/api/admin/dashboard/stats")
     assert r.status_code == 200

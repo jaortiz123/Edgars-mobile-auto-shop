@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@test-utils';
 import userEvent from '@testing-library/user-event';
 import { vi, test, expect, beforeEach, describe } from 'vitest';
 import AppointmentDrawer from '../components/admin/AppointmentDrawer';

@@ -8,6 +8,8 @@ Validates:
 import json
 import jwt
 import pytest
+
+pytestmark = pytest.mark.unit_fast
 from datetime import datetime
 import hashlib
 

@@ -1,9 +1,8 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { render, screen, within, waitFor } from '@testing-library/react';
+import { render, screen, within, waitFor } from '@test-utils';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import VehicleProfilePage from '@/pages/admin/VehicleProfilePage';
 
 // Local deterministic fetch stub (mirrors integration test approach) to avoid global MSW overlap.
@@ -44,15 +43,11 @@ beforeEach(() => {
 afterEach(() => { global.fetch = originalFetch; });
 
 function renderPage() {
-  const qc = new QueryClient();
   return render(
-    <QueryClientProvider client={qc}>
-  <MemoryRouter initialEntries={["/admin/vehicles/veh-1?page_size=5"]}>
-        <Routes>
-          <Route path="/admin/vehicles/:id" element={<VehicleProfilePage />} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>
+    <Routes>
+      <Route path="/admin/vehicles/:id" element={<VehicleProfilePage />} />
+    </Routes>,
+    { router: { initialEntries: ['/admin/vehicles/veh-1?page_size=5'] } },
   );
 }
 

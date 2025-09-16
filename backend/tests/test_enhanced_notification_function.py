@@ -1,9 +1,12 @@
 import json
+import os
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
 import sys
-import os
+
+pytestmark = pytest.mark.integration
+os.environ.setdefault("AWS_DEFAULT_REGION", "us-west-2")
 
 # Add backend directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))

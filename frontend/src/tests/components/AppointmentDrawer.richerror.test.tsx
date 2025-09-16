@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen } from '@test-utils'
 
 // Mock router navigate
 vi.mock('react-router-dom', async () => {

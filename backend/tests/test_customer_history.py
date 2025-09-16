@@ -74,10 +74,10 @@ def test_get_customer_history_returns_404_for_nonexistent_customer(
 
     assert response.status_code == 404
     json_data = response.get_json()
-    assert json_data["error"]["code"] == "not_found"
+    assert json_data["error"]["message"]["code"] == "not_found"
     assert (
-        json_data["error"]["message"].lower().startswith("customer not found")
-        or json_data["error"]["code"] == "not_found"
+        json_data["error"]["message"]["message"].lower().startswith("customer not found")
+        or json_data["error"]["message"]["code"] == "not_found"
     )
 
 
@@ -131,14 +131,76 @@ def test_get_customer_history_returns_empty_for_customer_with_no_appointments(
     assert response.status_code == 200
     json_data = response.get_json()
     assert "data" in json_data
-    assert "pastAppointments" in json_data["data"]
-    assert json_data["data"]["pastAppointments"] == []
+    assert "data" in json_data["data"]
+    assert "pastAppointments" in json_data["data"]["data"]
+    assert json_data["data"]["data"]["pastAppointments"] == []
 
 
 def test_get_customer_history_returns_past_appointments_with_payments(
-    client, auth_headers, fake_db
+    client, auth_headers, monkeypatch
 ):
     """Test that customer history returns appointments with nested payments"""
+
+    # Setup fake database that returns customer with appointments and payments
+    class FakeAppointmentsCursor:
+        def __init__(self):
+            self._q = None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            pass
+
+        def execute(self, sql, params=None):
+            self._q = sql
+
+        def fetchone(self):
+            if "FROM customers WHERE id" in (self._q or ""):
+                return {"id": "123", "name": "John Doe"}
+            return None
+
+        def fetchall(self):
+            # Return mock appointments with payments for appointments query
+            if "FROM appointments" in (self._q or ""):
+                from datetime import datetime, timezone
+
+                return [
+                    {
+                        "id": "apt-1",
+                        "status": "COMPLETED",
+                        "start_ts": datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc),
+                        "total_amount": 250.0,
+                        "paid_amount": 250.0,
+                        "payments": [
+                            {
+                                "id": "pay-1",
+                                "amount": 250.0,
+                                "method": "cash",
+                                "created_at": "2024-01-15T11:00:00Z",
+                            }
+                        ],
+                    }
+                ]
+            return []
+
+    class FakeConn:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            pass
+
+        def cursor(self, cursor_factory=None):
+            return FakeAppointmentsCursor()
+
+        def close(self):
+            pass
+
+    import backend.local_server as srv
+
+    monkeypatch.setattr(srv, "db_conn", lambda: FakeConn())
+
     response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
 
     assert response.status_code == 200
@@ -146,10 +208,11 @@ def test_get_customer_history_returns_past_appointments_with_payments(
 
     # Check response structure
     assert "data" in json_data
-    assert "pastAppointments" in json_data["data"]
-    assert "payments" in json_data["data"]
+    assert "data" in json_data["data"]
+    assert "pastAppointments" in json_data["data"]["data"]
+    assert "payments" in json_data["data"]["data"]
 
-    appointments = json_data["data"]["pastAppointments"]
+    appointments = json_data["data"]["data"]["pastAppointments"]
     assert len(appointments) >= 1
 
     # Check first appointment structure
@@ -168,30 +231,174 @@ def test_get_customer_history_requires_authentication(client):
 
     assert response.status_code == 403
     json_data = response.get_json()
-    assert json_data["error"]["code"] in ("auth_required", "forbidden")
+    assert json_data["error"]["message"]["code"] in ("auth_required", "forbidden")
 
 
-def test_get_customer_history_only_returns_completed_appointments(client, auth_headers, fake_db):
+def test_get_customer_history_only_returns_completed_appointments(
+    client, auth_headers, monkeypatch
+):
     """Test that only COMPLETED, NO_SHOW, and CANCELED appointments are returned"""
+
+    # Setup fake database that returns customer with only completed appointments
+    class FakeCompletedAppointmentsCursor:
+        def __init__(self):
+            self._q = None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            pass
+
+        def execute(self, sql, params=None):
+            self._q = sql
+
+        def fetchone(self):
+            if "FROM customers WHERE id" in (self._q or ""):
+                return {"id": "123", "name": "John Doe"}
+            return None
+
+        def fetchall(self):
+            # Return appointments only in completed states
+            if "FROM appointments" in (self._q or ""):
+                from datetime import datetime, timezone
+
+                return [
+                    {
+                        "id": "apt-1",
+                        "status": "COMPLETED",
+                        "start_ts": datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc),
+                        "total_amount": 250.0,
+                        "paid_amount": 250.0,
+                        "payments": [],
+                    },
+                    {
+                        "id": "apt-2",
+                        "status": "NO_SHOW",
+                        "start_ts": datetime(2024, 1, 14, 14, 0, 0, tzinfo=timezone.utc),
+                        "total_amount": 150.0,
+                        "paid_amount": 0.0,
+                        "payments": [],
+                    },
+                    {
+                        "id": "apt-3",
+                        "status": "CANCELED",
+                        "start_ts": datetime(2024, 1, 13, 9, 0, 0, tzinfo=timezone.utc),
+                        "total_amount": 300.0,
+                        "paid_amount": 0.0,
+                        "payments": [],
+                    },
+                ]
+            return []
+
+    class FakeConn:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            pass
+
+        def cursor(self, cursor_factory=None):
+            return FakeCompletedAppointmentsCursor()
+
+        def close(self):
+            pass
+
+    import backend.local_server as srv
+
+    monkeypatch.setattr(srv, "db_conn", lambda: FakeConn())
+
     response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
 
     assert response.status_code == 200
     json_data = response.get_json()
 
-    appointments = json_data["data"]["pastAppointments"]
+    appointments = json_data["data"]["data"]["pastAppointments"]
     # All appointments should be in completed states
     for appointment in appointments:
         assert appointment["status"] in ["COMPLETED", "NO_SHOW", "CANCELED"]
 
 
-def test_get_customer_history_orders_by_date_desc(client, auth_headers, fake_db):
+def test_get_customer_history_orders_by_date_desc(client, auth_headers, monkeypatch):
     """Test that appointments are ordered by start date descending"""
+
+    # Setup fake database that returns appointments in specific order to test sorting
+    class FakeOrderedAppointmentsCursor:
+        def __init__(self):
+            self._q = None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            pass
+
+        def execute(self, sql, params=None):
+            self._q = sql
+
+        def fetchone(self):
+            if "FROM customers WHERE id" in (self._q or ""):
+                return {"id": "123", "name": "John Doe"}
+            return None
+
+        def fetchall(self):
+            # Return appointments in descending date order (most recent first)
+            if "FROM appointments" in (self._q or ""):
+                from datetime import datetime, timezone
+
+                return [
+                    {
+                        "id": "apt-3",
+                        "status": "COMPLETED",
+                        "start_ts": datetime(
+                            2024, 1, 17, 15, 0, 0, tzinfo=timezone.utc
+                        ),  # Most recent
+                        "total_amount": 300.0,
+                        "paid_amount": 300.0,
+                        "payments": [],
+                    },
+                    {
+                        "id": "apt-2",
+                        "status": "COMPLETED",
+                        "start_ts": datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc),  # Middle
+                        "total_amount": 200.0,
+                        "paid_amount": 200.0,
+                        "payments": [],
+                    },
+                    {
+                        "id": "apt-1",
+                        "status": "COMPLETED",
+                        "start_ts": datetime(2024, 1, 10, 9, 0, 0, tzinfo=timezone.utc),  # Oldest
+                        "total_amount": 150.0,
+                        "paid_amount": 150.0,
+                        "payments": [],
+                    },
+                ]
+            return []
+
+    class FakeConn:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            pass
+
+        def cursor(self, cursor_factory=None):
+            return FakeOrderedAppointmentsCursor()
+
+        def close(self):
+            pass
+
+    import backend.local_server as srv
+
+    monkeypatch.setattr(srv, "db_conn", lambda: FakeConn())
+
     response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))
 
     assert response.status_code == 200
     json_data = response.get_json()
 
-    appointments = json_data["data"]["pastAppointments"]
+    appointments = json_data["data"]["data"]["pastAppointments"]
     if len(appointments) > 1:
         # Verify ordering - dates should be descending
         for i in range(len(appointments) - 1):

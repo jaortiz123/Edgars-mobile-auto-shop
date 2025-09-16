@@ -1,12 +1,11 @@
 # Multi-stage build for security and smaller image size
-# Pin base image with digest for security
-FROM node:20-alpine@sha256:92a6c6ff178dbfbd0398f22d6ae6a3e3e1e6e6b30d4c1b5a7866ae6edcc08b51 AS builder
+FROM node:20-alpine AS builder
 
 # Create app directory
 WORKDIR /app
 
-# Install required utilities for port management and create non-root user
-RUN apk add --no-cache lsof=4.95.0-r2 procps=3.3.17-r3 \
+# Install tools for diagnostics (unpin; Alpine uses procps-ng)
+RUN apk add --no-cache lsof procps-ng \
 	&& addgroup -S app && adduser -S app -G app \
 	&& mkdir -p /home/app && chown -R app:app /home/app
 
@@ -25,11 +24,11 @@ RUN chown -R app:app /app
 RUN npm run build
 
 # Production stage
-FROM node:20-alpine@sha256:92a6c6ff178dbfbd0398f22d6ae6a3e3e1e6e6b30d4c1b5a7866ae6edcc08b51 AS production
+FROM node:20-alpine AS production
 
-# Install security updates and required utilities
+# Install security updates and minimal runtime tools
 RUN apk update && apk upgrade \
-	&& apk add --no-cache lsof=4.95.0-r2 procps=3.3.17-r3 \
+	&& apk add --no-cache lsof procps-ng \
 	&& addgroup -S app && adduser -S app -G app \
 	&& mkdir -p /home/app && chown -R app:app /home/app
 

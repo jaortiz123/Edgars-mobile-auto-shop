@@ -34,6 +34,7 @@ def _add_service(conn, appt_id, name="Oil Change", price=50):
         )
 
 
+@pytest.mark.integration
 def test_generate_invoice_success(pg_container):  # ensure container/env ready
     conn = srv.db_conn()
     try:
@@ -54,6 +55,7 @@ def test_generate_invoice_success(pg_container):  # ensure container/env ready
         conn.close()
 
 
+@pytest.mark.integration
 def test_generate_invoice_invalid_state(pg_container):
     conn = srv.db_conn()
     try:
@@ -66,6 +68,7 @@ def test_generate_invoice_invalid_state(pg_container):
         conn.close()
 
 
+@pytest.mark.integration
 def test_generate_invoice_endpoint(client, pg_container):  # reuse client fixture from conftest
     conn = srv.db_conn()
     try:
@@ -86,6 +89,7 @@ def test_generate_invoice_endpoint(client, pg_container):  # reuse client fixtur
     assert data2["error"]["code"] == "already_exists"
 
 
+@pytest.mark.integration
 def test_generate_invoice_zero_services(pg_container):
     """Invoice generation for an appointment with no services should succeed with all zero totals."""
     conn = srv.db_conn()
@@ -103,6 +107,7 @@ def test_generate_invoice_zero_services(pg_container):
     assert result["line_items"] == []
 
 
+@pytest.mark.integration
 def test_generate_invoice_not_found_endpoint(client, pg_container):
     """POSTing invoice generation for a non-existent appointment returns 404."""
     # Use an id far beyond seeded/created sequences to ensure NOT FOUND

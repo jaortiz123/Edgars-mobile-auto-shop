@@ -26,6 +26,7 @@ def _create_completed_invoice(conn):
     return inv["id"], str(appt_id)
 
 
+@pytest.mark.integration
 def test_get_invoice_happy_path(pg_container):
     conn = srv.db_conn()
     try:
@@ -45,6 +46,7 @@ def test_get_invoice_happy_path(pg_container):
     assert data["data"]["payments"] == []
 
 
+@pytest.mark.integration
 def test_get_invoice_not_found(pg_container):
     client = srv.app.test_client()
     resp = client.get("/api/admin/invoices/does-not-exist")

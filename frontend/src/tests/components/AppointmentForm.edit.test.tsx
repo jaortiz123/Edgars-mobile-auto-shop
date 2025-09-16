@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen } from '@test-utils';
 import userEvent from '@testing-library/user-event';
 import AppointmentForm from '@/components/appointments/AppointmentForm';
 import type { CustomerSearchResult } from '@/components/appointments/CustomerSearchInput';

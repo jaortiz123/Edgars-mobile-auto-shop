@@ -10,7 +10,7 @@ import { addNotification, notifyLate, notifyOverdue, notifyArrival, getNotificat
 import { AppointmentReminderErrorBoundary, useErrorHandler } from '@/components/ErrorBoundaries/AppointmentReminderErrorBoundary';
 import offlineService, { useOfflineState, markArrivedWithOfflineSupport } from '@/services/offlineSupport';
 import performanceService, { usePerformanceMonitoring } from '@/services/performanceMonitoring';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@test-utils';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 

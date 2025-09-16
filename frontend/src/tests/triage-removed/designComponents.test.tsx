@@ -1,6 +1,6 @@
 // Sprint 1A Robustness: Design System Component Tests (jsdom Environment)
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { render, screen } from '@testing-library/react';
+import { render, screen } from '@test-utils';
 import {
   DesignSystemValidator,
   getCSSVariable,

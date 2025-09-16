@@ -3,7 +3,7 @@ import 'whatwg-fetch'
 
 import { expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
 import { toHaveNoViolations } from 'jest-axe'
-import { cleanup } from '@testing-library/react'
+import { cleanup } from '@test-utils'
 import failOnConsole from 'vitest-fail-on-console'
 
 // Enhanced CI Console Detection using vitest-fail-on-console + Custom Helpers

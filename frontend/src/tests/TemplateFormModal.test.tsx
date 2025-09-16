@@ -1,8 +1,8 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen } from '@test-utils';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import { waitFor } from '@testing-library/react';
+import { waitFor } from '@test-utils';
 import { vi } from 'vitest';
 import TemplateFormModal from '@/components/admin/TemplateFormModal';
 

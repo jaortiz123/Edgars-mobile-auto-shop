@@ -1,4 +1,6 @@
 """
+import pytest
+
 Tests for Services CRUD endpoints.
 T-017: Backend services API implementation
 """
@@ -47,6 +49,7 @@ def _create_appt(client):
     return appt.get("id")
 
 
+@pytest.mark.integration
 def test_get_services_empty(client):
     """Should return empty list when no services exist for valid appointment."""
     appt_id = _create_appt(client)
@@ -57,6 +60,7 @@ def test_get_services_empty(client):
     assert data["services"] == []
 
 
+@pytest.mark.integration
 def test_create_service_success_memory_mode(client):
     """Should create a new service in memory mode."""
     service_data = {
@@ -94,6 +98,7 @@ def test_create_service_success_memory_mode(client):
             assert isinstance(data["id"], str)
 
 
+@pytest.mark.integration
 def test_create_service_missing_name(client):
     """Should fail when name/service_operation_id both missing."""
     appt_id = _create_appt(client)
@@ -103,6 +108,7 @@ def test_create_service_missing_name(client):
     assert resp.status_code == 400
 
 
+@pytest.mark.integration
 def test_services_endpoints_exist(client):
     """Smoke check: endpoints respond (not 404) for valid appt and random service id."""
     appt_id = _create_appt(client)
@@ -122,6 +128,7 @@ def test_services_endpoints_exist(client):
     assert resp.status_code == 200
 
 
+@pytest.mark.integration
 def test_service_validation_rules(client):
     appt_id = _create_appt(client)
     assert appt_id, "Failed to create appointment"
@@ -136,6 +143,7 @@ def test_service_validation_rules(client):
     assert resp.status_code == 200
 
 
+@pytest.mark.integration
 def test_patch_service_update_and_total(client):
     """Create a service then PATCH it; verify updated fields and total recompute (DB mode) or graceful fallback (memory/503)."""
     # Create appointment first
@@ -162,6 +170,7 @@ def test_patch_service_update_and_total(client):
     assert float(body["appointment_total"]) >= 150.0  # could be just this service or others
 
 
+@pytest.mark.integration
 def test_delete_service_and_404_after(client):
     """Delete a service then ensure second delete yields 404."""
     appt_id = _create_appt(client)
@@ -185,6 +194,7 @@ def test_delete_service_and_404_after(client):
     assert del_resp2.status_code in [404, 503]
 
 
+@pytest.mark.integration
 def test_delete_nonexistent_service_returns_404(client):
     """Deleting non-existent service should return 404 (or 503 if DB unavailable)."""
     appt_id = _create_appt(client)

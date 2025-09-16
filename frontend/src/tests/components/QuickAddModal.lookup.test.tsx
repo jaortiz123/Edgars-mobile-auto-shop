@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen } from '@test-utils';
 import { setupUserEvent } from '@/tests/testUtils/userEventHelper';
 import QuickAddModal from '@/components/QuickAddModal/QuickAddModal.jsx';
 

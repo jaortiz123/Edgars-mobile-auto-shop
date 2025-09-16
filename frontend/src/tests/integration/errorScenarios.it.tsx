@@ -14,7 +14,7 @@
 /* eslint-disable testing-library/no-unnecessary-act */
 
 import { describe, it, expect, beforeAll, afterEach, afterAll, vi, beforeEach } from 'vitest';
-import { screen, waitFor, act } from '@testing-library/react';
+import { screen, waitFor, act } from '@test-utils';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders, mockAuthentication, clearAuthentication } from '../../test/integrationUtils';
 import {

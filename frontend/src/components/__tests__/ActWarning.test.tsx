@@ -1,7 +1,7 @@
 /* eslint-disable testing-library/prefer-user-event */
 
 import React, { useState } from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@test-utils';
 import { test, expect, describe } from 'vitest';
 
 // Simple test component to trigger act() warnings

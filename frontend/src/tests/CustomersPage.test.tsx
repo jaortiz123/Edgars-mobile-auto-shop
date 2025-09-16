@@ -1,17 +1,17 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Mock } from 'vitest';
-import { render, screen, within, waitFor } from '@testing-library/react';
+import { render, screen, within, waitFor } from '@test-utils';
 import { setupUser } from '@/tests/testUtils/userEventHelper';
 import CustomersPage from '@/pages/admin/CustomersPage';
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { Route, Routes, useLocation } from 'react-router-dom';
 import * as api from '@/lib/api';
 
 // NOTE: We deliberately avoid manual setTimeout debounce flushing. Instead we rely on
 // findBy* queries (auto act-wrapped) to await the async debounce + fetch cycle.
 
 function renderWithRouter(ui: React.ReactNode, initialEntries: string[] = ['/admin/customers']) {
-  return render(<MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>);
+  return render(ui, { router: { initialEntries } });
 }
 describe('CustomersPage (Phase 1)', () => {
   beforeEach(() => {
@@ -147,12 +147,11 @@ describe('CustomersPage (Phase 1)', () => {
     // Helper component to expose current path
     function PathCapture() { const loc = useLocation(); return <div data-testid="current-path">{loc.pathname}</div>; }
     render(
-      <MemoryRouter initialEntries={['/admin/customers']}>
-        <Routes>
-          <Route path="/admin/customers" element={<><PathCapture /><CustomersPage /></>} />
-          <Route path="/admin/customers/:id" element={<div data-testid='customer-history-page'>History Page</div>} />
-        </Routes>
-      </MemoryRouter>
+      <Routes>
+        <Route path="/admin/customers" element={<><PathCapture /><CustomersPage /></>} />
+        <Route path="/admin/customers/:id" element={<div data-testid='customer-history-page'>History Page</div>} />
+      </Routes>,
+      { router: { initialEntries: ['/admin/customers'] } },
     );
     const input = screen.getByTestId('customers-search') as HTMLInputElement;
   await user.type(input, 'nav');

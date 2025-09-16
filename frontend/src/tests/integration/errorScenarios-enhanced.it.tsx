@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterEach, afterAll, vi, beforeEach } from 'vitest';
-import { screen, waitFor, within, act } from '@testing-library/react';
+import { screen, waitFor, within, act } from '@test-utils';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders, mockAuthentication, clearAuthentication } from '../../test/integrationUtils';
 import {

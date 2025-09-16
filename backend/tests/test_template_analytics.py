@@ -26,6 +26,7 @@ def clear_usage_events(db_connection):  # type: ignore
     yield
 
 
+@pytest.mark.integration
 def test_empty_range_returns_zeroes(client, db_connection, now_utc, clear_usage_events):
     # Use flush=1 to clear any cached prior analytics response that contained events
     r = client.get("/api/admin/analytics/templates?range=7d&flush=1")
@@ -52,6 +53,7 @@ def seed_event(cur, template_slug, sent_at, channel=None, user_id=None):
     )
 
 
+@pytest.mark.integration
 def test_basic_aggregation(client, db_connection, clear_usage_events):
     # Seed some events across days and channels
     # Freeze a reference 'now' to align with server-side now (allow small delta)
@@ -100,6 +102,7 @@ def test_basic_aggregation(client, db_connection, clear_usage_events):
     assert any(b["count"] > 0 for b in body["trend"])
 
 
+@pytest.mark.integration
 def test_channel_filter(client, db_connection):
     # Only sms events counted
     r = client.get("/api/admin/analytics/templates?range=30d&channel=sms")
@@ -110,6 +113,7 @@ def test_channel_filter(client, db_connection):
     assert set(body["totals"]["byChannel"].keys()) <= {"sms"}
 
 
+@pytest.mark.integration
 def test_cache_behavior(client, db_connection):
     # Two consecutive requests should return identical meta.cache.hit progression: first False then True
     r1 = client.get("/api/admin/analytics/templates?range=7d&limit=5")

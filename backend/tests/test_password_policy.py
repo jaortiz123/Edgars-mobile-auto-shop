@@ -12,6 +12,7 @@ def client(pg_container):
         yield c
 
 
+@pytest.mark.integration
 def test_registration_rejects_weak_password(client):
     # Create a tenant to attach registration against
     import os

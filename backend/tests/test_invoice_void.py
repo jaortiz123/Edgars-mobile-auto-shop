@@ -23,6 +23,7 @@ def _make_invoice(conn, price_cents=10000, status="COMPLETED"):
     return inv["id"]
 
 
+@pytest.mark.integration
 def test_void_draft_invoice(pg_container):
     # Create draft (generation sets DRAFT). Void it.
     conn = srv.db_conn()
@@ -40,6 +41,7 @@ def test_void_draft_invoice(pg_container):
     assert data["data"]["amount_due_cents"] == data["data"]["total_cents"]
 
 
+@pytest.mark.integration
 def test_void_partially_paid_invoice(pg_container):
     conn = srv.db_conn()
     try:
@@ -61,6 +63,7 @@ def test_void_partially_paid_invoice(pg_container):
     assert data["data"]["amount_due_cents"] == data["data"]["total_cents"] - 4000
 
 
+@pytest.mark.integration
 def test_void_already_void_invoice(pg_container):
     conn = srv.db_conn()
     try:
@@ -76,6 +79,7 @@ def test_void_already_void_invoice(pg_container):
     assert data2["error"]["code"] in ("already_void", "bad_request")
 
 
+@pytest.mark.integration
 def test_void_paid_invoice_rejected(pg_container):
     conn = srv.db_conn()
     try:

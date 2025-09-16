@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+import pytest
+
 P2-T-003 Robustness Test Suite
 Comprehensive testing for edge cases, error scenarios, and production readiness
 """
@@ -15,10 +17,14 @@ from unittest.mock import patch, MagicMock
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+pytestmark = pytest.mark.integration
 
+
+@pytest.mark.integration
 class TestContainerizedDatabaseRobustness:
     """Robustness tests for the containerized database system."""
 
+    @pytest.mark.integration
     def test_testcontainers_dependency_available(self):
         """Test that testcontainers dependency is available."""
         try:
@@ -29,6 +35,7 @@ class TestContainerizedDatabaseRobustness:
         except ImportError:
             pytest.fail("testcontainers package is not installed")
 
+    @pytest.mark.integration
     def test_docker_availability_check(self):
         """Test that Docker is available for container operations."""
         try:
@@ -40,6 +47,7 @@ class TestContainerizedDatabaseRobustness:
         except (subprocess.TimeoutExpired, FileNotFoundError):
             pytest.skip("Docker is not available")
 
+    @pytest.mark.integration
     def test_psycopg2_import_available(self):
         """Test that psycopg2 is properly installed."""
         try:
@@ -50,6 +58,7 @@ class TestContainerizedDatabaseRobustness:
         except ImportError:
             pytest.fail("psycopg2 package is not available")
 
+    @pytest.mark.integration
     def test_schema_file_exists(self):
         """Test that required schema file exists."""
         schema_file = Path(__file__).parent / "test_schema.sql"
@@ -60,6 +69,7 @@ class TestContainerizedDatabaseRobustness:
         assert len(content.strip()) > 0, "Schema file is empty"
         assert "CREATE TABLE" in content.upper(), "Schema file doesn't contain table definitions"
 
+    @pytest.mark.integration
     def test_seed_file_exists(self):
         """Test that required seed file exists."""
         seed_file = Path(__file__).parent / "seed.sql"
@@ -70,6 +80,7 @@ class TestContainerizedDatabaseRobustness:
         assert len(content.strip()) > 0, "Seed file is empty"
         assert "INSERT INTO" in content.upper(), "Seed file doesn't contain insert statements"
 
+    @pytest.mark.integration
     def test_memory_usage_baseline(self):
         """Test baseline memory usage without containers."""
         process = psutil.Process()
@@ -79,6 +90,7 @@ class TestContainerizedDatabaseRobustness:
         memory_mb = initial_memory / (1024 * 1024)
         assert memory_mb < 500, f"Test process using too much memory: {memory_mb:.1f}MB"
 
+    @pytest.mark.integration
     def test_database_connection_with_real_container(self, pg_container):
         """Test actual database connection with real container."""
         db_url = pg_container["db_url"]
@@ -91,6 +103,7 @@ class TestContainerizedDatabaseRobustness:
                 assert result is not None
                 assert "PostgreSQL" in result["version"]
 
+    @pytest.mark.integration
     def test_connection_pool_limits(self, pg_container):
         """Test database connection pooling behavior."""
         db_url = pg_container["db_url"]
@@ -113,6 +126,7 @@ class TestContainerizedDatabaseRobustness:
                 if not conn.closed:
                     conn.close()
 
+    @pytest.mark.integration
     def test_concurrent_connections(self, pg_container):
         """Test concurrent database access from multiple threads."""
         db_url = pg_container["db_url"]
@@ -148,6 +162,7 @@ class TestContainerizedDatabaseRobustness:
         counts = [result[1] for result in results]
         assert all(count == counts[0] for count in counts), f"Inconsistent counts: {counts}"
 
+    @pytest.mark.integration
     def test_database_constraints_enforcement(self, db_connection):
         """Test that database constraints are properly enforced."""
         with db_connection.cursor() as cur:
@@ -180,6 +195,7 @@ class TestContainerizedDatabaseRobustness:
             # Rollback the transaction
             db_connection.rollback()
 
+    @pytest.mark.integration
     def test_performance_benchmarks(self, db_connection):
         """Test basic performance benchmarks."""
         with db_connection.cursor() as cur:
@@ -210,6 +226,7 @@ class TestContainerizedDatabaseRobustness:
             assert join_time < 2.0, f"Join query too slow: {join_time:.3f}s"
             assert len(results) > 0, "Should have joined results"
 
+    @pytest.mark.integration
     def test_transaction_rollback_safety(self, db_connection):
         """Test transaction rollback behavior."""
         original_count = None
@@ -247,6 +264,7 @@ class TestContainerizedDatabaseRobustness:
             final_count = cur.fetchone()[0]
             assert final_count == original_count, "Rollback failed"
 
+    @pytest.mark.integration
     def test_container_resource_cleanup(self, pg_container):
         """Test that container resources are properly managed."""
         # Container should be running
@@ -258,6 +276,7 @@ class TestContainerizedDatabaseRobustness:
         with psycopg2.connect(db_url) as conn:
             assert not conn.closed
 
+    @pytest.mark.integration
     def test_sql_injection_prevention(self, db_connection):
         """Test SQL injection prevention with parameterized queries."""
         malicious_input = "'; DROP TABLE customers; --"
@@ -275,6 +294,7 @@ class TestContainerizedDatabaseRobustness:
             count = cur.fetchone()[0]
             assert count > 0, "Customers table was affected by injection attempt"
 
+    @pytest.mark.integration
     def test_large_result_set_handling(self, db_connection):
         """Test handling of larger result sets."""
         with db_connection.cursor() as cur:
@@ -298,6 +318,7 @@ class TestContainerizedDatabaseRobustness:
             assert isinstance(results, list)
             # Should handle the result set without memory issues
 
+    @pytest.mark.integration
     def test_timezone_handling(self, db_connection):
         """Test timezone handling in database operations."""
         with db_connection.cursor() as cur:
@@ -312,9 +333,11 @@ class TestContainerizedDatabaseRobustness:
             # Should not error, regardless of timezone setting
 
 
+@pytest.mark.integration
 class TestEnvironmentCompatibility:
     """Test compatibility across different environments."""
 
+    @pytest.mark.integration
     def test_python_version_compatibility(self):
         """Test Python version requirements."""
         import sys
@@ -325,6 +348,7 @@ class TestEnvironmentCompatibility:
         assert version.major == 3
         assert version.minor >= 7, f"Python 3.7+ required, got {version.major}.{version.minor}"
 
+    @pytest.mark.integration
     def test_required_packages_installed(self):
         """Test that all required packages are installed."""
         required_packages = ["pytest", "psycopg2", "testcontainers", "psutil"]
@@ -338,6 +362,7 @@ class TestEnvironmentCompatibility:
 
         assert len(missing_packages) == 0, f"Missing packages: {missing_packages}"
 
+    @pytest.mark.integration
     def test_file_path_handling(self):
         """Test file path handling across platforms."""
         test_dir = Path(__file__).parent
@@ -351,9 +376,11 @@ class TestEnvironmentCompatibility:
         assert seed_file.exists(), f"Seed file not found: {seed_file}"
 
 
+@pytest.mark.integration
 class TestDocumentationAndUsage:
     """Test documentation and usage patterns."""
 
+    @pytest.mark.integration
     def test_example_usage_patterns(self, db_connection):
         """Test common usage patterns work as documented."""
         # Pattern 1: Simple query
@@ -376,6 +403,7 @@ class TestDocumentationAndUsage:
         except Exception:
             db_connection.rollback()
 
+    @pytest.mark.integration
     def test_error_message_clarity(self):
         """Test that error messages are clear and helpful."""
         # Test connection error

@@ -5,11 +5,14 @@
  */
 
 import React from 'react';
-import { render, screen, act } from '@testing-library/react';
-import { fireEvent } from '@testing-library/react';
+import { render, screen, act } from '@test-utils';
+import { fireEvent } from '@test-utils';
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/server/mswServer';
+
+beforeAll(() => vi.useFakeTimers());
+afterAll(() => vi.useRealTimers());
 
 // Helper to flush all pending promises
 export const flushPromises = () => new Promise(setImmediate);

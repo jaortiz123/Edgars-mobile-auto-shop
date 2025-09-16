@@ -1,13 +1,12 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, beforeAll, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen } from '@test-utils';
+import { Route, Routes } from 'react-router-dom';
 import { AccessibilityProvider } from '@/contexts/AccessibilityProvider';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/test/server/mswServer';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/react';
+import { waitFor } from '@test-utils';
 
 // We'll lazy-load the real ToastProvider & InvoiceDetailPage after undoing global mocks.
 type WithChildren = { children?: React.ReactNode };
@@ -19,19 +18,15 @@ function renderWithRouter(id: string) {
   if (!InvoiceDetailPage || !ToastProvider) {
     throw new Error('Test setup error: modules not loaded before render.');
   }
-  const qc = new QueryClient();
   return render(
     <AccessibilityProvider>
       <ToastProvider>
-        <QueryClientProvider client={qc}>
-          <MemoryRouter initialEntries={[`/admin/invoices/${id}`]}>
-            <Routes>
-              <Route path="/admin/invoices/:id" element={<InvoiceDetailPage />} />
-            </Routes>
-          </MemoryRouter>
-        </QueryClientProvider>
+        <Routes>
+          <Route path="/admin/invoices/:id" element={<InvoiceDetailPage />} />
+        </Routes>
       </ToastProvider>
-    </AccessibilityProvider>
+    </AccessibilityProvider>,
+    { router: { initialEntries: [`/admin/invoices/${id}`] } },
   );
 }
 

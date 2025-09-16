@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 """
-Test suite for T-021 messaging endpoints
-
-Tests the messaging functionality for appointments including:
+Unit tests for message endpoints:
 - GET /api/appointments/:id/messages
 - POST /api/appointments/:id/messages
 - PATCH /api/appointments/:id/messages/:message_id
 - DELETE /api/appointments/:id/messages/:message_id
-
-Tests include role-based access control, envelope responses, and error handling.
 """
+
+import pytest
+
+pytestmark = pytest.mark.unit_fast
+
+import json
+import jwt
 
 import pytest
 import json
@@ -35,20 +38,10 @@ except ImportError:
     JWT_ALG = local_server.JWT_ALG
 
 
-@pytest.fixture
-def client(monkeypatch):
-    """Create a test client for the Flask app with tenant checks bypassed for fake DB."""
-    app.config["TESTING"] = True
-    # Enforce RBAC and bypass tenant membership when using mocked DB
-    try:
-        import backend.local_server as srv
-
-        srv.DEV_NO_AUTH = False  # type: ignore
-    except Exception:
-        pass
-    monkeypatch.setenv("SKIP_TENANT_ENFORCEMENT", "true")
-    with app.test_client() as client:
-        yield client
+# Remove the custom client fixture - use the global one from conftest.py
+# @pytest.fixture
+# def client(monkeypatch):
+#     """Create a test client for the Flask app with tenant checks bypassed for fake DB."""
 
 
 @pytest.fixture
@@ -128,9 +121,9 @@ class TestMessagingEndpoints:
         data = json.loads(response.data)
         assert data["error"]["code"] == "not_found"
 
-    def test_get_messages_no_auth(self, client, mock_db):
+    def test_get_messages_no_auth(self, no_auto_auth_client, mock_db):
         """Test GET /api/appointments/:id/messages - no authentication."""
-        response = client.get("/api/appointments/123/messages")
+        response = no_auto_auth_client.get("/api/appointments/123/messages")
         assert response.status_code == 403
         data = json.loads(response.data)
         assert data["error"]["code"] in ("auth_required", "forbidden")

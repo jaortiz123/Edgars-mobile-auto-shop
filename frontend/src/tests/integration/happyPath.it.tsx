@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from 'vitest';
-import { screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@test-utils';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders, mockAuthentication, clearAuthentication } from '../../test/integrationUtils';
 import { server, resetMockData } from '../../test/server/mswServer';

@@ -11,6 +11,7 @@ def client(pg_container):  # reuse session-scoped container
         yield c
 
 
+@pytest.mark.integration
 def test_customer_register_and_login_flow(client):
     email = f"test_{uuid.uuid4().hex[:8]}@example.com"
     password = "secretpw"
@@ -38,6 +39,7 @@ def test_customer_register_and_login_flow(client):
     assert prof["customer"]["id"] == cust_id
 
 
+@pytest.mark.integration
 def test_customer_login_wrong_password(client):
     email = f"test_{uuid.uuid4().hex[:8]}@example.com"
     password = "secretpw"
@@ -48,6 +50,7 @@ def test_customer_login_wrong_password(client):
     assert body["error"]["code"] == "invalid_credentials"
 
 
+@pytest.mark.integration
 def test_customer_register_conflict(client):
     email = f"test_{uuid.uuid4().hex[:8]}@example.com"
     password = "secretpw"

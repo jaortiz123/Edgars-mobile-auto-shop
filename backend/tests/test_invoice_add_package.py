@@ -1,18 +1,28 @@
 import pytest
-from backend.db import get_connection
+import psycopg2
+
+from backend.db import get_database_url
 
 ADD_ENDPOINT = "/api/admin/invoices/{}/add-package"
 
 
+def _pg_url() -> str:
+    url = get_database_url()
+    if url.startswith("sqlite"):
+        pytest.skip("PostgreSQL required for invoice package tests")
+    if url.startswith("postgresql+psycopg2://"):
+        return "postgresql://" + url.split("postgresql+psycopg2://", 1)[1]
+    return url
+
+
 def _exec(sql: str, params=None):
-    with get_connection() as conn:
+    with psycopg2.connect(_pg_url()) as conn:
         with conn.cursor() as cur:
             cur.execute(sql, params or [])
-        conn.commit()
 
 
 def _fetchone(sql: str, params=None):
-    with get_connection() as conn:
+    with psycopg2.connect(_pg_url()) as conn:
         with conn.cursor() as cur:
             cur.execute(sql, params or [])
             return cur.fetchone()

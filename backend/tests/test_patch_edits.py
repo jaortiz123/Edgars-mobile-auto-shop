@@ -110,6 +110,7 @@ def _get_vehicle_etag(client, vid, cust):
     return srv._strong_etag("vehicle", row_for, ["make", "model", "year", "vin", "license_plate"])
 
 
+@pytest.mark.integration
 def test_customer_patch_success_creates_audit(client):
     conn = srv.db_conn()
     with conn:
@@ -131,6 +132,7 @@ def test_customer_patch_success_creates_audit(client):
     assert row and "name" in (row[0] if isinstance(row, tuple) else row["fields_changed"])
 
 
+@pytest.mark.integration
 def test_customer_patch_conflict_no_audit(client):
     conn = srv.db_conn()
     with conn:
@@ -145,6 +147,7 @@ def test_customer_patch_conflict_no_audit(client):
     assert count == 0
 
 
+@pytest.mark.integration
 def test_customer_patch_validation_error(client):
     conn = srv.db_conn()
     with conn:
@@ -166,6 +169,7 @@ def test_customer_patch_validation_error(client):
     assert count == 0
 
 
+@pytest.mark.integration
 def test_vehicle_patch_success_audit(client):
     conn = srv.db_conn()
     with conn:
@@ -182,6 +186,7 @@ def test_vehicle_patch_success_audit(client):
     assert count == 1
 
 
+@pytest.mark.integration
 def test_vehicle_patch_conflict(client):
     conn = srv.db_conn()
     with conn:
@@ -198,6 +203,7 @@ def test_vehicle_patch_conflict(client):
     assert count == 0
 
 
+@pytest.mark.integration
 def test_vehicle_patch_validation(client):
     conn = srv.db_conn()
     with conn:
@@ -217,6 +223,7 @@ def test_vehicle_patch_validation(client):
     assert count == 0
 
 
+@pytest.mark.integration
 def test_customer_patch_missing_if_match(client):
     conn = srv.db_conn()
     with conn:
@@ -229,6 +236,7 @@ def test_customer_patch_missing_if_match(client):
     assert "If-Match required" in body["error"]["message"]
 
 
+@pytest.mark.integration
 def test_vehicle_patch_missing_if_match(client):
     conn = srv.db_conn()
     with conn:
@@ -242,6 +250,7 @@ def test_vehicle_patch_missing_if_match(client):
     assert "If-Match required" in body["error"]["message"]
 
 
+@pytest.mark.integration
 def test_customer_patch_forbidden(monkeypatch, client):
     # Simulate unauthorized by forcing require_or_maybe to return None
     monkeypatch.setattr(srv, "require_or_maybe", lambda required=None: None)
@@ -252,6 +261,7 @@ def test_customer_patch_forbidden(monkeypatch, client):
     assert body["error"]["code"] == "forbidden"
 
 
+@pytest.mark.integration
 def test_vehicle_patch_forbidden(monkeypatch, client):
     monkeypatch.setattr(srv, "require_or_maybe", lambda required=None: None)
     r = client.patch("/api/admin/vehicles/1", json={"make": "X"})
@@ -261,6 +271,7 @@ def test_vehicle_patch_forbidden(monkeypatch, client):
     assert body["error"]["code"] == "forbidden"
 
 
+@pytest.mark.integration
 def test_vehicle_get_basic_etag(client):
     conn = srv.db_conn()
     with conn:
@@ -276,6 +287,7 @@ def test_vehicle_get_basic_etag(client):
     assert resp.headers.get("ETag") == etag
 
 
+@pytest.mark.integration
 def test_customer_audit_diff_structure(client):
     # Ensure audit log captures from/to structure
     conn = srv.db_conn()
@@ -302,6 +314,7 @@ def test_customer_audit_diff_structure(client):
     assert fields["phone"].get("to") == "999"
 
 
+@pytest.mark.integration
 def test_vehicle_audit_diff_structure(client):
     conn = srv.db_conn()
     with conn:
@@ -328,6 +341,7 @@ def test_vehicle_audit_diff_structure(client):
     assert fields["model"]["to"] == "Civic"
 
 
+@pytest.mark.integration
 def test_customer_patch_noop_no_audit(client):
     conn = srv.db_conn()
     with conn:

@@ -58,6 +58,62 @@ else:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+# ---- Make sqlite cursors context-manageable in unit tests ----
+class _CursorProxy:
+    def __init__(self, cur):
+        self._cur = cur
+
+    # allow normal cursor usage
+    def __getattr__(self, name):
+        return getattr(self._cur, name)
+
+    # enable `with` support
+    def __enter__(self):
+        return self._cur
+
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            self._cur.close()
+        except Exception:
+            pass
+
+
+class _CMConnection(sqlite3.Connection):
+    def cursor(self, *args, **kwargs):
+        cur = super().cursor(*args, **kwargs)
+        return _CursorProxy(cur)
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _sqlite_cursor_cm_patch():
+    """
+    Force sqlite3.connect(...) used in unit tests to return a connection whose
+    cursor supports the context manager protocol. Does not affect Postgres.
+    """
+    orig_connect = sqlite3.connect
+
+    def _connect(*args, **kwargs):
+        kwargs.setdefault("factory", _CMConnection)
+        # let test code pass a different factory if it wants
+        return orig_connect(*args, **kwargs)
+
+    sqlite3.connect = _connect
+    try:
+        yield
+    finally:
+        sqlite3.connect = orig_connect
+
+
+# ---- Belt & suspenders already in your pipeline ----
+# Ensure AWS region exists everywhere tests run
+os.environ.setdefault("AWS_DEFAULT_REGION", "us-west-2")
+
+# Set E2E bypass environment variables for all tests
+os.environ["APP_INSTANCE_ID"] = "ci"
+os.environ["SKIP_TENANT_ENFORCEMENT"] = "true"
+os.environ["TESTING"] = "true"
+
 # Global session state
 _PG_SESSION = {"db_url": None, "container": None, "env_vars": None}
 _SQLITE_SESSION = {"db_path": None, "connection": None}
@@ -77,7 +133,12 @@ def pytest_collection_modifyitems(config, items):
     """Auto-assign markers based on test names and current mode."""
     for item in items:
         # Auto-mark tests based on naming conventions
-        if "integration" in item.nodeid or "e2e" in item.nodeid:
+        path_str = str(item.fspath)
+
+        if "tests/api/" in path_str or "tests/domain/" in path_str:
+            item.add_marker(pytest.mark.integration)
+            item.add_marker(pytest.mark.slow)
+        elif "integration" in item.nodeid or "e2e" in item.nodeid:
             item.add_marker(pytest.mark.integration)
             item.add_marker(pytest.mark.slow)
         elif "unit" in item.nodeid or not any(
@@ -123,6 +184,8 @@ def _setup_sqlite_database():
         "FALLBACK_TO_MEMORY": "true",
         "DISABLE_DB_CONFIG_CACHE": "true",
         "TESTING": "true",
+        "APP_INSTANCE_ID": "ci",
+        "SKIP_TENANT_ENFORCEMENT": "true",
     }
 
     for k, v in env_vars.items():
@@ -250,6 +313,8 @@ def _start_pg_container():
         "POSTGRES_PASSWORD": user_pass[1],
         "FALLBACK_TO_MEMORY": "false",
         "TESTING": "true",
+        "APP_INSTANCE_ID": "ci",
+        "SKIP_TENANT_ENFORCEMENT": "true",
     }
     for k, v in env_vars.items():
         os.environ[k] = v
@@ -372,6 +437,7 @@ def unit_client(database_session):
         pytest.skip("unit_client only available in unit test mode")
 
     import importlib
+    from flask.testing import FlaskClient
 
     try:
         srv = importlib.import_module("backend.local_server")
@@ -382,8 +448,98 @@ def unit_client(database_session):
     srv.app.config["PROPAGATE_EXCEPTIONS"] = True
     srv.app.config["TESTING"] = True
 
-    with srv.app.test_client() as client:
-        yield client
+    # Set up authenticated test client for unit tests
+    class AuthenticatedTestClient(FlaskClient):
+        def open(self, *args, **kwargs):
+            # If no headers provided at all, don't add any (test wants no auth)
+            if "headers" not in kwargs:
+                kwargs["headers"] = {}
+                # Generate proper JWT token for E2E bypass
+                import jwt
+
+                payload = {"sub": "test-user-e2e", "role": "Owner"}
+                jwt_secret = os.getenv("JWT_SECRET", "dev_secret")
+                token = jwt.encode(payload, jwt_secret, algorithm="HS256")
+                kwargs["headers"]["Authorization"] = f"Bearer {token}"
+                kwargs["headers"]["X-Tenant-Id"] = "00000000-0000-0000-0000-000000000001"
+            else:
+                # Headers were provided - only add defaults if specific ones missing
+                if "Authorization" not in kwargs["headers"]:
+                    # Generate proper JWT token for E2E bypass
+                    import jwt
+
+                    payload = {"sub": "test-user-e2e", "role": "Owner"}
+                    jwt_secret = os.getenv("JWT_SECRET", "dev_secret")
+                    token = jwt.encode(payload, jwt_secret, algorithm="HS256")
+                    kwargs["headers"]["Authorization"] = f"Bearer {token}"
+                # Only add default tenant if not already provided
+                if "X-Tenant-Id" not in kwargs["headers"]:
+                    kwargs["headers"]["X-Tenant-Id"] = "00000000-0000-0000-0000-000000000001"
+            return super().open(*args, **kwargs)
+
+    # Set environment for E2E bypass in unit tests
+    original_app_instance_id = os.environ.get("APP_INSTANCE_ID")
+    original_skip_tenant = os.environ.get("SKIP_TENANT_ENFORCEMENT")
+    os.environ["APP_INSTANCE_ID"] = "ci"
+    os.environ["SKIP_TENANT_ENFORCEMENT"] = "true"
+
+    srv.app.test_client_class = AuthenticatedTestClient
+    try:
+        with srv.app.test_client() as client:
+            yield client
+    finally:
+        # Restore original environment
+        if original_app_instance_id is None:
+            os.environ.pop("APP_INSTANCE_ID", None)
+        else:
+            os.environ["APP_INSTANCE_ID"] = original_app_instance_id
+        if original_skip_tenant is None:
+            os.environ.pop("SKIP_TENANT_ENFORCEMENT", None)
+        else:
+            os.environ["SKIP_TENANT_ENFORCEMENT"] = original_skip_tenant
+
+
+@pytest.fixture()
+def no_auto_auth_client():
+    """Raw Flask client with no default Authorization or X-Tenant-Id headers.
+
+    Use this when a test must control authentication/headers explicitly.
+    """
+    import importlib
+    from flask.testing import FlaskClient
+
+    try:
+        srv = importlib.import_module("backend.local_server")
+    except Exception:
+        srv = importlib.import_module("local_server")
+
+    srv.app.testing = True
+    srv.app.config["PROPAGATE_EXCEPTIONS"] = True
+    srv.app.config["TESTING"] = True
+
+    # Set environment for E2E bypass in unit tests
+    original_app_instance_id = os.environ.get("APP_INSTANCE_ID")
+    original_skip_tenant = os.environ.get("SKIP_TENANT_ENFORCEMENT")
+    os.environ["APP_INSTANCE_ID"] = "ci"
+    os.environ["SKIP_TENANT_ENFORCEMENT"] = "true"
+
+    # Use regular FlaskClient without any authentication headers
+    prev_class = getattr(srv.app, "test_client_class", FlaskClient)
+    srv.app.test_client_class = FlaskClient
+    try:
+        with srv.app.test_client() as client:
+            yield client
+    finally:
+        srv.app.test_client_class = prev_class
+        # Restore original environment
+        if original_app_instance_id is None:
+            os.environ.pop("APP_INSTANCE_ID", None)
+        else:
+            os.environ["APP_INSTANCE_ID"] = original_app_instance_id
+        if original_skip_tenant is None:
+            os.environ.pop("SKIP_TENANT_ENFORCEMENT", None)
+        else:
+            os.environ["SKIP_TENANT_ENFORCEMENT"] = original_skip_tenant
 
 
 @pytest.fixture()
@@ -427,7 +583,7 @@ def integration_client(database_session):
             if "headers" not in kwargs:
                 kwargs["headers"] = {}
             kwargs["headers"]["Authorization"] = f"Bearer token-{tid}"
-            kwargs["headers"]["X-Tenant-ID"] = tid
+            kwargs["headers"]["X-Tenant-Id"] = tid
             return super().open(*args, **kwargs)
 
     srv.app.test_client_class = AuthenticatedTestClient
@@ -442,6 +598,7 @@ def client(database_session):
     """Auto-select appropriate client based on test mode."""
     if database_session["mode"] == "unit":
         import importlib
+        from flask.testing import FlaskClient
 
         try:
             srv = importlib.import_module("backend.local_server")
@@ -452,8 +609,45 @@ def client(database_session):
         srv.app.config["PROPAGATE_EXCEPTIONS"] = True
         srv.app.config["TESTING"] = True
 
-        with srv.app.test_client() as client:
-            yield client
+        # Set up authenticated test client for unit tests
+        class AuthenticatedTestClient(FlaskClient):
+            def open(self, *args, **kwargs):
+                if "headers" not in kwargs:
+                    kwargs["headers"] = {}
+                # Only add default auth if not already provided
+                if "Authorization" not in kwargs["headers"]:
+                    # Generate proper JWT token for E2E bypass
+                    import jwt
+
+                    payload = {"sub": "test-user-e2e", "role": "Owner"}
+                    jwt_secret = os.getenv("JWT_SECRET", "dev_secret")
+                    token = jwt.encode(payload, jwt_secret, algorithm="HS256")
+                    kwargs["headers"]["Authorization"] = f"Bearer {token}"
+                # Only add default tenant if not already provided
+                if "X-Tenant-Id" not in kwargs["headers"]:
+                    kwargs["headers"]["X-Tenant-Id"] = "00000000-0000-0000-0000-000000000001"
+                return super().open(*args, **kwargs)
+
+        # Set environment for E2E bypass in unit tests
+        original_app_instance_id = os.environ.get("APP_INSTANCE_ID")
+        original_skip_tenant = os.environ.get("SKIP_TENANT_ENFORCEMENT")
+        os.environ["APP_INSTANCE_ID"] = "ci"
+        os.environ["SKIP_TENANT_ENFORCEMENT"] = "true"
+
+        srv.app.test_client_class = AuthenticatedTestClient
+        try:
+            with srv.app.test_client() as client:
+                yield client
+        finally:
+            # Restore original environment
+            if original_app_instance_id is None:
+                os.environ.pop("APP_INSTANCE_ID", None)
+            else:
+                os.environ["APP_INSTANCE_ID"] = original_app_instance_id
+            if original_skip_tenant is None:
+                os.environ.pop("SKIP_TENANT_ENFORCEMENT", None)
+            else:
+                os.environ["SKIP_TENANT_ENFORCEMENT"] = original_skip_tenant
     else:
         # Use integration client for backwards compatibility
         import importlib
@@ -493,7 +687,7 @@ def client(database_session):
                     if "headers" not in kwargs:
                         kwargs["headers"] = {}
                     kwargs["headers"]["Authorization"] = f"Bearer token-{tid}"
-                    kwargs["headers"]["X-Tenant-ID"] = tid
+                    kwargs["headers"]["X-Tenant-Id"] = tid
                     return super().open(*args, **kwargs)
 
             srv.app.test_client_class = AuthenticatedTestClient

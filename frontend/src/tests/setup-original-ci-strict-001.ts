@@ -3,7 +3,7 @@ import 'whatwg-fetch'
 
 import { expect, vi, beforeAll, beforeEach } from 'vitest'
 import { toHaveNoViolations } from 'jest-axe'
-import { cleanup } from '@testing-library/react'
+import { cleanup } from '@test-utils'
 
 // CI-STRICT-001: Fail tests on console.error/warn with allowlist support (STABILIZED)
 

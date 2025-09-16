@@ -361,7 +361,16 @@ try:
                 return False
 
         def _already_enveloped(obj) -> bool:
-            return isinstance(obj, dict) and {"ok", "data", "error"}.issubset(set(obj.keys()))
+            # Check for the full envelope format
+            if isinstance(obj, dict) and {"ok", "data", "error"}.issubset(set(obj.keys())):
+                return True
+            # Check for the _ok() format (data + meta)
+            if isinstance(obj, dict) and {"data", "meta"}.issubset(set(obj.keys())):
+                return True
+            # Check for the _error() format (error + meta)
+            if isinstance(obj, dict) and {"error", "meta"}.issubset(set(obj.keys())):
+                return True
+            return False
 
         # Pagination helpers
         _DEFAULT_PAGE_SIZE = int(os.getenv("API_DEFAULT_PAGE_SIZE", "25"))
@@ -4909,11 +4918,26 @@ _REDIS_CLIENT = None
 def health():
     """Health check endpoint to verify service and database connectivity."""
     try:
-        conn = db_conn()
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT 1")
-        return jsonify({"status": "ok", "db": "up"})
+        conn, use_memory, err = safe_conn()
+        if err and not use_memory:
+            log.critical("Health check failed: Database connection failed")
+            return jsonify({"status": "error", "db": "down", "detail": str(err)}), 503
+
+        if conn:
+            # Database mode - verify connection
+            with conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1")
+            return jsonify({"status": "ok", "db": "up", "mode": "database"})
+        elif use_memory:
+            # Memory mode - no database required
+            return jsonify({"status": "ok", "db": "memory", "mode": "memory"})
+        else:
+            log.critical("Health check failed: No database connection and memory mode not enabled")
+            return (
+                jsonify({"status": "error", "db": "down", "detail": "No connection available"}),
+                503,
+            )
     except Exception as e:
         log.critical("Health check failed: %s", e)
         return jsonify({"status": "error", "db": "down", "detail": str(e)}), 503

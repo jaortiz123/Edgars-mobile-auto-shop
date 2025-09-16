@@ -16,6 +16,7 @@ def _iso(dt):
 # We rely on implicit vehicle creation/resolution via license_plate.
 
 
+@pytest.mark.integration
 def test_create_vehicle_conflict(client, db_connection, future_start):
     tech1 = "11111111-1111-1111-1111-111111111111"
     tech2 = "22222222-2222-2222-2222-222222222222"

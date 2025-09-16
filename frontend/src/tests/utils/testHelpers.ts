@@ -1,5 +1,5 @@
 // Accessibility test helpers
-import { screen } from '@testing-library/react';
+import { screen } from '@test-utils';
 
 /**
  * Wait for focus management to complete before running axe scans

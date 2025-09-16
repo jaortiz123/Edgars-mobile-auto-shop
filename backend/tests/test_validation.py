@@ -22,6 +22,7 @@ class DummyConn:
         return [(r,) for r in self._current]
 
 
+@pytest.mark.integration
 def test_validate_happy_path():
     now = datetime.now(timezone.utc) + timedelta(minutes=10)
     res = validate_appointment_payload(
@@ -39,12 +40,14 @@ def test_validate_happy_path():
     assert res.cleaned["status"] == "SCHEDULED"
 
 
+@pytest.mark.integration
 def test_validate_past_start_rejected():
     past = datetime.now(timezone.utc) - timedelta(hours=1)
     res = validate_appointment_payload({"start_ts": past.isoformat()})
     assert any(e.field == "start_ts" for e in res.errors)
 
 
+@pytest.mark.integration
 def test_validate_transition_invalid():
     now = datetime.now(timezone.utc) + timedelta(minutes=5)
     existing = {"status": "SCHEDULED", "start_ts": now}
@@ -52,6 +55,7 @@ def test_validate_transition_invalid():
     assert any(e.code == "INVALID_TRANSITION" for e in res.errors)
 
 
+@pytest.mark.integration
 def test_validate_paid_exceeds_total():
     now = datetime.now(timezone.utc) + timedelta(minutes=5)
     res = validate_appointment_payload(
@@ -60,6 +64,7 @@ def test_validate_paid_exceeds_total():
     assert any(e.field == "paid_amount" for e in res.errors)
 
 
+@pytest.mark.integration
 def test_find_conflicts_returns_ids():
     now = datetime.now(timezone.utc)
     conn = DummyConn({"tech": [1, 2], "vehicle": []})
@@ -70,6 +75,7 @@ def test_find_conflicts_returns_ids():
     assert conflicts["vehicle"] == []
 
 
+@pytest.mark.integration
 def test_find_conflicts_vehicle():
     now = datetime.now(timezone.utc)
     conn = DummyConn({"vehicle": [42]})

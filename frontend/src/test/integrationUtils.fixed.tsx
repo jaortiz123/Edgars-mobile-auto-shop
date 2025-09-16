@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { render, RenderOptions } from '@testing-library/react';
+import { render, RenderOptions } from '@test-utils';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '../contexts/AuthContext';
@@ -145,7 +145,7 @@ export {
   screen,
   act,
   fireEvent,
-} from '@testing-library/react';
+} from '@test-utils';
 
 import userEventLib from '@testing-library/user-event';
 export const userEvent = userEventLib;

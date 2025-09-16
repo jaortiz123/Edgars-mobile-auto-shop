@@ -4,6 +4,7 @@ Test script to verify the PostgreSQL container integration works correctly.
 This script can be run independently to test the containerized database setup.
 """
 
+import pytest
 import os
 import sys
 import subprocess
@@ -33,6 +34,7 @@ except ImportError as e:
     sys.exit(1)
 
 
+@pytest.mark.integration
 def test_container_setup():
     """Test the PostgreSQL container setup end-to-end.
 

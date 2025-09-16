@@ -1,4 +1,6 @@
 """
+import pytest
+
 Comprehensive unit tests for validation.py module
 Priority target for rapid coverage improvement - contains pure functions
 with clear input/output patterns that don't require database connections.
@@ -24,9 +26,11 @@ from validation import (
 
 
 @pytest.mark.unit
+@pytest.mark.integration
 class TestValidationError:
     """Test ValidationError dataclass"""
 
+    @pytest.mark.integration
     def test_validation_error_creation(self):
         """Test basic ValidationError creation"""
         error = ValidationError(code="TEST_ERROR", detail="Test message")
@@ -36,6 +40,7 @@ class TestValidationError:
         assert error.status == 400
         assert error.extra == {}
 
+    @pytest.mark.integration
     def test_validation_error_with_all_fields(self):
         """Test ValidationError with all fields populated"""
         extra_data = {"context": "test"}
@@ -54,9 +59,11 @@ class TestValidationError:
 
 
 @pytest.mark.unit
+@pytest.mark.integration
 class TestValidationResult:
     """Test ValidationResult dataclass"""
 
+    @pytest.mark.integration
     def test_validation_result_creation(self):
         """Test basic ValidationResult creation"""
         cleaned_data = {"field1": "value1"}
@@ -64,6 +71,7 @@ class TestValidationResult:
         assert result.cleaned == cleaned_data
         assert result.errors == []
 
+    @pytest.mark.integration
     def test_validation_result_with_errors(self):
         """Test ValidationResult with errors"""
         cleaned_data = {"field1": "value1"}
@@ -75,21 +83,25 @@ class TestValidationResult:
 
 
 @pytest.mark.unit
+@pytest.mark.integration
 class TestParseDt:
     """Test _parse_dt function"""
 
+    @pytest.mark.integration
     def test_parse_dt_none_input(self):
         """Test _parse_dt with None input"""
         assert _parse_dt(None) is None
         assert _parse_dt("") is None
         assert _parse_dt(0) is None
 
+    @pytest.mark.integration
     def test_parse_dt_datetime_input(self):
         """Test _parse_dt with datetime object"""
         dt = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
         result = _parse_dt(dt)
         assert result == dt
 
+    @pytest.mark.integration
     def test_parse_dt_iso_string_with_z(self):
         """Test _parse_dt with ISO string ending in Z"""
         iso_string = "2024-01-15T10:30:00Z"
@@ -97,6 +109,7 @@ class TestParseDt:
         expected = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
         assert result == expected
 
+    @pytest.mark.integration
     def test_parse_dt_iso_string_with_offset(self):
         """Test _parse_dt with ISO string with timezone offset"""
         iso_string = "2024-01-15T10:30:00-05:00"
@@ -106,6 +119,7 @@ class TestParseDt:
         assert result.month == 1
         assert result.day == 15
 
+    @pytest.mark.integration
     def test_parse_dt_iso_string_without_timezone(self):
         """Test _parse_dt with ISO string without timezone"""
         iso_string = "2024-01-15T10:30:00"
@@ -115,6 +129,7 @@ class TestParseDt:
         assert result.month == 1
         assert result.day == 15
 
+    @pytest.mark.integration
     def test_parse_dt_invalid_iso_string(self):
         """Test _parse_dt with invalid ISO string"""
         invalid_strings = [
@@ -126,6 +141,7 @@ class TestParseDt:
         for invalid in invalid_strings:
             assert _parse_dt(invalid) is None
 
+    @pytest.mark.integration
     def test_parse_dt_non_iso_string(self):
         """Test _parse_dt with non-ISO formatted string"""
         assert _parse_dt("January 15, 2024") is None
@@ -133,15 +149,18 @@ class TestParseDt:
 
 
 @pytest.mark.unit
+@pytest.mark.integration
 class TestValidateAppointmentPayload:
     """Test validate_appointment_payload function"""
 
+    @pytest.mark.integration
     def test_validate_empty_payload(self):
         """Test validation with empty payload"""
         result = validate_appointment_payload({})
         assert result.cleaned["status"] == "SCHEDULED"
         assert len(result.errors) == 0
 
+    @pytest.mark.integration
     def test_validate_valid_status(self):
         """Test validation with valid status"""
         for status in VALID_STATUSES:
@@ -150,6 +169,7 @@ class TestValidateAppointmentPayload:
             assert result.cleaned["status"] == status
             assert len(result.errors) == 0
 
+    @pytest.mark.integration
     def test_validate_invalid_status(self):
         """Test validation with invalid status"""
         payload = {"status": "INVALID_STATUS"}
@@ -158,6 +178,7 @@ class TestValidateAppointmentPayload:
         assert result.errors[0].code == "VALIDATION_FAILED"
         assert result.errors[0].field == "status"
 
+    @pytest.mark.integration
     def test_validate_lowercase_status(self):
         """Test validation converts lowercase status to uppercase"""
         payload = {"status": "scheduled"}
@@ -165,6 +186,7 @@ class TestValidateAppointmentPayload:
         assert result.cleaned["status"] == "SCHEDULED"
         assert len(result.errors) == 0
 
+    @pytest.mark.integration
     def test_validate_start_ts_future(self):
         """Test validation with future start_ts"""
         future_time = datetime.now(timezone.utc) + timedelta(hours=1)
@@ -173,6 +195,7 @@ class TestValidateAppointmentPayload:
         assert "start_ts" in result.cleaned
         assert len(result.errors) == 0
 
+    @pytest.mark.integration
     def test_validate_start_ts_past_within_grace(self):
         """Test validation with past start_ts within grace period"""
         past_time = datetime.now(timezone.utc) - timedelta(minutes=10)  # Within 15-minute grace
@@ -181,6 +204,7 @@ class TestValidateAppointmentPayload:
         assert "start_ts" in result.cleaned
         assert len(result.errors) == 0
 
+    @pytest.mark.integration
     def test_validate_start_ts_past_beyond_grace(self):
         """Test validation with past start_ts beyond grace period"""
         past_time = datetime.now(timezone.utc) - timedelta(minutes=20)  # Beyond 15-minute grace
@@ -190,6 +214,7 @@ class TestValidateAppointmentPayload:
         assert result.errors[0].field == "start_ts"
         assert "too far in past" in result.errors[0].detail
 
+    @pytest.mark.integration
     def test_validate_end_ts_before_start_ts(self):
         """Test validation with end_ts before start_ts"""
         start_time = datetime.now(timezone.utc) + timedelta(hours=1)
@@ -200,6 +225,7 @@ class TestValidateAppointmentPayload:
         assert result.errors[0].field == "end_ts"
         assert "before start_ts" in result.errors[0].detail
 
+    @pytest.mark.integration
     def test_validate_duration_exceeds_maximum(self):
         """Test validation with duration exceeding maximum"""
         start_time = datetime.now(timezone.utc) + timedelta(hours=1)
@@ -210,6 +236,7 @@ class TestValidateAppointmentPayload:
         assert result.errors[0].field == "end_ts"
         assert "exceeds maximum" in result.errors[0].detail
 
+    @pytest.mark.integration
     def test_validate_valid_duration(self):
         """Test validation with valid duration"""
         start_time = datetime.now(timezone.utc) + timedelta(hours=1)
@@ -220,6 +247,7 @@ class TestValidateAppointmentPayload:
         assert "end_ts" in result.cleaned
         assert len(result.errors) == 0
 
+    @pytest.mark.integration
     def test_validate_valid_total_amount(self):
         """Test validation with valid total_amount"""
         test_cases = [0, 0.0, 100, 100.50, 999.99]
@@ -229,6 +257,7 @@ class TestValidateAppointmentPayload:
             assert result.cleaned["total_amount"] == float(amount)
             assert len(result.errors) == 0
 
+    @pytest.mark.integration
     def test_validate_invalid_total_amount(self):
         """Test validation with invalid total_amount"""
         test_cases = [-1, -100.50, "invalid", None]
@@ -243,6 +272,7 @@ class TestValidateAppointmentPayload:
                 assert len(result.errors) == 1
                 assert result.errors[0].field == "total_amount"
 
+    @pytest.mark.integration
     def test_validate_valid_paid_amount(self):
         """Test validation with valid paid_amount"""
         test_cases = [0, 0.0, 50, 50.25, 100]
@@ -252,6 +282,7 @@ class TestValidateAppointmentPayload:
             assert result.cleaned["paid_amount"] == float(amount)
             assert len(result.errors) == 0
 
+    @pytest.mark.integration
     def test_validate_invalid_paid_amount(self):
         """Test validation with invalid paid_amount"""
         test_cases = [-1, -50.25, "invalid"]
@@ -261,6 +292,7 @@ class TestValidateAppointmentPayload:
             assert len(result.errors) == 1
             assert result.errors[0].field == "paid_amount"
 
+    @pytest.mark.integration
     def test_validate_paid_amount_exceeds_total(self):
         """Test validation when paid_amount exceeds total_amount"""
         payload = {"total_amount": 100.0, "paid_amount": 150.0}
@@ -269,6 +301,7 @@ class TestValidateAppointmentPayload:
         assert result.errors[0].field == "paid_amount"
         assert "cannot exceed total_amount" in result.errors[0].detail
 
+    @pytest.mark.integration
     def test_validate_paid_amount_equals_total(self):
         """Test validation when paid_amount equals total_amount"""
         payload = {"total_amount": 100.0, "paid_amount": 100.0}
@@ -277,6 +310,7 @@ class TestValidateAppointmentPayload:
         assert result.cleaned["paid_amount"] == 100.0
         assert len(result.errors) == 0
 
+    @pytest.mark.integration
     def test_validate_basic_fields_passthrough(self):
         """Test validation passes through basic ID fields"""
         payload = {"customer_id": "cust_123", "vehicle_id": "vehicle_456", "tech_id": "tech_789"}
@@ -286,6 +320,7 @@ class TestValidateAppointmentPayload:
         assert result.cleaned["tech_id"] == "tech_789"
         assert len(result.errors) == 0
 
+    @pytest.mark.integration
     def test_validate_status_transition_valid(self):
         """Test validation with valid status transitions"""
         existing = {"status": "SCHEDULED"}
@@ -297,6 +332,7 @@ class TestValidateAppointmentPayload:
             assert result.cleaned["status"] == new_status
             assert len(result.errors) == 0
 
+    @pytest.mark.integration
     def test_validate_status_transition_invalid(self):
         """Test validation with invalid status transitions"""
         existing = {"status": "COMPLETED"}  # COMPLETED allows no transitions
@@ -309,6 +345,7 @@ class TestValidateAppointmentPayload:
         assert result.errors[0].status == 409
         assert "COMPLETED -> SCHEDULED" in result.errors[0].detail
 
+    @pytest.mark.integration
     def test_validate_status_no_change(self):
         """Test validation when status doesn't change"""
         existing = {"status": "IN_PROGRESS"}
@@ -318,6 +355,7 @@ class TestValidateAppointmentPayload:
         assert result.cleaned["status"] == "IN_PROGRESS"
         assert len(result.errors) == 0
 
+    @pytest.mark.integration
     def test_validate_update_mode_with_existing(self):
         """Test validation in update mode with existing data"""
         existing = {
@@ -332,6 +370,7 @@ class TestValidateAppointmentPayload:
         assert result.cleaned["paid_amount"] == 50.0  # From payload
         assert len(result.errors) == 0
 
+    @pytest.mark.integration
     def test_validate_multiple_errors(self):
         """Test validation accumulates multiple errors"""
         past_time = datetime.now(timezone.utc) - timedelta(hours=1)
@@ -352,6 +391,7 @@ class TestValidateAppointmentPayload:
 
 
 @pytest.mark.unit
+@pytest.mark.integration
 class TestFindConflicts:
     """Test find_conflicts function with mocked database"""
 
@@ -368,6 +408,7 @@ class TestFindConflicts:
 
         return mock_conn, mock_cursor
 
+    @pytest.mark.integration
     def test_find_conflicts_no_conflicts(self):
         """Test find_conflicts when no conflicts exist"""
         mock_conn, mock_cursor = self.create_mock_connection([])
@@ -381,6 +422,7 @@ class TestFindConflicts:
         assert result["vehicle"] == []
         assert mock_cursor.execute.call_count >= 1  # Should query for conflicts
 
+    @pytest.mark.integration
     def test_find_conflicts_tech_conflict_strict_mode(self):
         """Test find_conflicts with tech conflict in strict mode (no end_ts)"""
         # Mock database returns conflicting appointment ID 999
@@ -403,6 +445,7 @@ class TestFindConflicts:
         sql_query = call_args[0][0]
         assert "a.start_ts = %s" in sql_query  # Should use exact match
 
+    @pytest.mark.integration
     def test_find_conflicts_vehicle_conflict_strict_mode(self):
         """Test find_conflicts with vehicle conflict in strict mode"""
         mock_conn, mock_cursor = self.create_mock_connection([(888,)])
@@ -415,6 +458,7 @@ class TestFindConflicts:
         assert result["tech"] == []
         assert result["vehicle"] == [888]
 
+    @pytest.mark.integration
     def test_find_conflicts_overlap_mode_with_end_ts(self):
         """Test find_conflicts with overlap detection when end_ts provided"""
         mock_conn, mock_cursor = self.create_mock_connection([(777,)])
@@ -438,6 +482,7 @@ class TestFindConflicts:
         assert "a.start_ts < %s" in sql_query  # Should use overlap detection
         assert "INTERVAL" in sql_query  # Should include interval calculation
 
+    @pytest.mark.integration
     def test_find_conflicts_with_exclude_id(self):
         """Test find_conflicts excludes specific appointment ID"""
         mock_conn, mock_cursor = self.create_mock_connection([])
@@ -461,6 +506,7 @@ class TestFindConflicts:
         sql_params = call_args[0][1]
         assert 123 in sql_params
 
+    @pytest.mark.integration
     def test_find_conflicts_both_tech_and_vehicle(self):
         """Test find_conflicts checks both tech and vehicle conflicts"""
         # First call returns tech conflict, second call returns vehicle conflict
@@ -480,6 +526,7 @@ class TestFindConflicts:
         assert result["vehicle"] == [222]
         assert mock_cursor.execute.call_count == 2  # Should make two queries
 
+    @pytest.mark.integration
     def test_find_conflicts_dict_results(self):
         """Test find_conflicts handles dict-style database results"""
         mock_conn, mock_cursor = self.create_mock_connection([{"id": 555, "other": "data"}])
@@ -491,6 +538,7 @@ class TestFindConflicts:
 
         assert result["tech"] == [555]  # Should extract 'id' from dict
 
+    @pytest.mark.integration
     def test_find_conflicts_multiple_conflicts(self):
         """Test find_conflicts handles multiple conflicting appointments"""
         mock_conn, mock_cursor = self.create_mock_connection([(111,), (222,), (333,)])
@@ -505,9 +553,11 @@ class TestFindConflicts:
 
 
 @pytest.mark.unit
+@pytest.mark.integration
 class TestConstants:
     """Test module constants are properly defined"""
 
+    @pytest.mark.integration
     def test_valid_statuses_constant(self):
         """Test VALID_STATUSES contains expected values"""
         expected_statuses = {
@@ -520,6 +570,7 @@ class TestConstants:
         }
         assert VALID_STATUSES == expected_statuses
 
+    @pytest.mark.integration
     def test_allowed_transitions_constant(self):
         """Test ALLOWED_TRANSITIONS structure"""
         assert isinstance(ALLOWED_TRANSITIONS, dict)
@@ -531,6 +582,7 @@ class TestConstants:
         assert ALLOWED_TRANSITIONS["NO_SHOW"] == set()  # No transitions from NO_SHOW
         assert ALLOWED_TRANSITIONS["CANCELED"] == set()  # No transitions from CANCELED
 
+    @pytest.mark.integration
     def test_time_constants(self):
         """Test time-related constants"""
         assert DEFAULT_BLOCK_HOURS == 2

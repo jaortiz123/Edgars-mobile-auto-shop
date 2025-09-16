@@ -9,11 +9,14 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@test-utils';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { server } from '../../test/server/mswServer';
 import { withErrorScenario } from '../../test/errorTestHelpersCanonical';
+
+beforeAll(() => vi.useFakeTimers());
+afterAll(() => vi.useRealTimers());
 
 // Simple test wrapper (same as working debug version)
 export const TestAppWrapper = ({ children }: { children: React.ReactNode }) => {
