@@ -27,16 +27,16 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16
+        image: postgres:14
         env:
+          POSTGRES_DB: test_autoshop
           POSTGRES_USER: test_user
           POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: test_autoshop
         ports:
           - 55432:5432
         options: >-
           --health-cmd="pg_isready -U test_user -d test_autoshop"
-          --health-interval=2s --health-timeout=2s --health-retries=30
+          --health-interval=10s --health-timeout=5s --health-retries=10
 
     steps:
       - uses: actions/checkout@v4
@@ -90,22 +90,29 @@ jobs:
       - name: Build
         run: scripts/ci/build.sh
 
-      - name: Install Postgres client tools + jq
+      - name: Create .env + .env.ci (single source of truth)
+        run: |
+          cat > .env <<'EOF'
+          DATABASE_URL=postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop
+          DATABASE_URL_COMPOSE=postgresql://test_user:test_password@db:5432/test_autoshop
+          JWT_SECRET=dev_secret
+          EOF
+          cp .env .env.ci
+
+      - name: Install Postgres client + jq
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client jq
 
       - name: Sanity | Show DB URL (redacted)
-        env:
-          DATABASE_URL: postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop
         run: |
-          echo "$DATABASE_URL" | sed 's#//[^:]*:[^@]*@#//***:***@#'
+          sed 's#//[^:]*:[^@]*@#//***:***@#' .env | grep DATABASE_URL
 
-      - name: Wait for Postgres (host)
+      - name: Wait for Postgres (host 127.0.0.1:55432)
         run: |
           timeout 90 bash -c 'until pg_isready -h 127.0.0.1 -p 55432 -U test_user -d test_autoshop; do sleep 2; done'
 
-      - name: Schema | init.sql → migrations → seed (host)
+      - name: Schema | init.sql → migrations → seed
         env:
           PGPASSWORD: test_password
         run: |
@@ -161,43 +168,40 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Compose up
-        run: |
-          export $(grep -v '^#' .env.ci | xargs)
-          docker compose up -d --build
+        run: docker compose --env-file .env.ci up -d --build
 
-      - name: Sanity | Backend sees DATABASE_URL (compose)
+      - name: Wait DB (compose)
         run: |
-          docker compose exec -T backend /bin/sh -lc 'echo "DATABASE_URL=$DATABASE_URL" | sed "s#//[^:]*:[^@]*@#//***:***@#"'
+          docker compose --env-file .env.ci exec -T db bash -lc \
+            'timeout 90 bash -c "until pg_isready -h localhost -p 5432 -U $$POSTGRES_USER -d $$POSTGRES_DB; do sleep 2; done"'
 
-      - name: Wait for DB (compose network)
+      - name: Schema | init → migrations → seed (compose)
         run: |
-          docker compose exec -T db bash -lc 'timeout 90 bash -c "until pg_isready -h localhost -p 5432 -U $$POSTGRES_USER -d $$POSTGRES_DB; do sleep 2; done"'
-
-      - name: Schema | init.sql → migrations → seed (compose)
-        run: |
-          docker compose exec -T backend /bin/sh -lc 'psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f /app/database/init.sql'
-          docker compose exec -T backend /bin/sh -lc 'python /app/backend/run_sql_migrations.py'
-          docker compose exec -T backend /bin/sh -lc 'psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f /app/backend/seeds/seed_s1.sql'
+          docker compose --env-file .env.ci exec -T backend /bin/sh -lc 'psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f /app/database/init.sql'
+          docker compose --env-file .env.ci exec -T backend /bin/sh -lc 'python /app/backend/run_sql_migrations.py'
+          docker compose --env-file .env.ci exec -T backend /bin/sh -lc 'psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f /app/backend/seeds/seed_s1.sql'
 
       - name: Sanity | Backend health (compose)
         run: |
           timeout 120 bash -c 'until curl -fsS http://localhost:3001/health; do sleep 2; done'
 
-      - name: E2E (Playwright)
+      - name: Run Playwright
         env:
           API_BASE_URL: http://localhost:3001
-        run: scripts/ci/test_e2e.sh
+        run: |
+          cd frontend
+          npx playwright test --reporter=line
 
       - name: Dump compose status on failure
         if: failure()
         run: |
-          docker compose ps || true
-          echo "---- DB logs ----"; docker compose logs db | tail -n 200 || true
-          echo "---- Backend logs ----"; docker compose logs backend | tail -n 200 || true
+          docker compose --env-file .env.ci ps || true
+          echo "---- DB logs ----"; docker compose --env-file .env.ci logs db | tail -n 200 || true
+          echo "---- Backend logs ----"; docker compose --env-file .env.ci logs backend | tail -n 200 || true
 
       - name: Teardown compose
         if: always()
-        run: docker compose down -v
+        run: docker compose --env-file .env.ci down -v
 
       - name: Upload Playwright artifacts on failure
         if: failure()
