@@ -1,6 +1,6 @@
 # Multi-stage build for security and smaller image size
 # Pin base image with digest for security
-FROM node:20-alpine@sha256:92a6c6ff178dbfbd0398f22d6ae6a3e3e1e6e6b30d4c1b5a7866ae6edcc08b51 AS builder
+FROM node:20-alpine@sha256:eabac870db94f7342d6c33560d6613f188bbcf4bbe1f4eb47d5e2a08e1a37722 AS builder
 
 # Create app directory
 WORKDIR /app
@@ -25,7 +25,7 @@ RUN chown -R app:app /app
 RUN npm run build
 
 # Production stage
-FROM node:20-alpine@sha256:92a6c6ff178dbfbd0398f22d6ae6a3e3e1e6e6b30d4c1b5a7866ae6edcc08b51 AS production
+FROM node:20-alpine@sha256:eabac870db94f7342d6c33560d6613f188bbcf4bbe1f4eb47d5e2a08e1a37722 AS production
 
 # Install security updates and required utilities
 RUN apk update && apk upgrade \
