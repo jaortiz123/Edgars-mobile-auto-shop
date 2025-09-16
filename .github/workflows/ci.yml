@@ -257,8 +257,8 @@ jobs:
           echo "Waiting for backend to be ready..."
           timeout 180 bash -c '
             while true; do
-              # Check if Flask is available (more specific than just psycopg2)
-              if docker compose --env-file .env.ci exec -T backend /bin/sh -lc "python -c \"import flask; print('Flask ready:', flask.__version__)\"" 2>/dev/null; then
+              # Check if Flask is available
+              if docker compose --env-file .env.ci exec -T backend /bin/sh -lc "python -c \"import flask; print('OK')\"" 2>/dev/null; then
                 echo "Backend dependencies ready!"
                 break
               fi
