@@ -1,4 +1,4 @@
-CREATE TABLE customers (
+CREATE TABLE IF NOT EXISTS customers (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   phone VARCHAR(20),
@@ -9,7 +9,7 @@ CREATE TABLE customers (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE TABLE vehicles (
+CREATE TABLE IF NOT EXISTS vehicles (
   id SERIAL PRIMARY KEY,
   customer_id INTEGER REFERENCES customers(id),
   make VARCHAR(100),
@@ -19,14 +19,14 @@ CREATE TABLE vehicles (
   license_plate VARCHAR(20),
   notes TEXT
 );
-CREATE TABLE services (
+CREATE TABLE IF NOT EXISTS services (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   description TEXT,
   duration_minutes INTEGER,
   base_price DECIMAL(10,2)
 );
-CREATE TABLE appointments (
+CREATE TABLE IF NOT EXISTS appointments (
   id SERIAL PRIMARY KEY,
   customer_id INTEGER REFERENCES customers(id),
   vehicle_id INTEGER REFERENCES vehicles(id),
@@ -54,8 +54,8 @@ INSERT INTO services (name, description, duration_minutes, base_price) VALUES
 ('Tire Rotation', 'Rotate and balance tires', 45, 50.00);
 
 -- Performance indexes
-CREATE INDEX idx_customers_email ON customers(email);
-CREATE INDEX idx_appointments_schedule ON appointments(scheduled_date, scheduled_time);
+CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email);
+CREATE INDEX IF NOT EXISTS idx_appointments_schedule ON appointments(scheduled_date, scheduled_time);
 
 -- Invoices & related (added for E2E invoice lifecycle)
 DO $$ BEGIN
