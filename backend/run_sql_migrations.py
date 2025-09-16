@@ -68,6 +68,18 @@ def ensure_history_table(cur):
     )
 
 
+def acquire_migration_lock(cur):
+    """Acquire advisory lock to prevent concurrent migrations"""
+    # Use advisory lock with a fixed ID for migration process
+    # This prevents multiple processes from running migrations simultaneously
+    cur.execute("SELECT pg_advisory_lock(12345678)")
+
+
+def release_migration_lock(cur):
+    """Release advisory lock"""
+    cur.execute("SELECT pg_advisory_unlock(12345678)")
+
+
 def get_applied(cur) -> set[str]:
     cur.execute("SELECT filename FROM migration_sql_history")
     return {row["filename"] for row in cur.fetchall()}
@@ -156,21 +168,27 @@ def main():
         return 1
     try:
         with conn.cursor() as cur:
-            ensure_history_table(cur)
-            conn.commit()
-            applied = get_applied(cur)
-        files = discover_sql_files()
-        pending = [f for f in files if f.name not in applied]
-        if not files:
-            print("ℹ️ No raw SQL migration files found.")
-            return 0
-        if not pending:
-            print("✅ Raw SQL migrations up-to-date (0 pending).")
-            return 0
-        for f in pending:
-            apply_file(conn, f)
-        print(f"✅ Applied {len(pending)} raw SQL migration(s).")
-        return 0
+            # Acquire advisory lock to prevent concurrent migrations
+            acquire_migration_lock(cur)
+            try:
+                ensure_history_table(cur)
+                conn.commit()
+                applied = get_applied(cur)
+                files = discover_sql_files()
+                pending = [f for f in files if f.name not in applied]
+                if not files:
+                    print("ℹ️ No raw SQL migration files found.")
+                    return 0
+                if not pending:
+                    print("✅ Raw SQL migrations up-to-date (0 pending).")
+                    return 0
+                for f in pending:
+                    apply_file(conn, f)
+                print(f"✅ Applied {len(pending)} raw SQL migration(s).")
+                return 0
+            finally:
+                # Always release the lock
+                release_migration_lock(cur)
     finally:
         conn.close()
 
