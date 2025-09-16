@@ -99,7 +99,11 @@ WITH veh_data(k, customer_key, make, model, year, vin, license_plate) AS (
   SELECT '00000000-0000-0000-0000-000000000001'::uuid, c.id, vd.make, vd.model, vd.year, vd.vin, vd.license_plate
   FROM veh_data vd
   JOIN tmp_customers c ON c.k = vd.customer_key
-  ON CONFLICT (tenant_id, upper(vin)) DO NOTHING
+  WHERE NOT EXISTS (
+    SELECT 1 FROM vehicles v
+    WHERE v.tenant_id = '00000000-0000-0000-0000-000000000001'::uuid
+    AND upper(v.vin) = upper(vd.vin)
+  )
   RETURNING id, make, model, year
 )
 INSERT INTO tmp_vehicles(k,id)
