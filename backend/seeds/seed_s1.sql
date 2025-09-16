@@ -68,8 +68,9 @@ WITH cust_data(k,name,email,phone,address) AS (
   -- Test lookup customer with multiple vehicles for /api/customers/lookup endpoint
   ('LOOK','Lookup Test','lookup.test@example.com','5305555555','777 Lookup Blvd')
 ), ins AS (
-  INSERT INTO customers (name,email,phone,address,created_at)
-  SELECT name,email,phone,address, now() FROM cust_data
+  INSERT INTO customers (tenant_id, name,email,phone,address,created_at)
+  SELECT '00000000-0000-0000-0000-000000000001'::uuid, name,email,phone,address, now() FROM cust_data
+  ON CONFLICT ON CONSTRAINT uq_customers_email_per_tenant DO NOTHING
   RETURNING id, name
 )
 INSERT INTO tmp_customers(k,id)
@@ -94,10 +95,11 @@ WITH veh_data(k, customer_key, make, model, year, vin, license_plate) AS (
   ('LV1','LOOK','Lamborghini','Revuelto',2026,'LREV-2026-0001','LOOKUP1'),
   ('LV2','LOOK','Honda','Civic',2024,'CIV-2024-0002','LOOKUP2')
 ), ins AS (
-  INSERT INTO vehicles (customer_id, make, model, year, vin, license_plate)
-  SELECT c.id, vd.make, vd.model, vd.year, vd.vin, vd.license_plate
+  INSERT INTO vehicles (tenant_id, customer_id, make, model, year, vin, license_plate)
+  SELECT '00000000-0000-0000-0000-000000000001'::uuid, c.id, vd.make, vd.model, vd.year, vd.vin, vd.license_plate
   FROM veh_data vd
   JOIN tmp_customers c ON c.k = vd.customer_key
+  ON CONFLICT ON CONSTRAINT uq_vehicles_vin_per_tenant DO NOTHING
   RETURNING id, make, model, year
 )
 INSERT INTO tmp_vehicles(k,id)
