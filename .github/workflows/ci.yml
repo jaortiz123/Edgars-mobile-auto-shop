@@ -254,15 +254,15 @@ jobs:
 
       - name: Wait Backend (compose)
         run: |
-          echo "Waiting for backend container to finish installing dependencies..."
-          timeout 600 bash -c '
+          echo "Waiting for backend to be ready..."
+          timeout 180 bash -c '
             while true; do
-              # Check if requirements.txt installation is complete
-              if docker compose --env-file .env.ci exec -T backend /bin/sh -lc "python -c \"import psycopg2; print('OK')\"" 2>/dev/null; then
+              # Check if Flask is available (more specific than just psycopg2)
+              if docker compose --env-file .env.ci exec -T backend /bin/sh -lc "python -c \"import flask; print('Flask ready:', flask.__version__)\"" 2>/dev/null; then
                 echo "Backend dependencies ready!"
                 break
               fi
-              echo "Still installing dependencies..."
+              echo "Waiting for Flask and dependencies to be installed..."
               sleep 5
             done
           '

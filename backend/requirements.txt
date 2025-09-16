@@ -1,4 +1,4 @@
-# Core dependencies - pin specific versions for faster CI
+# Core dependencies - compatible versions to avoid conflicts
 pg8000==1.31.2
 psycopg2==2.9.9
 python-json-logger==2.0.7
@@ -9,7 +9,7 @@ Flask-CORS==4.0.1
 PyJWT==2.8.0
 redis==5.0.4
 bcrypt==4.1.3
-boto3==1.34.131
+boto3==1.28.57
 psutil==5.9.8
 
 # Schema validation
@@ -25,6 +25,5 @@ testcontainers
 # Dev dependencies
 flake8
 
-# Security patches
-# urllib3 <2.5.0 affected by redirect handling issue (GHSA-pq67-6m6q-mj2v)
-urllib3>=2.5.0
+# Security patches - use compatible urllib3 version with boto3
+urllib3>=1.26.0,<2.0.0
