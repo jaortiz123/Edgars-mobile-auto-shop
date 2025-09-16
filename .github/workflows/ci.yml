@@ -74,6 +74,13 @@ jobs:
       - name: Setup
         run: scripts/ci/setup.sh
 
+      - name: Guard | fail on pinned apk packages
+        run: |
+          if rg -n "apk add .*=[0-9]" frontend/Dockerfile backend/Dockerfile infrastructure/**/Dockerfile 2>/dev/null; then
+            echo "::error::Avoid pinning apk package versions; they expire in Alpine repos."
+            exit 1
+          fi
+
       - name: Lint
         run: scripts/ci/lint.sh
 
