@@ -5,8 +5,21 @@ export CI=true TZ=UTC PYTHONHASHSEED=0
 export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-west-2}"
 export FALLBACK_TO_MEMORY=false
 
-# Use DATABASE_URL from env (set by CI) or build from components
-if [[ -z "${DATABASE_URL:-}" ]]; then
+# Check if DATABASE_URL is provided (CI mode vs local mode)
+if [[ -n "${DATABASE_URL:-}" ]]; then
+  echo "🐘 Using provided DATABASE_URL (CI mode)"
+  echo "DATABASE_URL: ${DATABASE_URL//:[^@]*@/:***@}"
+
+  # Ensure individual components are also set for compatibility
+  export POSTGRES_HOST="${POSTGRES_HOST:-127.0.0.1}"
+  export POSTGRES_PORT="${POSTGRES_PORT:-55432}"
+  export POSTGRES_DB="${POSTGRES_DB:-test_autoshop}"
+  export POSTGRES_USER="${POSTGRES_USER:-test_user}"
+  export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-test_password}"
+
+  # No need to start local Postgres - using CI service
+  LOCAL_POSTGRES=false
+else
   # For local use, start our own Postgres
   export POSTGRES_HOST="127.0.0.1"
   export POSTGRES_PORT="55432"
@@ -40,19 +53,19 @@ if [[ -z "${DATABASE_URL:-}" ]]; then
   psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -f backend/seeds/seed_s1.sql 2>/dev/null || echo "No seed file backend/seeds/seed_s1.sql"
 
   LOCAL_POSTGRES=true
-else
-  echo "🐘 Using CI Postgres service at ${DATABASE_URL}"
-  echo "🔍 Database URL: $(echo "${DATABASE_URL}" | sed 's/:.*@/:***@/')"
-  LOCAL_POSTGRES=false
 fi
 
 # Test DB connection before running tests
 echo "🔍 Testing DB connection..."
 psql "${DATABASE_URL}" -c "SELECT 1" >/dev/null 2>&1 || {
-  echo "❌ Cannot connect to database"
-  [[ "${LOCAL_POSTGRES}" == "true" ]] && docker stop "${DB_CONTAINER}" >/dev/null || true
+  echo "❌ Cannot connect to database at ${DATABASE_URL//:[^@]*@/:***@}"
+  [[ "${LOCAL_POSTGRES:-false}" == "true" ]] && docker stop "${DB_CONTAINER}" >/dev/null || true
   exit 1
 }
+echo "✅ Database connection successful"
+
+# Export Python path for tests
+export PYTHONPATH="${PYTHONPATH:-}:$(pwd)/backend"
 
 echo "🧪 Running integration tests..."
 pushd backend >/dev/null
