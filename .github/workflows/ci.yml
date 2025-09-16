@@ -258,7 +258,7 @@ jobs:
           timeout 180 bash -c '
             while true; do
               # Check if Flask is available
-              if docker compose --env-file .env.ci exec -T backend /bin/sh -lc "python -c \"import flask; print('OK')\"" 2>/dev/null; then
+              if docker compose --env-file .env.ci exec -T backend /bin/sh -lc "python -c \"import flask; print(\\\"OK\\\")\"" 2>/dev/null; then
                 echo "Backend dependencies ready!"
                 break
               fi
