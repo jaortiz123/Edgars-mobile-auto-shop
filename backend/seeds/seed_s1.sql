@@ -70,7 +70,7 @@ WITH cust_data(k,name,email,phone,address) AS (
 ), ins AS (
   INSERT INTO customers (tenant_id, name,email,phone,address,created_at)
   SELECT '00000000-0000-0000-0000-000000000001'::uuid, name,email,phone,address, now() FROM cust_data
-  ON CONFLICT ON CONSTRAINT uq_customers_email_per_tenant DO NOTHING
+  ON CONFLICT (tenant_id, lower(email)) DO NOTHING
   RETURNING id, name
 )
 INSERT INTO tmp_customers(k,id)
@@ -99,7 +99,7 @@ WITH veh_data(k, customer_key, make, model, year, vin, license_plate) AS (
   SELECT '00000000-0000-0000-0000-000000000001'::uuid, c.id, vd.make, vd.model, vd.year, vd.vin, vd.license_plate
   FROM veh_data vd
   JOIN tmp_customers c ON c.k = vd.customer_key
-  ON CONFLICT ON CONSTRAINT uq_vehicles_vin_per_tenant DO NOTHING
+  ON CONFLICT (tenant_id, upper(vin)) DO NOTHING
   RETURNING id, make, model, year
 )
 INSERT INTO tmp_vehicles(k,id)
