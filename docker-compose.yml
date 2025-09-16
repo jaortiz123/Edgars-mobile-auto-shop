@@ -10,11 +10,12 @@ services:
       echo 'Installing Python dependencies with retry logic...';
       if [ ! -f requirements.txt ]; then echo 'requirements.txt not found in /app'; ls -al; exit 1; fi;
       pip install --upgrade pip;
-      pip config set global.timeout 90;
-      pip config set global.retries 5;
+      pip config set global.timeout 60;
+      pip config set global.retries 3;
+      pip config set global.progress-bar off;
       for attempt in 1 2 3; do
         echo \"Pip install attempt \$attempt/3...\";
-        if pip install --no-cache-dir --timeout=90 --retries=5 -r requirements.txt; then
+        if pip install --no-cache-dir --timeout=60 --retries=3 --disable-pip-version-check -r requirements.txt; then
           echo 'Pip install successful!';
           break;
         else
@@ -23,7 +24,7 @@ services:
             echo 'All pip install attempts failed';
             exit 1;
           fi;
-          sleep 15;
+          sleep 10;
         fi;
       done;
       echo 'Starting Flask server...';

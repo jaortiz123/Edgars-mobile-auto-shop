@@ -1,16 +1,16 @@
-# Core dependencies
-pg8000
-psycopg2
-python-json-logger
-alembic
-SQLAlchemy
-Flask
-Flask-CORS
-PyJWT
-redis
-bcrypt
-boto3
-psutil
+# Core dependencies - pin specific versions for faster CI
+pg8000==1.31.2
+psycopg2==2.9.9
+python-json-logger==2.0.7
+alembic==1.13.2
+SQLAlchemy==2.0.30
+Flask==3.0.3
+Flask-CORS==4.0.1
+PyJWT==2.8.0
+redis==5.0.4
+bcrypt==4.1.3
+boto3==1.34.131
+psutil==5.9.8
 
 # Schema validation
 pydantic[email]>=2.6,<3
