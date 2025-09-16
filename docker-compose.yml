@@ -6,7 +6,7 @@ services:
     command: >
       sh -c "set -e
       echo 'Installing system dependencies for PostgreSQL...';
-      apt-get update && apt-get install -y gcc libpq-dev;
+      apt-get update && apt-get install -y gcc libpq-dev postgresql-client;
       echo 'Installing Python dependencies...';
       if [ ! -f requirements.txt ]; then echo 'requirements.txt not found in /app'; ls -al; exit 1; fi;
       pip install -r requirements.txt || { echo 'Pip install failed - check requirements.txt'; exit 1; };
