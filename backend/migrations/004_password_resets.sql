@@ -23,13 +23,13 @@ CREATE TABLE password_resets (
 );
 
 -- Performance index for cleanup operations (removes expired tokens)
-CREATE INDEX idx_password_resets_expires_at ON password_resets(expires_at);
+CREATE INDEX IF NOT EXISTS idx_password_resets_expires_at ON password_resets(expires_at);
 
 -- Performance index for user lookup during reset validation
-CREATE INDEX idx_password_resets_user_id ON password_resets(user_id);
+CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON password_resets(user_id);
 
 -- Performance index for tenant-based queries
-CREATE INDEX idx_password_resets_tenant_id ON password_resets(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_password_resets_tenant_id ON password_resets(tenant_id);
 
 -- Enable Row Level Security for multi-tenant isolation
 ALTER TABLE password_resets ENABLE ROW LEVEL SECURITY;
