@@ -1,6 +1,16 @@
 import React from 'react';
 import { render, screen } from '@test-utils';
 import TrendChart from '../../components/analytics/TrendChart';
+import { describe, it, expect } from 'vitest';
+
+// Polyfill ResizeObserver for Recharts ResponsiveContainer in jsdom
+class RO {
+  observe() { /* noop */ }
+  unobserve() { /* noop */ }
+  disconnect() { /* noop */ }
+}
+// @ts-expect-error attach to global
+global.ResizeObserver = RO as unknown as ResizeObserver;
 
 describe('TrendChart', () => {
   it('renders with data', () => {

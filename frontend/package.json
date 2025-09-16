@@ -16,7 +16,7 @@
     "pretest": "pkill -f \"node .*vitest\" || true",
     "test": "vitest",
     "test:unit": "vitest",
-    "test:unit:ci": "vitest --config vitest.config.ts --run --coverage --reporter=dot --project unit",
+    "test:unit:ci": "vitest --project unit --run --coverage --reporter=dot",
     "test:triage": "vitest --project triage",
     "test:archived": "vitest --project archived",
     "test:watch": "vitest",

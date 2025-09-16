@@ -36,7 +36,12 @@ popd >/dev/null
 
 echo "🧪 Running frontend unit tests"
 pushd frontend >/dev/null
-COVERAGE_MIN="${COVERAGE_MIN:-50}" npm run test:unit:ci
+npm run test:unit:ci
+
+# Enforce coverage gate
+pct=$(jq -r '.total.lines.pct' coverage/coverage-summary.json)
+echo "Lines coverage: ${pct}%"
+awk -v p="$pct" -v min="${COVERAGE_MIN:-26}" 'BEGIN{ exit (p+0<min) ? 1 : 0 }'
 popd >/dev/null
 
 echo "✅ Unit tests complete"

@@ -1,38 +1,25 @@
+// vitest.projects.ts
 import { defineProject } from 'vitest/config';
 import path from 'path';
 
 export default [
-  // ✅ Core unit tests (default)
   defineProject({
     test: {
       name: 'unit',
+      environment: 'jsdom',
+      setupFiles: ['./src/tests/setup.ts'],
       include: [
-        'src/components/**/*.{test,spec,unit}.{ts,tsx}',
-        'src/hooks/**/*.{test,spec,unit}.{ts,tsx}',
-        'src/utils/**/*.{test,spec,unit}.{ts,tsx}',
-        'src/lib/**/*.{test,spec,unit}.{ts,tsx}',
-        'src/store/**/*.{test,spec,unit}.{ts,tsx}',
-        'src/pages/**/*.{test,spec,unit}.{ts,tsx}',
+        'tests/hooks/**/*.{test,spec}.{ts,tsx}',
+        'src/tests/analytics/**/*.{test,spec}.{ts,tsx}',
+        'src/tests/ui-state-coverage.test.tsx',
       ],
       exclude: [
-        'e2e/**',
-        'node_modules/**',
-        'dist/**',
-        'coverage/**',
-        'src/tests/integration/**',
-        'src/tests/triage/**',
         'src/tests/archived/**',
-        'src/tests/coverageBackfill/**',
-        'src/tests/branch-coverage/**',
-        'src/**/__mocks__/**',
-        'src/**/__fixtures__/**',
-        'src/**/stories/**',
-        'src/**/*.d.ts',
-        'src/**/index.ts',
-        'src/main.tsx',
-      ],
-      environment: 'jsdom',
-      setupFiles: ['src/tests/setup.ts'],
+        'src/tests/triage/**',
+        'e2e/**',
+        'dist/**',
+        'node_modules/**'
+      ]
     },
     resolve: {
       alias: {

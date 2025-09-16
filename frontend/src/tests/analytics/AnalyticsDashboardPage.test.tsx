@@ -1,5 +1,5 @@
 import React from 'react';
-import { vi } from 'vitest';
+import { vi, describe, it, afterEach, expect } from 'vitest';
 import { render, screen, waitFor } from '@test-utils';
 import userEvent from '@testing-library/user-event';
 import type { TemplateAnalyticsResponse } from '../../types/analytics';
