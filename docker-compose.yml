@@ -7,9 +7,25 @@ services:
       sh -c "set -e
       echo 'Installing system dependencies for PostgreSQL...';
       apt-get update && apt-get install -y gcc libpq-dev postgresql-client;
-      echo 'Installing Python dependencies...';
+      echo 'Installing Python dependencies with retry logic...';
       if [ ! -f requirements.txt ]; then echo 'requirements.txt not found in /app'; ls -al; exit 1; fi;
-      pip install -r requirements.txt || { echo 'Pip install failed - check requirements.txt'; exit 1; };
+      pip install --upgrade pip;
+      pip config set global.timeout 90;
+      pip config set global.retries 5;
+      for attempt in 1 2 3; do
+        echo \"Pip install attempt \$attempt/3...\";
+        if pip install --no-cache-dir --timeout=90 --retries=5 -r requirements.txt; then
+          echo 'Pip install successful!';
+          break;
+        else
+          echo \"Pip install attempt \$attempt failed\";
+          if [ \$attempt -eq 3 ]; then
+            echo 'All pip install attempts failed';
+            exit 1;
+          fi;
+          sleep 15;
+        fi;
+      done;
       echo 'Starting Flask server...';
       PYTHONUNBUFFERED=1 python run_server.py"
     volumes:
