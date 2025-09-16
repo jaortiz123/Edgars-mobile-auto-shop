@@ -35,8 +35,8 @@ pytest -q -m "unit_fast" --tb=short
 popd >/dev/null
 
 echo "🧪 Running frontend unit tests"
-cd frontend
-npm run test:unit -- --run --coverage || echo "⚠️ Coverage below threshold but continuing"
-cd ..
+pushd frontend >/dev/null
+COVERAGE_MIN="${COVERAGE_MIN:-50}" npm run test:unit:ci
+popd >/dev/null
 
 echo "✅ Unit tests complete"

@@ -61,6 +61,13 @@ jobs:
         run: scripts/ci/build.sh
 
       - name: Integration (real Postgres)
+        env:
+          POSTGRES_HOST: 127.0.0.1
+          POSTGRES_PORT: "55432"
+          POSTGRES_DB: test_autoshop
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          DATABASE_URL: postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop
         run: scripts/ci/test_integration.sh
 
       # Playwright dependencies & cache (prevents re-download each run)
