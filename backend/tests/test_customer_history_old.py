@@ -41,6 +41,7 @@ def mock_db():
         yield mock_cursor
 
 
+@pytest.mark.integration
 def test_get_customer_history_returns_404_for_nonexistent_customer(
     client, auth_headers, monkeypatch
 ):
@@ -93,6 +94,7 @@ def test_get_customer_history_returns_404_for_nonexistent_customer(
     assert "customer" in json_data["error"]["message"].lower()
 
 
+@pytest.mark.integration
 def test_get_customer_history_returns_empty_for_customer_with_no_appointments(
     client, auth_headers, monkeypatch
 ):
@@ -151,6 +153,7 @@ def test_get_customer_history_returns_empty_for_customer_with_no_appointments(
     assert json_data["data"]["data"]["payments"] == []
 
 
+@pytest.mark.integration
 def test_get_customer_history_returns_past_appointments_with_payments(
     client, auth_headers, mock_db
 ):
@@ -229,6 +232,7 @@ def test_get_customer_history_returns_past_appointments_with_payments(
     assert len(apt2["payments"]) == 1
 
 
+@pytest.mark.integration
 def test_get_customer_history_requires_authentication(no_auto_auth_client):
     """Test that the endpoint requires authentication"""
     response = no_auto_auth_client.get("/api/customers/123/history")
@@ -238,6 +242,7 @@ def test_get_customer_history_requires_authentication(no_auto_auth_client):
     assert json_data["error"]["code"] == "auth_required"
 
 
+@pytest.mark.integration
 def test_get_customer_history_only_returns_completed_appointments(client, auth_headers, mock_db):
     """Test that only COMPLETED, NO_SHOW, and CANCELED appointments are returned"""
     # Mock customer exists
@@ -274,6 +279,7 @@ def test_get_customer_history_only_returns_completed_appointments(client, auth_h
     assert past_appointments[0]["status"] == "COMPLETED"
 
 
+@pytest.mark.integration
 def test_get_customer_history_orders_by_date_desc(client, auth_headers, mock_db):
     """Test that appointments are ordered by start date descending"""
     # Mock customer exists

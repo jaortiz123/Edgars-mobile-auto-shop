@@ -17,6 +17,7 @@ def enable_memory_mode(monkeypatch):
 ## client fixture comes from backend/tests/conftest.py
 
 
+@pytest.mark.integration
 def test_board_shows_memory_created_appointment(client):
     # Create appointment (memory mode)
     from datetime import datetime, timezone, timedelta

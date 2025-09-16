@@ -35,6 +35,7 @@ def _rand_plate():
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_profile_not_found(client):
     r = client.get("/api/admin/customers/424242/profile", headers=auth_headers())
     assert r.status_code == 404
@@ -43,6 +44,7 @@ def test_profile_not_found(client):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_profile_basic(client, db_connection):
     # Seed minimal customer, vehicle, appointment, invoice
     with db_connection:
@@ -86,6 +88,7 @@ def test_profile_basic(client, db_connection):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_profile_limit_and_filter(client, db_connection):
     plate1 = _rand_plate()
     plate2 = _rand_plate()
@@ -126,6 +129,7 @@ def test_profile_limit_and_filter(client, db_connection):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_profile_invalid_limit(client):
     r = client.get(
         "/api/admin/customers/123456/profile?limit_appointments=bad", headers=auth_headers()
@@ -136,6 +140,7 @@ def test_profile_invalid_limit(client):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_profile_limit_over_100(client):
     r = client.get(
         "/api/admin/customers/123/profile?limit_appointments=500", headers=auth_headers()
@@ -145,6 +150,7 @@ def test_profile_limit_over_100(client):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_rbac_forbidden(client):
     # role outside allowed set
     token = make_token(role="Technician")
@@ -154,6 +160,7 @@ def test_rbac_forbidden(client):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_etag_flow(client, db_connection):
     with db_connection:
         with db_connection.cursor() as cur:
@@ -178,6 +185,7 @@ def test_etag_flow(client, db_connection):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_etag_round_trip_change(client, db_connection):
     with db_connection:
         with db_connection.cursor() as cur:
@@ -214,6 +222,7 @@ def test_etag_round_trip_change(client, db_connection):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_etag_no_change_stability(client, db_connection):
     # Use randomized IDs to avoid clashes across tests now that uniqueness constraints tightened
     import random
@@ -251,6 +260,7 @@ def test_etag_no_change_stability(client, db_connection):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_date_filtering(client, db_connection):
     with db_connection:
         with db_connection.cursor() as cur:
@@ -275,6 +285,7 @@ def test_date_filtering(client, db_connection):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_vehicle_ownership_validation(client, db_connection):
     with db_connection:
         with db_connection.cursor() as cur:
@@ -287,6 +298,7 @@ def test_vehicle_ownership_validation(client, db_connection):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_cursor_pagination_flow(client, db_connection):
     with db_connection:
         with db_connection.cursor() as cur:
@@ -329,6 +341,7 @@ def test_cursor_pagination_flow(client, db_connection):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_invalid_cursor(client, db_connection):
     with db_connection:
         with db_connection.cursor() as cur:
@@ -340,6 +353,7 @@ def test_invalid_cursor(client, db_connection):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_cursor_precedence_over_dates(client, db_connection):
     with db_connection:
         with db_connection.cursor() as cur:
@@ -368,6 +382,7 @@ def test_cursor_precedence_over_dates(client, db_connection):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_profile_stats_edge_cases(client, db_connection):
     """Test edge cases for new stats fields: avg_ticket and last_service_at"""
     with db_connection:
@@ -449,6 +464,7 @@ def test_profile_stats_edge_cases(client, db_connection):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_rbac_forbidden_other_role(client):
     # role outside allowed set (Viewer)
     token = make_token(role="Viewer")

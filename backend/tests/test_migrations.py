@@ -1,4 +1,6 @@
 """
+import pytest
+
 Migration verification tests (T-010)
 
 This module contains automated tests to verify that database migrations
@@ -34,6 +36,7 @@ from sqlalchemy import create_engine, text
 from contextlib import suppress
 
 
+@pytest.mark.integration
 def test_canonical_timestamps_migration_handles_start_ts_nulls():
     """
     T-010: Migration verification for canonical timestamps (start_ts field)
@@ -184,6 +187,7 @@ def test_canonical_timestamps_migration_handles_start_ts_nulls():
             os.unlink(db_path)
 
 
+@pytest.mark.integration
 def test_migration_verification_sql_helper():
     """
     T-010: SQL helper verification for migration testing
@@ -239,6 +243,7 @@ def test_migration_verification_sql_helper():
         assert specific_count == 1, "Should find exactly 1 row with name 'valid'"
 
 
+@pytest.mark.integration
 def test_migration_ensures_no_null_start_ts_for_valid_appointments():
     """
     T-010: Core requirement test - Ensure COUNT where start_ts IS NULL = 0 for appointments with valid scheduled_date

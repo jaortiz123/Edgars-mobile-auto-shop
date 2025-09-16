@@ -23,6 +23,7 @@ def _get_cookie(resp, name: str) -> Optional[str]:
     return None
 
 
+@pytest.mark.integration
 def test_cookie_auth_and_csrf_block(client):
     # create tenant
     import psycopg2, os

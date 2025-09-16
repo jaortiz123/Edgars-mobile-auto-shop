@@ -15,6 +15,7 @@ REQUEST_ID_REGEX = local_server.REQUEST_ID_REGEX
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_request_id_echo_with_inbound_header(client):
     importlib.reload(local_server)
     inbound_id = str(uuid.uuid4())
@@ -29,6 +30,7 @@ def test_request_id_echo_with_inbound_header(client):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_request_id_generated_when_missing(client):
     importlib.reload(local_server)
     resp = client.get("/api/admin/customers/999998/profile")
@@ -40,6 +42,7 @@ def test_request_id_generated_when_missing(client):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_api_request_log_contains_correlated_request_id(client, caplog):
     importlib.reload(local_server)
     with local_server.db_conn() as conn:
@@ -75,6 +78,7 @@ def test_api_request_log_contains_correlated_request_id(client, caplog):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_logging_failure_does_not_break_request(client, monkeypatch):
     importlib.reload(local_server)
 

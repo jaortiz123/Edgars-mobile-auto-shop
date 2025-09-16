@@ -47,6 +47,7 @@ def _request(client, method: str, path: str, token: str, tenant_id: str):
 
 @pytest.mark.parametrize("method,path", ENDPOINTS)
 @pytest.mark.parametrize("role", sorted(list(AUTHORIZED_ROLES | UNAUTHORIZED_ROLES)))
+@pytest.mark.integration
 def test_rbac_matrix(method: str, path: str, role: str, rbac_client, rbac_utils):
     # fabricate token per-role; use synthetic tenant id (before_request trusts header in fake-db path)
     token = rbac_utils.token_for(role, sub=("1" if role == "Customer" else f"user-{role.lower()}"))

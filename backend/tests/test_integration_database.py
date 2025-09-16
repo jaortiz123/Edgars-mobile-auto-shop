@@ -1,4 +1,6 @@
 """
+import pytest
+
 Integration test for the containerized PostgreSQL database setup.
 This test verifies that the test database container works with real SQL constraints.
 """
@@ -13,9 +15,11 @@ import subprocess
 from pathlib import Path
 
 
+@pytest.mark.integration
 class TestContainerizedDatabase:
     """Test the containerized database with real SQL behavior."""
 
+    @pytest.mark.integration
     def test_database_connection(self, db_connection):
         """Test that we can connect to the containerized database."""
         with db_connection.cursor() as cur:
@@ -25,6 +29,7 @@ class TestContainerizedDatabase:
             # RealDictCursor returns dict-like objects, access by column name
             assert "PostgreSQL" in version["version"]
 
+    @pytest.mark.integration
     def test_seed_data_loaded(self, db_connection):
         """Test that seed data was loaded correctly."""
         with db_connection.cursor() as cur:
@@ -47,6 +52,7 @@ class TestContainerizedDatabase:
             # Allow >=16 because additional services may be created by earlier tests
             assert service_count >= 16, f"Expected at least 16 services, got {service_count}"
 
+    @pytest.mark.integration
     def test_foreign_key_constraints(self, db_connection):
         """Test that foreign key constraints are working properly."""
         with db_connection.cursor() as cur:
@@ -70,6 +76,7 @@ class TestContainerizedDatabase:
             # Rollback the failed transaction
             db_connection.rollback()
 
+    @pytest.mark.integration
     def test_appointment_status_enum(self, db_connection):
         """Test that appointment status ENUM constraint works."""
         with db_connection.cursor() as cur:
@@ -89,6 +96,7 @@ class TestContainerizedDatabase:
             # Rollback
             db_connection.rollback()
 
+    @pytest.mark.integration
     def test_complex_joins_work(self, db_connection):
         """Test that complex SQL joins work as expected."""
         with db_connection.cursor() as cur:
@@ -126,6 +134,7 @@ class TestContainerizedDatabase:
                 assert row["service_count"] >= 0
                 assert row["total_estimated_price"] is not None or row["service_count"] == 0
 
+    @pytest.mark.integration
     def test_appointment_service_relationships(self, db_connection):
         """Test that appointment-service relationships work correctly."""
         with db_connection.cursor() as cur:
@@ -162,6 +171,7 @@ class TestContainerizedDatabase:
                 assert service["estimated_price"] is not None
                 assert service["estimated_hours"] is not None
 
+    @pytest.mark.integration
     def test_can_insert_and_query_data(self, db_connection):
         """Test that we can insert new data and query it back."""
         with db_connection.cursor() as cur:
@@ -221,9 +231,11 @@ class TestContainerizedDatabase:
             db_connection.rollback()
 
 
+@pytest.mark.integration
 class TestLegacyCompatibility:
     """Test that legacy fake database fixtures still work for unit tests."""
 
+    @pytest.mark.integration
     def test_fake_db_fixture_works(self, db_connection, client):
         """Test that the legacy fake_db fixture still works for unit tests."""
         # This test uses the fake database, so it should work without the container
@@ -236,9 +248,11 @@ class TestLegacyCompatibility:
         assert "unpaidTotal" in data
 
 
+@pytest.mark.integration
 class TestDatabaseRobustness:
     """Robustness tests for the containerized database system."""
 
+    @pytest.mark.integration
     def test_testcontainers_dependency_available(self):
         """Test that testcontainers dependency is available."""
         try:
@@ -249,6 +263,7 @@ class TestDatabaseRobustness:
         except ImportError:
             pytest.fail("testcontainers package is not installed")
 
+    @pytest.mark.integration
     def test_docker_availability_check(self):
         """Test that Docker is available for container operations."""
         try:
@@ -260,6 +275,7 @@ class TestDatabaseRobustness:
         except (subprocess.TimeoutExpired, FileNotFoundError):
             pytest.skip("Docker is not available")
 
+    @pytest.mark.integration
     def test_schema_file_exists(self):
         """Test that required schema file exists."""
         schema_file = Path(__file__).parent / "test_schema.sql"
@@ -270,6 +286,7 @@ class TestDatabaseRobustness:
         assert len(content.strip()) > 0, "Schema file is empty"
         assert "CREATE TABLE" in content.upper(), "Schema file doesn't contain table definitions"
 
+    @pytest.mark.integration
     def test_seed_file_exists(self):
         """Test that required seed file exists."""
         seed_file = Path(__file__).parent / "seed.sql"
@@ -280,6 +297,7 @@ class TestDatabaseRobustness:
         assert len(content.strip()) > 0, "Seed file is empty"
         assert "INSERT INTO" in content.upper(), "Seed file doesn't contain insert statements"
 
+    @pytest.mark.integration
     def test_database_constraints_enforcement(self, db_connection):
         """Test that database constraints are properly enforced."""
         with db_connection.cursor() as cur:
@@ -311,6 +329,7 @@ class TestDatabaseRobustness:
             # Rollback the transaction
             db_connection.rollback()
 
+    @pytest.mark.integration
     def test_performance_benchmarks(self, db_connection):
         """Test basic performance benchmarks."""
         with db_connection.cursor() as cur:
@@ -341,6 +360,7 @@ class TestDatabaseRobustness:
             assert join_time < 2.0, f"Join query too slow: {join_time:.3f}s"
             assert len(results) > 0, "Should have joined results"
 
+    @pytest.mark.integration
     def test_transaction_rollback_safety(self, db_connection):
         """Test transaction rollback behavior."""
         original_count = None
@@ -378,6 +398,7 @@ class TestDatabaseRobustness:
             final_count = cur.fetchone()["count"]
             assert final_count == original_count, "Rollback failed"
 
+    @pytest.mark.integration
     def test_sql_injection_prevention(self, db_connection):
         """Test SQL injection prevention with parameterized queries."""
         malicious_input = "'; DROP TABLE customers; --"
@@ -395,6 +416,7 @@ class TestDatabaseRobustness:
             count = cur.fetchone()["count"]
             assert count > 0, "Customers table was affected by injection attempt"
 
+    @pytest.mark.integration
     def test_container_startup_performance(self, pg_container):
         """Test container startup and connection performance."""
         db_url = pg_container["db_url"]
@@ -410,6 +432,7 @@ class TestDatabaseRobustness:
         assert connection_time < 2.0, f"Connection too slow: {connection_time:.3f}s"
         assert result["test_value"] == 1
 
+    @pytest.mark.integration
     def test_multiple_concurrent_queries(self, pg_container):
         """Test handling of multiple concurrent operations."""
         import threading
@@ -449,6 +472,7 @@ class TestDatabaseRobustness:
         assert len(errors) == 0, f"Concurrent query errors: {errors}"
         assert len(results) == 3, f"Expected 3 results, got {len(results)}"
 
+    @pytest.mark.integration
     def test_data_integrity_under_stress(self, db_connection):
         """Test data integrity under various operations."""
         with db_connection.cursor() as cur:
@@ -490,6 +514,7 @@ class TestDatabaseRobustness:
             orphaned_services = cur.fetchone()["count"]
             assert orphaned_services == 0, "Found service associations without valid references"
 
+    @pytest.mark.integration
     def test_resource_cleanup_verification(self, pg_container):
         """Test that resources are properly cleaned up."""
         import psutil
@@ -524,6 +549,7 @@ class TestDatabaseRobustness:
             current_postgres_processes <= initial_postgres_processes + 10
         ), f"Too many postgres processes: {current_postgres_processes}"
 
+    @pytest.mark.integration
     def test_large_data_handling(self, db_connection):
         """Test handling of larger data operations."""
         with db_connection.cursor() as cur:
@@ -552,6 +578,7 @@ class TestDatabaseRobustness:
             cur.execute("DELETE FROM customers WHERE name = 'Large Data Customer'")
             db_connection.commit()
 
+    @pytest.mark.integration
     def test_timeout_and_recovery(self, pg_container):
         """Test timeout handling and connection recovery."""
         db_url = pg_container["db_url"]
@@ -571,6 +598,7 @@ class TestDatabaseRobustness:
         else:
             pytest.fail("Could not establish connection after 3 attempts")
 
+    @pytest.mark.integration
     def test_schema_validation_completeness(self):
         """Test that the schema includes all required elements."""
         schema_file = Path(__file__).parent / "test_schema.sql"
@@ -592,6 +620,7 @@ class TestDatabaseRobustness:
         for element in required_elements:
             assert element in content, f"Schema missing required element: {element}"
 
+    @pytest.mark.integration
     def test_seed_data_completeness(self):
         """Test that seed data includes all necessary test scenarios."""
         seed_file = Path(__file__).parent / "seed.sql"
@@ -610,6 +639,7 @@ class TestDatabaseRobustness:
         for element in required_elements:
             assert element in content, f"Seed data missing: {element}"
 
+    @pytest.mark.integration
     def test_cross_platform_compatibility(self):
         """Test cross-platform path and configuration compatibility."""
         # Test that paths work on different platforms
@@ -622,6 +652,7 @@ class TestDatabaseRobustness:
         assert seed_path.exists()
         assert str(schema_path).replace("\\", "/")  # Test path conversion
 
+    @pytest.mark.integration
     def test_environment_variable_handling(self, pg_container):
         """Test that environment variables are properly set and used."""
         # Check that required environment variables are available in env_vars
@@ -645,9 +676,11 @@ class TestDatabaseRobustness:
             assert not conn.closed
 
 
+@pytest.mark.integration
 class TestAdvancedRobustness:
     """Advanced robustness tests for edge cases and production scenarios."""
 
+    @pytest.mark.integration
     def test_memory_leak_detection(self, pg_container):
         """Test for potential memory leaks during repeated operations."""
         import psutil
@@ -676,6 +709,7 @@ class TestAdvancedRobustness:
         # Memory growth should be reasonable (< 50MB for this test)
         assert memory_growth_mb < 50, f"Excessive memory growth: {memory_growth_mb:.1f}MB"
 
+    @pytest.mark.integration
     def test_error_recovery_scenarios(self, pg_container):
         """Test recovery from various error scenarios."""
         db_url = pg_container["db_url"]
@@ -716,6 +750,7 @@ class TestAdvancedRobustness:
                 result = cur.fetchone()
                 assert result["count"] >= 0
 
+    @pytest.mark.integration
     def test_performance_under_load(self, pg_container):
         """Test performance characteristics under load."""
         db_url = pg_container["db_url"]
@@ -751,6 +786,7 @@ class TestAdvancedRobustness:
         # Should complete in reasonable time
         assert total_time < 10, f"Load test too slow: {total_time:.2f}s"
 
+    @pytest.mark.integration
     def test_data_consistency_verification(self, db_connection):
         """Test comprehensive data consistency checks."""
         with db_connection.cursor() as cur:

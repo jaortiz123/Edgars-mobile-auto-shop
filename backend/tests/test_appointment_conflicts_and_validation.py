@@ -16,6 +16,7 @@ def _iso(dt):
     return dt.isoformat().replace("+00:00", "Z")
 
 
+@pytest.mark.integration
 def test_create_conflict_same_tech(client, db_connection, future_start):
     # Create first appointment
     tech_uuid = "11111111-1111-1111-1111-111111111111"
@@ -43,6 +44,7 @@ def test_create_conflict_same_tech(client, db_connection, future_start):
     assert err["code"] == "conflict"
 
 
+@pytest.mark.integration
 def test_edit_conflict_same_tech(client, db_connection, future_start):
     # Create two non-overlapping (different tech or time) appointments then force a conflict via PATCH
     tech_uuid = "22222222-2222-2222-2222-222222222222"
@@ -80,6 +82,7 @@ def test_edit_conflict_same_tech(client, db_connection, future_start):
     assert body and body["error"]["code"] == "conflict"
 
 
+@pytest.mark.integration
 def test_create_validation_error_paid_exceeds_total(client, db_connection, future_start):
     payload = {
         "customer_id": "Cust C",
@@ -95,6 +98,7 @@ def test_create_validation_error_paid_exceeds_total(client, db_connection, futur
     assert body and body["error"]["code"] == "validation_failed"
 
 
+@pytest.mark.integration
 def test_edit_validation_error_paid_exceeds_total(client, db_connection, future_start):
     # Create valid appointment
     payload_ok = {

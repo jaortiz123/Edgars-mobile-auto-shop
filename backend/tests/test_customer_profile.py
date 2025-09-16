@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Tests for /api/admin/customers/<id> customer profile endpoint.
 
+import pytest
+
 Scenarios covered:
 - Default lightweight response (no include)
 - Expanded response with ?include=appointmentDetails
@@ -256,6 +258,7 @@ def _swap_safe_conn(monkeypatch, want_details):
     monkeypatch.setattr(srv, "safe_conn", lambda: (_Conn(want_details), False, None))
 
 
+@pytest.mark.integration
 def test_profile_default_lightweight(client, auth_headers, mock_db, monkeypatch):
     _swap_safe_conn(monkeypatch, want_details=False)
     resp = client.get("/api/admin/customers/cust-1", headers=auth_headers())
@@ -271,6 +274,7 @@ def test_profile_default_lightweight(client, auth_headers, mock_db, monkeypatch)
         assert "messages" not in appt
 
 
+@pytest.mark.integration
 def test_profile_expanded_details(client, auth_headers, mock_db, monkeypatch):
     _swap_safe_conn(monkeypatch, want_details=True)
     resp = client.get(
@@ -291,6 +295,7 @@ def test_profile_expanded_details(client, auth_headers, mock_db, monkeypatch):
     assert body["metrics"]["avgTicket"] == 450
 
 
+@pytest.mark.integration
 def test_profile_invalid_include(client, auth_headers, mock_db, monkeypatch):
     _swap_safe_conn(monkeypatch, want_details=False)
     resp = client.get("/api/admin/customers/cust-1?include=foobar", headers=auth_headers())
@@ -299,6 +304,7 @@ def test_profile_invalid_include(client, auth_headers, mock_db, monkeypatch):
     assert payload["error"]["code"] == "invalid_include" if "error" in payload else True
 
 
+@pytest.mark.integration
 def test_profile_not_found(client, auth_headers, mock_db, monkeypatch):
     # safe_conn returns connection; customer lookup returns None
     import backend.local_server as srv
@@ -337,6 +343,7 @@ def test_profile_not_found(client, auth_headers, mock_db, monkeypatch):
     assert payload["error"]["code"] == "not_found" if "error" in payload else True
 
 
+@pytest.mark.integration
 def test_profile_vip_overdue_logic(client, auth_headers, mock_db, monkeypatch):
     # Make metrics show spend > 5000 and last service 7 months ago to trigger VIP + overdue
     import backend.local_server as srv

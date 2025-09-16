@@ -13,6 +13,7 @@ REQUEST_ID_REGEX = local_server.REQUEST_ID_REGEX
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_request_id_lowercase_uuidv4_enforced(client):
     importlib.reload(local_server)
     inbound = str(uuid.uuid4()).upper()  # uppercase form
@@ -26,6 +27,7 @@ def test_request_id_lowercase_uuidv4_enforced(client):
 
 
 @pytest.mark.usefixtures("db_connection")
+@pytest.mark.integration
 def test_logging_circuit_breaker_trips_and_recovers(client, monkeypatch, caplog):
     # Force small threshold for faster test by monkeypatching class constants before reload
     monkeypatch.setenv("LOG_CIRCUIT_FAIL_THRESHOLD", "3")

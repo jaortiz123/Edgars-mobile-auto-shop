@@ -38,6 +38,7 @@ def _seed_invoices(conn):
     return invoice_ids
 
 
+@pytest.mark.integration
 def test_list_invoices_basic(pg_container):
     conn = srv.db_conn()
     try:
@@ -54,6 +55,7 @@ def test_list_invoices_basic(pg_container):
     assert data["data"]["total_items"] >= 4
 
 
+@pytest.mark.integration
 def test_list_invoices_filter_customer(pg_container):
     conn = srv.db_conn()
     try:
@@ -68,6 +70,7 @@ def test_list_invoices_filter_customer(pg_container):
     assert all(r["customer_id"] == 1 for r in data["data"]["items"])
 
 
+@pytest.mark.integration
 def test_list_invoices_filter_status(pg_container):
     # Void one invoice then filter
     conn = srv.db_conn()

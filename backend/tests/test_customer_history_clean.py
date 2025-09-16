@@ -27,6 +27,7 @@ def auth_headers():
     return make_token
 
 
+@pytest.mark.integration
 def test_get_customer_history_returns_404_for_nonexistent_customer(
     client, auth_headers, monkeypatch
 ):
@@ -79,6 +80,7 @@ def test_get_customer_history_returns_404_for_nonexistent_customer(
     assert "customer" in json_data["error"]["message"].lower()
 
 
+@pytest.mark.integration
 def test_get_customer_history_returns_empty_for_customer_with_no_appointments(
     client, auth_headers, monkeypatch
 ):
@@ -133,6 +135,7 @@ def test_get_customer_history_returns_empty_for_customer_with_no_appointments(
     assert json_data["data"]["pastAppointments"] == []
 
 
+@pytest.mark.integration
 def test_get_customer_history_returns_past_appointments_with_payments(
     client, auth_headers, db_connection
 ):
@@ -160,6 +163,7 @@ def test_get_customer_history_returns_past_appointments_with_payments(
     assert "payments" in appointment
 
 
+@pytest.mark.integration
 def test_get_customer_history_requires_authentication(no_auto_auth_client):
     """Test that the endpoint requires authentication"""
     response = no_auto_auth_client.get("/api/customers/123/history")
@@ -169,6 +173,7 @@ def test_get_customer_history_requires_authentication(no_auto_auth_client):
     assert json_data["error"]["code"] in ("auth_required", "forbidden")
 
 
+@pytest.mark.integration
 def test_get_customer_history_only_returns_completed_appointments(
     client, auth_headers, db_connection
 ):
@@ -184,6 +189,7 @@ def test_get_customer_history_only_returns_completed_appointments(
         assert appointment["status"] in ["COMPLETED", "NO_SHOW", "CANCELED"]
 
 
+@pytest.mark.integration
 def test_get_customer_history_orders_by_date_desc(client, auth_headers, db_connection):
     """Test that appointments are ordered by start date descending"""
     response = client.get("/api/customers/123/history", headers=auth_headers("Owner"))

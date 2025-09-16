@@ -40,6 +40,7 @@ def _create_tenant(client, slug: str, name: str) -> str:
     return tid
 
 
+@pytest.mark.integration
 def test_customer_forbidden_across_tenant(client):
     # Arrange: two tenants
     tenant_a = _create_tenant(client, f"t-a-{uuid.uuid4().hex[:6]}", "Tenant A")
@@ -92,6 +93,7 @@ def _insert_staff_membership(staff_id: str, tenant_id: str):
     conn.close()
 
 
+@pytest.mark.integration
 def test_advisor_forbidden_across_tenant(client):
     # tenants
     tenant_a = _create_tenant(client, f"t-a-{uuid.uuid4().hex[:6]}", "Tenant A")

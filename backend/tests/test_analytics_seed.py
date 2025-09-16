@@ -6,6 +6,10 @@ import pathlib
 # with at least one row when run after the base seed.
 
 
+import pytest
+
+
+@pytest.mark.integration
 def test_analytics_seed_populates_events(db_connection):  # depends on pg_container base seed
     seed_path = (
         pathlib.Path(__file__).resolve().parent.parent / "seeds" / "seed_analytics_events.sql"
@@ -25,6 +29,7 @@ def test_analytics_seed_populates_events(db_connection):  # depends on pg_contai
     assert count > 0, "Expected analytics seed to insert at least one usage event"
 
 
+@pytest.mark.integration
 def test_analytics_endpoint_after_seed(client, db_connection):
     # Ensure some events exist (idempotent re-run of seed acceptable)
     seed_path = (

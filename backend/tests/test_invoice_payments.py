@@ -23,6 +23,7 @@ def _new_completed_invoice(conn, initial_services=None):
     return inv["id"], str(appt_id), inv
 
 
+@pytest.mark.integration
 def test_partial_payment_sets_partially_paid(pg_container):
     conn = srv.db_conn()
     try:
@@ -41,6 +42,7 @@ def test_partial_payment_sets_partially_paid(pg_container):
     assert data["data"]["invoice"]["amount_due_cents"] == 5000
 
 
+@pytest.mark.integration
 def test_full_payment_sets_paid(pg_container):
     conn = srv.db_conn()
     try:
@@ -57,6 +59,7 @@ def test_full_payment_sets_paid(pg_container):
     assert data["data"]["invoice"]["amount_due_cents"] == 0
 
 
+@pytest.mark.integration
 def test_overpayment_rejected(pg_container):
     conn = srv.db_conn()
     try:
@@ -72,6 +75,7 @@ def test_overpayment_rejected(pg_container):
     assert data["error"]["code"] in ("overpayment", "bad_request")
 
 
+@pytest.mark.integration
 def test_payment_on_paid_invoice_rejected(pg_container):
     conn = srv.db_conn()
     try:

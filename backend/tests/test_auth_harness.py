@@ -96,6 +96,7 @@ def unauth_client():
 
 
 @pytest.mark.parametrize("method,path", GUARDED_CASES, ids=CASE_IDS)
+@pytest.mark.integration
 def test_guarded_admin_routes_require_auth(unauth_client, method: str, path: str):
     # Always include a tenant header to avoid 400s for missing tenant; no Authorization on purpose
     headers = {

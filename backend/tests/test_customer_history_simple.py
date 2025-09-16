@@ -2,11 +2,13 @@ import pytest
 import jwt
 
 
+@pytest.mark.integration
 def test_simple():
     """Simple test to verify pytest is working"""
     assert True
 
 
+@pytest.mark.integration
 def test_get_customer_history_requires_authentication(no_auto_auth_client):
     """Test that the endpoint requires authentication"""
     response = no_auto_auth_client.get("/api/customers/123/history")
