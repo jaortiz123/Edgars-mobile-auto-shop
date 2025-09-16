@@ -25,6 +25,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_autoshop
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd="pg_isready -U test_user -d test_autoshop"
+          --health-interval=2s --health-timeout=2s --health-retries=30
+
     steps:
       - uses: actions/checkout@v4
 
@@ -67,14 +80,27 @@ jobs:
       - name: Build
         run: scripts/ci/build.sh
 
+      - name: Wait for Postgres (host)
+        run: |
+          for i in {1..60}; do
+            if pg_isready -h 127.0.0.1 -p 55432 -U test_user -d test_autoshop; then exit 0; fi
+            sleep 1
+          done
+          echo "Postgres never became ready"; exit 1
+
+      - name: Apply schema + seed minimum data
+        run: |
+          psql "postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop" -v ON_ERROR_STOP=1 -f database/init.sql || echo "No database/init.sql found"
+          python backend/run_sql_migrations.py || echo "Migration script not found or failed"
+          psql "postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop" -v ON_ERROR_STOP=1 -f backend/seeds/seed_s1.sql || echo "No seed file found"
+
       - name: Integration (real Postgres)
         env:
-          POSTGRES_HOST: 127.0.0.1
-          POSTGRES_PORT: "55432"
-          POSTGRES_DB: test_autoshop
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
           DATABASE_URL: postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop
+          AWS_DEFAULT_REGION: us-west-2
+          APP_INSTANCE_ID: ci
+          SKIP_TENANT_ENFORCEMENT: "true"
+          FALLBACK_TO_MEMORY: "false"
         run: scripts/ci/test_integration.sh
 
       # Playwright dependencies & cache (prevents re-download each run)

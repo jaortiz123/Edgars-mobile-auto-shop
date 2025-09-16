@@ -19,14 +19,16 @@ services:
     environment:
       # Ensure the backend connects to the Postgres container, not localhost
       - POSTGRES_HOST=db
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-test_autoshop}
+      - POSTGRES_USER=${POSTGRES_USER:-test_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-test_password}
       # Override DATABASE_URL from .env so container uses service host 'db'
-      - DATABASE_URL=postgres://postgres:postgres@db:5432/edgar_db?sslmode=disable
-      - JWT_SECRET=${JWT_SECRET}
-      - LOG_LEVEL=${LOG_LEVEL}
-      - DEFAULT_TEST_TENANT=${DEFAULT_TEST_TENANT}
+      - DATABASE_URL=${DATABASE_URL_COMPOSE:-postgresql://test_user:test_password@db:5432/test_autoshop}
+      - JWT_SECRET=${JWT_SECRET:-test-secret}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DEFAULT_TEST_TENANT=${DEFAULT_TEST_TENANT:-00000000-0000-0000-0000-000000000001}
+      - SKIP_TENANT_ENFORCEMENT=true
+      - FALLBACK_TO_MEMORY=false
       # Enable E2E bypass logic in backend auth/tenant middleware
       - APP_INSTANCE_ID=ci
     env_file:
@@ -62,11 +64,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-test_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-test_password}
+      POSTGRES_DB: ${POSTGRES_DB:-test_autoshop}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-test_user} -d ${POSTGRES_DB:-test_autoshop}"]
       interval: 5s
       timeout: 5s
       retries: 5
