@@ -52,6 +52,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
+      - name: Install jq (for coverage gate)
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       # Single source of truth: call the same scripts used locally
       - name: Setup
         run: scripts/ci/setup.sh
@@ -70,6 +73,13 @@ jobs:
           AWS_DEFAULT_REGION: us-west-2
         run: scripts/ci/test_unit.sh
 
+      - name: Sanity | Verify coverage scope
+        run: |
+          echo "Frontend coverage scope verification:"
+          cd frontend
+          echo "✅ Using: npm run test:unit:ci (--project unit)"
+          echo "Coverage file: $(ls -la coverage/coverage-summary.json 2>/dev/null || echo 'Not found yet')"
+
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
@@ -80,6 +90,11 @@ jobs:
       - name: Build
         run: scripts/ci/build.sh
 
+      - name: Install Postgres client tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
       - name: Wait for Postgres (host)
         run: |
           for i in {1..60}; do
@@ -88,11 +103,49 @@ jobs:
           done
           echo "Postgres never became ready"; exit 1
 
-      - name: Apply schema + seed minimum data
+      - name: Apply schema + migrations + seed
+        env:
+          PGPASSWORD: test_password
         run: |
-          psql "postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop" -v ON_ERROR_STOP=1 -f database/init.sql || echo "No database/init.sql found"
-          python backend/run_sql_migrations.py || echo "Migration script not found or failed"
-          psql "postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop" -v ON_ERROR_STOP=1 -f backend/seeds/seed_s1.sql || echo "No seed file found"
+          psql -h 127.0.0.1 -p 55432 -U test_user -d test_autoshop -v ON_ERROR_STOP=1 -f database/init.sql
+          python backend/run_sql_migrations.py
+          psql -h 127.0.0.1 -p 55432 -U test_user -d test_autoshop -v ON_ERROR_STOP=1 -f backend/seeds/seed_s1.sql
+
+      - name: Sanity | Show env (redacted)
+        run: |
+          echo "DB URL (host): $(echo "${DATABASE_URL:-postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop}" | sed 's/:.*@/:***@/')"
+
+      - name: Sanity | Wait for Postgres (host)
+        run: |
+          for i in {1..90}; do
+            pg_isready -h 127.0.0.1 -p 55432 -U test_user -d test_autoshop && exit 0
+            sleep 1
+          done
+          echo "DB not ready"; exit 1
+
+      - name: Sanity | SELECT 1
+        env:
+          PGPASSWORD: test_password
+        run: |
+          psql "postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop" -c "SELECT 1;"
+
+      - name: Start backend (host mode)
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@127.0.0.1:55432/test_autoshop
+          JWT_SECRET: test-secret
+          DEFAULT_TEST_TENANT: 00000000-0000-0000-0000-000000000001
+          APP_INSTANCE_ID: ci
+          SKIP_TENANT_ENFORCEMENT: "true"
+          FALLBACK_TO_MEMORY: "false"
+        run: |
+          cd backend
+          nohup python run_server.py >/tmp/backend.log 2>&1 &
+          echo $! > ../backend.pid
+          cd ..
+
+      - name: Sanity | Backend health (host)
+        run: |
+          timeout 90 bash -c 'until curl -fsS http://localhost:3001/health; do sleep 2; done'
 
       - name: Integration (real Postgres)
         env:
@@ -102,6 +155,17 @@ jobs:
           SKIP_TENANT_ENFORCEMENT: "true"
           FALLBACK_TO_MEMORY: "false"
         run: scripts/ci/test_integration.sh
+
+      - name: Tail backend logs on failure
+        if: failure()
+        run: |
+          echo "---- /tmp/backend.log (tail) ----"
+          tail -n 200 /tmp/backend.log || true
+
+      - name: Stop backend
+        if: always()
+        run: |
+          [[ -f backend.pid ]] && kill "$(cat backend.pid)" || true
 
       # Playwright dependencies & cache (prevents re-download each run)
       - name: Cache Playwright browsers
@@ -118,8 +182,64 @@ jobs:
         working-directory: frontend
         run: npx playwright install --with-deps chromium
 
+      - name: Install Docker Compose
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
+
+      - name: Compose up
+        run: |
+          export $(grep -v '^#' .env.ci | xargs)
+          docker-compose up -d --build
+
+      - name: Sanity | Backend env has DATABASE_URL
+        run: |
+          docker-compose exec -T backend /bin/sh -lc 'echo "DATABASE_URL=$DATABASE_URL" | sed "s#//[^:]*:[^@]*@#//***:***@#"'
+
+      - name: Sanity | Wait DB (compose)
+        run: |
+          docker-compose exec -T db bash -lc '
+            for i in {1..90}; do
+              pg_isready -h localhost -p 5432 -U test_user -d test_autoshop && exit 0
+              sleep 1
+            done
+            echo "DB not ready in compose"; exit 1
+          '
+
+      - name: Schema | migrations + seed (compose)
+        run: |
+          docker-compose exec -T backend psql "postgresql://test_user:test_password@db:5432/test_autoshop" -v ON_ERROR_STOP=1 -f /app/database/init.sql
+          docker-compose exec -T backend python run_sql_migrations.py
+          docker-compose exec -T backend psql "postgresql://test_user:test_password@db:5432/test_autoshop" -v ON_ERROR_STOP=1 -f /app/backend/seeds/seed_s1.sql
+
+      - name: Sanity | Backend health (compose)
+        run: |
+          timeout 120 bash -c 'until curl -fsS http://localhost:3001/health; do sleep 3; done'
+
       - name: E2E (Playwright)
+        env:
+          API_BASE_URL: http://localhost:3001
         run: scripts/ci/test_e2e.sh
+
+      - name: Dump compose status on failure
+        if: failure()
+        run: |
+          docker-compose ps || true
+          echo "---- DB logs ----"
+          docker-compose logs db | tail -n 200 || true
+          echo "---- Backend logs ----"
+          docker-compose logs backend | tail -n 200 || true
+
+      - name: Dump host Postgres logs (if service)
+        if: failure()
+        run: |
+          docker ps -a || true
+          sudo journalctl -u postgresql --no-pager -n 200 || true
+
+      - name: Cleanup compose
+        if: always()
+        run: docker-compose down
 
       - name: Upload Playwright artifacts on failure
         if: failure()

@@ -34,13 +34,15 @@ if [[ -z "${DATABASE_URL:-}" ]]; then
   done
 
   # Run migrations/seeds for local
-  echo "🔧 Running local migrations + seed..."
+  echo "🔧 Running local schema + migrations + seed..."
+  psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -f database/init.sql 2>/dev/null || echo "No schema file database/init.sql"
   cd backend && python run_sql_migrations.py && cd ..
   psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -f backend/seeds/seed_s1.sql 2>/dev/null || echo "No seed file backend/seeds/seed_s1.sql"
 
   LOCAL_POSTGRES=true
 else
   echo "🐘 Using CI Postgres service at ${DATABASE_URL}"
+  echo "🔍 Database URL: $(echo "${DATABASE_URL}" | sed 's/:.*@/:***@/')"
   LOCAL_POSTGRES=false
 fi
 
