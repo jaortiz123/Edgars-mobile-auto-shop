@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { AppointmentHistoryCard } from '@/components/admin/AppointmentHistoryCard';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import type { Appointment, Vehicle } from '@/types/customerProfile';
+import { useState, useMemo } from 'react';
+import { AppointmentHistoryCard } from './AppointmentHistoryCard';
+import { Button } from '../ui/Button';
+import { Badge } from '../ui/Badge';
+import type { Appointment, Vehicle } from '../../types/customerProfile';
 import { Calendar, Filter, Search } from 'lucide-react';
 
 interface AppointmentHistoryProps {
@@ -34,7 +34,7 @@ export function AppointmentHistory({
   const [searchTerm, setSearchTerm] = useState('');
 
   // Create vehicle lookup map for performance
-  const vehicleMap = React.useMemo(() => {
+  const vehicleMap = useMemo(() => {
     const map = new Map<string, Vehicle>();
     vehicles.forEach(vehicle => {
       map.set(vehicle.id, vehicle);
@@ -43,7 +43,7 @@ export function AppointmentHistory({
   }, [vehicles]);
 
   // Filter appointments
-  const filteredAppointments = React.useMemo(() => {
+  const filteredAppointments = useMemo(() => {
     return appointments.filter(appointment => {
       // Status filter
       if (statusFilter !== 'all' && appointment.status.toLowerCase() !== statusFilter) {
@@ -72,13 +72,13 @@ export function AppointmentHistory({
   }, [appointments, statusFilter, searchTerm, vehicleMap]);
 
   // Get unique statuses for filter options
-  const availableStatuses = React.useMemo(() => {
+  const availableStatuses = useMemo(() => {
     const statusSet = new Set(appointments.map(a => a.status.toLowerCase()));
     return Array.from(statusSet).sort();
   }, [appointments]);
 
   // Summary stats
-  const stats = React.useMemo(() => {
+  const stats = useMemo(() => {
     const total = appointments.length;
     const completed = appointments.filter(a => a.status.toLowerCase() === 'completed').length;
     const totalRevenue = appointments.reduce((sum, a) => sum + (a.invoice?.total || 0), 0);

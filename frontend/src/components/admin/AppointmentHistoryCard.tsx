@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { money, dtLocal } from '@/utils/format';
+import { useState } from 'react';
+import { Card, CardHeader, CardContent } from '../ui/Card';
+import { Badge } from '../ui/Badge';
+import { Button } from '../ui/Button';
+import { money, dtLocal } from '../../utils/format';
 import {
   Calendar,
   Clock,
@@ -16,9 +16,13 @@ import {
   XCircle,
   Eye,
   Download,
-  Mail
+  Mail,
+  Shield,
+  ShieldCheck,
+  ShieldX,
+  Tag
 } from 'lucide-react';
-import type { Appointment, Vehicle, AppointmentService, Money } from '@/types/customerProfile';
+import type { Appointment, Vehicle, AppointmentService, Money } from '../../types/customerProfile';
 
 interface AppointmentHistoryCardProps {
   appointment: Appointment;
@@ -41,15 +45,20 @@ export function AppointmentHistoryCard({
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [email, setEmail] = useState('');
 
-  // Status styling
-  const getStatusInfo = (status: string) => {
-    switch (status.toLowerCase()) {
+  // Status styling with enhanced completed/scheduled distinction
+  const getStatusInfo = (status: string, isCompleted?: boolean) => {
+    // Use is_completed flag for more reliable status detection
+    const effectiveStatus = isCompleted ? 'completed' : status.toLowerCase();
+    
+    switch (effectiveStatus) {
       case 'completed':
         return {
           variant: 'success' as const,
           icon: CheckCircle,
           color: 'text-green-600',
-          bgColor: 'bg-green-50'
+          bgColor: 'bg-green-50',
+          borderColor: 'border-green-200',
+          cardBg: 'bg-green-50/30'
         };
       case 'in-progress':
       case 'in_progress':
@@ -57,14 +66,18 @@ export function AppointmentHistoryCard({
           variant: 'warning' as const,
           icon: Clock,
           color: 'text-orange-600',
-          bgColor: 'bg-orange-50'
+          bgColor: 'bg-orange-50',
+          borderColor: 'border-orange-200',
+          cardBg: 'bg-orange-50/30'
         };
       case 'scheduled':
         return {
           variant: 'primary' as const,
           icon: Calendar,
           color: 'text-blue-600',
-          bgColor: 'bg-blue-50'
+          bgColor: 'bg-blue-50',
+          borderColor: 'border-blue-200',
+          cardBg: 'bg-blue-50/30'
         };
       case 'cancelled':
       case 'no-show':
@@ -72,22 +85,27 @@ export function AppointmentHistoryCard({
           variant: 'destructive' as const,
           icon: XCircle,
           color: 'text-red-600',
-          bgColor: 'bg-red-50'
+          bgColor: 'bg-red-50',
+          borderColor: 'border-red-200',
+          cardBg: 'bg-red-50/30'
         };
       default:
         return {
           variant: 'outline' as const,
           icon: AlertCircle,
           color: 'text-gray-600',
-          bgColor: 'bg-gray-50'
+          bgColor: 'bg-gray-50',
+          borderColor: 'border-gray-200',
+          cardBg: 'bg-gray-50/30'
         };
     }
   };
 
-  const statusInfo = getStatusInfo(appointment.status);
+  const statusInfo = getStatusInfo(appointment.status, appointment.is_completed);
   const StatusIcon = statusInfo.icon;
   const hasInvoice = !!appointment.invoice;
   const hasUnpaidBalance = appointment.invoice && appointment.invoice.unpaid > 0;
+  const isCompleted = appointment.is_completed || appointment.status.toLowerCase() === 'completed';
 
   // Format vehicle display
   const formatVehicle = (vehicle?: Vehicle | null) => {
@@ -113,6 +131,81 @@ export function AppointmentHistoryCard({
     return `${mins}m`;
   };
 
+  // Warranty badge rendering
+  const renderWarrantyBadge = () => {
+    if (!isCompleted || !appointment.warranty_info || !appointment.warranty_info.has_warranty_active) {
+      return null;
+    }
+
+    const activeWarranties = appointment.warranty_info.warranty_services.filter(
+      w => w.warranty_status === 'Active'
+    );
+
+    if (activeWarranties.length === 0) return null;
+
+    // Find warranty with shortest remaining time for display
+    const shortestWarranty = activeWarranties.reduce((shortest, current) => {
+      if (!current.warranty_days_remaining) return shortest;
+      if (!shortest.warranty_days_remaining) return current;
+      return current.warranty_days_remaining < shortest.warranty_days_remaining ? current : shortest;
+    });
+
+    const daysRemaining = shortestWarranty.warranty_days_remaining;
+    const isExpiringSoon = daysRemaining && daysRemaining <= 30;
+
+    return (
+      <Badge 
+        variant={isExpiringSoon ? "warning" : "success"} 
+        className="text-xs flex items-center gap-1"
+        data-testid="warranty-badge"
+      >
+        <Shield className="h-3 w-3" />
+        Warranty: {daysRemaining ? `${daysRemaining} days` : 'Active'}
+      </Badge>
+    );
+  };
+
+  // Service type badges rendering
+  const renderServiceTypeBadges = () => {
+    if (!appointment.service_summary) return null;
+
+    const { parts_count, labor_count, diagnostic_count } = appointment.service_summary;
+    const badges = [];
+
+    if (parts_count > 0) {
+      badges.push(
+        <Badge key="parts" variant="outline" className="text-xs flex items-center gap-1">
+          <Tag className="h-3 w-3" />
+          {parts_count} Parts
+        </Badge>
+      );
+    }
+
+    if (labor_count > 0) {
+      badges.push(
+        <Badge key="labor" variant="outline" className="text-xs flex items-center gap-1">
+          <Wrench className="h-3 w-3" />
+          {labor_count} Labor
+        </Badge>
+      );
+    }
+
+    if (diagnostic_count > 0) {
+      badges.push(
+        <Badge key="diagnostic" variant="outline" className="text-xs flex items-center gap-1">
+          <AlertCircle className="h-3 w-3" />
+          {diagnostic_count} Diagnostic
+        </Badge>
+      );
+    }
+
+    return badges.length > 0 ? (
+      <div className="flex flex-wrap gap-1 mt-1" data-testid="service-type-badges">
+        {badges}
+      </div>
+    ) : null;
+  };
+
   const handleEmailInvoice = () => {
     if (email && onEmailInvoice) {
       onEmailInvoice(appointment.id, email);
@@ -122,7 +215,10 @@ export function AppointmentHistoryCard({
   };
 
   return (
-    <Card className={`transition-all duration-200 hover:shadow-md ${className}`} data-testid="appointment-history-card">
+    <Card 
+      className={`transition-all duration-200 hover:shadow-md border-l-4 ${statusInfo.borderColor} ${statusInfo.cardBg} ${className}`} 
+      data-testid="appointment-history-card"
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           {/* Left side: Main appointment info */}
@@ -132,13 +228,14 @@ export function AppointmentHistoryCard({
                 <StatusIcon className={`h-4 w-4 ${statusInfo.color}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <h3 className="font-semibold text-base" data-testid="appointment-date">
                     {dtLocal(appointment.scheduled_at)}
                   </h3>
                   <Badge variant={statusInfo.variant} className="text-xs" data-testid="appointment-status">
                     {appointment.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                   </Badge>
+                  {renderWarrantyBadge()}
                 </div>
 
                 {/* Vehicle information */}
@@ -153,11 +250,14 @@ export function AppointmentHistoryCard({
                 </div>
 
                 {/* Services */}
-                <div className="flex items-start gap-1 text-sm text-gray-600">
-                  <Wrench className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                  <span className="line-clamp-2" data-testid="appointment-services">
-                    {formatServices(appointment.services)}
-                  </span>
+                <div className="space-y-1">
+                  <div className="flex items-start gap-1 text-sm text-gray-600">
+                    <Wrench className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                    <span className="line-clamp-2" data-testid="appointment-services">
+                      {formatServices(appointment.services)}
+                    </span>
+                  </div>
+                  {renderServiceTypeBadges()}
                 </div>
               </div>
             </div>
@@ -205,7 +305,7 @@ export function AppointmentHistoryCard({
             )}
 
             {/* Actions for completed appointments with invoices */}
-            {hasInvoice && appointment.status.toLowerCase() === 'completed' && (
+            {hasInvoice && isCompleted && (
               <div className="flex flex-col gap-1">
                 <Button
                   variant="outline"
@@ -239,11 +339,42 @@ export function AppointmentHistoryCard({
                 </Button>
               </div>
             )}
+
+            {/* Service Advisor Quick Actions */}
+            {isCompleted && (
+              <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-gray-200">
+                {appointment.warranty_info?.has_warranty_active && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowDetails(true)}
+                    className="text-xs h-7 text-blue-600 border-blue-300 hover:bg-blue-50"
+                    data-testid="check-warranty-btn"
+                  >
+                    <Shield className="h-3 w-3 mr-1" />
+                    Warranty
+                  </Button>
+                )}
+                {appointment.major_services?.length && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowDetails(true)}
+                    className="text-xs h-7 text-green-600 border-green-300 hover:bg-green-50"
+                    data-testid="view-services-btn"
+                  >
+                    <Wrench className="h-3 w-3 mr-1" />
+                    Services
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Toggle details button */}
-        {(appointment.notes || appointment.completed_at || appointment.check_in_at) && (
+        {(appointment.notes || appointment.completed_at || appointment.check_in_at || 
+          appointment.warranty_info || appointment.major_services?.length) && (
           <Button
             variant="ghost"
             size="sm"
@@ -260,6 +391,76 @@ export function AppointmentHistoryCard({
       {showDetails && (
         <CardContent className="pt-0 border-t bg-gray-50/50">
           <div className="space-y-3 text-sm">
+            {/* Service Advisor Quick Summary */}
+            {isCompleted && (appointment.major_services?.length || appointment.service_summary) && (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                <h4 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                  <Wrench className="h-4 w-4" />
+                  Service Summary
+                </h4>
+                {appointment.major_services?.length && (
+                  <div className="mb-2">
+                    <span className="text-blue-700 font-medium">Major Services: </span>
+                    <span className="text-blue-600">{appointment.major_services.join(', ')}</span>
+                  </div>
+                )}
+                {appointment.service_summary && (
+                  <div className="text-xs text-blue-600">
+                    Total: {appointment.service_summary.total_services} services • 
+                    Parts: {appointment.service_summary.parts_count} • 
+                    Labor: {appointment.service_summary.labor_count} • 
+                    Diagnostic: {appointment.service_summary.diagnostic_count}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Warranty Information */}
+            {isCompleted && appointment.warranty_info && (
+              <div className="space-y-2">
+                <h4 className="font-medium text-gray-700 flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Warranty Status
+                </h4>
+                {appointment.warranty_info.has_warranty_active ? (
+                  <div className="space-y-1">
+                    {appointment.warranty_info.warranty_services.map((warranty, index) => (
+                      <div 
+                        key={index}
+                        className={`flex items-center justify-between p-2 rounded text-xs ${
+                          warranty.warranty_status === 'Active' 
+                            ? 'bg-green-100 border border-green-200' 
+                            : 'bg-red-100 border border-red-200'
+                        }`}
+                        data-testid={`warranty-detail-${index}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {warranty.warranty_status === 'Active' ? (
+                            <ShieldCheck className="h-3 w-3 text-green-600" />
+                          ) : (
+                            <ShieldX className="h-3 w-3 text-red-600" />
+                          )}
+                          <span className="font-medium">{warranty.service_name}</span>
+                        </div>
+                        <div className="text-right">
+                          <div className={warranty.warranty_status === 'Active' ? 'text-green-700' : 'text-red-700'}>
+                            {warranty.warranty_status}
+                          </div>
+                          {warranty.warranty_days_remaining !== null && warranty.warranty_status === 'Active' && (
+                            <div className="text-green-600">
+                              {warranty.warranty_days_remaining} days remaining
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-500 italic">No active warranties</div>
+                )}
+              </div>
+            )}
+
             {/* Timestamps */}
             {(appointment.check_in_at || appointment.check_out_at || appointment.completed_at) && (
               <div className="space-y-1">

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vehicle Selection Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-case { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .result { margin: 10px 0; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Phase 2 Vehicle Selection Test</h1>
+
+    <div class="test-case">
+        <h3>Test Case 1: Single Vehicle Customer (John Doe)</h3>
+        <p><strong>Phone:</strong> +1-555-0123</p>
+        <p><strong>Expected:</strong> Auto-populate vehicle fields with 2020 Honda Civic - ABC123</p>
+        <div class="result" id="test1-result">Testing...</div>
+    </div>
+
+    <div class="test-case">
+        <h3>Test Case 2: Multiple Vehicle Customer (Jane Smith)</h3>
+        <p><strong>Phone:</strong> (555) 555-5555</p>
+        <p><strong>Expected:</strong> Show vehicle dropdown with Toyota Camry (primary) and Ford F-150</p>
+        <div class="result" id="test2-result">Testing...</div>
+    </div>
+
+    <div class="test-case">
+        <h3>Test Case 3: Non-existent Customer</h3>
+        <p><strong>Phone:</strong> 9999999999</p>
+        <p><strong>Expected:</strong> Show manual vehicle entry form (no auto-population)</p>
+        <div class="result" id="test3-result">Testing...</div>
+    </div>
+
+    <script>
+        async function testAPI() {
+            const tests = [
+                {
+                    id: 'test1',
+                    phone: '+1-555-0123',
+                    expected: 'single_vehicle',
+                    description: 'John Doe - Single Vehicle'
+                },
+                {
+                    id: 'test2',
+                    phone: '(555) 555-5555',
+                    expected: 'multiple_vehicles',
+                    description: 'Jane Smith - Multiple Vehicles'
+                },
+                {
+                    id: 'test3',
+                    phone: '9999999999',
+                    expected: 'no_customer',
+                    description: 'Non-existent Customer'
+                }
+            ];
+
+            for (const test of tests) {
+                try {
+                    const response = await fetch(`http://localhost:3001/api/customers/lookup?phone=${encodeURIComponent(test.phone)}`);
+                    const data = await response.json();
+
+                    let result = '';
+                    let success = false;
+
+                    if (test.expected === 'single_vehicle') {
+                        if (data.ok && data.data.found && data.data.customer.vehicles.length === 1) {
+                            const vehicle = data.data.customer.vehicles[0];
+                            result = `✅ SUCCESS: Found 1 vehicle - ${vehicle.year} ${vehicle.make} ${vehicle.model} (${vehicle.license_plate})`;
+                            success = true;
+                        } else {
+                            result = `❌ FAIL: Expected 1 vehicle, got ${data.data?.customer?.vehicles?.length || 0}`;
+                        }
+                    } else if (test.expected === 'multiple_vehicles') {
+                        if (data.ok && data.data.found && data.data.customer.vehicles.length > 1) {
+                            const vehicles = data.data.customer.vehicles;
+                            const vehicleList = vehicles.map(v => `${v.year} ${v.make} ${v.model} (${v.license_plate})${v.is_primary ? ' [PRIMARY]' : ''}`).join(', ');
+                            result = `✅ SUCCESS: Found ${vehicles.length} vehicles - ${vehicleList}`;
+                            success = true;
+                        } else {
+                            result = `❌ FAIL: Expected multiple vehicles, got ${data.data?.customer?.vehicles?.length || 0}`;
+                        }
+                    } else if (test.expected === 'no_customer') {
+                        if (data.ok && !data.data.found) {
+                            result = `✅ SUCCESS: Customer not found as expected`;
+                            success = true;
+                        } else {
+                            result = `❌ FAIL: Expected no customer, but found: ${data.data?.customer?.name || 'unknown'}`;
+                        }
+                    }
+
+                    document.getElementById(test.id + '-result').innerHTML = `<span class="${success ? 'success' : 'error'}">${result}</span>`;
+
+                } catch (error) {
+                    document.getElementById(test.id + '-result').innerHTML = `<span class="error">❌ ERROR: ${error.message}</span>`;
+                }
+            }
+        }
+
+        // Run tests when page loads
+        window.onload = testAPI;
+    </script>
+</body>
+</html>

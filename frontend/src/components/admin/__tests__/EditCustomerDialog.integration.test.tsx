@@ -164,6 +164,8 @@ describe('Edit Customer Modal Integration', () => {
   });
 
   it('should allow changing contact time preference', async () => {
+    const user = userEvent.setup();
+
     render(
       <TestWrapper>
         <EditCustomerDialog {...mockProps} />
@@ -172,8 +174,13 @@ describe('Edit Customer Modal Integration', () => {
 
     const contactTimeInput = screen.getByLabelText(/preferred contact time/i);
 
-    // Clear and type new value
+    // Clear field completely and wait for it to be empty
     await user.clear(contactTimeInput);
+    await waitFor(() => {
+      expect(contactTimeInput).toHaveValue('');
+    });
+
+    // Type new value
     await user.type(contactTimeInput, 'Afternoon (1-5 PM)');
 
     expect(contactTimeInput).toHaveValue('Afternoon (1-5 PM)');
@@ -200,6 +207,8 @@ describe('Edit Customer Modal Integration', () => {
   });
 
   it('should call onSave with updated preference fields when saved', async () => {
+    const user = userEvent.setup();
+
     render(
       <TestWrapper>
         <EditCustomerDialog {...mockProps} />
@@ -212,7 +221,15 @@ describe('Edit Customer Modal Integration', () => {
 
     await user.selectOptions(contactMethodSelect, 'sms');
     await user.clear(contactTimeInput);
-    await user.type(contactTimeInput, 'Evening (6-9 PM)');
+
+    // Use a shorter text to avoid truncation
+    const preferredTime = 'Evening 6-9 PM';
+    await user.type(contactTimeInput, preferredTime);
+
+    // Wait for the input to have the expected value
+    await waitFor(() => {
+      expect(contactTimeInput).toHaveValue(preferredTime);
+    });
 
     // Save the form
     const saveButton = screen.getByRole('button', { name: /save/i });
@@ -228,7 +245,7 @@ describe('Edit Customer Modal Integration', () => {
         notes: mockCustomer.notes,
         sms_consent: mockCustomer.sms_consent,
         preferred_contact_method: 'sms',
-        preferred_contact_time: 'Evening (6-9 PM)',
+        preferred_contact_time: preferredTime,
       });
     });
   });

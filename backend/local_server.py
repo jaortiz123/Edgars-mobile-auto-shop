@@ -11157,6 +11157,257 @@ _defensive_register_profile_aliases()
 
 
 # ----------------------------------------------------------------------------
+# Customer Notes Endpoints (Customer Profile Enhancement)
+# ----------------------------------------------------------------------------
+
+@app.route("/api/admin/customers/<cust_id>/notes", methods=["GET"])
+def get_customer_notes(cust_id: str):
+    """Get customer notes and interaction history.
+    
+    Query Parameters:
+      limit (int, default 50, max 100)
+      offset (int, default 0)
+      
+    RBAC: Owner / Advisor / Accountant (Technician forbidden).
+    """
+    # Step 1: Enforce Advisor-level authentication
+    auth_payload = require_auth_role("Advisor")
+    
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        return _error(HTTPStatus.BAD_REQUEST, "bad_request", "Tenant context required")
+    
+    role = auth_payload.get("role")
+    if role == "Customer":
+        if str(auth_payload.get("sub")) != str(cust_id):
+            return _error(HTTPStatus.FORBIDDEN, "forbidden", "insufficient_role")
+    elif role not in ("Owner", "Advisor", "Accountant"):
+        return _error(HTTPStatus.FORBIDDEN, "forbidden", "insufficient_role")
+    
+    # Parse parameters
+    limit_raw = request.args.get("limit", "50")
+    offset_raw = request.args.get("offset", "0")
+    
+    try:
+        limit_val = int(limit_raw)
+        offset_val = int(offset_raw)
+    except ValueError:
+        return _error(HTTPStatus.BAD_REQUEST, "bad_request", "limit and offset must be integers")
+    
+    if limit_val > 100:
+        return _error(HTTPStatus.BAD_REQUEST, "bad_request", "limit must be <= 100")
+    if limit_val <= 0:
+        limit_val = 50
+    if offset_val < 0:
+        offset_val = 0
+    
+    conn, use_memory, err = safe_conn()
+    if err and not use_memory:
+        return _error(HTTPStatus.SERVICE_UNAVAILABLE, "unavailable", "database unavailable")
+    
+    if not conn and use_memory:
+        # Memory fallback for testing
+        return _ok({
+            "notes": [],
+            "total": 0,
+            "limit": limit_val,
+            "offset": offset_val
+        })
+    
+    with conn:
+        with conn.cursor() as cur:
+            # Step 3: Set tenant context for database operations
+            cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+            
+            # Verify customer exists
+            cur.execute("SELECT 1 FROM customers WHERE id=%s", (int(cust_id),))
+            if not cur.fetchone():
+                return _error(HTTPStatus.NOT_FOUND, "not_found", "customer not found")
+            
+            # Create customer_notes table if it doesn't exist
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS customer_notes (
+                    id SERIAL PRIMARY KEY,
+                    tenant_id UUID,
+                    customer_id INTEGER REFERENCES customers(id),
+                    author_id TEXT NOT NULL,
+                    author_name TEXT NOT NULL,
+                    author_role TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    is_alert BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            
+            # Get total count
+            cur.execute("""
+                SELECT COUNT(*) as count FROM customer_notes 
+                WHERE customer_id = %s AND (tenant_id = %s::uuid OR tenant_id IS NULL)
+            """, (int(cust_id), g.tenant_id))
+            count_result = cur.fetchone()
+            # Handle both tuple and dict cursor results
+            if count_result:
+                if hasattr(count_result, 'keys'):  # Dict-like cursor
+                    total_count = count_result["count"]
+                else:  # Tuple cursor
+                    total_count = count_result[0]
+            else:
+                total_count = 0
+            
+            # Get notes
+            cur.execute("""
+                SELECT id, author_name, author_role, content, is_alert, 
+                       created_at, updated_at
+                FROM customer_notes 
+                WHERE customer_id = %s AND (tenant_id = %s::uuid OR tenant_id IS NULL)
+                ORDER BY created_at DESC
+                LIMIT %s OFFSET %s
+            """, (int(cust_id), g.tenant_id, limit_val, offset_val))
+            
+            notes_rows = cur.fetchall() or []
+    
+    notes = []
+    for row in notes_rows:
+        # Handle both tuple and dict cursor results
+        if hasattr(row, 'keys'):  # Dict-like cursor
+            notes.append({
+                "id": str(row["id"]) if row.get("id") else "",
+                "author": row.get("author_name") or "Unknown",
+                "authorRole": row.get("author_role") or "User",
+                "content": row.get("content") or "",
+                "isAlert": bool(row.get("is_alert")) if row.get("is_alert") is not None else False,
+                "createdAt": row["created_at"].isoformat() + "Z" if row.get("created_at") else "",
+            })
+        else:  # Tuple cursor
+            notes.append({
+                "id": str(row[0]) if row[0] else "",
+                "author": row[1] if row[1] else "Unknown",
+                "authorRole": row[2] if row[2] else "User",
+                "content": row[3] if row[3] else "",
+                "isAlert": bool(row[4]) if row[4] is not None else False,
+                "createdAt": row[5].isoformat() + "Z" if row[5] else "",
+            })
+    
+    return _ok({
+        "notes": notes,
+        "total": total_count,
+        "limit": limit_val,
+        "offset": offset_val
+    })
+
+
+@app.route("/api/admin/customers/<cust_id>/notes", methods=["POST"])
+def add_customer_note(cust_id: str):
+    """Add a customer note or interaction.
+    
+    Body JSON:
+      content (string, required): The note content
+      isAlert (boolean, optional): Whether this is an alert/important note
+      
+    RBAC: Owner / Advisor / Accountant (Technician forbidden).
+    """
+    # Step 1: Enforce Advisor-level authentication
+    auth_payload = require_auth_role("Advisor")
+    
+    # Step 2: Resolve active tenant from request context
+    if not g.tenant_id:
+        return _error(HTTPStatus.BAD_REQUEST, "bad_request", "Tenant context required")
+    
+    role = auth_payload.get("role")
+    if role == "Customer":
+        if str(auth_payload.get("sub")) != str(cust_id):
+            return _error(HTTPStatus.FORBIDDEN, "forbidden", "insufficient_role")
+    elif role not in ("Owner", "Advisor", "Accountant"):
+        return _error(HTTPStatus.FORBIDDEN, "forbidden", "insufficient_role")
+    
+    # Parse request body
+    payload = request.get_json(silent=True) or {}
+    content = payload.get("content", "").strip()
+    is_alert = bool(payload.get("isAlert", False))
+    
+    if not content:
+        return _error(HTTPStatus.BAD_REQUEST, "bad_request", "content is required")
+    
+    if len(content) > 500:
+        return _error(HTTPStatus.BAD_REQUEST, "bad_request", "content must be <= 500 characters")
+    
+    conn, use_memory, err = safe_conn()
+    if err and not use_memory:
+        return _error(HTTPStatus.SERVICE_UNAVAILABLE, "unavailable", "database unavailable")
+    
+    if not conn and use_memory:
+        # Memory fallback for testing
+        import time
+        note_id = str(int(time.time() * 1000))
+        return _ok({
+            "id": note_id,
+            "author": "Memory User",
+            "authorRole": "Advisor",
+            "content": content,
+            "isAlert": is_alert,
+            "createdAt": datetime.utcnow().isoformat() + "Z",
+        })
+    
+    with conn:
+        with conn.cursor() as cur:
+            # Step 3: Set tenant context for database operations
+            cur.execute("SET LOCAL app.tenant_id = %s", (g.tenant_id,))
+            
+            # Verify customer exists
+            cur.execute("SELECT 1 FROM customers WHERE id=%s", (int(cust_id),))
+            if not cur.fetchone():
+                return _error(HTTPStatus.NOT_FOUND, "not_found", "customer not found")
+            
+            # Create customer_notes table if it doesn't exist
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS customer_notes (
+                    id SERIAL PRIMARY KEY,
+                    tenant_id UUID,
+                    customer_id INTEGER REFERENCES customers(id),
+                    author_id TEXT NOT NULL,
+                    author_name TEXT NOT NULL,
+                    author_role TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    is_alert BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            
+            # Get author info from auth payload
+            author_id = str(auth_payload.get("sub", "unknown"))
+            author_name = str(auth_payload.get("name", author_id))
+            author_role = str(auth_payload.get("role", "User"))
+            
+            # Insert note
+            cur.execute("""
+                INSERT INTO customer_notes 
+                (tenant_id, customer_id, author_id, author_name, author_role, content, is_alert)
+                VALUES (%s::uuid, %s, %s, %s, %s, %s, %s)
+                RETURNING id, created_at
+            """, (g.tenant_id, int(cust_id), author_id, author_name, author_role, content, is_alert))
+            
+            result = cur.fetchone()
+            # Handle both tuple and dict cursor results  
+            if hasattr(result, 'keys'):  # Dict-like cursor
+                note_id = result["id"]
+                created_at = result["created_at"]
+            else:  # Tuple cursor
+                note_id = result[0]
+                created_at = result[1]
+    
+    return _ok({
+        "id": str(note_id),
+        "author": author_name,
+        "authorRole": author_role,
+        "content": content,
+        "isAlert": is_alert,
+        "createdAt": created_at.isoformat() + "Z" if created_at else "",
+    })
+
+
+# ----------------------------------------------------------------------------
 # Unified Customer Profile Endpoint (Phase A1)
 # ----------------------------------------------------------------------------
 @app.route("/api/admin/customers/<cust_id>/profile", methods=["GET"])
@@ -11548,26 +11799,122 @@ def unified_customer_profile(cust_id: str):
 
 
 def _visits_rows_to_payload(rows):
+    import re
+    from datetime import datetime, timezone
+    
     visits = []
     for r in rows:
-        visits.append(
-            {
-                "id": r["id"],
-                "status": r["status"],
-                "start": r.get("start_ts").isoformat() if r.get("start_ts") else None,
-                "end": r.get("end_ts").isoformat() if r.get("end_ts") else None,
-                "price": float(r.get("total_amount") or 0),
-                "checkInAt": r.get("check_in_at").isoformat() if r.get("check_in_at") else None,
-                "checkOutAt": r.get("check_out_at").isoformat() if r.get("check_out_at") else None,
-                "vehicle": " ".join(
-                    str(x) for x in [r.get("year"), r.get("make"), r.get("model")] if x
-                )
-                or "Vehicle",
-                "plate": r.get("license_plate"),
-                "services": r.get("services") or [],
-                "notes": r.get("notes") or [],
+        # Enhanced service processing with warranty and categorization
+        enhanced_services = []
+        service_summary = {"parts": 0, "labor": 0, "diagnostic": 0, "total_services": 0}
+        
+        services = r.get("services") or []
+        for service in services:
+            # Categorize service type based on name and category
+            service_name = service.get("name", "").lower()
+            service_category = service.get("category", "").lower() if service.get("category") else ""
+            
+            # Determine service type
+            service_type = "Other"
+            if "diagnostic" in service_name or "diagnosis" in service_name or service_category == "diagnostic":
+                service_type = "Diagnostic"
+                service_summary["diagnostic"] += 1
+            elif "labor" in service_name or service_category == "labor":
+                service_type = "Labor" 
+                service_summary["labor"] += 1
+            elif any(keyword in service_name for keyword in ["replacement", "part", "solenoid", "filter", "fluid"]) or service_category in ["transmission", "engine", "brake"]:
+                service_type = "Parts"
+                service_summary["parts"] += 1
+            else:
+                service_type = "Service"
+            
+            service_summary["total_services"] += 1
+            
+            # Extract warranty information from notes using regex
+            warranty_info = None
+            warranty_status = "N/A"
+            warranty_expiry = None
+            
+            notes = service.get("notes", "")
+            if notes:
+                # Look for warranty patterns like "2 years", "24,000 miles", "warranty: X years"
+                warranty_match = re.search(r'warranty:?\s*(\d+)\s*(year|month)s?[/,\s]*(\d+[,\d]*)\s*miles?', notes, re.IGNORECASE)
+                if warranty_match:
+                    years = int(warranty_match.group(1)) if warranty_match.group(2).lower() == "year" else int(warranty_match.group(1)) // 12
+                    miles = int(warranty_match.group(3).replace(",", ""))
+                    
+                    # Calculate warranty expiry (simplified - using years only for now)
+                    if r.get("end_ts"):
+                        try:
+                            service_date = r.get("end_ts")
+                            # Handle both string and datetime objects
+                            if isinstance(service_date, str):
+                                service_date = datetime.fromisoformat(service_date.replace('Z', '+00:00'))
+                            elif hasattr(service_date, 'year'):
+                                # It's already a datetime object
+                                if service_date.tzinfo is None:
+                                    service_date = service_date.replace(tzinfo=timezone.utc)
+                            
+                            warranty_expiry_date = service_date.replace(year=service_date.year + years)
+                            warranty_expiry = warranty_expiry_date.isoformat()
+                            
+                            # Determine if warranty is still active
+                            now = datetime.now(timezone.utc)
+                            if warranty_expiry_date > now:
+                                days_remaining = (warranty_expiry_date - now).days
+                                warranty_status = "Active"
+                                warranty_info = f"{days_remaining} days remaining"
+                            else:
+                                days_expired = (now - warranty_expiry_date).days
+                                warranty_status = "Expired"
+                                warranty_info = f"Expired {days_expired} days ago"
+                        except Exception:
+                            # Fallback warranty calculation
+                            warranty_status = "Active" 
+                            warranty_info = f"{years} year(s) / {miles:,} miles from service date"
+                    
+                    if not warranty_info:
+                        warranty_info = f"{years} year(s) / {miles:,} miles from service"
+            
+            # Enhanced service object
+            enhanced_service = {
+                "id": service.get("id"),
+                "name": service.get("name"),
+                "notes": service.get("notes"),
+                "estimated_price": service.get("estimated_price"),
+                "service_operation_id": service.get("service_operation_id"),
+                "service_type": service_type,
+                "warranty": {
+                    "status": warranty_status,
+                    "info": warranty_info,
+                    "expires_at": warranty_expiry
+                }
             }
-        )
+            enhanced_services.append(enhanced_service)
+        
+        # Create visit object with enhanced data
+        visit = {
+            "id": r["id"],
+            "status": r["status"],
+            "start": r.get("start_ts").isoformat() if r.get("start_ts") else None,
+            "end": r.get("end_ts").isoformat() if r.get("end_ts") else None,
+            "price": float(r.get("total_amount") or 0),
+            "checkInAt": r.get("check_in_at").isoformat() if r.get("check_in_at") else None,
+            "checkOutAt": r.get("check_out_at").isoformat() if r.get("check_out_at") else None,
+            "vehicle": " ".join(
+                str(x) for x in [r.get("year"), r.get("make"), r.get("model")] if x
+            ) or "Vehicle",
+            "plate": r.get("license_plate"),
+            "services": enhanced_services,
+            "notes": r.get("notes") or [],
+            "service_summary": service_summary,
+            # Add quick reference fields for Service Advisors
+            "is_completed": r["status"] == "COMPLETED",
+            "has_warranty_active": any(s["warranty"]["status"] == "Active" for s in enhanced_services),
+            "major_services": [s["name"] for s in enhanced_services if s["service_type"] in ["Parts", "Service"] and s.get("estimated_price", 0) > 200]
+        }
+        
+        visits.append(visit)
     return visits
 
 

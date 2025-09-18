@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatCurrency, money, dtLocal } from '@/utils/format';
-import { Calendar, DollarSign, Phone, Mail, Clock, Star } from 'lucide-react';
+import { Calendar, DollarSign, Phone, Mail, Clock, Star, MessageSquare, MapPin } from 'lucide-react';
 
 interface CustomerHeaderCardProps {
   customer: {
@@ -11,6 +11,7 @@ interface CustomerHeaderCardProps {
     name: string;
     phone?: string | null;
     email?: string | null;
+    address?: string | null;
     isVip: boolean;
     createdAt: string | null;
     updatedAt: string | null;
@@ -134,20 +135,83 @@ export function CustomerHeaderCard({
               )}
             </div>
 
-            {/* Contact Information */}
-            <div className="flex flex-col sm:flex-row gap-4 text-sm text-gray-600 mb-4">
-              {customer.phone && (
-                <div className="flex items-center gap-1">
-                  <Phone className="h-4 w-4" />
-                  <span data-testid="customer-phone">{customer.phone}</span>
+            {/* Contact Information with Quick Actions */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                {/* Contact Details */}
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  {customer.phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-blue-600" />
+                      <span className="font-medium" data-testid="customer-phone">{customer.phone}</span>
+                      <Badge variant={customer.preferredContactMethod === 'phone' ? 'primary' : 'outline'} className="ml-1 text-xs">
+                        {customer.preferredContactMethod === 'phone' ? 'Preferred' : 'Available'}
+                      </Badge>
+                    </div>
+                  )}
+                  {customer.email && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-blue-600" />
+                      <span className="font-medium" data-testid="customer-email">{customer.email}</span>
+                      <Badge variant={customer.preferredContactMethod === 'email' ? 'primary' : 'outline'} className="ml-1 text-xs">
+                        {customer.preferredContactMethod === 'email' ? 'Preferred' : 'Available'}
+                      </Badge>
+                    </div>
+                  )}
+                  {customer.address && (
+                    <div className="flex items-start gap-2 sm:col-span-2">
+                      <MapPin className="h-4 w-4 text-blue-600 mt-0.5" />
+                      <span className="font-medium text-gray-700" data-testid="customer-address">{customer.address}</span>
+                    </div>
+                  )}
+                  {customer.preferredContactTime && (
+                    <div className="flex items-center gap-2 text-xs text-gray-600 sm:col-span-2">
+                      <Clock className="h-3 w-3" />
+                      <span>Best time to contact: {customer.preferredContactTime}</span>
+                    </div>
+                  )}
                 </div>
-              )}
-              {customer.email && (
-                <div className="flex items-center gap-1">
-                  <Mail className="h-4 w-4" />
-                  <span data-testid="customer-email">{customer.email}</span>
+
+                {/* Quick Action Buttons */}
+                <div className="flex flex-wrap gap-2 lg:flex-col lg:min-w-[120px]">
+                  {customer.phone && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(`tel:${customer.phone}`, '_self')}
+                        className="flex items-center gap-1 text-xs"
+                        data-testid="call-customer-btn"
+                      >
+                        <Phone className="h-3 w-3" />
+                        Call
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(`sms:${customer.phone}`, '_self')}
+                        className="flex items-center gap-1 text-xs"
+                        data-testid="text-customer-btn"
+                      >
+                        <MessageSquare className="h-3 w-3" />
+                        Text
+                      </Button>
+                    </>
+                  )}
+                  {customer.email && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(`mailto:${customer.email}`, '_self')}
+                      className="flex items-center gap-1 text-xs"
+                      data-testid="email-customer-btn"
+                    >
+                      <Mail className="h-3 w-3" />
+                      Email
+                    </Button>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Customer Since & Relationship Duration */}

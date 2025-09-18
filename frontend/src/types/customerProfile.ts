@@ -37,6 +37,31 @@ export type AppointmentService = {
   service_id: string;
   name: string;
   display_order?: number | null;
+  // Enhanced Phase 2A fields for service categorization
+  category?: string;
+  service_type?: 'Parts' | 'Labor' | 'Diagnostic';
+  warranty_period?: string | null;
+  warranty_expiry_date?: string | null;
+  warranty_status?: 'Active' | 'Expired' | 'Unknown';
+  warranty_days_remaining?: number | null;
+};
+
+export type WarrantyInfo = {
+  has_warranty_active: boolean;
+  warranty_services: {
+    service_name: string;
+    warranty_period: string;
+    warranty_expiry_date: string;
+    warranty_status: 'Active' | 'Expired' | 'Unknown';
+    warranty_days_remaining: number | null;
+  }[];
+};
+
+export type ServiceSummary = {
+  parts_count: number;
+  labor_count: number;
+  diagnostic_count: number;
+  total_services: number;
 };
 
 export type Appointment = {
@@ -55,6 +80,13 @@ export type Appointment = {
   check_in_at?: string | null;
   check_out_at?: string | null;
   estimated_duration?: number | null; // minutes
+  
+  // Phase 2A Service Advisor workflow enhancements
+  is_completed?: boolean;
+  has_warranty_active?: boolean;
+  warranty_info?: WarrantyInfo;
+  service_summary?: ServiceSummary;
+  major_services?: string[];
 };
 
 export type PageMeta = { next_cursor?: string | null; page_size: number; has_more: boolean };
