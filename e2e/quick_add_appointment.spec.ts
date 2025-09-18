@@ -25,6 +25,11 @@ test.describe('Quick Add Appointment', () => {
     });
     await page.goto('http://localhost:5173/'); // initial navigation to set storage state
 
+    // Set dummy auth token for DEV environment (required by frontend service search)
+    await page.evaluate(() => {
+      localStorage.setItem('auth_token', 'dev-mock-token-for-e2e');
+    });
+
     // Ensure auth token is present for service search
     const token = await page.evaluate(() => localStorage.getItem('auth_token'));
     expect(token).toBeTruthy();

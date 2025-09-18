@@ -59,6 +59,13 @@ export interface CustomerProfileResponse {
     isVip: boolean;
     createdAt: string | null;
     updatedAt: string | null;
+    // Enhanced customer preference fields from Phase 1
+    customerSince?: string | null;
+    relationshipDurationDays?: number | null;
+    preferredContactMethod?: string | null;
+    preferredContactTime?: string | null;
+    tags?: string[];
+    notes?: string | null;
   };
   vehicles: CustomerVehicle[];
   appointments: CustomerProfileAppointmentLite[];

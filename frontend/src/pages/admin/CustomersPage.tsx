@@ -34,7 +34,7 @@ async function searchCustomers(q: string, filter: CustomerFilter, sortBy: Custom
     // In app runtime we use axios client with base '/api'. For tests that mock global.fetch,
     // prefer fetch to ensure deterministic control from the test file.
     if (import.meta.env.MODE === 'test') {
-      const resp = await fetch(`/api/admin/customers/search?${params.toString()}`);
+      const resp = await fetch(`http://localhost:3001/api/admin/customers/search?${params.toString()}`, { credentials: 'include' });
       const json = await resp.json();
       return (json as { data?: { items?: SearchItem[] } ; items?: SearchItem[] })?.data?.items
         || (json as { items?: SearchItem[] }).items

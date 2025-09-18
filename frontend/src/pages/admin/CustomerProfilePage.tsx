@@ -9,7 +9,11 @@ import { EditCustomerDialog } from '@/components/admin/EditCustomerDialog';
 import { ConflictResolutionDialog, ConflictField } from '@/components/admin/ConflictResolutionDialog';
 import { extractConflictsFromResponse } from '@/utils/conflictUtils';
 import { createVehicle, updateVehicle, transferVehicle } from '@/lib/vehicleApi';
+import { updateCustomer, CustomerUpdatePayload } from '@/lib/api';
 import { track } from '@/services/telemetry';
+import { CustomerHeaderCard } from '@/components/admin/CustomerHeaderCard';
+import { AppointmentHistory } from '@/components/admin/AppointmentHistory';
+import { VehiclesSection } from '@/components/admin/VehiclesSection';
 import type { AddVehiclePayload } from '@/components/admin/EditCustomerDialog';
 
 function useInitialFocus<T extends HTMLElement>() {
@@ -38,7 +42,7 @@ export default function CustomerProfilePage() {
   interface LegacyAppointmentMessage { id: string; body: string }
   interface LegacyAppointmentRaw { id:string; status:string; start:string|null; totalAmount?:number; paidAmount?:number; services?: LegacyAppointmentService[]; messages?: LegacyAppointmentMessage[]; }
   interface LegacyMetrics { totalSpent:number; unpaidBalance:number; visitsCount:number; completedCount:number; avgTicket:number; lastServiceAt:string|null; lastVisitAt:string|null; last12MonthsSpent:number; last12MonthsVisits:number; vehiclesCount:number; isVip:boolean; isOverdueForService:boolean }
-  interface LegacyProfile { customer:{ id:string; name:string }; appointments: LegacyAppointmentRaw[]; metrics: LegacyMetrics }
+  interface LegacyProfile { customer:{ id:string; name:string }; appointments: LegacyAppointmentRaw[]; metrics: LegacyMetrics; vehicles: Vehicle[] }
   const [legacyProfile, setLegacyProfile] = useState<LegacyProfile | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -51,6 +55,7 @@ export default function CustomerProfilePage() {
       const lp: LegacyProfile = {
         customer: { id: p.customer.id, name: p.customer.name },
         appointments: p.appointments.map(a => ({ id: a.id, status: a.status, start: a.start, totalAmount: a.totalAmount, paidAmount: a.paidAmount, services: (Array.isArray((a as unknown as { services?: LegacyAppointmentService[] }).services) ? (a as unknown as { services?: LegacyAppointmentService[] }).services : undefined), messages: (Array.isArray((a as unknown as { messages?: LegacyAppointmentMessage[] }).messages) ? (a as unknown as { messages?: LegacyAppointmentMessage[] }).messages : undefined) })),
+        vehicles: p.vehicles || [],
         metrics: {
           totalSpent: p.metrics.totalSpent,
           unpaidBalance: p.metrics.unpaidBalance,
@@ -85,11 +90,11 @@ export default function CustomerProfilePage() {
   const error = isTestEnv ? legacyError : hookResult.error;
 
   const first = useMemo(() =>
-    isTestEnv ? legacyProfile && { stats: legacyProfile.metrics } : data?.pages?.[0],
+    isTestEnv ? legacyProfile && { stats: legacyProfile.metrics, vehicles: legacyProfile.vehicles } : data?.pages?.[0],
     [isTestEnv, legacyProfile, data?.pages]
   );
-  const stats = first?.stats;
-  const vehicles = first?.vehicles || [];
+  const stats = isTestEnv ? first?.stats : first?.data?.stats;
+  const vehicles = isTestEnv ? (first?.vehicles || []) : (first?.data?.vehicles || []);
   // Extract customer name from either legacy or new hook data
   const customerName = isTestEnv ? legacyProfile?.customer?.name : first?.customer?.full_name;
   interface Vehicle { id:string; year?:number; make?:string; model?:string; }
@@ -169,7 +174,7 @@ export default function CustomerProfilePage() {
   const [pendingPatch, setPendingPatch] = useState<Record<string, unknown> | null>(null);
   const customer = first?.customer; // from existing data
 
-  // Edit Customer save handler as per PR1 specification
+  // Edit Customer save handler using updateCustomer API
   async function handleSave(patch: {
     full_name: string;
     email?: string|null;
@@ -177,77 +182,34 @@ export default function CustomerProfilePage() {
     tags?: string[];
     notes?: string|null;
     sms_consent?: boolean;
+    preferred_contact_method?: 'phone' | 'email' | 'sms';
+    preferred_contact_time?: string | null;
   }) {
     setEditLoading(true);
     try {
       // Get ETag from current data
       const etag = (first as { _etag?: string })?._etag;
 
-      const response = await fetch(`/api/admin/customers/${customer!.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(etag ? { 'If-Match': etag } : {}),
-        },
-        body: JSON.stringify(patch),
-      });
+      // Transform patch to match CustomerUpdatePayload interface
+      const updates: CustomerUpdatePayload = {
+        name: patch.full_name,
+        email: patch.email ?? undefined,
+        phone: patch.phone ?? undefined,
+        tags: patch.tags,
+        notes: patch.notes ?? undefined,
+        sms_consent: patch.sms_consent,
+        preferred_contact_method: patch.preferred_contact_method,
+        preferred_contact_time: patch.preferred_contact_time === null ? undefined : patch.preferred_contact_time,
+      };
 
-      if (response.status === 412) {
-        // Conflict detected - show conflict resolution dialog
-        console.warn('Edit conflict detected (412) - showing conflict resolution dialog');
-
-        try {
-          const conflicts = await extractConflictsFromResponse(response, patch);
-
-          if (conflicts.length > 0) {
-            setConflictFields(conflicts);
-            setPendingPatch(patch);
-            setConflictOpen(true);
-          } else {
-            // Fallback to original behavior if no conflicts can be extracted
-            showToast('Edit conflict detected. Refreshing with latest data...', 'warning');
-            await refetch?.();
-            setTimeout(() => {
-              setEditOpen(true);
-            }, 500);
-          }
-        } catch (error) {
-          console.error('Failed to process conflicts:', error);
-          // Fallback to original toast behavior
-          showToast('Edit conflict detected. Refreshing with latest data...', 'warning');
-          await refetch?.();
-          setTimeout(() => {
-            setEditOpen(true);
-          }, 500);
-        }
-
-        // Emit telemetry (would use proper analytics in production)
-        track('app.edit_conflict_412', {
-          resource: 'customer',
-          id: customer!.id,
-        });
-
-        return;
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || `HTTP ${response.status}`);
-      }
-
-      const updatedResource = await response.json();
+      // Use the updateCustomer API function
+      const updatedResource = await updateCustomer(customer!.id, updates, etag);
 
       // Emit success telemetry
       track('app.edit_customer_saved', {
         customer_id: customer!.id,
         changed_fields: Object.keys(patch),
       });
-
-      // Update cache with new data and ETag
-      const newEtag = response.headers.get('ETag');
-      if (updatedResource && newEtag) {
-        console.log('Updated resource with new ETag:', newEtag);
-      }
 
       // Replace cache / refetch profile to get new ETag and data
       await refetch?.();
@@ -258,6 +220,39 @@ export default function CustomerProfilePage() {
       setEditOpen(false);
     } catch (error) {
       console.error('Failed to save customer:', error);
+
+      // Check if it's a 412 conflict error
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number; data?: unknown } };
+
+        if (httpError.response?.status === 412) {
+          // Conflict detected - show conflict resolution dialog
+          console.warn('Edit conflict detected (412) - showing conflict resolution dialog');
+
+          try {
+            // For now, fall back to refresh behavior since extractConflictsFromResponse
+            // expects a Response object, but our API client throws structured errors
+            showToast('Edit conflict detected. Refreshing with latest data...', 'warning');
+            await refetch?.();
+            setTimeout(() => {
+              setEditOpen(true);
+            }, 500);
+          } catch (conflictError) {
+            console.error('Failed to handle conflict:', conflictError);
+            showToast('Edit conflict detected. Please try again.', 'warning');
+          }
+
+          // Emit telemetry
+          track('app.edit_conflict_412', {
+            resource: 'customer',
+            id: customer!.id,
+          });
+
+          return;
+        }
+      }
+
+      // Handle other errors
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       showToast(`Failed to save: ${errorMessage}`, 'error');
     } finally {
@@ -284,12 +279,13 @@ export default function CustomerProfilePage() {
       const etag = (first as { _etag?: string })?._etag;
 
       // Try the save again with resolved values
-      const response = await fetch(`/api/admin/customers/${customer.id}`, {
+      const response = await fetch(`http://localhost:3001/api/admin/customers/${customer.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           ...(etag ? { 'If-Match': etag } : {}),
         },
+        credentials: 'include',
         body: JSON.stringify(resolvedPatch),
       });
 
@@ -494,59 +490,128 @@ export default function CustomerProfilePage() {
 
   return (
     <div className="space-y-6 p-6 bg-background min-h-screen">
-  <h1 ref={titleRef} tabIndex={-1} className="text-2xl font-bold text-foreground outline-none focus:ring-2 focus:ring-ring rounded" data-testid={isTestEnv ? 'customer-profile-name' : undefined}>Customer Profile{isTestEnv && customerName ? ` - ${customerName}`: ''}</h1>
-      {/* Stats */}
-      {isLoading && !first ? (
-        <section className="grid grid-cols-1 sm:grid-cols-3 gap-4" aria-busy="true" data-testid={isTestEnv ? 'customer-profile-loading' : undefined}>
-          <TileSkeleton /><TileSkeleton /><TileSkeleton /><TileSkeleton /><TileSkeleton /><TileSkeleton />
-        </section>
+      {/* Customer Header Card - Enhanced Phase 2 UI */}
+      {customer && stats ? (
+        <CustomerHeaderCard
+          customer={{
+            id: customer.id,
+            name: customer.full_name,
+            phone: customer.phone,
+            email: customer.email,
+            isVip: customer.isVip || stats.isVip || false,
+            createdAt: customer.created_at,
+            updatedAt: null,
+            customerSince: customer.customerSince || customer.created_at,
+            relationshipDurationDays: customer.relationshipDurationDays,
+            preferredContactMethod: customer.preferredContactMethod,
+            preferredContactTime: customer.preferredContactTime,
+            tags: customer.tags || [],
+            notes: customer.notes,
+          }}
+          metrics={{
+            totalSpent: stats.totalSpent || stats.lifetime_spend || 0,
+            unpaidBalance: stats.unpaidBalance || stats.unpaid_balance || 0,
+            visitsCount: stats.visitsCount || stats.total_visits || 0,
+            completedCount: stats.completedCount || 0,
+            avgTicket: stats.avgTicket || stats.avg_ticket || 0,
+            lastServiceAt: stats.lastServiceAt || stats.last_service_at,
+            lastVisitAt: stats.lastVisitAt || stats.last_visit_at,
+            last12MonthsSpent: stats.last12MonthsSpent || 0,
+            last12MonthsVisits: stats.last12MonthsVisits || 0,
+            vehiclesCount: stats.vehiclesCount || vehicles.length,
+            isVip: stats.isVip || customer.isVip || false,
+            isOverdueForService: stats.isOverdueForService || false,
+          }}
+          onBookAppointment={() => {
+            // TODO: Implement booking navigation in future sprint
+            console.log('Navigate to booking page for customer:', customer.id);
+          }}
+          onEditCustomer={() => setEditOpen(true)}
+          isLoading={isLoading && !customer}
+        />
       ) : (
-        <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard label="Lifetime Spend" value={money(stats?.lifetime_spend)} />
-          <StatCard label="Unpaid Balance" value={money(stats?.unpaid_balance)} />
-          <StatCard label="Total Visits" value={stats?.total_visits ?? 0} />
-          <StatCard label="Avg Ticket" value={money(stats?.avg_ticket)} />
-          <StatCard label="Last Visit" value={dtLocal(stats?.last_visit_at)} />
-          <StatCard label="Last Service" value={dtLocal(stats?.last_service_at)} />
-        </section>
+        // Fallback header for loading or legacy test mode
+        <div>
+          <h1 ref={titleRef} tabIndex={-1} className="text-2xl font-bold text-foreground outline-none focus:ring-2 focus:ring-ring rounded" data-testid={isTestEnv ? 'customer-profile-name' : undefined}>
+            Customer Profile{isTestEnv && customerName ? ` - ${customerName}`: ''}
+          </h1>
+
+          {/* Legacy Stats */}
+          {isLoading && !first ? (
+            <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6" aria-busy="true" data-testid={isTestEnv ? 'customer-profile-loading' : undefined}>
+              <TileSkeleton /><TileSkeleton /><TileSkeleton /><TileSkeleton /><TileSkeleton /><TileSkeleton />
+            </section>
+          ) : (
+            <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+              <StatCard label="Lifetime Spend" value={money(stats?.lifetime_spend)} />
+              <StatCard label="Unpaid Balance" value={money(stats?.unpaid_balance)} />
+              <StatCard label="Total Visits" value={stats?.total_visits ?? 0} />
+              <StatCard label="Avg Ticket" value={money(stats?.avg_ticket)} />
+              <StatCard label="Last Visit" value={dtLocal(stats?.last_visit_at)} />
+              <StatCard label="Last Service" value={dtLocal(stats?.last_service_at)} />
+            </section>
+          )}
+        </div>
       )}
 
-      {/* Vehicles */}
-      <section className="bg-card rounded-lg p-4 border">
-        <h3 className="text-sm font-semibold mb-2">Vehicles</h3>
-        <div className="flex flex-wrap gap-2">
-          {vehicles.map((v: Vehicle) => (
-            <button key={v.id} onClick={() => setVehicleId(v.id)} className={`px-3 py-1 rounded-full border transition-colors ${vehicleId===v.id? 'bg-primary text-primary-foreground':'bg-background hover:bg-accent'}`}>
-              {v.year ?? '—'} {v.make ?? ''} {v.model ?? ''}
-            </button>
-          ))}
-        </div>
-      </section>
+      {/* Enhanced Vehicles Section */}
+      <VehiclesSection
+        vehicles={vehicles}
+        appointments={appointments.map(apt => ({
+          id: apt.id,
+          vehicle_id: apt.vehicle_id || '',
+          scheduled_at: apt.scheduled_at || new Date().toISOString(),
+          status: apt.status,
+          services: apt.services.map(s => ({
+            service_id: '', // Legacy appointments don't have service_id
+            name: s.name,
+            display_order: null
+          })),
+          invoice: apt.invoice ? {
+            id: '', // Legacy invoices don't have id
+            total: apt.invoice.total,
+            paid: apt.invoice.paid,
+            unpaid: apt.invoice.unpaid
+          } : null
+        }))}
+        onAddVehicle={() => setEditOpen(true)}
+        onEditVehicle={(vehicleId: string) => {
+          // Find the vehicle and open edit dialog
+          const vehicle = vehicles.find((v: Vehicle) => v.id === vehicleId);
+          if (vehicle) {
+            // Set the selected vehicle for editing
+            setVehicleId(vehicleId);
+            setEditOpen(true);
+          }
+        }}
+        onAddAppointment={(vehicleId: string) => {
+          // Navigate to new appointment page with pre-selected vehicle
+          location.assign(`/admin/appointments/new?customer_id=${id}&vehicle_id=${vehicleId}`);
+        }}
+      />
 
-      {/* Appointment history */}
-      <section className="bg-card rounded-lg p-4 border">
-        <h3 className="text-sm font-semibold mb-2">Appointment History</h3>
-        <div aria-live="polite" className="sr-only" data-testid="appt-live">
-          {`Appointment list updated. ${appointments.length} item${appointments.length===1?'':'s'}.`}
-        </div>
-        {empty && (
-          <div className="p-6 text-sm text-muted-foreground border rounded-xl bg-muted/50">
-            No appointments yet.
-            <button className="ml-2 underline text-primary hover:text-primary/80" onClick={() => location.assign(`/admin/appointments/new?customer_id=${id}`)}>Book appointment</button>
+      {/* Enhanced Appointment History */}
+      {isTestEnv ? (
+        <section className="bg-card rounded-lg p-4 border">
+          <h3 className="text-sm font-semibold mb-2">Appointment History</h3>
+          <div aria-live="polite" className="sr-only" data-testid="appt-live">
+            {`Appointment list updated. ${appointments.length} item${appointments.length===1?'':'s'}.`}
           </div>
-        )}
-        {!empty && (
-          <>
-            {isTestEnv && (
+          {empty && (
+            <div className="p-6 text-sm text-muted-foreground border rounded-xl bg-muted/50">
+              No appointments yet.
+              <button className="ml-2 underline text-primary hover:text-primary/80" onClick={() => location.assign(`/admin/appointments/new?customer_id=${id}`)}>Book appointment</button>
+            </div>
+          )}
+          {!empty && (
+            <>
               <div className="mb-2">
                 <button data-testid="toggle-show-details" className="px-2 py-1 text-xs rounded border" onClick={() => setShowDetails(s => !s)}>
                   {showDetails ? 'Hide details' : 'Show details'}
                 </button>
               </div>
-            )}
-            <ul ref={listRef} className="divide-y rounded-xl border bg-card" onKeyDown={handleRovingKeyDown} data-testid={isTestEnv ? 'appointments-table' : undefined}>
-              {isTestEnv ? (
-                legacyProfile?.appointments?.map((a) => (
+              <ul ref={listRef} className="divide-y rounded-xl border bg-card" onKeyDown={handleRovingKeyDown} data-testid="appointments-table">
+                {legacyProfile?.appointments?.map((a) => (
                     <li key={a.id} data-testid="appointment-row" className="p-3 flex flex-col gap-2">
                       <div className="flex items-center gap-4 flex-wrap text-sm">
                         <span>{a.start}</span>
@@ -570,35 +635,69 @@ export default function CustomerProfilePage() {
                         </div>
                       )}
                     </li>
-                ))
-              ) : (
-                <>
-                  {appointments.map((a: Appointment, idx: number) => (
-                    <TimelineRow
-                      key={a.id}
-                      id={a.id}
-                      date={a.scheduled_at}
-                      status={a.status}
-                      services={a.services}
-                      invoice={a.invoice}
-                      active={roving.isActive(idx)}
-                      tabIndex={roving.getTabIndex(idx)}
-                      onActivate={() => roving.setActiveIdx(idx)}
-                      onArrowNav={handleRovingKeyDown}
-                    />
-                  ))}
-                  {isFetchingNextPage && <li><RowSkeleton /></li>}
-                </>
-              )}
-            </ul>
-          </>
-        )}
-        {hasNextPage && !empty && (
-          <button onClick={() => fetchNextPage()} disabled={isFetchingNextPage} className="mt-3 px-3 py-2 rounded border">
-            {isFetchingNextPage ? 'Loading…' : 'Load more'}
-          </button>
-        )}
-      </section>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+      ) : (
+        <AppointmentHistory
+          appointments={appointments.map(a => ({
+            ...a,
+            vehicle_id: a.vehicle_id || '',
+            scheduled_at: a.scheduled_at || new Date().toISOString(),
+            services: (a.services || []).map((s, idx) => ({
+              service_id: `service-${idx}`,
+              name: s.name,
+              display_order: idx
+            })),
+            invoice: a.invoice ? {
+              id: `invoice-${a.id}`, // Generate invoice id
+              total: a.invoice.total,
+              paid: a.invoice.paid,
+              unpaid: a.invoice.unpaid
+            } : null
+          }))}
+          vehicles={vehicles}
+          isLoading={isLoading && !first}
+          isFetchingNextPage={isFetchingNextPage}
+          hasNextPage={hasNextPage}
+          onFetchNextPage={fetchNextPage}
+          onViewInvoice={(appointmentId) => {
+            // Open invoice receipt in new window
+            window.open(`/api/admin/invoices/${appointmentId}/receipt.html`, '_blank', 'noopener');
+          }}
+          onDownloadInvoice={(appointmentId) => {
+            // Trigger invoice PDF download
+            const a = document.createElement('a');
+            a.href = `/api/admin/invoices/${appointmentId}/receipt.pdf`;
+            a.download = `invoice-${appointmentId}-receipt.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          }}
+          onEmailInvoice={(appointmentId, email) => {
+            // Send invoice via email
+            fetch(`/api/admin/invoices/${appointmentId}/send`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ type: 'receipt', destinationEmail: email }),
+            }).then(response => {
+              if (response.status === 202) {
+                console.log('Email queued successfully');
+                // TODO: Add toast notification
+              } else {
+                console.error('Failed to send email');
+                // TODO: Add error toast notification
+              }
+            }).catch(error => {
+              console.error('Error sending email:', error);
+              // TODO: Add error toast notification
+            });
+          }}
+          className="bg-card rounded-lg p-4 border"
+        />
+      )}
 
       {/* Buttons */}
       <section className="flex gap-3 bg-card rounded-lg p-4 border relative z-10 pointer-events-auto">
@@ -636,12 +735,14 @@ export default function CustomerProfilePage() {
         onOpenChange={setEditOpen}
         initial={{
           id: customer?.id || '',
-          full_name: customer?.full_name || '',
-          email: customer?.email,
-          phone: customer?.phone,
-          tags: customer?.tags,
-          notes: customer?.notes,
-          sms_consent: customer?.sms_consent
+          full_name: (customer as any)?.name || customer?.full_name || '',
+          email: customer?.email || null,
+          phone: customer?.phone || null,
+          tags: customer?.tags || [],
+          notes: customer?.notes || null,
+          sms_consent: customer?.sms_consent || false,
+          preferred_contact_method: customer?.preferredContactMethod || undefined,
+          preferred_contact_time: customer?.preferredContactTime || null
         }}
         onSave={handleSave}
         loading={editLoading}

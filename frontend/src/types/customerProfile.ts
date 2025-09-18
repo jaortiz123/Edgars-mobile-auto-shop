@@ -8,6 +8,19 @@ export type ProfileStats = {
   last_visit_at: string | null; // ISO UTC
   avg_ticket: Money;
   last_service_at: string | null; // ISO UTC
+  // Enhanced metrics from Phase 1 backend enhancement
+  totalSpent?: Money;
+  unpaidBalance?: Money;
+  visitsCount?: number;
+  completedCount?: number;
+  avgTicket?: Money;
+  lastServiceAt?: string | null;
+  lastVisitAt?: string | null;
+  last12MonthsSpent?: Money;
+  last12MonthsVisits?: number;
+  vehiclesCount?: number;
+  isVip?: boolean;
+  isOverdueForService?: boolean;
 };
 
 export type Vehicle = {
@@ -33,6 +46,15 @@ export type Appointment = {
   status: string;
   services: AppointmentService[];
   invoice?: { id: string; total: Money; paid: Money; unpaid: Money } | null;
+  // Enhanced fields for richer appointment history
+  technician_name?: string | null;
+  technician_id?: string | null;
+  notes?: string | null;
+  mileage?: number | null;
+  completed_at?: string | null;
+  check_in_at?: string | null;
+  check_out_at?: string | null;
+  estimated_duration?: number | null; // minutes
 };
 
 export type PageMeta = { next_cursor?: string | null; page_size: number; has_more: boolean };
@@ -47,6 +69,12 @@ export type CustomerProfile = {
     tags?: string[];
     notes?: string | null;
     sms_consent?: boolean;
+    // Enhanced fields from Phase 1 backend enhancement
+    customerSince?: string | null;
+    relationshipDurationDays?: number | null;
+    preferredContactMethod?: string | null;
+    preferredContactTime?: string | null;
+    isVip?: boolean;
   };
   stats: ProfileStats;
   vehicles: Vehicle[];

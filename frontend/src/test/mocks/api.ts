@@ -326,21 +326,8 @@ export async function getCustomerHistory(_customerId: string): Promise<CustomerH
 export async function checkConflict(slot: { date: string; time: string }): Promise<{ conflict: boolean; conflictingAppointment?: Record<string, unknown> }> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      // Mock conflict logic: conflict if time is 10:00 AM on any date
-      if (slot.time === '10:00 AM') {
-        resolve({
-          conflict: true,
-          conflictingAppointment: {
-            id: 'mock-conflict-123',
-            customerName: 'John Doe',
-            serviceType: 'Engine Diagnostics',
-            appointmentDate: slot.date,
-            appointmentTime: slot.time,
-          },
-        });
-      } else {
-        resolve({ conflict: false });
-      }
+      // Test mock: no conflicts by default (conflict detection handled server-side)
+      resolve({ conflict: false });
     }, 300);
   });
 }

@@ -317,3 +317,4 @@ audit_artifacts/*.json
 !audit_artifacts/coverage_frontend_summary.json
 !audit_artifacts/coverage_frontend_lcov.info
 !audit_artifacts/coverage_backend.json
+manifest.txt

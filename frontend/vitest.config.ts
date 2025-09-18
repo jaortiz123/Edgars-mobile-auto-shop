@@ -30,6 +30,13 @@ export default defineConfig({
       'src/components/__tests__/ServiceCard.test.tsx',
       'src/components/profile/__tests__/TimelineRow.invoiceActions.test.tsx',
       'src/components/QuickAddModal/__tests__/buildQuickAddPayload.test.ts',
+      'src/components/admin/__tests__/CustomerHeaderCard.test.tsx',
+      'src/components/admin/__tests__/AppointmentHistoryCard.test.tsx',
+      'src/components/admin/__tests__/AppointmentHistory.test.tsx',
+      'src/components/admin/__tests__/VehicleCard.test.tsx',
+      'src/components/admin/__tests__/VehiclesSection.test.tsx',
+      'src/components/admin/__tests__/EditCustomerDialog.integration.test.tsx',
+      'src/components/ui/__tests__/TagsInput.test.tsx',
     ],
     exclude: [
       '**/archived/**',

@@ -2,6 +2,7 @@ import * as React from 'react';
 import { searchCustomers } from '@/lib/customerProfileApi';
 import type { CustomerSearchResult } from '@/lib/customerProfileApi';
 import { useFocusTrap, useRovingTabindex } from '@/hooks/useFocusTrap';
+import { TagsInput } from '@/components/ui/TagsInput';
 
 export type EditCustomerPayload = {
   full_name: string;
@@ -10,6 +11,8 @@ export type EditCustomerPayload = {
   tags?: string[];
   notes?: string | null;
   sms_consent?: boolean;
+  preferred_contact_method?: 'phone' | 'email' | 'sms';
+  preferred_contact_time?: string | null;
 };
 
 export type Vehicle = {
@@ -56,6 +59,8 @@ export function EditCustomerDialog({
     tags?: string[];
     notes?: string | null;
     sms_consent?: boolean;
+    preferred_contact_method?: 'phone' | 'email' | 'sms';
+    preferred_contact_time?: string | null;
   };
   onSave: (p: EditCustomerPayload) => Promise<void> | void;
   loading?: boolean;
@@ -67,6 +72,7 @@ export function EditCustomerDialog({
   const [activeTab, setActiveTab] = React.useState<TabType>('customer');
   const [showAddVehicle, setShowAddVehicle] = React.useState(false);
   const [showTransferVehicle, setShowTransferVehicle] = React.useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = React.useState<string[]>([]);
 
   const [form, setForm] = React.useState<EditCustomerPayload>({
     full_name: initial.full_name,
@@ -75,6 +81,8 @@ export function EditCustomerDialog({
     tags: initial.tags ?? [],
     notes: initial.notes ?? '',
     sms_consent: initial.sms_consent ?? false,
+    preferred_contact_method: initial.preferred_contact_method || undefined,
+    preferred_contact_time: initial.preferred_contact_time ?? '',
   });
 
   const [vehicleForm, setVehicleForm] = React.useState<AddVehiclePayload>({
@@ -96,7 +104,10 @@ export function EditCustomerDialog({
       tags: initial.tags ?? [],
       notes: initial.notes ?? '',
       sms_consent: initial.sms_consent ?? false,
+      preferred_contact_method: initial.preferred_contact_method || undefined,
+      preferred_contact_time: initial.preferred_contact_time ?? '',
     });
+    setValidationErrors([]); // Clear any existing errors when form resets
   }, [initial]);
 
   // Focus management is now handled by the focus trap hook
@@ -121,7 +132,27 @@ export function EditCustomerDialog({
   }, [open, form, loading, onOpenChange, onSave]);
 
   const handleSave = () => {
-    if (form.full_name.trim() && !loading) {
+    const errors: string[] = [];
+
+    if (!form.full_name.trim()) {
+      errors.push('Name is required');
+    }
+
+    // Validate tags
+    if (form.tags && form.tags.length > 10) {
+      errors.push('Maximum 10 tags allowed');
+    }
+    if (form.tags && form.tags.some(tag => tag.length > 50)) {
+      errors.push('Tag cannot exceed 50 characters');
+    }
+
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    setValidationErrors([]);
+    if (!loading) {
       onSave(form);
     }
   };
@@ -211,6 +242,7 @@ export function EditCustomerDialog({
               form={form}
               setForm={setForm}
               loading={loading}
+              validationErrors={validationErrors}
             />
           </div>
         )}
@@ -247,7 +279,7 @@ export function EditCustomerDialog({
               type="button"
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleSave}
-              disabled={loading || !form.full_name.trim()}
+              disabled={loading}
             >
               {loading ? 'Saving...' : 'Save Changes'}
             </button>
@@ -275,11 +307,13 @@ export function EditCustomerDialog({
 function CustomerInfoTab({
   form,
   setForm,
-  loading
+  loading,
+  validationErrors = []
 }: {
   form: EditCustomerPayload;
   setForm: React.Dispatch<React.SetStateAction<EditCustomerPayload>>;
   loading?: boolean;
+  validationErrors?: string[];
 }) {
   return (
     <div className="space-y-4">
@@ -292,6 +326,9 @@ function CustomerInfoTab({
           onChange={(e) => setForm({ ...form, full_name: e.target.value })}
           required
         />
+        {validationErrors.includes('Name is required') && (
+          <div className="text-red-500 text-xs mt-1">Name is required</div>
+        )}
       </label>
 
       <label className="block text-sm">
@@ -317,18 +354,49 @@ function CustomerInfoTab({
       </label>
 
       <label className="block text-sm">
-        <span className="text-sm font-medium text-gray-700">Tags</span>
+        <span className="text-sm font-medium text-gray-700">Preferred Contact Method</span>
+        <select
+          className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          value={form.preferred_contact_method ?? ''}
+          onChange={(e) => setForm({
+            ...form,
+            preferred_contact_method: (e.target.value as 'phone' | 'email' | 'sms') || undefined
+          })}
+        >
+          <option value="">Select method</option>
+          <option value="phone">Phone</option>
+          <option value="email">Email</option>
+          <option value="sms">SMS/Text</option>
+        </select>
+      </label>
+
+      <label className="block text-sm">
+        <span className="text-sm font-medium text-gray-700">Preferred Contact Time</span>
         <input
           type="text"
           className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          value={(form.tags ?? []).join(', ')}
-          onChange={(e) => setForm({
-            ...form,
-            tags: e.target.value.split(',').map(t => t.trim()).filter(t => t.length > 0)
-          })}
-          placeholder="vip, loyal, fleet (comma separated)"
+          value={form.preferred_contact_time ?? ''}
+          onChange={(e) => setForm({ ...form, preferred_contact_time: e.target.value || null })}
+          placeholder="e.g., Mornings 9-11 AM, Evenings after 6 PM"
+          maxLength={50}
         />
+        <div className="text-xs text-gray-500 mt-1">
+          {(form.preferred_contact_time?.length ?? 0)}/50 characters
+        </div>
       </label>
+
+      <div className="block text-sm">
+        <label className="text-sm font-medium text-gray-700 mb-2 block">Tags</label>
+        <TagsInput
+          value={form.tags ?? []}
+          onChange={(tags) => setForm({ ...form, tags })}
+          placeholder="Add tags like: VIP, loyal, fleet..."
+          maxTags={10}
+          maxTagLength={50}
+          disabled={loading}
+          error={validationErrors.find(error => error.includes('tags')) || undefined}
+        />
+      </div>
 
       <label className="block text-sm">
         <span className="text-sm font-medium text-gray-700">Notes</span>

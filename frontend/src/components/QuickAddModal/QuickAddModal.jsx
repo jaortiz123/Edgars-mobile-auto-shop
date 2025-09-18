@@ -11,7 +11,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 // Import component only (TS interfaces are type-only and not emitted; avoid named import in .jsx)
 // Legacy single ServiceOperationSelect removed; using ServiceCatalogModal for multi-select
 import { ServiceCatalogModal } from '@/components/appointments/ServiceCatalogModal';
-import { X, Calendar, User, Car, Wrench, MapPin, Phone, Mail, Clock, Zap, ChevronRight, Loader2 } from 'lucide-react';
+import { X, Calendar, User, Users, Car, Wrench, MapPin, Phone, Mail, Clock, Zap, ChevronRight, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/Button';
 import TemplateSelector from '../admin/TemplateSelector';
 import ConflictWarning from '../admin/ConflictWarning';
@@ -51,11 +51,15 @@ const QuickAddModal = ({
   className = '',
   _test_suppressAsyncEffects = false,
 }) => {
+  // ============ RENDER TRACKING ============
+  console.log('🔄 QuickAddModal RENDER');
+
   // ============ STATE MANAGEMENT ============
   const emptyFormData = useCallback(() => ({
     // Customer
     customerName: '',
     customerPhone: '',
+    customerEmail: '',
     // Services (serviceType mirrors first selected service for legacy compatibility)
     serviceType: '',
     // Scheduling
@@ -140,13 +144,18 @@ const QuickAddModal = ({
   // Compute sanitizedClassName (prevent invalid characters)
   const sanitizedClassName = useMemo(() => (className || '').replace(/[^a-zA-Z0-9_\-\s]/g, ''), [className]);
 
-  // ============ CUSTOMER LOOKUP (Phase 2) ============
-  const [lookupStatus, setLookupStatus] = useState('idle'); // idle | loading | found | not_found | error
+  // ============ CUSTOMER LOOKUP (Phase 2 & 3) ============
+  const [lookupStatus, setLookupStatus] = useState('idle'); // idle | loading | found | not_found | error | disambiguation
   const [lookupError, setLookupError] = useState('');
   const [lookupVehicles, setLookupVehicles] = useState([]); // Vehicles returned from lookup
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
-  const lastLookupAppliedRef = useRef({ phone: '', name: '' });
-  const userEditedRef = useRef({ name: false, vehicle: false });
+
+  // Phase 3: Customer disambiguation
+  const [disambiguationCustomers, setDisambiguationCustomers] = useState([]); // Multiple customers found
+  const [selectedCustomerId, setSelectedCustomerId] = useState(''); // Selected customer from disambiguation
+
+  const lastLookupAppliedRef = useRef({ phone: '', name: '', email: '' });
+  const userEditedRef = useRef({ name: false, email: false, vehicle: false });
   const activeLookupRef = useRef({ controller: null, requestId: 0 });
 
   const multiVehicleMode = lookupVehicles.length > 1;
@@ -232,6 +241,18 @@ const QuickAddModal = ({
     };
   }, [isOpen, formData.serviceType, formData.appointmentDate]);
 
+  // ============ SYNC SERVICE TYPE WITH SELECTED SERVICES ============
+  useEffect(() => {
+    // Keep formData.serviceType in sync with the first selected service
+    const primaryService = selectedServices[0]?.name || '';
+    if (formData.serviceType !== primaryService) {
+      setFormData(prev => ({
+        ...prev,
+        serviceType: primaryService
+      }));
+    }
+  }, [selectedServices, formData.serviceType]);
+
   // ============ KEYBOARD NAVIGATION ============
   useEffect(() => {
     if (!isOpen) return;
@@ -251,16 +272,28 @@ const QuickAddModal = ({
 
   // ============ EVENT HANDLERS ============
   const handleInputChange = useCallback((field, value) => {
+    console.log('📝 handleInputChange called:', { field, value });
+
     // Security: Sanitize input value
     const sanitizedValue = typeof value === 'string'
       ? value.replace(/[<>]/g, '').slice(0, 500) // Limit length
       : value;
 
-    setFormData(prev => ({ ...prev, [field]: sanitizedValue }));
+    console.log('📝 Setting formData:', { field, sanitizedValue });
+    setFormData(prev => {
+      const newFormData = { ...prev, [field]: sanitizedValue };
+      console.log('📝 New formData state:', newFormData);
+      return newFormData;
+    });
     // Track user overrides after auto population so we don't clobber edits
     if (field === 'customerName') {
       if (sanitizedValue && sanitizedValue !== lastLookupAppliedRef.current.name) {
         userEditedRef.current.name = true;
+      }
+    }
+    if (field === 'customerEmail') {
+      if (sanitizedValue && sanitizedValue !== lastLookupAppliedRef.current.email) {
+        userEditedRef.current.email = true;
       }
     }
     if (field === 'vehicleYear' || field === 'vehicleMake' || field === 'vehicleModel') {
@@ -274,6 +307,8 @@ const QuickAddModal = ({
 
     // Phone specific: reset lookup states on change
     if (field === 'customerPhone') {
+      console.log('📞 PHONE FIELD CHANGED! Resetting lookup states...');
+      console.log('  📞 New phone value:', sanitizedValue);
       setLookupStatus('idle');
       setLookupError('');
       setLookupVehicles([]);
@@ -285,10 +320,21 @@ const QuickAddModal = ({
       if (lastLookupAppliedRef.current.phone && !userEditedRef.current.name) {
         setFormData(prev => ({ ...prev, customerName: '' }));
       }
-      if (lastLookupAppliedRef.current.phone && !userEditedRef.current.vehicle) {
-        setFormData(prev => ({ ...prev, vehicleYear: '', vehicleMake: '', vehicleModel: '' }));
+      if (lastLookupAppliedRef.current.phone && !userEditedRef.current.email) {
+        setFormData(prev => ({ ...prev, customerEmail: '' }));
       }
-      lastLookupAppliedRef.current = { ...lastLookupAppliedRef.current, phone: '' };
+      if (lastLookupAppliedRef.current.phone && !userEditedRef.current.vehicle) {
+        setFormData(prev => ({
+          ...prev,
+          vehicleYear: '',
+          vehicleMake: '',
+          vehicleModel: '',
+          // Phase 2: Clear vehicle IDs when phone changes
+          selectedVehicleId: '',
+          vehicleId: ''
+        }));
+      }
+      lastLookupAppliedRef.current = { ...lastLookupAppliedRef.current, phone: '', name: '', email: '' };
     }
   }, [errors]);
 
@@ -309,6 +355,182 @@ const QuickAddModal = ({
       setErrors(prev => ({ ...prev, template: 'Failed to apply template' }));
     }
   }, [formData]);
+
+  // Phase 3: Customer disambiguation handler
+  const handleCustomerSelect = useCallback((customerId) => {
+    console.log('🎯 handleCustomerSelect called:', { customerId, customerIdType: typeof customerId });
+    console.log('👥 Available customers:', disambiguationCustomers);
+    disambiguationCustomers.forEach((c, idx) => {
+      console.log(`👤 Customer ${idx}:`, { id: c.id, type: typeof c.id, name: c.name, email: c.email });
+    });
+
+    console.log('🔍 Looking for customer ID:', { customerId, customerIdType: typeof customerId });
+
+    // Compare as strings since customer IDs from API are strings
+    const selectedCustomer = disambiguationCustomers.find(c => String(c.id) === String(customerId));
+    console.log('👤 Found customer:', selectedCustomer);
+
+    if (!selectedCustomer) {
+      console.log('❌ Customer not found in disambiguation list');
+      return;
+    }
+
+    console.log('✅ Customer selected, updating state...');
+    setSelectedCustomerId(customerId);
+    setLookupStatus('found');
+    setDisambiguationCustomers([]);
+
+    // Auto-populate fields from selected customer
+    console.log('📝 Auto-populating fields from selected customer...');
+    if (selectedCustomer.name && (!formData.customerName || !userEditedRef.current.name)) {
+      console.log('📝 Setting customer name:', selectedCustomer.name);
+      setFormData(prev => ({ ...prev, customerName: selectedCustomer.name }));
+      lastLookupAppliedRef.current.name = selectedCustomer.name;
+    }
+
+    if (selectedCustomer.email && (!formData.customerEmail || !userEditedRef.current.email)) {
+      console.log('📝 Setting customer email:', selectedCustomer.email);
+      setFormData(prev => ({ ...prev, customerEmail: selectedCustomer.email }));
+      lastLookupAppliedRef.current.email = selectedCustomer.email;
+    }
+
+    // Handle vehicles from selected customer
+    const vehicles = selectedCustomer.vehicles || [];
+    setLookupVehicles(vehicles);
+
+    // Auto-populate vehicle if customer has exactly one vehicle and user hasn't edited
+    if (vehicles.length === 1 && !userEditedRef.current.vehicle) {
+      const vehicle = vehicles[0];
+      setFormData(prev => ({
+        ...prev,
+        vehicleYear: String(vehicle.year || ''),
+        vehicleMake: vehicle.make || '',
+        vehicleModel: vehicle.model || '',
+        licensePlate: vehicle.license_plate || prev.licensePlate,
+        // Phase 2: Include vehicle ID for backend linkage
+        selectedVehicleId: vehicle.id,
+        vehicleId: vehicle.id
+      }));
+      setSelectedVehicleId(vehicle.id);
+      userEditedRef.current.vehicle = false;
+    } else if (vehicles.length > 1) {
+      // Multiple vehicles - clear for user selection
+      if (!userEditedRef.current.vehicle) {
+        setFormData(prev => ({
+          ...prev,
+          vehicleYear: '',
+          vehicleMake: '',
+          vehicleModel: '',
+          licensePlate: prev.licensePlate,
+          // Clear vehicle IDs for multi-vehicle selection
+          selectedVehicleId: '',
+          vehicleId: ''
+        }));
+      }
+      setSelectedVehicleId(''); // Reset selection for multi-vehicle dropdown
+    }
+
+    lastLookupAppliedRef.current.phone = formData.customerPhone;
+  }, [disambiguationCustomers, formData.customerName, formData.customerEmail, formData.customerPhone]);
+
+  // Manual search button handler - triggers customer lookup independently of useEffect
+  const handleManualSearch = useCallback(async () => {
+    console.log('🔍 Manual search triggered');
+
+    const phoneValue = formData.customerPhone?.trim();
+    if (!phoneValue) {
+      console.log('❌ No phone number to search for');
+      return;
+    }
+
+    // Extract digits from phone number for validation
+    const digits = phoneValue.replace(/\D/g, '');
+    if (digits.length < 7) {
+      console.log('❌ Phone number too short for manual search:', digits.length, 'digits');
+      setLookupError('Please enter a valid phone number (at least 7 digits)');
+      return;
+    }
+
+    console.log('✅ Manual search: phone validation passed, starting lookup for:', phoneValue);
+
+    // Clear previous states
+    setLookupError('');
+    setDisambiguationCustomers([]);
+    setSelectedCustomerId('');
+    setLookupVehicles([]);
+    setLookupStatus('loading');
+
+    try {
+      console.log('🌐 Manual search API call params:', { phone: phoneValue });
+
+      const response = await import('../../lib/api').then(m => m.http.get(`/customers/lookup`, {
+        params: { phone: phoneValue }
+      }));
+      console.log('✅ Manual search API response:', response.status, response.data);
+
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error('Lookup failed');
+      }
+
+      const apiResponse = response.data;
+      console.log('🔍 Full manual search API response:', apiResponse);
+
+      // Extract the actual customer data from nested structure
+      const data = apiResponse.data || apiResponse;
+      console.log('🔍 Extracted manual search customer data:', data);
+
+      // Phase 3 API contract: { found: boolean, multiple_matches: boolean, customer: {...} | null, customers: [...] | undefined }
+      const { found, multiple_matches, customer, customers } = data || {};
+
+      console.log('🔍 Manual search destructured values:', { found, multiple_matches, customer, customers });
+
+      if (found && multiple_matches && customers?.length > 0) {
+        console.log('🔀 Manual search: Multiple customers found, showing disambiguation');
+        setDisambiguationCustomers(customers);
+        setLookupStatus('disambiguation');
+      } else if (found && customer) {
+        console.log('✅ Manual search: Single customer found');
+        // Auto-populate with single customer (reuse existing logic from useEffect)
+        setSelectedCustomerId(customer.id);
+        setLookupStatus('found');
+
+        if (customer.name && (!formData.customerName || !userEditedRef.current.name)) {
+          setFormData(prev => ({ ...prev, customerName: customer.name }));
+          lastLookupAppliedRef.current.name = customer.name;
+        }
+        if (customer.email && (!formData.customerEmail || !userEditedRef.current.email)) {
+          setFormData(prev => ({ ...prev, customerEmail: customer.email }));
+          lastLookupAppliedRef.current.email = customer.email;
+        }
+
+        const vehicles = customer.vehicles || [];
+        setLookupVehicles(vehicles);
+        if (vehicles.length === 1 && !userEditedRef.current.vehicle) {
+          const vehicle = vehicles[0];
+          setFormData(prev => ({
+            ...prev,
+            vehicleYear: String(vehicle.year || ''),
+            vehicleMake: vehicle.make || '',
+            vehicleModel: vehicle.model || '',
+            licensePlate: vehicle.license_plate || prev.licensePlate,
+            // Phase 2: Include vehicle ID for backend linkage
+            selectedVehicleId: vehicle.id,
+            vehicleId: vehicle.id
+          }));
+          setSelectedVehicleId(vehicle.id);
+        }
+
+        lastLookupAppliedRef.current.phone = phoneValue;
+      } else {
+        console.log('❌ Manual search: No customer found');
+        setLookupStatus('not_found');
+      }
+    } catch (error) {
+      console.error('❌ Manual search error:', error);
+      setLookupError(error.message || 'Failed to search for customer. Please try again.');
+      setLookupStatus('error');
+    }
+  }, [formData.customerPhone, formData.customerName, formData.customerEmail]);
 
   // Define validateForm before any callbacks that depend on it to avoid TDZ issues
   const validateForm = useCallback((dataToValidate = formData) => {
@@ -498,12 +720,23 @@ const QuickAddModal = ({
 
   // ============ CUSTOMER LOOKUP EFFECT ============
   useEffect(() => {
+    console.log('🔍 CUSTOMER LOOKUP useEffect TRIGGERED');
+    console.log('  📞 formData.customerPhone:', formData.customerPhone);
+    console.log('  📋 Full formData:', formData);
+
     const rawPhone = formData.customerPhone || '';
     const digits = rawPhone.replace(/[^0-9]/g, '');
+
+    console.log('  🔢 Raw phone:', rawPhone);
+    console.log('  🔢 Digits only:', digits);
+    console.log('  📏 Digits length:', digits.length);
+
     if (!rawPhone || digits.length < 7) { // avoid spamming short or empty inputs
+      console.log('  ❌ EARLY RETURN: Phone too short or empty');
       return; // status already reset in change handler
     }
 
+    console.log('  ✅ Phone validation passed, starting lookup...');
     setLookupStatus('loading');
     setLookupError('');
     const controller = new AbortController();
@@ -511,60 +744,145 @@ const QuickAddModal = ({
     activeLookupRef.current = { controller, requestId };
     const debounceTimer = setTimeout(async () => {
       try {
-        const resp = await import('../../lib/api').then(m => m.http.get(`/customers/lookup`, { params: { phone: rawPhone }, signal: controller.signal, validateStatus: s => (s >= 200 && s < 300) || s === 404 }));
+        console.log('  ⏱️ Debounce timer fired, making API call...');
+        console.log('  🌐 API call params:', { phone: rawPhone });
+
+        const resp = await import('../../lib/api').then(m => m.http.get(`/customers/lookup`, {
+          params: { phone: rawPhone },
+          signal: controller.signal
+        }));
+
+        console.log('  ✅ API response received:', resp.status, resp.data);
+
         if (activeLookupRef.current.requestId !== requestId) {
-          return; // stale
+          return; // stale request
         }
-        if (resp.status === 404) {
-          setLookupStatus('not_found');
-          setLookupVehicles([]);
-          // Clear auto fields if they were populated by a previous lookup and user hasn't edited
-          if (!userEditedRef.current.name) {
-            setFormData(prev => ({ ...prev, customerName: '' }));
-          }
-          if (!userEditedRef.current.vehicle) {
-            setFormData(prev => ({ ...prev, vehicleYear: '', vehicleMake: '', vehicleModel: '' }));
-          }
-          lastLookupAppliedRef.current = { phone: rawPhone, name: '' };
-          return;
-        }
-  if (resp.status < 200 || resp.status >= 300) {
+
+        if (resp.status < 200 || resp.status >= 300) {
           setLookupStatus('error');
           setLookupError('Lookup failed');
           return;
         }
-  const data = resp.data;
-        // Shape: { customer: {...}, vehicles: [...] }
-        const { customer, vehicles } = data || {};
-        setLookupVehicles(Array.isArray(vehicles) ? vehicles : []);
+
+        const apiResponse = resp.data;
+        console.log('  🔍 Full API response:', apiResponse);
+
+        // Extract the actual customer data from nested structure
+        const data = apiResponse.data || apiResponse;
+        console.log('  🔍 Extracted customer data:', data);
+
+        // Phase 3 API contract: { found: boolean, multiple_matches: boolean, customer: {...} | null, customers: [...] | undefined }
+        const { found, multiple_matches, customer, customers } = data || {};
+
+        console.log('  🔍 Destructured values:', { found, multiple_matches, customer, customers });
+
+        if (!found) {
+          console.log('  ❌ No customer found for phone number');
+
+          setLookupStatus('not_found');
+          setLookupVehicles([]);
+          setDisambiguationCustomers([]);
+          // Clear auto fields if they were populated by a previous lookup and user hasn't edited
+          if (!userEditedRef.current.name) {
+            setFormData(prev => ({ ...prev, customerName: '' }));
+          }
+          if (!userEditedRef.current.email) {
+            setFormData(prev => ({ ...prev, customerEmail: '' }));
+          }
+          if (!userEditedRef.current.vehicle) {
+            setFormData(prev => ({ ...prev, vehicleYear: '', vehicleMake: '', vehicleModel: '' }));
+          }
+          lastLookupAppliedRef.current = { phone: rawPhone, name: '', email: '' };
+          return;
+        }
+
+        // Phase 3: Handle multiple customers (disambiguation)
+        if (multiple_matches && customers && customers.length > 1) {
+          console.log('  🔀 Multiple customers found, showing disambiguation UI');
+          console.log('  👥 Customers for disambiguation:', customers);
+          setLookupStatus('disambiguation');
+          setDisambiguationCustomers(customers);
+          setLookupVehicles([]);
+          setSelectedCustomerId('');
+          // Clear auto fields during disambiguation
+          if (!userEditedRef.current.name) {
+            setFormData(prev => ({ ...prev, customerName: '' }));
+          }
+          if (!userEditedRef.current.email) {
+            setFormData(prev => ({ ...prev, customerEmail: '' }));
+          }
+          if (!userEditedRef.current.vehicle) {
+            setFormData(prev => ({ ...prev, vehicleYear: '', vehicleMake: '', vehicleModel: '' }));
+          }
+          lastLookupAppliedRef.current = { phone: rawPhone, name: '', email: '' };
+          return;
+        }
+
+        // Single customer found - auto-populate fields
+        console.log('  ✅ Single customer found, auto-populating fields');
+        console.log('  👤 Customer data:', customer);
         setLookupStatus('found');
+        setDisambiguationCustomers([]);
+
         // Auto-populate name if blank or previously auto-populated (not user edited)
         if (customer?.name && (!formData.customerName || !userEditedRef.current.name)) {
+          console.log('  📝 Auto-populating customer name:', customer.name);
           setFormData(prev => ({ ...prev, customerName: customer.name }));
           lastLookupAppliedRef.current.name = customer.name;
         }
+
+        // Auto-populate email if blank or previously auto-populated (not user edited)
+        if (customer?.email && (!formData.customerEmail || !userEditedRef.current.email)) {
+          setFormData(prev => ({ ...prev, customerEmail: customer.email }));
+          lastLookupAppliedRef.current.email = customer.email;
+        }
+
         lastLookupAppliedRef.current.phone = rawPhone;
 
-        if (vehicles?.length === 1 && !userEditedRef.current.vehicle) {
-          const v = vehicles[0];
-          // Two-step to ensure year is present before dependent make/model filtering
-          setFormData(prev => ({ ...prev, vehicleYear: String(v.year || '') }));
+        // Phase 2: Handle vehicles from enhanced API
+        const vehicles = customer?.vehicles || [];
+        setLookupVehicles(vehicles);
+
+        // Auto-populate vehicle if customer has exactly one vehicle and user hasn't edited
+        if (vehicles.length === 1 && !userEditedRef.current.vehicle) {
+          const vehicle = vehicles[0];
           setFormData(prev => ({
             ...prev,
-            vehicleMake: v.make || '',
-            vehicleModel: v.model || '',
-            licensePlate: v.license_plate || prev.licensePlate
+            vehicleYear: String(vehicle.year || ''),
+            vehicleMake: vehicle.make || '',
+            vehicleModel: vehicle.model || '',
+            licensePlate: vehicle.license_plate || prev.licensePlate,
+            // Phase 2: Include vehicle ID for backend linkage
+            selectedVehicleId: vehicle.id,
+            vehicleId: vehicle.id
           }));
-          userEditedRef.current.vehicle = false; // still auto
-        } else if (vehicles?.length > 1) {
-          // Wait for selection; keep existing until user picks
+          setSelectedVehicleId(vehicle.id);
+          // Mark as auto-populated, not user-edited
+          userEditedRef.current.vehicle = false;
+        } else if (vehicles.length > 1) {
+          // Multiple vehicles - user will select from dropdown
+          // Clear any existing auto-populated vehicle data unless user has edited
+          if (!userEditedRef.current.vehicle) {
+            setFormData(prev => ({
+              ...prev,
+              vehicleYear: '',
+              vehicleMake: '',
+              vehicleModel: '',
+              licensePlate: prev.licensePlate, // Keep license plate as it might be manually entered
+              // Clear vehicle IDs for multi-vehicle selection
+              selectedVehicleId: '',
+              vehicleId: ''
+            }));
+          }
+          setSelectedVehicleId(''); // Reset selection for multi-vehicle dropdown
         }
+
       } catch (err) {
         if (err?.name === 'AbortError') return;
         setLookupStatus('error');
         setLookupError('Lookup failed');
       }
-    }, 450); // debounce ~450ms
+    }, 500); // debounce 500ms as per PRD
 
     return () => {
       clearTimeout(debounceTimer);
@@ -583,9 +901,19 @@ const QuickAddModal = ({
         vehicleYear: String(v.year || ''),
         vehicleMake: v.make || '',
         vehicleModel: v.model || '',
-        licensePlate: v.license_plate || prev.licensePlate
+        licensePlate: v.license_plate || prev.licensePlate,
+        // Phase 2: Include vehicle ID for backend linkage
+        selectedVehicleId: vehicleId,
+        vehicleId: vehicleId // Alternative field name for compatibility
       }));
       userEditedRef.current.vehicle = false;
+    } else if (!vehicleId) {
+      // Clear vehicle ID when "Choose from vehicles..." option is selected
+      setFormData(prev => ({
+        ...prev,
+        selectedVehicleId: '',
+        vehicleId: ''
+      }));
     }
   }, [lookupVehicles]);
 
@@ -593,7 +921,8 @@ const QuickAddModal = ({
     if (multiVehicleMode) {
       return (
         <div className="quick-add-field" data-testid="lookup-multi-vehicle">
-          <label htmlFor="lookup-vehicle-select" className="quick-add-label">
+          <label htmlFor="lookup-vehicle-select" className="quick-add-label flex items-center gap-2">
+            <Car className="h-4 w-4" aria-hidden="true" />
             Vehicle *
           </label>
           <select
@@ -603,12 +932,23 @@ const QuickAddModal = ({
             className="quick-add-input"
             required
           >
-            <option value="">Select vehicle</option>
+            <option value="">Choose from {lookupVehicles.length} vehicles...</option>
             {lookupVehicles.map(v => (
-              <option key={v.id} value={v.id}>{`${v.year || ''} ${v.make || ''} ${v.model || ''}${v.license_plate ? ' (' + v.license_plate + ')' : ''}`.trim()}</option>
+              <option key={v.id} value={v.id}>
+                {`${v.year || ''} ${v.make || ''} ${v.model || ''}${v.license_plate ? ' • ' + v.license_plate : ''}${v.vin ? ' • VIN: ' + v.vin.slice(-6) : ''}`.trim()}
+              </option>
             ))}
           </select>
-          {lookupStatus === 'found' && <div className="quick-add-hint">Multiple vehicles found. Select one.</div>}
+          <div className="quick-add-hint text-blue-600 flex items-center gap-1">
+            <Users className="h-4 w-4" aria-hidden="true" />
+            Multiple vehicles found. Select the one for this appointment.
+          </div>
+          {selectedVehicleId && (
+            <div className="quick-add-hint text-green-600 flex items-center gap-1">
+              <Check className="h-4 w-4" aria-hidden="true" />
+              Vehicle selected from customer records
+            </div>
+          )}
         </div>
       );
     }
@@ -670,6 +1010,27 @@ const QuickAddModal = ({
           </select>
           {errors.vehicleModel && (<div className="quick-add-error" role="alert">{errors.vehicleModel}</div>)}
         </div>
+        {/* Show hint when single vehicle was auto-populated */}
+        {lookupStatus === 'found' && lookupVehicles.length === 1 && !multiVehicleMode && (
+          <div className="quick-add-hint text-green-600 flex items-center gap-1" data-testid="single-vehicle-auto-populated">
+            <Check className="h-4 w-4" aria-hidden="true" />
+            Vehicle auto-populated from customer records
+          </div>
+        )}
+        {/* Show hint for new customer/no vehicles scenario */}
+        {lookupStatus === 'not_found' && (
+          <div className="quick-add-hint text-blue-600 flex items-center gap-1" data-testid="new-customer-manual-entry">
+            <Car className="h-4 w-4" aria-hidden="true" />
+            New customer - enter vehicle details manually
+          </div>
+        )}
+        {/* Show hint when customer found but no vehicles */}
+        {lookupStatus === 'found' && lookupVehicles.length === 0 && (
+          <div className="quick-add-hint text-orange-600 flex items-center gap-1" data-testid="customer-no-vehicles">
+            <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+            Customer found - no vehicles on record, enter details manually
+          </div>
+        )}
       </div>
     );
   };
@@ -733,23 +1094,96 @@ const QuickAddModal = ({
 
           {/* Essential Fields */}
           <div className="quick-add-fields">
-            {/* Vehicle - dynamic section */}
+            {/* Customer Phone - PHONE-FIRST: Primary field at the top */}
             <div className="quick-add-field">
-              <label htmlFor="license-plate" className="quick-add-label">
-                <Car className="h-4 w-4" aria-hidden="true" />
-                License Plate (optional)
+              <label htmlFor="customer-phone" className="quick-add-label flex items-center gap-2">
+                <span className="flex items-center gap-1"><Phone className="h-4 w-4" aria-hidden="true" /> Phone Number *</span>
+                {lookupStatus === 'loading' && <Loader2 className="h-4 w-4 animate-spin text-blue-500" aria-label="Looking up" />}
               </label>
-              <input
-                id="license-plate"
-                type="text"
-                value={formData.licensePlate}
-                onChange={(e) => handleInputChange('licensePlate', e.target.value.toUpperCase())}
-                className={`quick-add-input`}
-                placeholder="ABC1234"
-              />
+              <div className="flex gap-2 items-center">
+                <input
+                  id="customer-phone"
+                  ref={firstInputRef}
+                  type="tel"
+                  value={formData.customerPhone}
+                  onChange={(e) => handleInputChange('customerPhone', e.target.value)}
+                  className={`quick-add-input flex-1 ${
+                    errors.customerPhone ? 'error' :
+                    lookupStatus === 'loading' ? 'border-blue-400 ring-blue-200' :
+                    lookupStatus === 'found' ? 'border-green-500 ring-green-200' :
+                    lookupStatus === 'not_found' ? 'border-yellow-500 ring-yellow-200' :
+                    lookupStatus === 'error' ? 'border-red-500 ring-red-200' :
+                    lookupStatus === 'disambiguation' ? 'border-blue-400 ring-blue-200' :
+                    ''
+                  }`}
+                  placeholder="(555) 123-4567"
+                  required
+                  aria-describedby={errors.customerPhone ? 'customer-phone-error' : undefined}
+                  data-testid="customer-phone-input"
+                />
+                <button
+                  type="button"
+                  onClick={handleManualSearch}
+                  disabled={lookupStatus === 'loading' || !formData.customerPhone?.trim()}
+                  className={`px-3 py-2 text-sm font-medium rounded-md border transition-colors duration-200 ${
+                    lookupStatus === 'loading' || !formData.customerPhone?.trim()
+                      ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                      : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1'
+                  }`}
+                  title={
+                    !formData.customerPhone?.trim()
+                      ? 'Enter a phone number first'
+                      : lookupStatus === 'loading'
+                        ? 'Lookup in progress...'
+                        : 'Search for customer manually'
+                  }
+                  data-testid="manual-search-button"
+                >
+                  {lookupStatus === 'loading' ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <span className="flex items-center gap-1">
+                      <User className="h-4 w-4" />
+                      Search
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Lookup Status Messages */}
+              {lookupStatus === 'loading' && (
+                <div className="text-blue-600 text-sm mt-1 flex items-center gap-1" role="status" aria-live="polite">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Searching for customer...
+                </div>
+              )}
+              {lookupStatus === 'found' && (
+                <div className="text-green-600 text-sm mt-1 flex items-center gap-1" role="status" aria-live="polite">
+                  <Check className="h-3 w-3" />
+                  Customer found! Information loaded.
+                </div>
+              )}
+              {lookupStatus === 'not_found' && (
+                <div className="text-yellow-600 text-sm mt-1 flex items-center gap-1" role="status" aria-live="polite">
+                  <AlertTriangle className="h-3 w-3" />
+                  No customer found. Creating new customer.
+                </div>
+              )}
+              {lookupStatus === 'disambiguation' && (
+                <div className="text-blue-600 text-sm mt-1 flex items-center gap-1" role="status" aria-live="polite">
+                  <Users className="h-3 w-3" />
+                  Multiple customers found. Please select one below.
+                </div>
+              )}
+
+              {errors.customerPhone && (
+                <div id="customer-phone-error" className="quick-add-error" role="alert">
+                  {errors.customerPhone}
+                </div>
+              )}
+              {lookupError && <div className="quick-add-error" role="alert">{lookupError}</div>}
             </div>
 
-            {renderVehicleSection()}
             {/* Customer Name */}
             <div className="quick-add-field">
               <label htmlFor="customer-name" className="quick-add-label">
@@ -758,7 +1192,6 @@ const QuickAddModal = ({
               </label>
               <input
                 id="customer-name"
-                ref={firstInputRef}
                 type="text"
                 value={formData.customerName}
                 onChange={(e) => handleInputChange('customerName', e.target.value)}
@@ -774,33 +1207,93 @@ const QuickAddModal = ({
               )}
             </div>
 
-            {/* Customer Phone */}
+            {/* Customer Email */}
             <div className="quick-add-field">
-              <label htmlFor="customer-phone" className="quick-add-label flex items-center gap-2">
-                <span className="flex items-center gap-1"><Phone className="h-4 w-4" aria-hidden="true" /> Phone Number *</span>
-                {lookupStatus === 'loading' && <Loader2 className="h-4 w-4 animate-spin text-blue-500" aria-label="Looking up" />}
-                {lookupStatus === 'found' && <span className="text-green-600 text-xs" data-testid="lookup-success">Found</span>}
-                {lookupStatus === 'not_found' && <span className="text-amber-600 text-xs" data-testid="lookup-not-found">Not found</span>}
-                {lookupStatus === 'error' && <span className="text-red-600 text-xs" data-testid="lookup-error">Error</span>}
+              <label htmlFor="customer-email" className="quick-add-label flex items-center gap-2">
+                <span className="flex items-center gap-1"><Mail className="h-4 w-4" aria-hidden="true" /> Email</span>
+                {lookupStatus === 'found' && <span className="text-green-600 text-xs bg-green-100 px-2 py-0.5 rounded-full" data-testid="returning-customer">Returning Customer</span>}
               </label>
               <input
-                id="customer-phone"
-                type="tel"
-                value={formData.customerPhone}
-                onChange={(e) => handleInputChange('customerPhone', e.target.value)}
-                className={`quick-add-input ${errors.customerPhone ? 'error' : ''}`}
-                placeholder="(555) 123-4567"
-                required
-                aria-describedby={errors.customerPhone ? 'customer-phone-error' : undefined}
-                data-testid="customer-phone-input"
+                id="customer-email"
+                type="email"
+                value={formData.customerEmail}
+                onChange={(e) => handleInputChange('customerEmail', e.target.value)}
+                className={`quick-add-input ${errors.customerEmail ? 'error' : ''}`}
+                placeholder="Enter customer email"
+                aria-describedby={errors.customerEmail ? 'customer-email-error' : undefined}
               />
-              {errors.customerPhone && (
-                <div id="customer-phone-error" className="quick-add-error" role="alert">
-                  {errors.customerPhone}
+              {errors.customerEmail && (
+                <div id="customer-email-error" className="quick-add-error" role="alert">
+                  {errors.customerEmail}
                 </div>
               )}
-              {lookupError && <div className="quick-add-error" role="alert">{lookupError}</div>}
             </div>
+
+            {/* License Plate - moved after customer fields */}
+            <div className="quick-add-field">
+              <label htmlFor="license-plate" className="quick-add-label">
+                <Car className="h-4 w-4" aria-hidden="true" />
+                License Plate (optional)
+              </label>
+              <input
+                id="license-plate"
+                type="text"
+                value={formData.licensePlate}
+                onChange={(e) => handleInputChange('licensePlate', e.target.value.toUpperCase())}
+                className={`quick-add-input`}
+                placeholder="ABC1234"
+              />
+            </div>
+
+            {/* Vehicle Section - moved after license plate */}
+            {renderVehicleSection()}
+
+            {/* Phase 3: Customer Disambiguation */}
+            {lookupStatus === 'disambiguation' && disambiguationCustomers.length > 0 && (
+              <div className="quick-add-field">
+                <label className="quick-add-label flex items-center gap-2">
+                  <Users className="h-4 w-4" aria-hidden="true" />
+                  Multiple Customers Found *
+                </label>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                  We found {disambiguationCustomers.length} customers with this phone number. Please select one:
+                </p>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {disambiguationCustomers.map((customer) => (
+                    <button
+                      key={customer.id}
+                      type="button"
+                      onClick={() => handleCustomerSelect(customer.id)}
+                      className={`w-full text-left p-3 border rounded-lg transition-colors
+                        ${selectedCustomerId === customer.id.toString()
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 bg-white dark:bg-slate-800'
+                        }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="font-medium text-slate-900 dark:text-slate-100">
+                            {customer.name}
+                          </div>
+                          {customer.email && (
+                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                              {customer.email}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right text-sm text-slate-500 dark:text-slate-400">
+                          {customer.vehicle_count > 0 ? (
+                            <div>{customer.vehicle_count} vehicle{customer.vehicle_count !== 1 ? 's' : ''}</div>
+                          ) : (
+                            <div>No vehicles</div>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Services Multi-Select (ServiceCatalogModal integration) */}
             <div className="quick-add-field">

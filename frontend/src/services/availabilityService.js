@@ -62,13 +62,23 @@ function validateDate(date) {
   try {
     const targetDate = date instanceof Date ? date : new Date(date);
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
-    if (isNaN(targetDate.getTime()) || targetDate < today) {
+    // Compare only the date portion, not time
+    // Allow booking for today and future dates
+    const targetDateString = targetDate.toDateString();
+    const todayDateString = today.toDateString();
+
+    if (isNaN(targetDate.getTime())) {
       return null;
     }
 
-    return targetDate;
+    // Allow today and future dates
+    if (targetDateString >= todayDateString) {
+      return targetDate;
+    }
+
+    // Reject past dates
+    return null;
   } catch (error) {
     console.error('Error validating date:', error);
     return null;
@@ -183,10 +193,13 @@ export async function getAvailableSlots(serviceId, targetDate = new Date(), opti
   try {
     // Validate and sanitize inputs
     const sanitizedServiceId = validateAndSanitizeServiceId(serviceId);
+    console.log('getAvailableSlots called with:', { serviceId, sanitizedServiceId, targetDate, options });
+
     const validDate = validateDate(targetDate);
+    console.log('Date validation result:', { targetDate, validDate });
 
     if (!validDate) {
-      console.warn('Invalid date provided to getAvailableSlots');
+      console.warn('Invalid date provided to getAvailableSlots:', targetDate);
       return [];
     }
 
@@ -203,6 +216,7 @@ export async function getAvailableSlots(serviceId, targetDate = new Date(), opti
 
     // Generate time slots
     const timeSlots = generateTimeSlots(validDate, duration);
+    console.log('Generated time slots:', timeSlots.length, 'slots');
 
     // Fetch existing appointments for the date (updated to use admin endpoint; legacy /api/appointments removed)
     let existingAppointments = [];
@@ -212,18 +226,23 @@ export async function getAvailableSlots(serviceId, targetDate = new Date(), opti
       const resp = await fetch(`/api/admin/appointments?date=${dateString}`, {
         headers: { 'Content-Type': 'application/json' }
       });
+      console.log('Appointments API response:', resp.status, resp.statusText);
       if (resp.ok) {
         const json = await resp.json();
         // Expect envelope { data: { appointments: [...] } } — adapt defensively
         const maybeData = json.data || json;
         existingAppointments = maybeData.appointments || maybeData.data?.appointments || [];
+        console.log('Existing appointments:', existingAppointments.length);
+      } else {
+        console.log('Failed to fetch appointments, falling back to empty list');
       }
     } catch (error) {
-      // Swallow network or parsing errors silently to avoid log spam; availability degrades gracefully.
+      console.log('Error fetching appointments:', error.message);
     }
 
     // Check availability
     const availableSlots = checkSlotAvailability(timeSlots, existingAppointments);
+    console.log('After availability check:', availableSlots.filter(s => s.available).length, 'available slots');
 
     // Filter to only available slots and limit results
     const maxSlots = options.maxSlots || 5;

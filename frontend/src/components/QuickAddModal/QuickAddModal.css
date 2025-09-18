@@ -225,6 +225,16 @@
   gap: 0.25rem;
 }
 
+.quick-add-hint {
+  font-size: 0.75rem;
+  color: #059669;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
 .quick-add-error-general {
   padding: 0.75rem;
   background: #fef2f2;

@@ -437,29 +437,20 @@ export function getQuickTimeSlots() {
 }
 
 /**
- * Check for appointment conflicts (placeholder for real conflict detection)
+ * Check for appointment conflicts (delegates to backend during actual creation)
  * @param {Object} appointmentData - Appointment data to check
  * @returns {Promise<Object>} - Conflict information
  */
 export async function checkAppointmentConflicts(appointmentData) {
   try {
-    // This is a placeholder - in a real app, this would call the backend
-    await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API call
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 300));
 
-    // Mock conflict detection
-    const isConflict = appointmentData.appointmentTime === '10:00 AM' &&
-                      appointmentData.appointmentDate === new Date().toISOString().split('T')[0];
-
+    // No pre-emptive conflicts - let backend handle during actual appointment creation
+    // This prevents false positives from frontend mock logic
     return {
-      hasConflict: isConflict,
-      conflictDetails: isConflict ? {
-        existingAppointment: {
-          customer: 'John Doe',
-          time: '10:00 AM',
-          service: 'Oil Change'
-        },
-        suggestedAlternatives: ['11:00 AM', '2:00 PM', '3:00 PM']
-      } : null
+      hasConflict: false,
+      conflictDetails: null
     };
   } catch (error) {
     console.error('Error checking appointment conflicts:', error);

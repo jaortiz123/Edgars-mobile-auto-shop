@@ -20,14 +20,17 @@ services:
     environment:
       # Ensure the backend connects to the Postgres container, not localhost
       - POSTGRES_HOST=db
-      - POSTGRES_DB=${POSTGRES_DB:-test_autoshop}
-      - POSTGRES_USER=${POSTGRES_USER:-test_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-test_password}
+      - POSTGRES_DB=${POSTGRES_DB:-edgar_db}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       # Override DATABASE_URL from .env so container uses service host 'db'
-      - DATABASE_URL=${DATABASE_URL_COMPOSE:-postgresql://test_user:test_password@db:5432/test_autoshop}
+      - DATABASE_URL=${DATABASE_URL_COMPOSE}
       - JWT_SECRET=${JWT_SECRET:-test-secret}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - DEFAULT_TEST_TENANT=${DEFAULT_TEST_TENANT:-00000000-0000-0000-0000-000000000001}
+      # Development authentication bypass
+      - DEV_NO_AUTH=true
+      - BYPASS_TENANT_ISOLATION=true
       - SKIP_TENANT_ENFORCEMENT=true
       - FALLBACK_TO_MEMORY=false
       # Enable E2E bypass logic in backend auth/tenant middleware
@@ -47,7 +50,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://backend:3001
+      - VITE_API_URL=http://localhost:3001/api
       - VITE_DOCKER_ENV=true
       - VITE_NODE_ENV=production
       - NODE_ENV=production
@@ -69,7 +72,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-test_password}
       POSTGRES_DB: ${POSTGRES_DB:-test_autoshop}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-test_user} -d ${POSTGRES_DB:-test_autoshop}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-edgar_db}"]
       interval: 5s
       timeout: 5s
       retries: 5

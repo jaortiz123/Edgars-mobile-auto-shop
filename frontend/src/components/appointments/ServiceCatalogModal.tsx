@@ -29,10 +29,13 @@ async function fetchServices() {
   // Prefer fetch when available because some unit tests stub global fetch for this endpoint
   try {
     if (typeof fetch === 'function') {
-      const res = await fetch('/api/admin/service-operations');
+      const res = await fetch('http://localhost:3001/api/admin/service-operations', { credentials: 'include' });
       if (res && 'ok' in res && (res as Response).ok) {
         const data = await (res as Response).json();
-        const list = Array.isArray(data) ? data : data?.service_operations;
+        // Handle envelope format {ok: true, data: [...]} or legacy formats
+        const list = Array.isArray(data) ? data :
+                    Array.isArray(data?.data) ? data.data :
+                    data?.service_operations;
         if (Array.isArray(list)) return list as ServiceOperation[];
       }
     }
@@ -40,7 +43,10 @@ async function fetchServices() {
   try {
     const resp = await http.get('/admin/service-operations');
     const data = resp.data;
-    const list = Array.isArray(data) ? data : data?.service_operations;
+    // Handle envelope format {ok: true, data: [...]} or legacy formats
+    const list = Array.isArray(data) ? data :
+                Array.isArray(data?.data) ? data.data :
+                data?.service_operations;
     if (!Array.isArray(list)) return [];
     return list as ServiceOperation[];
   } catch {

@@ -5,6 +5,7 @@
  */
 export interface QuickAddFormState {
   customerName: string;
+  customerEmail: string;
   customerPhone: string;
   serviceType: string;
   appointmentDate: string;
@@ -16,6 +17,9 @@ export interface QuickAddFormState {
   vehicleMake: string;
   vehicleModel: string;
   quickAppointment?: boolean;
+  // Phase 2: Vehicle selection support
+  selectedVehicleId?: string; // ID of existing vehicle when selected from customer records
+  vehicleId?: string; // Alternative name for backward compatibility
   [k: string]: unknown; // forward compatible extension
 }
 
@@ -26,10 +30,17 @@ export interface QuickAddPayload extends QuickAddFormState {
 }
 
 export function buildQuickAddPayload(form: QuickAddFormState, selected: SelectedServiceLike[]): QuickAddPayload {
-  return {
+  const payload: QuickAddPayload = {
     ...form,
     service_operation_ids: selected.map(s => s.id),
   };
+
+  // Phase 2: Include vehicle_id when existing vehicle is selected
+  if (form.selectedVehicleId || form.vehicleId) {
+    payload.vehicle_id = form.selectedVehicleId || form.vehicleId;
+  }
+
+  return payload;
 }
 
 /**
@@ -41,6 +52,7 @@ export function validateQuickAdd(form: QuickAddFormState, selected: SelectedServ
   const errors: Record<string,string> = {};
   if (!form.customerName?.trim()) errors.customerName = 'Customer name is required';
   if (!form.customerPhone?.trim()) errors.customerPhone = 'Phone number is required';
+  if (form.customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.customerEmail)) errors.customerEmail = 'Please enter a valid email address';
   if (selected.length === 0) errors.serviceType = 'At least one service is required';
   if (!form.appointmentDate) errors.appointmentDate = 'Appointment date is required';
   if (!form.appointmentTime) errors.appointmentTime = 'Appointment time is required';

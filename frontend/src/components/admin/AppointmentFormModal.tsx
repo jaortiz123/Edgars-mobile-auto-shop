@@ -6,7 +6,7 @@ import { Button } from '../ui/Button';
 import TemplateSelector from './TemplateSelector';
 // @ts-expect-error JS module without types
 import { getTemplates } from '../../services/templateService.js';
-import { getAvailableSlots } from '../../lib/availabilityService';
+import { getAvailableSlots } from '../../services/availabilityService';
 import { checkConflict } from '../../lib/api';
 import ConflictWarning from './ConflictWarning';
 import vehicleCatalogSeed, { type VehicleMake } from '@/data/vehicleCatalog';
@@ -163,7 +163,12 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
     if (effectiveService && formData.appointmentType !== 'emergency') {
       const fetchSlots = async () => {
         const slots = await getAvailableSlots(effectiveService);
-        setAvailableSlots(slots);
+        // Convert TimeSlot objects to expected format
+        const convertedSlots = slots.map(slot => ({
+          date: slot.time.toISOString().split('T')[0], // Extract date part
+          time: slot.formatted // Use the formatted time string
+        }));
+        setAvailableSlots(convertedSlots);
       };
       fetchSlots();
     } else {

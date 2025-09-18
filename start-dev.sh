@@ -197,7 +197,7 @@ wait_for_service "postgresql" "PostgreSQL" || exit 1
 
 # Run raw SQL migrations (idempotent) before starting backend - only if the script exists
 # TEMPORARILY DISABLED FOR DEVELOPMENT ENVIRONMENT STABILIZATION
-if [ "${ENABLE_MIGRATIONS:-true}" = true ] && [ -f "backend/run_sql_migrations.py" ]; then
+if [ "${ENABLE_MIGRATIONS:-false}" = true ] && [ -f "backend/run_sql_migrations.py" ]; then
         echo -e "${BLUE}🧱 Applying raw SQL migrations (idempotent)...${NC}"
         if [ "${MIGRATIONS_USE_REMOTE_DB:-false}" = true ]; then
             # Use MIGRATIONS_DATABASE_URL if set, otherwise fall back to DATABASE_URL/POSTGRES_*
@@ -221,20 +221,20 @@ fi
 # Start backend with correct configuration (from backend directory)
 echo -e "${BLUE}⚙️ Starting backend server...${NC}"
 cd backend
-LOCAL_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}"
+LOCAL_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}?sslmode=disable"
 if [ "${USE_REMOTE_DB:-false}" = true ]; then
     # Use DATABASE_URL/POSTGRES_* from env as-is (remote)
     if [ "$MONITOR" = true ]; then
-        HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true python3 local_server.py &
+        HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true APP_ENV=development python3 local_server.py &
     else
-        nohup env HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true python3 local_server.py >> ../server.log 2>&1 &
+        nohup env HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true APP_ENV=development python3 local_server.py >> ../server.log 2>&1 &
     fi
 else
     # Force local DB for backend by overriding DATABASE_URL
     if [ "$MONITOR" = true ]; then
-        HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true DATABASE_URL="$LOCAL_URL" python3 local_server.py &
+        HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true APP_ENV=development DATABASE_URL="$LOCAL_URL" python3 local_server.py &
     else
-        nohup env HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true DATABASE_URL="$LOCAL_URL" python3 local_server.py >> ../server.log 2>&1 &
+        nohup env HOST=0.0.0.0 PORT=3001 DEV_NO_AUTH=true APP_ENV=development DATABASE_URL="$LOCAL_URL" python3 local_server.py >> ../server.log 2>&1 &
     fi
 fi
 BACKEND_PID=$!
