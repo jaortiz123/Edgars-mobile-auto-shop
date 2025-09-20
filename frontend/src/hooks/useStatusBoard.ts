@@ -29,6 +29,11 @@ import {
   isRetryableError,
   metricsCollector
 } from '../services/statusBoardClient';
+import {
+  collectBoardLoadMetric,
+  collectStatsLoadMetric,
+  collectMoveOperationMetric
+} from '../services/metricsCollector';
 
 // ===== INITIAL STATE =====
 
@@ -334,15 +339,21 @@ export function useStatusBoard(config?: {
     requestConfig?: RequestConfig
   ): Promise<BoardResponse> => {
     dispatch({ type: 'FETCH_BOARD_START' });
+    const startTime = performance.now();
+    let success = true;
 
     try {
       const response = await apiClient.fetchBoard(params, requestConfig);
       dispatch({ type: 'FETCH_BOARD_SUCCESS', payload: response });
       return response;
     } catch (error) {
+      success = false;
       const apiError = error as ApiError;
       dispatch({ type: 'FETCH_BOARD_ERROR', payload: apiError });
       throw error;
+    } finally {
+      const duration = performance.now() - startTime;
+      collectBoardLoadMetric(duration, success);
     }
   }, [apiClient]);
 
@@ -351,15 +362,21 @@ export function useStatusBoard(config?: {
     requestConfig?: RequestConfig
   ): Promise<StatsResponse> => {
     dispatch({ type: 'FETCH_STATS_START' });
+    const startTime = performance.now();
+    let success = true;
 
     try {
       const response = await apiClient.fetchStats(params, requestConfig);
       dispatch({ type: 'FETCH_STATS_SUCCESS', payload: response });
       return response;
     } catch (error) {
+      success = false;
       const apiError = error as ApiError;
       dispatch({ type: 'FETCH_STATS_ERROR', payload: apiError });
       throw error;
+    } finally {
+      const duration = performance.now() - startTime;
+      collectStatsLoadMetric(duration, success);
     }
   }, [apiClient]);
 
@@ -369,14 +386,20 @@ export function useStatusBoard(config?: {
     position: number,
     requestConfig?: RequestConfig
   ): Promise<MoveResponse> => {
+    const startTime = performance.now();
+
     // Prevent too many optimistic updates
     if (state.optimisticUpdates.length >= maxOptimisticUpdates) {
+      const duration = performance.now() - startTime;
+      collectMoveOperationMetric(duration, false);
       throw new Error('Too many pending operations. Please wait.');
     }
 
     // Find current appointment state
     const currentCard = state.board?.cards.find(card => card.id === appointmentId);
     if (!currentCard) {
+      const duration = performance.now() - startTime;
+      collectMoveOperationMetric(duration, false);
       throw new Error('Appointment not found');
     }
 
@@ -409,6 +432,10 @@ export function useStatusBoard(config?: {
           }
         }
       });
+
+      // Collect timeout metric
+      const duration = performance.now() - startTime;
+      collectMoveOperationMetric(duration, false);
     }, optimisticTimeout);
 
     optimisticTimeoutRefs.current.set(appointmentId, timeoutId);
@@ -432,6 +459,10 @@ export function useStatusBoard(config?: {
         type: 'MOVE_SUCCESS',
         payload: { appointmentId, response }
       });
+
+      // Collect success metric
+      const duration = performance.now() - startTime;
+      collectMoveOperationMetric(duration, true);
 
       return response;
 
@@ -478,6 +509,10 @@ export function useStatusBoard(config?: {
         type: 'MOVE_ERROR',
         payload: { appointmentId, error: apiError }
       });
+
+      // Collect error metric
+      const duration = performance.now() - startTime;
+      collectMoveOperationMetric(duration, false);
 
       throw error;
     }

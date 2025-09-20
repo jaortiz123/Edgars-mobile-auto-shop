@@ -250,6 +250,21 @@ if port_in_use 5173; then
     sleep 2
 fi
 
+# Start SigV4 proxy for IAM-protected production API
+echo -e "${BLUE}🔐 Starting SigV4 proxy...${NC}"
+if ! port_in_use 8080; then
+    if [ "$MONITOR" = true ]; then
+        ./dev-proxy/start-proxy.sh 8080 &
+    else
+        nohup ./dev-proxy/start-proxy.sh 8080 >> proxy.log 2>&1 &
+    fi
+    PROXY_PID=$!
+    echo -e "${GREEN}✅ SigV4 proxy started on http://localhost:8080${NC}"
+    sleep 2
+else
+    echo -e "${YELLOW}⚠️ Port 8080 in use, skipping proxy start${NC}"
+fi
+
 # Install frontend dependencies if needed
 if [ ! -d "frontend/node_modules" ]; then
     echo -e "${BLUE}📦 Installing frontend dependencies...${NC}"

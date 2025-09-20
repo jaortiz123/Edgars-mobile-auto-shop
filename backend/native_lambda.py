@@ -6,9 +6,12 @@ Bypasses Lambda Web Adapter to avoid communication issues
 import json
 import logging
 import os
+import time
 import uuid
 from typing import Any, Dict
 from urllib.parse import unquote
+
+import boto3
 
 from backend.domain.appointments.service import AppointmentService
 from backend.infra.lazy_db import get_db_manager
@@ -43,6 +46,49 @@ def make_response(
         body["error"] = error
 
     return {"statusCode": status_code, "headers": headers, "body": json.dumps(body, default=str)}
+
+
+# CloudWatch metrics helper for OCC monitoring
+def emit_move_metrics(conflict: bool, duration_ms: float, correlation_id: str = None):
+    """Emit CloudWatch metrics for Move API monitoring"""
+    try:
+        cloudwatch = boto3.client("cloudwatch", region_name=os.getenv("AWS_REGION", "us-west-2"))
+
+        metrics = []
+
+        # OCC conflict metric
+        if conflict:
+            metrics.append(
+                {
+                    "MetricName": "OCCConflicts",
+                    "Value": 1,
+                    "Unit": "Count",
+                    "Dimensions": [
+                        {"Name": "Service", "Value": "MoveAPI"},
+                        {"Name": "Environment", "Value": os.getenv("STAGE", "dev")},
+                    ],
+                }
+            )
+
+        # Move latency metric
+        metrics.append(
+            {
+                "MetricName": "MoveLatency",
+                "Value": duration_ms,
+                "Unit": "Milliseconds",
+                "Dimensions": [
+                    {"Name": "Service", "Value": "MoveAPI"},
+                    {"Name": "Environment", "Value": os.getenv("STAGE", "dev")},
+                ],
+            }
+        )
+
+        # Emit metrics to CloudWatch
+        if metrics:
+            cloudwatch.put_metric_data(Namespace="EdgarAutoShop/MoveAPI", MetricData=metrics)
+
+    except Exception as e:
+        logger.warning(f"[{correlation_id}] Failed to emit CloudWatch metrics: {e}")
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -1026,6 +1072,8 @@ def handle_get_board(query_params: Dict[str, str], correlation_id: str) -> Dict[
 
 def handle_move_appointment(appointment_id: str, body: str, correlation_id: str) -> Dict[str, Any]:
     """Move appointment to new status/position with optimistic concurrency"""
+    start_time = time.time()
+
     try:
         logger.info(f"[{correlation_id}] Moving appointment {appointment_id}")
 
@@ -1057,7 +1105,7 @@ def handle_move_appointment(appointment_id: str, body: str, correlation_id: str)
             if field in data:
                 kwargs[field] = data[field]
 
-        # Move appointment
+        # Move appointment with timing
         result = service.move_appointment(
             appointment_id=appointment_id,
             new_status=new_status,
@@ -1066,36 +1114,76 @@ def handle_move_appointment(appointment_id: str, body: str, correlation_id: str)
             **kwargs,
         )
 
-        logger.info(f"[{correlation_id}] Appointment {appointment_id} moved successfully")
-        # Return simplified response format as per API spec
+        # Calculate duration and emit metrics
+        duration_ms = (time.time() - start_time) * 1000
+        emit_move_metrics(conflict=False, duration_ms=duration_ms, correlation_id=correlation_id)
+
+        logger.info(
+            f"[{correlation_id}] Appointment {appointment_id} moved successfully in {duration_ms:.2f}ms"
+        )
+
+        # Return enhanced response format with timing info
         move_result = {
-            "id": str(result["id"]),
+            "appointment_id": str(result["id"]),
             "status": result["status"],
             "position": result["position"],
             "version": result["version"],
+            "updated_at": result.get("updated_at"),
         }
         return make_response(200, data=move_result, correlation_id=correlation_id)
 
     except Exception as e:
+        # Calculate duration for failed requests too
+        duration_ms = (time.time() - start_time) * 1000
+
         # Import the exception classes first
         from backend.domain.appointments.service import InvalidTransition, VersionConflict
 
         if isinstance(e, VersionConflict):
-            return make_response(409, error=str(e), correlation_id=correlation_id)
+            # Emit conflict metrics
+            emit_move_metrics(conflict=True, duration_ms=duration_ms, correlation_id=correlation_id)
+
+            # Enhanced 409 response with conflict details
+            error_data = {
+                "code": "version_conflict",
+                "message": str(e),
+                "appointment_id": appointment_id,
+                "requested_version": current_version if "current_version" in locals() else None,
+            }
+            return make_response(409, error=error_data, correlation_id=correlation_id)
+
         elif isinstance(e, InvalidTransition):
-            return make_response(422, error=str(e), correlation_id=correlation_id)
+            return make_response(
+                422,
+                error={"code": "invalid_transition", "message": str(e)},
+                correlation_id=correlation_id,
+            )
+
         elif isinstance(e, ValueError):
             # Other business logic errors
-            return make_response(400, error=str(e), correlation_id=correlation_id)
+            return make_response(
+                400,
+                error={"code": "validation_error", "message": str(e)},
+                correlation_id=correlation_id,
+            )
+
+        else:
+            # Generic server error for unexpected exceptions
+            logger.error(
+                f"[{correlation_id}] Error moving appointment {appointment_id}: {e}", exc_info=True
+            )
+            return make_response(
+                500,
+                error={"code": "internal_error", "message": "Internal server error"},
+                correlation_id=correlation_id,
+            )
+
     except json.JSONDecodeError:
         return make_response(
-            400, error="Invalid JSON in request body", correlation_id=correlation_id
+            400,
+            error={"code": "invalid_json", "message": "Invalid JSON in request body"},
+            correlation_id=correlation_id,
         )
-    except Exception as e:
-        logger.error(
-            f"[{correlation_id}] Error moving appointment {appointment_id}: {e}", exc_info=True
-        )
-        return make_response(500, error="Internal server error", correlation_id=correlation_id)
 
 
 def handle_dashboard_stats(query_params: Dict[str, str], correlation_id: str) -> Dict[str, Any]:

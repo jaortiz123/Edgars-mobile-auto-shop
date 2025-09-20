@@ -6,6 +6,7 @@ import { NotificationTracker } from '../components/admin/NotificationTracker';
 import CalendarView from '../components/admin/CalendarView';
 import ScheduleView from '../components/admin/ScheduleView';
 import StatusBoard from '../components/admin/StatusBoard';
+import StatusBoardV2 from '../components/admin/StatusBoardV2';
 import AdvancedFilter from '../components/admin/AdvancedFilter';
 import DataExport from '../components/admin/DataExport';
 import ReportsDropdown from '../components/admin/ReportsDropdown';
@@ -127,8 +128,8 @@ export default function AdminAppointments() {
   const handleMarkComplete = async (id: string) => {
     setUpdatingId(id);
     try {
-      await updateAppointment(id, { status: 'completed' });
-      setAppointments(appts => appts.map(appt => appt.id === id ? { ...appt, status: 'completed' } : appt));
+      await updateAppointment(id, { status: 'COMPLETED' });
+      setAppointments(appts => appts.map(appt => appt.id === id ? { ...appt, status: 'COMPLETED' } : appt));
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message || 'Failed to update appointment');
@@ -442,9 +443,10 @@ export default function AdminAppointments() {
           title="Smart Today View"
         />
       ) : viewMode === 'status-board' ? (
-        <StatusBoard
-          onOpen={(id: string) => {
-            console.log('Opening appointment:', id);
+        <StatusBoardV2
+          onCardClick={(card) => {
+            console.log('Opening appointment:', card);
+            // TODO: Open drawer with appointment details
           }}
           minimalHero={true}
         />

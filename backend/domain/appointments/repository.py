@@ -3,6 +3,8 @@ Appointments repository - Data access layer for appointment operations
 Uses LazyDatabaseManager for connection management
 """
 
+import random
+import time
 from typing import Any, Dict, List, Optional
 
 
@@ -318,15 +320,45 @@ class AppointmentRepository:
         RETURNING id::text
         """
 
-        try:
-            result = self.db.query(query, params)
-            if not result:
-                # Version conflict - return None to indicate failure
+        # Retry logic for transient deadlocks only (max 1 retry)
+        max_retries = 1
+        for attempt in range(max_retries + 1):
+            try:
+                result = self.db.query(query, params)
+                if not result:
+                    # Version conflict - return None to indicate failure
+                    # This is NOT a deadlock, don't retry
+                    return None
+
+                # Return updated appointment
+                return self.get(appointment_id)
+
+            except Exception as e:
+                error_message = str(e).lower()
+
+                # Check if this is a transient deadlock that might benefit from retry
+                is_deadlock = any(
+                    keyword in error_message
+                    for keyword in [
+                        "deadlock",
+                        "lock timeout",
+                        "could not serialize access",
+                        "serialization failure",
+                        "concurrent update",
+                    ]
+                )
+
+                if is_deadlock and attempt < max_retries:
+                    # Add jittered backoff for deadlock retry (10-25ms)
+                    backoff_ms = 10 + random.randint(0, 15)
+                    time.sleep(backoff_ms / 1000.0)
+                    self.db.logger.warning(
+                        f"Deadlock detected for appointment {appointment_id}, retrying after {backoff_ms}ms (attempt {attempt + 1})"
+                    )
+                    continue
+
+                # Not a deadlock or max retries exceeded - log and fail
+                self.db.logger.error(
+                    f"Error moving appointment {appointment_id} (attempt {attempt + 1}): {e}"
+                )
                 return None
-
-            # Return updated appointment
-            return self.get(appointment_id)
-
-        except Exception as e:
-            self.db.logger.error(f"Error moving appointment {appointment_id}: {e}")
-            return None

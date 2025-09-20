@@ -14,6 +14,7 @@ import {
   MoveResponse,
   AppointmentCard,
   ApiError,
+  ApiErrorClass,
   ConflictError,
   TimeoutError,
   RequestConfig,
@@ -36,7 +37,10 @@ export class StatusBoardClient implements StatusBoardApiClient {
     config?: RequestConfig
   ): Promise<BoardResponse> {
     const url = `${this.config.baseURL}/api/admin/appointments/board`;
-    const queryParams = new URLSearchParams(params as Record<string, string>);
+    const queryParams = new URLSearchParams();
+    queryParams.set('from', params.from);
+    queryParams.set('to', params.to);
+    if (params.techId) queryParams.set('techId', params.techId);
 
     return this.request<BoardResponse>(
       'GET',
@@ -54,7 +58,9 @@ export class StatusBoardClient implements StatusBoardApiClient {
     config?: RequestConfig
   ): Promise<StatsResponse> {
     const url = `${this.config.baseURL}/api/admin/dashboard/stats`;
-    const queryParams = new URLSearchParams(params as Record<string, string>);
+    const queryParams = new URLSearchParams();
+    queryParams.set('from', params.from);
+    queryParams.set('to', params.to);
 
     return this.request<StatsResponse>(
       'GET',
@@ -184,7 +190,7 @@ export class StatusBoardClient implements StatusBoardApiClient {
         throw this.createTimeoutError(config?.timeout || this.config.defaultTimeout);
       }
 
-      if (error instanceof ApiError) {
+      if (error instanceof ApiErrorClass) {
         throw error;
       }
 
@@ -229,13 +235,13 @@ export class StatusBoardClient implements StatusBoardApiClient {
     throw lastError!;
   }
 
-  private createApiError(status: number, data: any): ApiError {
-    return {
-      error: data.error || 'api_error',
-      message: data.message || `HTTP ${status} error`,
-      details: data.details,
-      retry_after: data.retry_after
-    };
+  private createApiError(status: number, data: any): ApiErrorClass {
+    return new ApiErrorClass(
+      data.message || `HTTP ${status} error`,
+      data.error || 'api_error',
+      data.details,
+      data.retry_after
+    );
   }
 
   private createConflictError(data: any): ConflictError {

@@ -1,0 +1,24 @@
+{
+  "timestamp": "2025-09-20T20:10:12.877556",
+  "target_url": "https://onourabnw45tm2rrq72gegkgai0codqj.lambda-url.us-west-2.on.aws",
+  "auth_method": "SigV4_Proxy",
+  "success_rate": 100.0,
+  "slo_compliance": 100.0,
+  "production_ready": true,
+  "total_tests": 1,
+  "passed_tests": 1,
+  "created_data": {},
+  "detailed_results": [
+    {
+      "test": "status_board_with_data",
+      "success": true,
+      "duration_ms": 318.94,
+      "status_code": 200,
+      "slo_compliant": true,
+      "slo_target_ms": 800,
+      "endpoint": "/api/admin/appointments/board",
+      "authenticated": true,
+      "has_test_data": false
+    }
+  ]
+}

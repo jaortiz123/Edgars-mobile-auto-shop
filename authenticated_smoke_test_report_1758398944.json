@@ -1,0 +1,70 @@
+{
+  "timestamp": "2025-09-20 20:09:04 UTC",
+  "target_url": "https://onourabnw45tm2rrq72gegkgai0codqj.lambda-url.us-west-2.on.aws",
+  "authentication_method": "SigV4_Proxy",
+  "proxy_url": "http://localhost:8080",
+  "summary": {
+    "total_tests": 5,
+    "passed": 5,
+    "failed": 0,
+    "success_rate": 1.0,
+    "slo_tests": 2,
+    "slo_compliant": 2,
+    "production_ready": true
+  },
+  "test_results": [
+    {
+      "test": "proxy_connectivity",
+      "success": true,
+      "duration_ms": 118.74,
+      "status_code": 200,
+      "endpoint": "/healthz",
+      "authenticated": true,
+      "proxy_url": "http://localhost:8080"
+    },
+    {
+      "test": "health_endpoint",
+      "success": true,
+      "duration_ms": 134.8,
+      "status_code": 200,
+      "endpoint": "/healthz",
+      "authenticated": true
+    },
+    {
+      "test": "status_board_endpoint",
+      "success": true,
+      "duration_ms": 435.18,
+      "status_code": 200,
+      "slo_compliant": true,
+      "slo_target_ms": 800,
+      "endpoint": "/api/admin/appointments/board",
+      "authenticated": true,
+      "has_valid_json": true,
+      "response_structure_valid": true
+    },
+    {
+      "test": "dashboard_stats",
+      "success": true,
+      "duration_ms": 310.29,
+      "status_code": 200,
+      "slo_compliant": true,
+      "slo_target_ms": 500,
+      "endpoint": "/api/admin/dashboard/stats",
+      "authenticated": true,
+      "has_valid_json": true,
+      "response_structure_valid": true
+    },
+    {
+      "test": "move_api_endpoint",
+      "success": true,
+      "duration_ms": 0,
+      "status_code": 200,
+      "endpoint": "/api/admin/appointments/move",
+      "authenticated": true,
+      "note": "No appointments available to test move operation"
+    }
+  ],
+  "recommendations": [
+    "\ud83c\udf89 All tests passed - system ready for production!"
+  ]
+}

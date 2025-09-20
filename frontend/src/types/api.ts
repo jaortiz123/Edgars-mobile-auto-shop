@@ -120,6 +120,20 @@ export interface ApiError {
   retry_after?: number;  // ms
 }
 
+export class ApiErrorClass extends Error implements ApiError {
+  public readonly error: string;
+  public readonly details?: Record<string, unknown>;
+  public readonly retry_after?: number;
+
+  constructor(message: string, error: string, details?: Record<string, unknown>, retry_after?: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.error = error;
+    this.details = details;
+    this.retry_after = retry_after;
+  }
+}
+
 export interface ValidationError extends ApiError {
   error: 'validation_error';
   field_errors: Record<string, string[]>;
