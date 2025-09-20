@@ -5,6 +5,7 @@ import { updateAppointment } from '@/lib/api';
 import { NotificationTracker } from '../components/admin/NotificationTracker';
 import CalendarView from '../components/admin/CalendarView';
 import ScheduleView from '../components/admin/ScheduleView';
+import StatusBoard from '../components/admin/StatusBoard';
 import AdvancedFilter from '../components/admin/AdvancedFilter';
 import DataExport from '../components/admin/DataExport';
 import ReportsDropdown from '../components/admin/ReportsDropdown';
@@ -26,7 +27,8 @@ import {
   Clock,
   CheckCircle,
   AlertTriangle,
-  CalendarDays
+  CalendarDays,
+  Columns
 } from 'lucide-react';
 
 interface Appointment {
@@ -59,7 +61,7 @@ interface FilterOptions {
   phoneSearch: string;
 }
 
-type ViewMode = 'list' | 'calendar' | 'schedule';
+type ViewMode = 'list' | 'calendar' | 'schedule' | 'status-board';
 
 export default function AdminAppointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -358,6 +360,15 @@ export default function AdminAppointments() {
                   Smart Schedule
                 </Button>
                 <Button
+                  variant={viewMode === 'status-board' ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('status-board')}
+                  className="rounded-none flex items-center gap-2"
+                >
+                  <Columns className="h-4 w-4" />
+                  Status Board
+                </Button>
+                <Button
                   variant={viewMode === 'calendar' ? 'primary' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('calendar')}
@@ -429,6 +440,13 @@ export default function AdminAppointments() {
         <ScheduleView
           appointments={filteredAppointments}
           title="Smart Today View"
+        />
+      ) : viewMode === 'status-board' ? (
+        <StatusBoard
+          onOpen={(id: string) => {
+            console.log('Opening appointment:', id);
+          }}
+          minimalHero={true}
         />
       ) : (
         <Card>

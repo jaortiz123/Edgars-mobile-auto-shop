@@ -1,0 +1,89 @@
+name: Verify Appointments Implementation
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+jobs:
+  verify-appointments-slice:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+
+      - name: 1. Verify Repository & DSN Implementation
+        run: |
+          echo "Checking SqlAppointmentRepository and DatabaseManager exist..."
+          rg "SqlAppointmentRepository|DatabaseManager" backend/domain/appointments/repository.py backend/infra/repositories.py -n
+
+      - name: 2. Verify Routes Registration
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          echo "Checking admin appointment routes are registered..."
+          cd ${{ github.workspace }}
+          python3 -c "
+          from backend.app import create_app
+          app = create_app()
+          rules = [(r.rule, tuple(sorted(r.methods))) for r in app.url_map.iter_rules()]
+          admin_routes = [(rule, methods) for rule, methods in rules if rule.startswith('/api/admin/appointments')]
+          print(f'Found {len(admin_routes)} admin appointment routes:')
+          for rule, methods in sorted(admin_routes):
+              print(f'  {methods} {rule}')
+          assert len(admin_routes) >= 5, f'Expected at least 5 routes, got {len(admin_routes)}'
+          print('✅ Route registration verified')
+          "
+
+      - name: 3. Run Unit & Smoke Tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          echo "Running appointment tests..."
+          pytest -q tests/unit/test_appointment_service.py
+          pytest -q tests/smoke/test_admin_appointments.py
+
+      - name: 4. Verify OpenAPI Specification
+        run: |
+          echo "Generating and verifying OpenAPI spec..."
+          python3 generate_openapi_baseline.py
+          echo "Checking admin appointments in OpenAPI spec..."
+          rg "api/admin/appointments" api_v1_baseline.json
+          echo "Verifying idempotency key support..."
+          rg "IdempotencyKey" api_v1_baseline.json
+
+      - name: 5. Integration Tests (if DB available)
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          DB_HOST: ${{ secrets.TEST_DB_HOST }}
+          DB_NAME: ${{ secrets.TEST_DB_NAME }}
+          DB_USER: ${{ secrets.TEST_DB_USER }}
+          DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+        run: |
+          if [ -n "$DB_HOST" ]; then
+            echo "Running integration tests with real DB..."
+            pytest -q tests/integration/test_admin_appointments_repo.py
+          else
+            echo "⚠️  No DB secrets configured - skipping integration tests"
+            echo "Configure TEST_DB_* secrets to enable integration testing"
+          fi
+
+  block-incomplete-slices:
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+      - run: |
+          echo "❌ APPOINTMENT SLICE INCOMPLETE"
+          echo "This PR is blocked until all verification steps pass:"
+          echo "  □ Repository & DatabaseManager implementations"
+          echo "  □ Route registration (5 routes required)"
+          echo "  □ Unit & smoke tests passing"
+          echo "  □ OpenAPI specification updated"
+          exit 1

@@ -1,0 +1,102 @@
+name: Vehicles Slice Verification
+
+on:
+  push:
+    paths:
+      - 'backend/api/v1/admin/vehicles/**'
+      - 'backend/domain/vehicles/**'
+      - 'tests/api/v1/admin/vehicles/**'
+  pull_request:
+    paths:
+      - 'backend/api/v1/admin/vehicles/**'
+      - 'backend/domain/vehicles/**'
+      - 'tests/api/v1/admin/vehicles/**'
+
+jobs:
+  verify-vehicles:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        cd backend && pip install -r requirements.txt
+        pip install pytest
+
+    - name: Verify vehicle routes exist
+      run: |
+        cd backend
+        python3 - <<'PY'
+        from backend.app import create_dev_app
+        app = create_dev_app()
+
+        # Aggregate methods by route
+        veh_methods = {}
+        for r in app.url_map.iter_rules():
+            if r.rule.startswith('/api/admin/vehicles'):
+                if r.rule not in veh_methods:
+                    veh_methods[r.rule] = set()
+                veh_methods[r.rule].update(r.methods)
+
+        print('VEHICLE ROUTES:')
+        for rule in sorted(veh_methods.keys()):
+            methods = tuple(sorted(veh_methods[rule]))
+            print(' ', methods, rule)
+
+        # Assertions - must have all 5 endpoints
+        assert '/api/admin/vehicles' in veh_methods and 'GET' in veh_methods['/api/admin/vehicles'] and 'POST' in veh_methods['/api/admin/vehicles'], "Missing /api/admin/vehicles with GET/POST"
+        assert '/api/admin/vehicles/<vehicle_id>' in veh_methods, "Missing /api/admin/vehicles/<vehicle_id>"
+        assert '/api/admin/vehicles/search' in veh_methods, "Missing /api/admin/vehicles/search"
+        print('✅ All vehicle routes present')
+        PY
+
+    - name: Run vehicle unit tests
+      run: |
+        cd backend
+        pytest -v tests/api/v1/admin/vehicles/test_unit.py
+
+    - name: Run vehicle smoke tests
+      run: |
+        cd backend
+        pytest -v tests/api/v1/admin/vehicles/test_smoke.py
+
+    - name: Run vehicle integration tests
+      run: |
+        cd backend
+        pytest -v tests/api/v1/admin/vehicles/test_integration.py
+
+    - name: Verify OpenAPI includes vehicles
+      run: |
+        python3 generate_openapi_baseline.py
+        if ! grep -q "api/admin/vehicles" api_v1_baseline.json; then
+          echo "❌ Vehicles paths missing from OpenAPI spec"
+          exit 1
+        fi
+        echo "✅ Vehicles paths present in OpenAPI"
+
+    - name: Verify required files exist
+      run: |
+        # Check required route files
+        test -f "backend/api/v1/admin/vehicles/__init__.py" || (echo "❌ Missing vehicles/__init__.py" && exit 1)
+        test -f "backend/api/v1/admin/vehicles/routes.py" || (echo "❌ Missing vehicles/routes.py" && exit 1)
+        test -f "backend/api/v1/admin/vehicles/schemas.py" || (echo "❌ Missing vehicles/schemas.py" && exit 1)
+
+        # Check required domain files
+        test -f "backend/domain/vehicles/__init__.py" || (echo "❌ Missing domain/vehicles/__init__.py" && exit 1)
+        test -f "backend/domain/vehicles/service.py" || (echo "❌ Missing domain/vehicles/service.py" && exit 1)
+        test -f "backend/domain/vehicles/repository.py" || (echo "❌ Missing domain/vehicles/repository.py" && exit 1)
+        test -f "backend/domain/vehicles/errors.py" || (echo "❌ Missing domain/vehicles/errors.py" && exit 1)
+
+        # Check required test files
+        test -f "tests/api/v1/admin/vehicles/test_unit.py" || (echo "❌ Missing test_unit.py" && exit 1)
+        test -f "tests/api/v1/admin/vehicles/test_smoke.py" || (echo "❌ Missing test_smoke.py" && exit 1)
+        test -f "tests/api/v1/admin/vehicles/test_integration.py" || (echo "❌ Missing test_integration.py" && exit 1)
+
+        echo "✅ All required files present"

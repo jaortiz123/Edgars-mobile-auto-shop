@@ -1,0 +1,38 @@
+name: Prevent Unverified Completions
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+jobs:
+  verify-slice-completions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: |
+          cd backend && pip install -r requirements.txt
+      - name: Verify slice file integrity
+        run: bash scripts/verify_slice_files.sh
+      - name: Verify route registration
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          cd ${{ github.workspace }}
+          python -c "
+          from backend.app import create_app
+          app = create_app()
+          admin_routes = [str(rule) for rule in app.url_map.iter_rules() if 'admin' in str(rule)]
+          print(f'Admin routes found: {len(admin_routes)}')
+          assert len(admin_routes) >= 5, 'Admin appointments routes missing'
+          "
+      - name: Run slice tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          cd ${{ github.workspace }}
+          python -m pytest tests/smoke/test_admin_appointments.py tests/unit/test_appointment_service.py -v

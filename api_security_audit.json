@@ -1,0 +1,236 @@
+{
+  "timestamp": "2025-09-20T12:00:00Z",
+  "audit_results": {
+    "files_checked": 506,
+    "routes_found": 92,
+    "validation_issues": [
+      {
+        "file": "backend/debug_app.py",
+        "type": "missing_input_validation",
+        "severity": "MEDIUM",
+        "description": "Routes found but no validation library detected"
+      },
+      {
+        "file": "backend/production_tenant_middleware_v2.py",
+        "type": "missing_input_validation",
+        "severity": "MEDIUM",
+        "description": "Routes found but no validation library detected"
+      },
+      {
+        "file": "backend/booking_function.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      },
+      {
+        "file": "backend/tenant_middleware.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      },
+      {
+        "file": "backend/run_plan_baseline_snapshot.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      },
+      {
+        "file": "backend/local_server.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      },
+      {
+        "file": "backend/lambda_app.py",
+        "type": "missing_input_validation",
+        "severity": "MEDIUM",
+        "description": "Routes found but no validation library detected"
+      },
+      {
+        "file": "backend/check_db_bloat.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      },
+      {
+        "file": "backend/invoice_service.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      },
+      {
+        "file": "backend/early_profile_routes.py",
+        "type": "missing_input_validation",
+        "severity": "MEDIUM",
+        "description": "Routes found but no validation library detected"
+      },
+      {
+        "file": "backend/production_tenant_middleware.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      },
+      {
+        "file": "backend/production_tenant_middleware.py",
+        "type": "missing_input_validation",
+        "severity": "MEDIUM",
+        "description": "Routes found but no validation library detected"
+      },
+      {
+        "file": "backend/simple_health.py",
+        "type": "missing_input_validation",
+        "severity": "MEDIUM",
+        "description": "Routes found but no validation library detected"
+      },
+      {
+        "file": "backend/production.py",
+        "type": "missing_input_validation",
+        "severity": "MEDIUM",
+        "description": "Routes found but no validation library detected"
+      },
+      {
+        "file": "backend/app/middleware/tenant_context.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      },
+      {
+        "file": "backend/app/middleware/tenant_context_examples.py",
+        "type": "missing_input_validation",
+        "severity": "MEDIUM",
+        "description": "Routes found but no validation library detected"
+      },
+      {
+        "file": "backend/tests/test_robustness_simple.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      },
+      {
+        "file": "backend/tests/test_patch_edits.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      },
+      {
+        "file": "backend/tests/test_template_analytics.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      },
+      {
+        "file": "backend/tests/test_integration_database.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      },
+      {
+        "file": "backend/tests/test_robustness_containerized_db.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      },
+      {
+        "file": "backend/tests/test_unified_customer_profile.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      },
+      {
+        "file": "backend/tests/test_invoice_snapshot_trigger.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      },
+      {
+        "file": "backend/lambda_packages/booking_update/booking_function.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      },
+      {
+        "file": "backend/lambda_packages/booking_update/psycopg2/_json.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      },
+      {
+        "file": "backend/libs/psycopg2/_json.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      },
+      {
+        "file": "backend/domain/invoices/repository.py",
+        "type": "potential_sql_injection",
+        "severity": "HIGH",
+        "description": "Potential SQL injection vulnerability detected"
+      }
+    ],
+    "recommendations": [
+      {
+        "priority": "HIGH",
+        "title": "Implement parameterized queries",
+        "description": "Use parameterized queries or ORM to prevent SQL injection"
+      },
+      {
+        "priority": "MEDIUM",
+        "title": "Add input validation middleware",
+        "description": "Use marshmallow or similar library for request validation"
+      }
+    ]
+  },
+  "security_improvements": [
+    {
+      "category": "Rate Limiting",
+      "priority": "HIGH",
+      "title": "Implement API rate limiting",
+      "description": "Add rate limiting middleware to prevent API abuse",
+      "implementation": "Use Redis-based token bucket algorithm with per-IP limits",
+      "files_to_create": [
+        "backend/middleware/rate_limiter.py"
+      ]
+    },
+    {
+      "category": "Input Validation",
+      "priority": "HIGH",
+      "title": "Add comprehensive input validation",
+      "description": "Validate all incoming request data using schemas",
+      "implementation": "Marshmallow schemas with type checking and sanitization",
+      "files_to_create": [
+        "backend/schemas/validation_schemas.py"
+      ]
+    },
+    {
+      "category": "SQL Injection Protection",
+      "priority": "CRITICAL",
+      "title": "Implement SQL injection protection",
+      "description": "Add parameterized queries and input sanitization",
+      "implementation": "Safe query builders and injection detection",
+      "files_to_create": [
+        "backend/security/sql_protection.py"
+      ]
+    },
+    {
+      "category": "Authentication",
+      "priority": "MEDIUM",
+      "title": "Add API key authentication for admin endpoints",
+      "description": "Protect admin routes with API key validation",
+      "implementation": "JWT or API key middleware for admin functions"
+    },
+    {
+      "category": "Headers",
+      "priority": "MEDIUM",
+      "title": "Add security headers",
+      "description": "Implement CORS, CSP, and other security headers",
+      "implementation": "Flask-Security or custom middleware"
+    }
+  ],
+  "next_steps": [
+    "Deploy rate limiting middleware to production",
+    "Add input validation to all API endpoints",
+    "Implement SQL injection protection",
+    "Add security monitoring and alerting",
+    "Perform penetration testing on API endpoints"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "rollback_performed_at": "2025-09-20T12:10:00Z",
+  "performed_by": "jesusortiz",
+  "function_name": "edgar-auto-shop-dev-flask-app",
+  "rolled_back_from": {
+    "image_uri": "588738589514.dkr.ecr.us-west-2.amazonaws.com/edgar-auto-shop-dev-flask-app:sprint2-t5-drill-001",
+    "code_sha256": "24b9f571568eaf5efc7246fbf312aae12aaf5ad1efdc865f8b43ed8fcafb27da"
+  },
+  "rolled_back_to": {
+    "image_uri": "588738589514.dkr.ecr.us-west-2.amazonaws.com/edgar-auto-shop-dev-flask-app:svc-fix-services-list-20250919-232855",
+    "tag": "svc-fix-services-list-20250919-232855",
+    "code_sha256": "276fc2138fc028a375a42bf102fd826062119f7e3724837bb56a63f7e53fbe9d"
+  },
+  "original_rollback_file": "releases/rollback.json"
+}

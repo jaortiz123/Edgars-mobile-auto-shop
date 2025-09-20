@@ -1,0 +1,46 @@
+config:
+  target: "{{ $processEnvironment.URL }}"
+  phases:
+    - duration: 60   # warm-up
+      arrivalRate: 5
+      name: "warmup"
+    - duration: 120  # burst to validate 50 RPS peak across 3 endpoints
+      arrivalRate: 50
+      name: "burst"
+    - duration: 600  # sustained load for 10 minutes
+      arrivalRate: 20
+      name: "sustained"
+  processor: ./processors.js
+  defaults:
+    headers:
+      Content-Type: application/json
+  variables:
+    date: "{{ $processEnvironment.TEST_DATE }}"
+  plugins:
+    metrics-by-endpoint:
+      useOnlyRequestNames: true
+
+scenarios:
+  - name: Board & Stats Read Mix (70%)
+    weight: 7
+    flow:
+      - get:
+          url: "/api/admin/appointments/board?date={{ date }}"
+          name: "GET /board"
+      - think: 0.5  # simulate user reading time
+      - get:
+          url: "/api/admin/dashboard/stats?date={{ date }}"
+          name: "GET /stats"
+
+  - name: Move Operation (30%)
+    weight: 3
+    flow:
+      - function: pickAppointment
+      - post:
+          url: "/api/admin/appointments/{{ apptId }}/move"
+          name: "POST /move"
+          json:
+            new_status: "in_progress"
+            position: 0
+            expected_version: "{{ expectedVersion }}"
+      - think: 1  # simulate UI update time

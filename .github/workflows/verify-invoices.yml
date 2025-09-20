@@ -1,0 +1,120 @@
+name: Invoices Slice Verification
+
+on:
+  push:
+    paths:
+      - 'backend/api/v1/admin/invoices/**'
+      - 'backend/domain/invoices/**'
+      - 'tests/api/v1/admin/invoices/**'
+  pull_request:
+    paths:
+      - 'backend/api/v1/admin/invoices/**'
+      - 'backend/domain/invoices/**'
+      - 'tests/api/v1/admin/invoices/**'
+
+jobs:
+  verify-invoices:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:13-alpine
+        env:
+          POSTGRES_DB: edgar_auto_shop_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        cd backend && pip install -r requirements.txt
+        pip install pytest
+
+    - name: Verify invoice routes exist
+      run: |
+        cd backend
+        python3 - <<'PY'
+        from backend.app import create_dev_app
+        app = create_dev_app()
+
+        invoice_routes = sorted({r.rule for r in app.url_map.iter_rules() if r.rule.startswith('/api/admin/invoices')})
+        print('INVOICE ROUTES:')
+        for route in invoice_routes:
+            print(' ', route)
+
+        # Assertions - must have all 4 endpoints
+        assert '/api/admin/invoices' in invoice_routes, "Missing /api/admin/invoices"
+        assert '/api/admin/invoices/<invoice_id>' in invoice_routes, "Missing /api/admin/invoices/<invoice_id>"
+        print('✅ All invoice routes present')
+        PY
+
+    - name: Run invoice unit tests
+      run: |
+        cd backend
+        pytest -v tests/api/v1/admin/invoices/test_unit.py
+
+    - name: Verify money arithmetic precision
+      run: |
+        cd backend
+        pytest -v tests/api/v1/admin/invoices/test_unit.py::TestMoneyArithmetic::test_money_precision_cents -s
+
+    - name: Run invoice smoke tests
+      run: |
+        cd backend
+        pytest -v tests/api/v1/admin/invoices/test_smoke.py
+
+    - name: Run invoice integration tests
+      env:
+        DB_HOST: localhost
+        DB_USER: postgres
+        DB_PASSWORD: postgres
+        DB_NAME: edgar_auto_shop_test
+        DB_PORT: 5432
+        DB_SSLMODE: disable
+      run: |
+        cd backend
+        pytest -v tests/api/v1/admin/invoices/test_integration.py
+
+    - name: Verify OpenAPI includes invoices
+      run: |
+        python3 generate_openapi_baseline.py
+        if ! grep -q "api/admin/invoices" api_v1_baseline.json; then
+          echo "❌ Invoices paths missing from OpenAPI spec"
+          exit 1
+        fi
+        echo "✅ Invoices paths present in OpenAPI"
+
+    - name: Verify required files exist
+      run: |
+        # Check required route files
+        test -f "backend/api/v1/admin/invoices/__init__.py" || (echo "❌ Missing invoices/__init__.py" && exit 1)
+        test -f "backend/api/v1/admin/invoices/routes.py" || (echo "❌ Missing invoices/routes.py" && exit 1)
+        test -f "backend/api/v1/admin/invoices/schemas.py" || (echo "❌ Missing invoices/schemas.py" && exit 1)
+
+        # Check required domain files
+        test -f "backend/domain/invoices/__init__.py" || (echo "❌ Missing domain/invoices/__init__.py" && exit 1)
+        test -f "backend/domain/invoices/service.py" || (echo "❌ Missing domain/invoices/service.py" && exit 1)
+        test -f "backend/domain/invoices/repository.py" || (echo "❌ Missing domain/invoices/repository.py" && exit 1)
+        test -f "backend/domain/invoices/errors.py" || (echo "❌ Missing domain/invoices/errors.py" && exit 1)
+
+        # Check required test files
+        test -f "tests/api/v1/admin/invoices/test_unit.py" || (echo "❌ Missing test_unit.py" && exit 1)
+        test -f "tests/api/v1/admin/invoices/test_smoke.py" || (echo "❌ Missing test_smoke.py" && exit 1)
+        test -f "tests/api/v1/admin/invoices/test_integration.py" || (echo "❌ Missing test_integration.py" && exit 1)
+
+        echo "✅ All required files present"
