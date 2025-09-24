@@ -5,6 +5,10 @@
 
 set -e
 
+# === HARD STOP AFTER GATE C ===
+# Stop execution after Gate C completion to avoid production costs
+STOP_AFTER="${STOP_AFTER:-C}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 PLAYBOOK_LOG="${SCRIPT_DIR}/playbook-execution-${TIMESTAMP}.log"
@@ -12,6 +16,9 @@ PLAYBOOK_LOG="${SCRIPT_DIR}/playbook-execution-${TIMESTAMP}.log"
 # Configuration
 STAGING_URL="${STAGING_URL:-https://staging.edgarsautoshop.com}"
 PROD_URL="${PROD_URL:-https://edgarsautoshop.com}"
+
+# Cost guardrail banner
+echo "💡 Cost Guardrail: D–G disabled. Est. staging cost: \$15–\$25/mo. Full prod would be \$50–\$100+/mo."
 
 # Colors
 RED='\033[0;31m'
@@ -163,6 +170,13 @@ execute_playbook() {
             error "Staging smoke tests failed - aborting"
             return 1
         fi
+    fi
+
+    # === HARD STOP AFTER GATE C ===
+    if [ "$STOP_AFTER" = "C" ]; then
+        success "✅ Gates A–C complete. Per scope, halting before performance/production gates."
+        echo "To override for a real launch, run: STOP_AFTER=Z ./execute-launch-playbook.sh interactive"
+        return 0
     fi
 
     # Step 4: UAT Initialization
