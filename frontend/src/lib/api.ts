@@ -99,8 +99,13 @@ export const toStatus = (s: string): AppointmentStatus =>
 
 // Safe environment detection that works in both Node and Browser
 const getApiUrl = (): string => {
-  // Force correct API URL for disambiguation testing
-  return 'http://localhost:3001/api'
+  // Use environment variables with fallback hierarchy
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+  // Ensure /api suffix for consistent API routing
+  const apiUrl = baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
+
+  return apiUrl;
 }
 
 const API_BASE_URL = getApiUrl()

@@ -1,0 +1,38 @@
+{
+  "Comment": "Edgar Auto Shop Staging",
+  "Enabled": true,
+  "DefaultRootObject": "index.html",
+  "Origins": {
+    "Quantity": 1,
+    "Items": [
+      {
+        "Id": "s3-website-origin",
+        "DomainName": "mobile-auto-shop-staging-b928aa27.s3-website-us-east-1.amazonaws.com",
+        "OriginPath": "",
+        "CustomOriginConfig": {
+          "HTTPPort": 80,
+          "HTTPSPort": 443,
+          "OriginProtocolPolicy": "http-only"
+        }
+      }
+    ]
+  },
+  "DefaultCacheBehavior": {
+    "TargetOriginId": "s3-website-origin",
+    "ViewerProtocolPolicy": "redirect-to-https",
+    "AllowedMethods": {
+      "Quantity": 2,
+      "Items": ["GET", "HEAD"],
+      "CachedMethods": { "Quantity": 2, "Items": ["GET", "HEAD"] }
+    },
+    "Compress": true,
+    "ForwardedValues": { "QueryString": true, "Cookies": { "Forward": "none" } },
+    "MinTTL": 0,
+    "DefaultTTL": 300,
+    "MaxTTL": 600,
+    "TrustedSigners": { "Enabled": false, "Quantity": 0 }
+  },
+  "PriceClass": "PriceClass_100",
+  "ViewerCertificate": { "CloudFrontDefaultCertificate": true },
+  "HttpVersion": "http2"
+}

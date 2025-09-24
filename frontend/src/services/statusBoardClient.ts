@@ -78,12 +78,13 @@ export class StatusBoardClient implements StatusBoardApiClient {
     request: MoveRequest,
     config?: RequestConfig
   ): Promise<MoveResponse> {
-    const url = `${this.config.baseURL}/api/admin/appointments/${appointmentId}/move`;
+    // SPRINT 6 HOTFIX: Use general PATCH endpoint to bypass /move routing issues
+    const url = `${this.config.baseURL}/api/admin/appointments/${appointmentId}`;
 
     return this.request<MoveResponse>(
       'PATCH',
       url,
-      request,
+      { status: request.status, position: request.position, version: request.version },
       {
         timeout: API_TIMEOUTS.moveOperations,
         ...config

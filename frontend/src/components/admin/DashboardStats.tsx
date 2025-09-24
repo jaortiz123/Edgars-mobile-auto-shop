@@ -1,29 +1,32 @@
-import React, { useMemo } from 'react';
-// Store-based stats (temporary shim until real stats endpoint integrated)
-import { useBoardStore } from '@/state/useBoardStore';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { getStats } from '@/lib/api';
 import { Skeleton } from '@/components/ui/Skeleton';
 
 export default function DashboardStats() {
-  // Stats not yet migrated to board store; derive minimal placeholder from cards
-  // IMPORTANT: Avoid returning a brand-new array from the selector each render (causes infinite re-render loops with Zustand + React strict mode tests)
-  const cardIds = useBoardStore(s => s.cardIds);
-  const cardsById = useBoardStore(s => s.cardsById);
-  const cards = useMemo(() => cardIds.map(id => cardsById[id]).filter(Boolean), [cardIds, cardsById]);
-  const stats = cards.length ? {
-    jobsToday: cards.length,
-    carsOnPremises: cards.filter(c => c.status !== 'COMPLETED').length,
-    scheduled: cards.filter(c => c.status === 'SCHEDULED').length,
-    inProgress: cards.filter(c => c.status === 'IN_PROGRESS').length,
-    ready: cards.filter(c => c.status === 'READY').length,
-    completed: cards.filter(c => c.status === 'COMPLETED').length,
-    noShow: 0,
-    unpaidTotal: 0,
-    totals: { today_completed: 0, today_booked: cards.length, avg_cycle_formatted: '—' }
-  } : null;
-  const refreshStats = () => { /* no-op until real stats migrated */ };
-  if (!stats) return (
+  // Real-time dashboard stats from API
+  const { data: stats, isLoading, error, refetch } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: () => getStats(),
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
+    staleTime: 10000, // Consider data stale after 10 seconds
+  });
+
+  const refreshStats = () => {
+    refetch();
+  };
+
+  if (isLoading) return (
     <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3">
       {Array.from({length:10}).map((_,i)=>(<Skeleton key={i} className="h-16"/>))}
+    </div>
+  );
+
+  if (error || !stats) return (
+    <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3">
+      <div className="col-span-full text-center text-red-600">
+        Failed to load dashboard stats. <button onClick={refreshStats} className="underline">Retry</button>
+      </div>
     </div>
   );
 

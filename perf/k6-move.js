@@ -14,10 +14,22 @@ const URL = __ENV.URL;
 const DATE = __ENV.DATE;
 
 export default function () {
-  // Get board, pick first ready/scheduled id+version
+  // Get board, pick appointments to move through workflow
   let b = http.get(`${URL}/api/admin/appointments/board?date=${DATE}`).json();
   const col = b?.data?.columns;
-  const pick = (col?.in_progress?.items?.[0] || col?.scheduled?.items?.[0]);
+
+  // Pick appointments based on valid workflow transitions
+  let pick, new_status;
+  if (col?.scheduled?.items?.length > 0) {
+    pick = col.scheduled.items[0];
+    new_status = 'in_progress';
+  } else if (col?.in_progress?.items?.length > 0) {
+    pick = col.in_progress.items[0];
+    new_status = 'ready';
+  } else if (col?.ready?.items?.length > 0) {
+    pick = col.ready.items[0];
+    new_status = 'completed';
+  }
 
   if (!pick) {
     console.log('No appointments found to move');
@@ -26,10 +38,10 @@ export default function () {
   }
 
   // Log the appointment we're trying to move for debugging
-  console.log(`Moving appointment ${pick.id} from status ${pick.status} to ready, version ${pick.version}`);
+  console.log(`Moving appointment ${pick.id} from status ${pick.status} to ${new_status}, version ${pick.version}`);
 
   const body = JSON.stringify({
-    new_status: 'ready',
+    new_status: new_status,
     expected_version: pick.version,
     position: 0
   });

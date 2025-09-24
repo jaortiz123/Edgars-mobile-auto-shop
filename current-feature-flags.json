@@ -1,0 +1,10 @@
+{
+  "timestamp": "2025-09-21T05:52:38Z",
+  "flags": {
+    "statusBoardV2": {
+      "enabled": false,
+      "percentage": 0,
+      "rolloutStage": "canary"
+    }
+  }
+}

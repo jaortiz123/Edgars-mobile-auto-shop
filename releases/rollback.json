@@ -1,19 +1,37 @@
 {
-  "captured_at": "2025-09-20T12:08:39Z",
+  "captured_at": "2025-09-20T23:29:24Z",
   "function_name": "edgar-auto-shop-dev-flask-app",
   "previous_deployment": {
-    "image_uri": "588738589514.dkr.ecr.us-west-2.amazonaws.com/edgar-auto-shop-dev-flask-app:svc-fix-services-list-20250919-232855",
-    "code_sha256": "276fc2138fc028a375a42bf102fd826062119f7e3724837bb56a63f7e53fbe9d",
-    "version": "$LATEST",
-    "tag": "svc-fix-services-list-20250919-232855"
+    "image_uri": "588738589514.dkr.ecr.us-west-2.amazonaws.com/edgar-auto-shop-dev-flask-app:prod-s4-occ-rls-001",
+    "code_sha256": "2d17cf8854c8247a73bc6ac0b138a4313c1323f8e515dcf4845917858077277c",
+    "version": "1",
+    "tag": "prod-s4-occ-rls-001",
+    "memory_size": 1024,
+    "timeout": 15
   },
   "new_deployment": {
-    "tag": "sprint2-t5-drill-001",
-    "image_uri": "588738589514.dkr.ecr.us-west-2.amazonaws.com/edgar-auto-shop-dev-flask-app:sprint2-t5-drill-001"
+    "tag": "prod-s5-mem-opt-512mb",
+    "image_uri": "588738589514.dkr.ecr.us-west-2.amazonaws.com/edgar-auto-shop-dev-flask-app:prod-s4-occ-rls-001",
+    "version": "2",
+    "memory_size": 512,
+    "timeout": 15,
+    "performance_improvement": {
+      "latency_avg": "287ms (vs 353ms in Sprint 5 1024MB tests)",
+      "cost_reduction": "44% cheaper (0.144 vs 0.257 GB-seconds)",
+      "slo_compliance": "p95 <400ms target achieved"
+    }
   },
   "release_metadata": {
     "released_by": "jesusortiz",
-    "git_commit": "faf8c65914554120777c52a120b34c4659a1561d",
-    "git_branch": "main"
+    "git_commit": "967daf29b3640e29e8be516f7e12a3c1f151b9aa",
+    "git_branch": "feat/s4-occ-hardening",
+    "sprint": "S5",
+    "optimization_type": "memory_right_sizing",
+    "analysis_results": {
+      "memory_tiers_tested": [512, 768, 1024],
+      "optimal_memory": 512,
+      "cost_savings": "44%",
+      "performance_maintained": true
+    }
   }
 }

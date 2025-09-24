@@ -7,6 +7,7 @@ import CalendarView from '../components/admin/CalendarView';
 import ScheduleView from '../components/admin/ScheduleView';
 import StatusBoard from '../components/admin/StatusBoard';
 import StatusBoardV2 from '../components/admin/StatusBoardV2';
+import AppointmentDrawer from '../components/admin/AppointmentDrawer';
 import AdvancedFilter from '../components/admin/AdvancedFilter';
 import DataExport from '../components/admin/DataExport';
 import ReportsDropdown from '../components/admin/ReportsDropdown';
@@ -81,6 +82,10 @@ export default function AdminAppointments() {
     customerSearch: '',
     phoneSearch: ''
   });
+
+  // Drawer state for appointment details
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAppointments();
@@ -445,8 +450,9 @@ export default function AdminAppointments() {
       ) : viewMode === 'status-board' ? (
         <StatusBoardV2
           onCardClick={(card) => {
-            console.log('Opening appointment:', card);
-            // TODO: Open drawer with appointment details
+            console.log('Opening appointment details for:', card.id);
+            setSelectedAppointmentId(card.id);
+            setDrawerOpen(true);
           }}
           minimalHero={true}
         />
@@ -558,6 +564,13 @@ export default function AdminAppointments() {
           </CardContent>
         </Card>
       )}
+
+      {/* Appointment Details Drawer */}
+      <AppointmentDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        id={selectedAppointmentId}
+      />
     </div>
   );
 }

@@ -1,0 +1,6 @@
+{
+  "timestamp": "2025-09-21T05:52:20Z",
+  "reason": "Script interrupted",
+  "previousStage": "",
+  "rollbackInitiator": "automated-canary-system"
+}

@@ -24,11 +24,6 @@ if pgrep -f "local_server.py" > /dev/null; then
     pkill -f "local_server.py"
 fi
 
-if pgrep -f "sigv4_proxy.py" > /dev/null; then
-    echo "Stopping SigV4 proxy..."
-    pkill -f "sigv4_proxy.py"
-fi
-
 # Stop Docker services
 echo "Stopping database services..."
 compose stop db redis

@@ -1,9 +1,10 @@
 /**
- * StatusBoard V2 - Sprint 3 Implementation
+ * StatusBoard V2 - Sprint 6 Implementation with Performance Monitoring
  * Uses Sprint 2 API contracts with useStatusBoard hook and statusBoardClient
+ * T7: Performance monitoring with SLO compliance <800ms board load, <200ms drawer open
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, Suspense, memo } from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { format } from 'date-fns';
@@ -16,6 +17,7 @@ import { Badge } from '../ui/Badge';
 import { RefreshCw, Calendar, Clock, Phone, User, AlertTriangle } from 'lucide-react';
 import StatusBoardDrawer from './StatusBoardDrawer';
 import { useSLOToast } from '../../hooks/useSLOToast';
+import { usePerformanceMonitoring } from '../../utils/performanceMonitor';
 
 interface StatusBoardV2Props {
   onCardClick?: (appointment: AppointmentCard) => void;
@@ -155,12 +157,15 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
   );
 };
 
-export const StatusBoardV2: React.FC<StatusBoardV2Props> = ({ onCardClick, minimalHero = false }) => {
+export const StatusBoardV2: React.FC<StatusBoardV2Props> = memo(({ onCardClick, minimalHero = false }) => {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [showConflictToast, setShowConflictToast] = useState(false);
   const [conflictMessage, setConflictMessage] = useState('');
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentCard | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // T7: Performance monitoring hooks
+  const { startTiming, endTiming, isHealthy } = usePerformanceMonitoring();
 
   // Initialize the StatusBoard client
   const client = new StatusBoardClient({
@@ -189,10 +194,16 @@ export const StatusBoardV2: React.FC<StatusBoardV2Props> = ({ onCardClick, minim
     expectedVersion: number
   ) => {
     try {
+      // T7: Performance monitoring for drag operations
+      startTiming('dragOperation');
+
       await moveAppointment(appointmentId, newStatus, 0);
+
+      const dragDuration = endTiming('dragOperation');
       // Show success notification
       toast.operationSuccess('appointment_move');
     } catch (err) {
+      endTiming('dragOperation'); // End timing even on error
       const apiError = err as ApiError;
 
       // Use centralized error mapping and show user-friendly toast
@@ -224,12 +235,19 @@ export const StatusBoardV2: React.FC<StatusBoardV2Props> = ({ onCardClick, minim
     setSelectedDate(newDate);
   }, []);
 
-  // Initial board fetch and date change handling
+  // Initial board fetch and date change handling with performance monitoring
   useEffect(() => {
+    // T7: Performance monitoring for board load <800ms SLO
+    startTiming('boardLoad');
+
     fetchBoard({
       from: selectedDate,
       to: selectedDate
+    }).then(() => {
+      const loadDuration = endTiming('boardLoad');
+      toast.operationSuccess('board_load');
     }).catch(err => {
+      endTiming('boardLoad'); // End timing even on error
       const apiError = err as ApiError;
       toast.apiError(apiError, () => {
         // Retry function for board fetch
@@ -239,7 +257,7 @@ export const StatusBoardV2: React.FC<StatusBoardV2Props> = ({ onCardClick, minim
         });
       });
     });
-  }, [selectedDate, fetchBoard]);
+  }, [selectedDate, fetchBoard, startTiming, endTiming, toast]);
 
   // Group cards by status
   const cardsByStatus = React.useMemo(() => {
@@ -259,12 +277,20 @@ export const StatusBoardV2: React.FC<StatusBoardV2Props> = ({ onCardClick, minim
     }, initial);
   }, [board?.cards]);
 
-  // Handle card click to open drawer
+  // Handle card click to open drawer with performance monitoring
   const handleCardClick = useCallback((card: AppointmentCard) => {
+    // T7: Performance monitoring for drawer open <200ms SLO
+    startTiming('drawerOpen');
+
     setSelectedAppointment(card);
     setDrawerOpen(true);
     onCardClick?.(card);
-  }, [onCardClick]);
+
+    // Measure drawer open performance after DOM update
+    requestAnimationFrame(() => {
+      const drawerDuration = endTiming('drawerOpen');
+    });
+  }, [onCardClick, startTiming, endTiming]);
 
   // Handle drawer status change
   const handleDrawerStatusChange = useCallback(async (appointmentId: string, newStatus: AppointmentStatus) => {
@@ -379,4 +405,23 @@ export const StatusBoardV2: React.FC<StatusBoardV2Props> = ({ onCardClick, minim
   );
 };
 
-export default StatusBoardV2;
+// Performance-aware Suspense wrapper for StatusBoardV2
+// T7: Suspense boundaries for optimized loading
+const StatusBoardV2WithSuspense: React.FC<StatusBoardV2Props> = (props) => {
+  const LoadingFallback = () => (
+    <div className="flex items-center justify-center h-64">
+      <div className="flex items-center space-x-2">
+        <RefreshCw className="w-4 h-4 animate-spin" />
+        <span>Loading Status Board...</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <StatusBoardV2 {...props} />
+    </Suspense>
+  );
+};
+
+export default StatusBoardV2WithSuspense;
