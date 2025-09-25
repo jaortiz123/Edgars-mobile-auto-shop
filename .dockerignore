@@ -1,0 +1,104 @@
+# Docker ignore file for Flask Lambda container
+# Exclude files not needed in production container
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# Development files
+.env*
+!.env.example
+.vscode/
+.cursor-tasks/
+
+# Test files and reports
+tests/
+test_*.py
+**/test_*.py
+**/*_test.py
+e2e/
+e2e-report*/
+test-results/
+htmlcov/
+coverage.xml
+.coverage*
+pytest.ini
+.pytest_cache/
+
+# Build artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Frontend (not needed in backend container)
+frontend/
+node_modules/
+package*.json
+tailwind.config.js
+tsconfig.json
+
+# Infrastructure
+infra/
+infrastructure/
+terraform/
+.terraform/
+terraform.tfstate*
+terraform.tfvars
+
+# Deployment scripts
+deploy/
+scripts/
+ops/
+
+# Logs
+*.log
+logs/
+
+# Monitoring
+monitoring/
+
+# Lambda packages
+lambda_layers/
+lambda_packages/
+
+# Cache directories
+.cache/
+.ruff_cache/
+
+# Memory bank and forensics
+memory-bank/
+forensics/
+audit_artifacts/
+
+# Other development files
+Makefile
+docker-compose.yml
+.pre-commit-config.yaml
+.gitleaks.toml

@@ -1,0 +1,27 @@
+# Use the official Python runtime as base
+FROM python:3.9-slim
+
+# Lambda Web Adapter
+COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.7.2 /lambda-adapter /opt/extensions/lambda-adapter
+
+# Set working directory
+WORKDIR /var/task
+
+# Copy just the minimal health handler
+COPY backend/minimal_health.py ./
+
+# Set Lambda environment
+ENV AWS_LAMBDA_EXEC_WRAPPER=/opt/lambda-adapter
+ENV PORT=8080
+
+# Create unprivileged user
+RUN groupadd -g 1000 appuser && \
+    useradd -r -u 1000 -g appuser appuser && \
+    chown -R appuser:appuser /var/task
+USER appuser
+
+# Set the handler
+ENV _HANDLER=minimal_health.handler
+
+# Simple Python startup - no gunicorn
+CMD ["python", "-c", "import minimal_health; print('Minimal health handler ready')"]

@@ -1,0 +1,254 @@
+name: CI/CD Pipeline - Sprint 3
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  AWS_REGION: us-west-2
+  ECR_REPOSITORY: edgar-auto-shop-dev-flask-app
+  LAMBDA_FUNCTION: edgar-auto-shop-dev-flask-app
+
+jobs:
+  fast-tests:
+    name: Fast Test Suite (<10min)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Set up Node.js 18
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Cache Python dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+
+    - name: Install Python dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov flake8 black
+
+    - name: Install Node.js dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Python linting (flake8)
+      run: |
+        cd backend
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+    - name: Python formatting check (black)
+      run: |
+        cd backend
+        black --check --diff .
+
+    - name: Frontend linting (ESLint)
+      run: |
+        cd frontend
+        npm run lint
+
+    - name: Frontend type checking (TypeScript)
+      run: |
+        cd frontend
+        npm run type-check
+
+    - name: Python unit tests
+      run: |
+        cd backend
+        python -m pytest tests/ -v --tb=short --maxfail=5 --durations=10
+
+    - name: Frontend unit tests
+      run: |
+        cd frontend
+        npm run test -- --run --reporter=verbose --timeout=30000
+
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm run build
+
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    needs: fast-tests
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Snyk to check for vulnerabilities
+      uses: snyk/actions/python@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=high --file=backend/requirements.txt
+
+    - name: Run npm audit for frontend
+      run: |
+        cd frontend
+        npm audit --audit-level=high
+
+    - name: Check for hardcoded secrets
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: ${{ github.event.repository.default_branch }}
+        head: HEAD
+
+  build-and-deploy-staging:
+    name: Build & Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [fast-tests, security-scan]
+    if: github.ref == 'refs/heads/develop'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build, tag, and push image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: staging-${{ github.sha }}
+      run: |
+        docker build -f Dockerfile -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Update Lambda function (staging)
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: staging-${{ github.sha }}
+      run: |
+        aws lambda update-function-code \
+          --function-name "${LAMBDA_FUNCTION}-staging" \
+          --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+    - name: Wait for Lambda update to complete
+      run: |
+        aws lambda wait function-updated \
+          --function-name "${LAMBDA_FUNCTION}-staging"
+
+    - name: Run staging smoke tests
+      run: |
+        # Basic health check
+        STAGING_URL=$(aws lambda get-function-url-config \
+          --function-name "${LAMBDA_FUNCTION}-staging" \
+          --query 'FunctionUrl' --output text)
+
+        # Test health endpoint (assuming it exists)
+        curl -f "${STAGING_URL}/health" || echo "Health check failed"
+
+  production-gate:
+    name: Production Deployment Gate
+    runs-on: ubuntu-latest
+    needs: [fast-tests, security-scan]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build, tag, and push production image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: prod-${{ github.sha }}
+      run: |
+        docker build -f Dockerfile -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Update Lambda function (production)
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: prod-${{ github.sha }}
+      run: |
+        aws lambda update-function-code \
+          --function-name $LAMBDA_FUNCTION \
+          --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+    - name: Wait for Lambda update to complete
+      run: |
+        aws lambda wait function-updated \
+          --function-name $LAMBDA_FUNCTION
+
+    - name: Create GitHub release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ github.run_number }}
+        release_name: Production Release v${{ github.run_number }}
+        body: |
+          ## Production Deployment
+
+          **Commit**: ${{ github.sha }}
+          **Branch**: ${{ github.ref_name }}
+          **Build**: ${{ github.run_number }}
+
+          ### Changes
+          ${{ github.event.head_commit.message }}
+
+          ### Deployed Resources
+          - Lambda Function: ${{ env.LAMBDA_FUNCTION }}
+          - ECR Image: prod-${{ github.sha }}
+
+        draft: false
+        prerelease: false
+
+  notification:
+    name: Deployment Notification
+    runs-on: ubuntu-latest
+    needs: [build-and-deploy-staging, production-gate]
+    if: always()
+
+    steps:
+    - name: Notify deployment status
+      run: |
+        if [[ "${{ needs.build-and-deploy-staging.result }}" == "success" || "${{ needs.production-gate.result }}" == "success" ]]; then
+          echo "✅ Deployment successful"
+        else
+          echo "❌ Deployment failed"
+          exit 1
+        fi

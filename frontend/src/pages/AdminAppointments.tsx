@@ -5,6 +5,9 @@ import { updateAppointment } from '@/lib/api';
 import { NotificationTracker } from '../components/admin/NotificationTracker';
 import CalendarView from '../components/admin/CalendarView';
 import ScheduleView from '../components/admin/ScheduleView';
+import StatusBoard from '../components/admin/StatusBoard';
+import StatusBoardV2 from '../components/admin/StatusBoardV2';
+import AppointmentDrawer from '../components/admin/AppointmentDrawer';
 import AdvancedFilter from '../components/admin/AdvancedFilter';
 import DataExport from '../components/admin/DataExport';
 import ReportsDropdown from '../components/admin/ReportsDropdown';
@@ -26,7 +29,8 @@ import {
   Clock,
   CheckCircle,
   AlertTriangle,
-  CalendarDays
+  CalendarDays,
+  Columns
 } from 'lucide-react';
 
 interface Appointment {
@@ -59,7 +63,7 @@ interface FilterOptions {
   phoneSearch: string;
 }
 
-type ViewMode = 'list' | 'calendar' | 'schedule';
+type ViewMode = 'list' | 'calendar' | 'schedule' | 'status-board';
 
 export default function AdminAppointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -78,6 +82,10 @@ export default function AdminAppointments() {
     customerSearch: '',
     phoneSearch: ''
   });
+
+  // Drawer state for appointment details
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAppointments();
@@ -125,8 +133,8 @@ export default function AdminAppointments() {
   const handleMarkComplete = async (id: string) => {
     setUpdatingId(id);
     try {
-      await updateAppointment(id, { status: 'completed' });
-      setAppointments(appts => appts.map(appt => appt.id === id ? { ...appt, status: 'completed' } : appt));
+      await updateAppointment(id, { status: 'COMPLETED' });
+      setAppointments(appts => appts.map(appt => appt.id === id ? { ...appt, status: 'COMPLETED' } : appt));
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message || 'Failed to update appointment');
@@ -358,6 +366,15 @@ export default function AdminAppointments() {
                   Smart Schedule
                 </Button>
                 <Button
+                  variant={viewMode === 'status-board' ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('status-board')}
+                  className="rounded-none flex items-center gap-2"
+                >
+                  <Columns className="h-4 w-4" />
+                  Status Board
+                </Button>
+                <Button
                   variant={viewMode === 'calendar' ? 'primary' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('calendar')}
@@ -429,6 +446,15 @@ export default function AdminAppointments() {
         <ScheduleView
           appointments={filteredAppointments}
           title="Smart Today View"
+        />
+      ) : viewMode === 'status-board' ? (
+        <StatusBoardV2
+          onCardClick={(card) => {
+            console.log('Opening appointment details for:', card.id);
+            setSelectedAppointmentId(card.id);
+            setDrawerOpen(true);
+          }}
+          minimalHero={true}
         />
       ) : (
         <Card>
@@ -538,6 +564,13 @@ export default function AdminAppointments() {
           </CardContent>
         </Card>
       )}
+
+      {/* Appointment Details Drawer */}
+      <AppointmentDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        id={selectedAppointmentId}
+      />
     </div>
   );
 }

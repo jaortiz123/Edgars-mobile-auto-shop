@@ -1,5 +1,5 @@
-# Use pinned digest for security and reproducible builds
-FROM public.ecr.aws/lambda/python:3.9@sha256:4ac7c7a02065ad8b90c7c3fc862b27bc0afe2e4024c9e0bdbfd89dc12a63c8f7
+# Use latest stable Lambda Python image
+FROM public.ecr.aws/lambda/python:3.11
 
 # Create non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser

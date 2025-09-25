@@ -1,0 +1,217 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'infra/**'
+      - 'Dockerfile'
+      - 'deploy.sh'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'infra/**'
+      - 'Dockerfile'
+      - 'deploy.sh'
+
+env:
+  AWS_REGION: us-west-2
+  PROJECT_NAME: edgar-auto-shop
+
+jobs:
+  terraform-plan:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+        role-session-name: GitHubActions-TerraformPlan
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ~1.0
+        terraform_wrapper: false
+
+    - name: Terraform Format Check
+      run: |
+        cd infra/terraform/envs/dev
+        terraform fmt -check -recursive
+
+    - name: Terraform Init
+      run: |
+        cd infra/terraform/envs/dev
+        terraform init
+
+    - name: Terraform Validate
+      run: |
+        cd infra/terraform/envs/dev
+        terraform validate
+
+    - name: Terraform Plan
+      id: plan
+      run: |
+        cd infra/terraform/envs/dev
+        terraform plan -no-color -out=tfplan
+        terraform show -no-color tfplan > plan_output.txt
+      continue-on-error: true
+
+    - name: Comment PR with Plan
+      uses: actions/github-script@v7
+      env:
+        PLAN: "${{ steps.plan.outputs.stdout }}"
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const fs = require('fs');
+          const planOutput = fs.readFileSync('infra/terraform/envs/dev/plan_output.txt', 'utf8');
+
+          const output = `#### Terraform Plan 📋
+
+          <details>
+          <summary>Show Plan</summary>
+
+          \`\`\`terraform
+          ${planOutput}
+          \`\`\`
+
+          </details>
+
+          *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: output
+          });
+
+    - name: Terraform Plan Status
+      if: steps.plan.outcome == 'failure'
+      run: exit 1
+
+  deploy-dev:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    environment: dev
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+        role-session-name: GitHubActions-Deploy
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ~1.0
+        terraform_wrapper: false
+
+    - name: Build and Deploy
+      run: |
+        chmod +x deploy.sh
+        ./deploy.sh dev apply
+
+    - name: Smoke Test
+      id: smoke_test
+      run: |
+        cd infra/terraform/envs/dev
+        APP_URL=$(terraform output -raw application_url)
+        echo "Testing application at: $APP_URL"
+
+        # Test health endpoint with retry
+        for i in {1..5}; do
+          if curl -f "$APP_URL/healthz" --max-time 30; then
+            echo "✅ Health check passed"
+            break
+          else
+            echo "❌ Health check failed (attempt $i/5)"
+            if [ $i -eq 5 ]; then
+              exit 1
+            fi
+            sleep 10
+          fi
+        done
+
+        # Test a few API endpoints
+        echo "Testing API endpoints..."
+
+        # Test customers endpoint (should require auth but return 401, not 500)
+        STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/api/admin/customers")
+        if [ "$STATUS" = "401" ] || [ "$STATUS" = "200" ]; then
+          echo "✅ Admin customers endpoint responding correctly"
+        else
+          echo "❌ Admin customers endpoint returned status: $STATUS"
+          exit 1
+        fi
+
+    - name: Get Deployment Info
+      id: deployment_info
+      run: |
+        cd infra/terraform/envs/dev
+        echo "app_url=$(terraform output -raw application_url)" >> $GITHUB_OUTPUT
+        echo "db_endpoint=$(terraform output -raw database_endpoint)" >> $GITHUB_OUTPUT
+        echo "ecr_url=$(terraform output -raw ecr_repository_url)" >> $GITHUB_OUTPUT
+
+    - name: Create Deployment Summary
+      run: |
+        cat >> $GITHUB_STEP_SUMMARY << EOF
+        # 🚀 Deployment Successful
+
+        ## Infrastructure Details
+        - **Application URL**: ${{ steps.deployment_info.outputs.app_url }}
+        - **Database**: ${{ steps.deployment_info.outputs.db_endpoint }}
+        - **Container Registry**: ${{ steps.deployment_info.outputs.ecr_url }}
+
+        ## Health Check Results
+        - ✅ Application health endpoint responding
+        - ✅ API endpoints accessible
+        - ✅ Smoke tests passed
+
+        ## Next Steps
+        1. Monitor CloudWatch logs and metrics
+        2. Test application functionality
+        3. Consider enabling API Gateway if Lambda Function URL limitations are encountered
+
+        ## Cost Optimization
+        - Aurora Serverless v2 with 0.5-1 ACU range
+        - Lambda Function URL (no API Gateway charges)
+        - 14-day log retention
+        - No NAT Gateway (cost savings)
+        EOF
+
+    - name: Notify on Failure
+      if: failure()
+      run: |
+        echo "❌ Deployment failed. Check the logs above for details."
+        echo "Common issues:"
+        echo "1. AWS credentials or permissions"
+        echo "2. Terraform state conflicts"
+        echo "3. Resource limits or quotas"
+        echo "4. Application startup issues"

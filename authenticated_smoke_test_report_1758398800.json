@@ -1,0 +1,72 @@
+{
+  "timestamp": "2025-09-20 20:06:40 UTC",
+  "target_url": "https://onourabnw45tm2rrq72gegkgai0codqj.lambda-url.us-west-2.on.aws",
+  "authentication_method": "SigV4_Proxy",
+  "proxy_url": "http://localhost:8080",
+  "summary": {
+    "total_tests": 5,
+    "passed": 1,
+    "failed": 4,
+    "success_rate": 0.2,
+    "slo_tests": 2,
+    "slo_compliant": 1,
+    "production_ready": false
+  },
+  "test_results": [
+    {
+      "test": "proxy_connectivity",
+      "success": false,
+      "duration_ms": 159.85,
+      "status_code": 404,
+      "endpoint": "/health",
+      "authenticated": true,
+      "proxy_url": "http://localhost:8080"
+    },
+    {
+      "test": "health_endpoint",
+      "success": false,
+      "duration_ms": 114.62,
+      "status_code": 404,
+      "endpoint": "/health",
+      "authenticated": true
+    },
+    {
+      "test": "status_board_endpoint",
+      "success": false,
+      "duration_ms": 1006.45,
+      "status_code": 200,
+      "slo_compliant": false,
+      "slo_target_ms": 800,
+      "endpoint": "/api/admin/appointments/board",
+      "authenticated": true,
+      "has_valid_json": true,
+      "response_structure_valid": false
+    },
+    {
+      "test": "dashboard_stats",
+      "success": false,
+      "duration_ms": 316.23,
+      "status_code": 200,
+      "slo_compliant": true,
+      "slo_target_ms": 500,
+      "endpoint": "/api/admin/dashboard/stats",
+      "authenticated": true,
+      "has_valid_json": true,
+      "response_structure_valid": false
+    },
+    {
+      "test": "move_api_endpoint",
+      "success": true,
+      "duration_ms": 0,
+      "status_code": 200,
+      "endpoint": "/api/admin/appointments/move",
+      "authenticated": true,
+      "note": "No appointments available to test move operation"
+    }
+  ],
+  "recommendations": [
+    "\u26a0\ufe0f SLO violations detected - monitor for performance degradation",
+    "\ud83d\udd27 SigV4 proxy not accessible - start proxy with: ./dev-proxy/start-proxy.sh",
+    "\ud83d\udcca API response structure issues - verify backend compatibility"
+  ]
+}

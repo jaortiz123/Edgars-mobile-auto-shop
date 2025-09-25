@@ -542,3 +542,22 @@ graph TD
     API_GW -- Invokes --> Lambda
     Lambda -- Writes to --> DDB
 <!-- trigger: deployment -->
+```
+
+## Production Architecture (Documented – Not Executed)
+
+This repo includes production-ready scripts but we intentionally stop at Gates A–C for demo/cost reasons.
+
+### Components (planned)
+
+* Frontend: S3 + CloudFront (OAC), SPA fallback, versioned artifacts
+* Backend: Containerized API behind ALB, private subnets, RDS Postgres
+* Auth: SigV4 proxy / JWT (per env), WAF managed rules
+* Observability: CloudWatch metrics/alarms, structured logs, log retention
+* CI/CD: Build → upload → invalidation → smoke tests with gated promotion
+
+### Promotion Flow (not executed for demo)
+
+Staging (S3+CF) → smoke tests → ✅ Gate A–C → (hold) → D: perf SLO → E: prod deploy → F: canary → G: full traffic.
+
+> For interviews: show `/deploy-staging.sh`, `/production-launch.sh`, `/canary-rollout.sh`, `/performance-monitor.sh` as artifacts; do not run them.

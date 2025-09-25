@@ -16,8 +16,13 @@ CREATE TABLE IF NOT EXISTS vehicles (
   model VARCHAR(100),
   year INTEGER,
   vin VARCHAR(32),
+  trim VARCHAR(100),
+  color VARCHAR(50),
   license_plate VARCHAR(20),
-  notes TEXT
+  mileage INTEGER,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS services (
   id SERIAL PRIMARY KEY,

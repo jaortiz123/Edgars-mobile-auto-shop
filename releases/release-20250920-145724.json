@@ -1,0 +1,19 @@
+{
+  "captured_at": "2025-09-20T21:57:24Z",
+  "function_name": "edgar-auto-shop-dev-flask-app",
+  "previous_deployment": {
+    "image_uri": "588738589514.dkr.ecr.us-west-2.amazonaws.com/edgar-auto-shop-dev-flask-app:svc-fix-services-list-20250919-232855",
+    "code_sha256": "276fc2138fc028a375a42bf102fd826062119f7e3724837bb56a63f7e53fbe9d",
+    "version": "$LATEST",
+    "tag": "svc-fix-services-list-20250919-232855"
+  },
+  "new_deployment": {
+    "tag": "prod-s4-occ-rls-001",
+    "image_uri": "588738589514.dkr.ecr.us-west-2.amazonaws.com/edgar-auto-shop-dev-flask-app:prod-s4-occ-rls-001"
+  },
+  "release_metadata": {
+    "released_by": "jesusortiz",
+    "git_commit": "967daf29b3640e29e8be516f7e12a3c1f151b9aa",
+    "git_branch": "feat/s4-occ-hardening"
+  }
+}

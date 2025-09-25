@@ -1,0 +1,1 @@
+# Admin Invoices Blueprint

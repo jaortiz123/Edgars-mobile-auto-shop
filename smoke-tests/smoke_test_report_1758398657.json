@@ -1,0 +1,50 @@
+{
+  "timestamp": "2025-09-20 20:04:17 UTC",
+  "target_url": "https://onourabnw45tm2rrq72gegkgai0codqj.lambda-url.us-west-2.on.aws",
+  "summary": {
+    "total_tests": 4,
+    "passed": 0,
+    "failed": 4,
+    "success_rate": 0.0,
+    "slo_tests": 2,
+    "slo_compliant": 2
+  },
+  "test_results": [
+    {
+      "test": "health_endpoint",
+      "success": false,
+      "duration_ms": 175.88,
+      "status_code": 403,
+      "url": "https://onourabnw45tm2rrq72gegkgai0codqj.lambda-url.us-west-2.on.aws/health"
+    },
+    {
+      "test": "status_board_endpoint",
+      "success": false,
+      "duration_ms": 99.64,
+      "status_code": 403,
+      "slo_compliant": true,
+      "slo_target_ms": 800,
+      "url": "https://onourabnw45tm2rrq72gegkgai0codqj.lambda-url.us-west-2.on.aws/api/admin/appointments/board"
+    },
+    {
+      "test": "dashboard_stats",
+      "success": false,
+      "duration_ms": 96.2,
+      "status_code": 403,
+      "slo_compliant": true,
+      "slo_target_ms": 500,
+      "url": "https://onourabnw45tm2rrq72gegkgai0codqj.lambda-url.us-west-2.on.aws/api/admin/dashboard/stats"
+    },
+    {
+      "test": "appointments_endpoint",
+      "success": false,
+      "duration_ms": 101.73,
+      "status_code": 403,
+      "has_valid_json": false,
+      "url": "https://onourabnw45tm2rrq72gegkgai0codqj.lambda-url.us-west-2.on.aws/api/appointments"
+    }
+  ],
+  "recommendations": [
+    "\u274c Some tests failed - check network connectivity and service health"
+  ]
+}

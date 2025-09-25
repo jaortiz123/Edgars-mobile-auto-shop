@@ -1,0 +1,18 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "EdgarAutoShopStatusBoardAccess",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:InvokeFunctionUrl"
+      ],
+      "Resource": "arn:aws:lambda:us-west-2:588738589514:function:edgar-auto-shop-dev-flask-app",
+      "Condition": {
+        "StringEquals": {
+          "lambda:FunctionUrlAuthType": "AWS_IAM"
+        }
+      }
+    }
+  ]
+}

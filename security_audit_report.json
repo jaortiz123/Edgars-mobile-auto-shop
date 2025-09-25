@@ -1,0 +1,135 @@
+{
+  "timestamp": "2025-09-20T12:18:04.516218",
+  "function_name": "edgar-auto-shop-dev-flask-app",
+  "region": "us-west-2",
+  "dry_run": true,
+  "audit_results": {
+    "iam": {
+      "function_name": "edgar-auto-shop-dev-flask-app",
+      "role_arn": "arn:aws:iam::588738589514:role/edgar-auto-shop-dev-lambda-role",
+      "role_name": "edgar-auto-shop-dev-lambda-role",
+      "attached_policies": [
+        {
+          "PolicyName": "AWSLambdaVPCAccessExecutionRole",
+          "PolicyArn": "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+        }
+      ],
+      "inline_policies": [
+        {
+          "name": "edgar-auto-shop-dev-secrets-manager-policy",
+          "document": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Action": [
+                  "secretsmanager:GetSecretValue"
+                ],
+                "Effect": "Allow",
+                "Resource": "arn:aws:secretsmanager:us-west-2:588738589514:secret:edgar-auto-shop-dev-db-credentials-bGZn1J"
+              }
+            ]
+          }
+        }
+      ],
+      "security_issues": [],
+      "recommendations": [
+        {
+          "type": "least_privilege",
+          "issue": "Using managed VPC access policy",
+          "recommendation": "Consider custom policy with specific VPC resources"
+        }
+      ]
+    },
+    "secrets": {
+      "secrets_found": 1,
+      "hardening_actions": [
+        {
+          "type": "enable_rotation",
+          "secret": "edgar-auto-shop-dev-db-credentials",
+          "recommendation": "Enable automatic credential rotation"
+        },
+        {
+          "type": "resource_policy_planned",
+          "secret": "edgar-auto-shop-dev-db-credentials",
+          "status": "dry_run"
+        }
+      ]
+    },
+    "ecr": {
+      "repository": "edgar-auto-shop-dev-flask-app",
+      "actions": [
+        {
+          "type": "scan_on_push_planned",
+          "status": "dry_run"
+        },
+        {
+          "type": "lifecycle_policy_planned",
+          "status": "dry_run"
+        }
+      ]
+    }
+  },
+  "hardening_results": {
+    "least_privilege_policy": {
+      "policy_name": "edgar-auto-shop-dev-least-privilege-policy",
+      "policy_document": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "SecretsManagerAccess",
+            "Effect": "Allow",
+            "Action": [
+              "secretsmanager:GetSecretValue"
+            ],
+            "Resource": "arn:aws:secretsmanager:us-west-2:588738589514:secret:edgar-auto-shop-dev-db-credentials-bGZn1J",
+            "Condition": {
+              "StringEquals": {
+                "secretsmanager:ResourceTag/Project": "edgar-auto-shop"
+              }
+            }
+          },
+          {
+            "Sid": "CloudWatchLogsAccess",
+            "Effect": "Allow",
+            "Action": [
+              "logs:CreateLogGroup",
+              "logs:CreateLogStream",
+              "logs:PutLogEvents"
+            ],
+            "Resource": "arn:aws:logs:us-west-2:*:log-group:/aws/lambda/edgar-auto-shop-dev-flask-app:*"
+          },
+          {
+            "Sid": "XRayTracing",
+            "Effect": "Allow",
+            "Action": [
+              "xray:PutTraceSegments",
+              "xray:PutTelemetryRecords"
+            ],
+            "Resource": "*"
+          }
+        ]
+      },
+      "secret_arn": "arn:aws:secretsmanager:us-west-2:588738589514:secret:edgar-auto-shop-dev-db-credentials-bGZn1J"
+    }
+  },
+  "recommendations": [
+    {
+      "priority": "MEDIUM",
+      "category": "Secrets",
+      "title": "Enable secret rotation",
+      "description": "Database credentials should be rotated automatically every 30-90 days"
+    },
+    {
+      "priority": "MEDIUM",
+      "category": "Monitoring",
+      "title": "Add security-specific CloudWatch alarms",
+      "description": "Monitor for unauthorized access attempts and failed authentications"
+    },
+    {
+      "priority": "LOW",
+      "category": "Network",
+      "title": "Consider Lambda-to-RDS connection encryption",
+      "description": "Ensure all database connections use SSL/TLS encryption"
+    }
+  ]
+}
