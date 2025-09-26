@@ -105,17 +105,19 @@ def register_blueprints(app: Flask) -> None:
     from backend.api.v1.admin.invoices.routes import bp as admin_invoices_bp
     from backend.api.v1.admin.vehicles.routes import bp as admin_vehicles_bp
     from backend.api.v1.customers.profile import bp as customers_profile_bp
+    from backend.routes.mobile import mobile_appointments_bp
 
     app.register_blueprint(customers_profile_bp)
     app.register_blueprint(admin_appt_bp)
     app.register_blueprint(admin_customers_bp)
     app.register_blueprint(admin_vehicles_bp)
     app.register_blueprint(admin_invoices_bp)
+    app.register_blueprint(mobile_appointments_bp)
 
     try:
         # Import monolith to register all existing routes
         # This is temporary during the transition period
-        from backend import local_server  # This will register all existing routes
+        from backend import local_server  # noqa: F401  # This will register all existing routes
 
         # TODO Phase C: Replace with extracted blueprints:
         # from backend.api.v1.admin import admin_bp

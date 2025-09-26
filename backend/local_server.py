@@ -128,6 +128,8 @@ from psycopg2 import sql
 from psycopg2.extras import RealDictCursor
 from werkzeug.exceptions import BadRequest, Forbidden, HTTPException, NotFound
 
+from backend.routes.mobile import mobile_appointments_bp
+
 
 # NOTE: Avoid importing ownership_guard eagerly to reduce circular import surface.
 # We expose a proxy that lazily imports the real decorator when used at route
@@ -344,6 +346,14 @@ if not getattr(app, "_duplicate_silencer_installed", False):  # type: ignore[att
 
     app.add_url_rule = _MethodType(_safe_add_url_rule, app)
     app._duplicate_silencer_installed = True  # type: ignore[attr-defined]
+
+
+# ---------------------------------------------------------------------------
+# Mobile blueprint registration (Phase 2A foundation)
+# ---------------------------------------------------------------------------
+if "mobile_appointments.list_mobile_appointments" not in app.view_functions:
+    app.register_blueprint(mobile_appointments_bp)
+
 
 # ---------------------------------------------------------------------------
 # CORS initialization (Gate C: Environment-driven allowlist + security headers)
