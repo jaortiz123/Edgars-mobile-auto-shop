@@ -10,3 +10,4 @@
 | 6 | Messaging | Provider throttling | Med | Med | Queue + retry with backoff; track error codes | Jesus | 2025-08-15 | Open |
 | 7 | A11y | No keyboard DnD alt | Med | Med | Implement “Move to…” menu; test with screen reader | Jesus | 2025-08-06 | Open |
 | 8 | Security | Customer links not signed | Med | Low | Signed URLs with 7-day TTL | Jesus | 2025-08-20 | Planned |
+| 9 | Tech Debt | Flask JSON serializer deprecation warnings | Low | Med | Migrate to Flask 2.3+ JSON provider or custom encoder; track warning removal | Jesus | 2025-10-10 | Open |

@@ -295,10 +295,43 @@ jobs:
           echo "📊 Scan artifacts uploaded for review"
           ls -la audit_artifacts/
 
+  route-inventory:
+    name: Route Inventory Guard
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Regenerate route inventory and enforce stop rules
+        run: |
+          python scripts/ci/verify_route_inventory.py
+
+      - name: Upload route inventory artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: route-inventory
+          path: |
+            docs/design/discovery/route_inventory.json
+            docs/design/discovery/route_inventory.csv
+
   unit-tests:
     name: Backend Quality Gate (Pure Unit Tests)
     runs-on: ubuntu-latest
-    needs: [static-analysis, environment-validation, security-scanning]
+    needs: [static-analysis, environment-validation, security-scanning, route-inventory]
     # NO services: - Pure unit tests use SQLite in-memory, no PostgreSQL needed
     steps:
       - uses: actions/checkout@v4

@@ -1,0 +1,3837 @@
+{
+  "analysis_metadata": {
+    "timestamp": "2025-09-25T22:54:48.131905",
+    "monolith_file": "backend/local_server.py",
+    "total_lines_analyzed": 12961,
+    "phase": "Phase 0 Task 0.1"
+  },
+  "route_inventory": {
+    "total_routes": 98,
+    "http_methods_distribution": {
+      "GET": 54,
+      "POST": 32,
+      "PATCH": 11,
+      "DELETE": 6,
+      "OPTIONS": 2,
+      "PUT": 1
+    },
+    "authentication_summary": {
+      "total_auth_routes": 59,
+      "total_open_routes": 39,
+      "auth_percentage": 60.2
+    },
+    "database_access": {
+      "routes_with_db_access": 65,
+      "db_access_percentage": 66.3
+    }
+  },
+  "complexity_analysis": {
+    "average_complexity": 15.29,
+    "min_complexity": 1,
+    "max_complexity": 165,
+    "high_complexity_routes": [
+      {
+        "path": "/api/admin/invoices/<invoice_id>/receipt.pdf",
+        "function": "invoice_receipt_pdf",
+        "complexity": 15
+      },
+      {
+        "path": "/api/admin/invoices/<invoice_id>/estimate.html",
+        "function": "invoice_estimate_html",
+        "complexity": 12
+      },
+      {
+        "path": "/api/admin/invoices/<invoice_id>/receipt.html",
+        "function": "invoice_receipt_html",
+        "complexity": 12
+      },
+      {
+        "path": "/api/admin/login",
+        "function": "admin_login",
+        "complexity": 13
+      },
+      {
+        "path": "/api/customers/register",
+        "function": "customer_register",
+        "complexity": 35
+      },
+      {
+        "path": "/api/admin/staff/memberships",
+        "function": "add_staff_membership",
+        "complexity": 13
+      },
+      {
+        "path": "/api/customers/login",
+        "function": "customer_login",
+        "complexity": 18
+      },
+      {
+        "path": "/api/admin/appointments/<appt_id>/invoice",
+        "function": "generate_invoice",
+        "complexity": 18
+      },
+      {
+        "path": "/api/admin/invoices/<invoice_id>",
+        "function": "get_invoice",
+        "complexity": 31
+      },
+      {
+        "path": "/api/admin/invoices/<invoice_id>/payments",
+        "function": "create_invoice_payment",
+        "complexity": 28
+      },
+      {
+        "path": "/api/admin/invoices/<invoice_id>/void",
+        "function": "void_invoice_endpoint",
+        "complexity": 17
+      },
+      {
+        "path": "/api/admin/appointments/board",
+        "function": "get_board",
+        "complexity": 46
+      },
+      {
+        "path": "/api/appointments/<appt_id>/messages",
+        "function": "appointment_messages",
+        "complexity": 36
+      },
+      {
+        "path": "/api/appointments/<appt_id>/messages/<message_id>",
+        "function": "appointment_message_detail",
+        "complexity": 29
+      },
+      {
+        "path": "/api/admin/message-templates",
+        "function": "create_message_template",
+        "complexity": 13
+      },
+      {
+        "path": "/api/admin/template-usage",
+        "function": "log_template_usage",
+        "complexity": 24
+      },
+      {
+        "path": "/api/admin/analytics/templates",
+        "function": "analytics_templates",
+        "complexity": 28
+      },
+      {
+        "path": "/api/admin/appointments/<appt_id>/move",
+        "function": "move_card",
+        "complexity": 30
+      },
+      {
+        "path": "/api/appointments/<appt_id>/services",
+        "function": "appointment_services",
+        "complexity": 46
+      },
+      {
+        "path": "/api/appointments/<appt_id>/services/<service_id>",
+        "function": "appointment_service_detail",
+        "complexity": 43
+      },
+      {
+        "path": "/api/appointments/<appt_id>/start",
+        "function": "start_job",
+        "complexity": 11
+      },
+      {
+        "path": "/api/appointments/<appt_id>/ready",
+        "function": "ready_job",
+        "complexity": 11
+      },
+      {
+        "path": "/api/appointments/<appt_id>/complete",
+        "function": "complete_job",
+        "complexity": 11
+      },
+      {
+        "path": "/api/admin/appointments",
+        "function": "get_admin_appointments",
+        "complexity": 36
+      },
+      {
+        "path": "/api/admin/appointments",
+        "function": "create_appointment",
+        "complexity": 165
+      },
+      {
+        "path": "/api/admin/appointments/<appt_id>",
+        "function": "delete_appointment",
+        "complexity": 13
+      },
+      {
+        "path": "/api/customers/<customer_id>/history",
+        "function": "get_customer_history",
+        "complexity": 22
+      },
+      {
+        "path": "/api/admin/service-operations",
+        "function": "list_service_operations",
+        "complexity": 39
+      },
+      {
+        "path": "/api/admin/service-operations",
+        "function": "create_service_operation",
+        "complexity": 28
+      },
+      {
+        "path": "/api/admin/service-operations/<service_id>",
+        "function": "update_service_operation",
+        "complexity": 31
+      },
+      {
+        "path": "/api/admin/service-packages",
+        "function": "list_service_packages",
+        "complexity": 15
+      },
+      {
+        "path": "/api/admin/invoices/<invoice_id>/add-package",
+        "function": "add_package_to_invoice",
+        "complexity": 32
+      },
+      {
+        "path": "/api/admin/reports/appointments.csv",
+        "function": "export_appointments_csv",
+        "complexity": 28
+      },
+      {
+        "path": "/api/admin/reports/payments.csv",
+        "function": "export_payments_csv",
+        "complexity": 15
+      },
+      {
+        "path": "/api/admin/dashboard/stats",
+        "function": "admin_dashboard_stats",
+        "complexity": 19
+      },
+      {
+        "path": "/api/admin/customers/search",
+        "function": "admin_search_customers",
+        "complexity": 15
+      },
+      {
+        "path": "/api/admin/recent-customers",
+        "function": "admin_recent_customers",
+        "complexity": 11
+      },
+      {
+        "path": "/api/admin/customers/<cust_id>",
+        "function": "admin_customer_profile",
+        "complexity": 41
+      },
+      {
+        "path": "/api/admin/customers/<cust_id>/notes",
+        "function": "get_customer_notes",
+        "complexity": 22
+      },
+      {
+        "path": "/api/admin/customers/<cust_id>/notes",
+        "function": "add_customer_note",
+        "complexity": 14
+      },
+      {
+        "path": "/api/admin/customers/<cust_id>/profile",
+        "function": "unified_customer_profile",
+        "complexity": 50
+      },
+      {
+        "path": "/api/admin/vehicles/<vehicle_id>/profile",
+        "function": "vehicle_profile",
+        "complexity": 13
+      },
+      {
+        "path": "/api/appointments/<appt_id>/check-in",
+        "function": "check_in",
+        "complexity": 12
+      },
+      {
+        "path": "/api/appointments/<appt_id>/check-out",
+        "function": "check_out",
+        "complexity": 12
+      },
+      {
+        "path": "/ready",
+        "function": "readiness_check",
+        "complexity": 11
+      },
+      {
+        "path": "/api/auth/request-password-reset",
+        "function": "request_password_reset",
+        "complexity": 21
+      },
+      {
+        "path": "/api/auth/reset-password",
+        "function": "reset_password",
+        "complexity": 24
+      },
+      {
+        "path": "/api/admin/metrics/304-efficiency",
+        "function": "metrics_304_efficiency",
+        "complexity": 15
+      },
+      {
+        "path": "/api/admin/customers/<cid>",
+        "function": "patch_customer",
+        "complexity": 17
+      },
+      {
+        "path": "/api/admin/vehicles",
+        "function": "create_vehicle",
+        "complexity": 40
+      },
+      {
+        "path": "/api/admin/vehicles/<vid>",
+        "function": "patch_vehicle",
+        "complexity": 17
+      },
+      {
+        "path": "/api/admin/vehicles/<vid>/transfer",
+        "function": "transfer_vehicle",
+        "complexity": 11
+      },
+      {
+        "path": "/api/customers/lookup",
+        "function": "customer_lookup_by_phone",
+        "complexity": 23
+      },
+      {
+        "path": "/api/admin/invoices",
+        "function": "list_invoices",
+        "complexity": 18
+      },
+      {
+        "path": "/api/admin/invoices/<invoice_id>/estimate.pdf",
+        "function": "invoice_estimate_pdf",
+        "complexity": 15
+      }
+    ]
+  },
+  "path_groupings": {
+    "/admin": 11,
+    "/api": 73,
+    "/appointments": 7,
+    "/customers": 2,
+    "/health": 3,
+    "/ready": 1,
+    "root": 1
+  },
+  "detailed_routes": [
+    {
+      "path": "/api/admin/invoices/<invoice_id>/receipt.pdf",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "invoice_receipt_pdf",
+      "line_number": 3377,
+      "docstring": null,
+      "parameters": [
+        "invoice_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_imp.import_module",
+        "_simple_pdf",
+        "app.route",
+        "conn.close",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "data.get",
+        "db_conn",
+        "getattr",
+        "int",
+        "inv.get",
+        "invsvc.fetch_invoice_details",
+        "isinstance",
+        "make_response",
+        "require_auth_role",
+        "row.get",
+        "str"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "custom",
+      "complexity_score": 15
+    },
+    {
+      "path": "/api/admin/invoices/<invoice_id>/estimate.html",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "invoice_estimate_html",
+      "line_number": 3457,
+      "docstring": null,
+      "parameters": [
+        "invoice_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_imp.import_module",
+        "app.route",
+        "cur.execute",
+        "cur.fetchone",
+        "data.get",
+        "db_conn",
+        "getattr",
+        "int",
+        "inv.get",
+        "invsvc.fetch_invoice_details",
+        "isinstance",
+        "make_response",
+        "require_auth_role",
+        "row.get",
+        "str"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "custom",
+      "complexity_score": 12
+    },
+    {
+      "path": "/api/admin/invoices/<invoice_id>/receipt.html",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "invoice_receipt_html",
+      "line_number": 3512,
+      "docstring": null,
+      "parameters": [
+        "invoice_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_imp.import_module",
+        "app.route",
+        "cur.execute",
+        "cur.fetchone",
+        "data.get",
+        "db_conn",
+        "getattr",
+        "int",
+        "inv.get",
+        "invsvc.fetch_invoice_details",
+        "isinstance",
+        "make_response",
+        "require_auth_role",
+        "row.get",
+        "str"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "custom",
+      "complexity_score": 12
+    },
+    {
+      "path": "/api/admin/invoices/<invoice_id>/send",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "invoice_send_stub",
+      "line_number": 3567,
+      "docstring": "Stub endpoint to 'send' an invoice (receipt or estimate) via email.\n\nRequest JSON optional: { type: 'receipt' | 'estimate', destinationEmail?: str }\nFor now just validates invoice exists and returns 202 with queued stub.",
+      "parameters": [
+        "invoice_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_ok",
+        "app.route",
+        "body.get",
+        "conn.close",
+        "conn.cursor",
+        "cur.execute",
+        "datetime.utcnow",
+        "db_conn",
+        "invoice_service.fetch_invoice_details",
+        "request.get_json",
+        "require_auth_role"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 10
+    },
+    {
+      "path": "/api/admin/login",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "admin_login",
+      "line_number": 3690,
+      "docstring": "Issue a JWT for admin/advisor roles (DEV ONLY basic login).\nExpected JSON: {\"username\": \"advisor\", \"password\": \"...\"}\nFor now we accept any non-empty credentials and assign role Advisor.\nIn production integrate with real user store.",
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "_error",
+        "_ok",
+        "_os_mod_for_csrf.urandom",
+        "_secure_cookies_enabled",
+        "app.route",
+        "body.get",
+        "int",
+        "isinstance",
+        "jwt.encode",
+        "rate_limit",
+        "request.get_json",
+        "resp.set_cookie",
+        "time.time",
+        "token.decode",
+        "username.lower"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 13
+    },
+    {
+      "path": "/api/logout",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "logout",
+      "line_number": 3759,
+      "docstring": "Clear authentication cookies to terminate the session.\n\nClears:\n  - __Host_access_token (httpOnly)\n  - __Host_refresh_token (if present)\n  - XSRF-TOKEN (non-httpOnly, used for CSRF header mirroring)",
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "_secure_cookies_enabled",
+        "app.route",
+        "make_response",
+        "resp.set_cookie"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "custom",
+      "complexity_score": 3
+    },
+    {
+      "path": "/api/customers/register",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "customer_register",
+      "line_number": 3858,
+      "docstring": "Register a new customer (minimal fields) and issue a JWT.\n\nExpected JSON: {\"email\": str, \"password\": str, \"name\"?: str}\nConstraints: password length >= 6, email must be non-empty.\nOn conflict (email already registered) returns 409.",
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "CustomerRegister",
+        "Exception",
+        "_bcrypt_hash",
+        "_ensure_customer_auth_table",
+        "_error",
+        "_hash_password",
+        "_issue_customer_token",
+        "_ok",
+        "_row.get",
+        "app.route",
+        "body.get",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "email.split",
+        "hasattr",
+        "isinstance",
+        "len",
+        "r.get",
+        "r2.get",
+        "rate_limit",
+        "re.match",
+        "request.get_json",
+        "safe_conn",
+        "str",
+        "uuid.uuid4",
+        "validate_password_strength"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 35
+    },
+    {
+      "path": "/api/admin/staff/memberships",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "add_staff_membership",
+      "line_number": 4016,
+      "docstring": "Create staff membership in a tenant (DEV/TEST helper).\n\nExpected JSON: { staff_id: str, tenant_id: str (uuid or slug), role?: str }\nRequires a valid Owner/Advisor token; membership enforcement is skipped unless header is present.",
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_ok",
+        "_resolve_tenant",
+        "app.route",
+        "body.get",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "re.match",
+        "request.get_json",
+        "require_auth_role",
+        "safe_conn"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 13
+    },
+    {
+      "path": "/api/customers/login",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "customer_login",
+      "line_number": 4063,
+      "docstring": "Authenticate existing customer and return JWT.",
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_bcrypt_hash",
+        "_ensure_customer_auth_table",
+        "_error",
+        "_issue_customer_token",
+        "_ok",
+        "_os_mod_for_csrf.urandom",
+        "_secure_cookies_enabled",
+        "app.route",
+        "body.get",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "rate_limit",
+        "request.get_json",
+        "resp.set_cookie",
+        "row.get",
+        "safe_conn",
+        "verify_password_with_salt"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 18
+    },
+    {
+      "path": "/api/admin/appointments/<appt_id>/invoice",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "generate_invoice",
+      "line_number": 4667,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_ok",
+        "app.route",
+        "bool",
+        "c.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "db_conn",
+        "float",
+        "int",
+        "os.getenv",
+        "print",
+        "require_auth_role",
+        "round",
+        "row.get",
+        "s.get",
+        "safe_conn",
+        "str"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 18
+    },
+    {
+      "path": "/api/admin/invoices/<invoice_id>",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "get_invoice",
+      "line_number": 4762,
+      "docstring": null,
+      "parameters": [
+        "invoice_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_MEM_INVOICES.get",
+        "_error",
+        "_ok",
+        "app.route",
+        "c.cursor",
+        "conn.close",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "db_conn",
+        "dict",
+        "getattr",
+        "int",
+        "inv.get",
+        "inv_payload.get",
+        "invoice_id.startswith",
+        "invoice_service.fetch_invoice_details",
+        "items.append",
+        "os.getenv",
+        "p.get",
+        "r.get",
+        "require_auth_role",
+        "s.get",
+        "safe_conn",
+        "str",
+        "utcnow"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 31
+    },
+    {
+      "path": "/api/admin/invoices/<invoice_id>/payments",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "create_invoice_payment",
+      "line_number": 4873,
+      "docstring": null,
+      "parameters": [
+        "invoice_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_MEM_INVOICES.get",
+        "_MEM_PAYMENTS.append",
+        "_error",
+        "_ok",
+        "app.route",
+        "body.get",
+        "conn.close",
+        "conn.cursor",
+        "cur.execute",
+        "db_conn",
+        "getattr",
+        "int",
+        "inv.get",
+        "inv.update",
+        "invoice_service.record_payment_for_invoice",
+        "max",
+        "mem_inv.get",
+        "mem_inv.setdefault",
+        "mem_inv.update",
+        "os.getenv",
+        "request.get_json",
+        "require_auth_role",
+        "safe_conn",
+        "str",
+        "utcnow"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 28
+    },
+    {
+      "path": "/api/admin/invoices/<invoice_id>/void",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "void_invoice_endpoint",
+      "line_number": 5022,
+      "docstring": null,
+      "parameters": [
+        "invoice_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_MEM_INVOICES.get",
+        "_error",
+        "_ok",
+        "app.route",
+        "conn.close",
+        "conn.cursor",
+        "cur.execute",
+        "data.get",
+        "db_conn",
+        "getattr",
+        "inv.get",
+        "inv.update",
+        "invoice_service.void_invoice",
+        "isinstance",
+        "os.getenv",
+        "require_auth_role",
+        "safe_conn",
+        "str"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 17
+    },
+    {
+      "path": "/health",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "health",
+      "line_number": 5164,
+      "docstring": "Health check endpoint to verify service and database connectivity.",
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "conn.cursor",
+        "cur.execute",
+        "jsonify",
+        "log.critical",
+        "safe_conn",
+        "str"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "json",
+      "complexity_score": 6
+    },
+    {
+      "path": "/api/admin/appointments/board",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "get_board",
+      "line_number": 5196,
+      "docstring": null,
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "a.get",
+        "app.route",
+        "base_params.append",
+        "bool",
+        "c.get",
+        "cards.append",
+        "carry_params.append",
+        "columns.append",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "datetime.fromisoformat",
+        "float",
+        "isinstance",
+        "jsonify",
+        "len",
+        "os.getenv",
+        "params.append",
+        "position_by_status.get",
+        "print",
+        "r.get",
+        "require_auth_role",
+        "round",
+        "rows.append",
+        "safe_conn",
+        "seen.add",
+        "set",
+        "shop_day_window",
+        "start_iso.replace",
+        "str",
+        "sum",
+        "vehicle_label",
+        "where.append"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "json",
+      "complexity_score": 46
+    },
+    {
+      "path": "/api/appointments/<appt_id>/messages",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "function_name": "appointment_messages",
+      "line_number": 5510,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_MEM_MESSAGES.append",
+        "_error",
+        "_ok",
+        "_resolve_seed_appt_id",
+        "a.get",
+        "any",
+        "app.route",
+        "auth_header.split",
+        "body.get",
+        "bool",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "cur.fetchone",
+        "dict",
+        "isinstance",
+        "jwt.decode",
+        "m.copy",
+        "m.get",
+        "r.get",
+        "request.get_json",
+        "row.get",
+        "safe_conn",
+        "sent.isoformat",
+        "str",
+        "user.get",
+        "utcnow"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 36
+    },
+    {
+      "path": "/api/appointments/<appt_id>/messages/<message_id>",
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ],
+      "function_name": "appointment_message_detail",
+      "line_number": 5645,
+      "docstring": null,
+      "parameters": [
+        "appt_id",
+        "message_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_ok",
+        "_resolve_seed_appt_id",
+        "app.route",
+        "auth_header.split",
+        "body.get",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "isinstance",
+        "jwt.decode",
+        "len",
+        "m.get",
+        "next",
+        "request.get_json",
+        "row.get",
+        "safe_conn",
+        "str",
+        "user.get"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 29
+    },
+    {
+      "path": "/api/admin/message-templates",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "list_message_templates",
+      "line_number": 5789,
+      "docstring": "List active message templates. Advisors can view; Owners manage.",
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "STATUS_TEMPLATE_SUGGESTIONS.get",
+        "_norm_status",
+        "_ok",
+        "_row_to_template",
+        "app.route",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "db_conn",
+        "enumerate",
+        "params.append",
+        "params.extend",
+        "q.lower",
+        "re.sub",
+        "require_auth_role",
+        "s.strip",
+        "slug_map.get",
+        "sql.append",
+        "suggested.append"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 10
+    },
+    {
+      "path": "/api/admin/message-templates",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "create_message_template",
+      "line_number": 5862,
+      "docstring": null,
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_extract_variables_from_body",
+        "_ok",
+        "_row_to_template",
+        "app.route",
+        "audit",
+        "body.get",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "db_conn",
+        "request.get_json",
+        "require_auth_role",
+        "user.get"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 13
+    },
+    {
+      "path": "/api/admin/message-templates/<tid>",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "get_message_template",
+      "line_number": 5907,
+      "docstring": null,
+      "parameters": [
+        "tid"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_ok",
+        "_row_to_template",
+        "app.route",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "db_conn",
+        "require_auth_role"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 2
+    },
+    {
+      "path": "/api/admin/message-templates/<tid>",
+      "methods": [
+        "PATCH"
+      ],
+      "function_name": "update_message_template",
+      "line_number": 5923,
+      "docstring": null,
+      "parameters": [
+        "tid"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_extract_variables_from_body",
+        "_ok",
+        "_row_to_template",
+        "app.route",
+        "audit",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "db_conn",
+        "dict",
+        "fields.items",
+        "params.append",
+        "params.extend",
+        "request.get_json",
+        "require_auth_role",
+        "set_parts.append",
+        "user.get"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 10
+    },
+    {
+      "path": "/api/admin/message-templates/<tid>",
+      "methods": [
+        "DELETE"
+      ],
+      "function_name": "delete_message_template",
+      "line_number": 5968,
+      "docstring": null,
+      "parameters": [
+        "tid"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_ok",
+        "app.route",
+        "audit",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "db_conn",
+        "require_auth_role",
+        "user.get"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 3
+    },
+    {
+      "path": "/api/admin/template-usage",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "log_template_usage",
+      "line_number": 6060,
+      "docstring": "Log a template usage event.\n\nExpected JSON:\n  {\n    \"template_id\"?: string (uuid or slug),\n    \"template_slug\"?: string,\n    \"channel\"?: \"sms\"|\"email\" (optional if template looked up),\n    \"appointment_id\"?: number,\n    \"delivery_ms\"?: number >=0,\n    \"was_automated\"?: bool,\n    \"idempotency_key\"?: string (client-provided stable key),\n    \"user_id\"?: string (override; default current user sub)\n  }\n\nRules:\n  - Provide at least one of template_id or template_slug.\n  - If both provided they must reference the same template.\n  - If idempotency_key provided we derive a SHA256 hash combining template_id + key + channel.\n  - Returns existing row if duplicate (HTTP 200) else creates new (HTTP 201).\n  - Non-blocking: failures return 400/404 etc; caller may ignore.",
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_ok",
+        "_telemetry_increment",
+        "app.route",
+        "audit",
+        "body.get",
+        "bool",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "db_conn",
+        "existing.get",
+        "h.hexdigest",
+        "h.update",
+        "hashlib.sha256",
+        "int",
+        "new_row.get",
+        "new_row.keys",
+        "request.get_json",
+        "require_auth_role",
+        "str",
+        "user.get"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 24
+    },
+    {
+      "path": "/api/admin/technicians",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "technicians_list",
+      "line_number": 6233,
+      "docstring": "List technicians (active by default) for UI selection.\n\nQuery Parameters:\n    includeInactive: 'true' to include inactive technicians (default false)\n\nResponse:\n    200 JSON { \"technicians\": [ { id, name, initials, isActive, createdAt?, updatedAt? } ] }",
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "app.route",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "datetime.utcnow",
+        "jsonify",
+        "r.get",
+        "require_auth_role",
+        "safe_conn",
+        "technicians.append"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "json",
+      "complexity_score": 5
+    },
+    {
+      "path": "/api/admin/analytics/templates",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "analytics_templates",
+      "line_number": 6341,
+      "docstring": null,
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_TEMPLATE_ANALYTICS_CACHE.pop",
+        "_bucket_edges",
+        "_cache_get",
+        "_cache_set",
+        "_granularity",
+        "_iso",
+        "_parse_range",
+        "app.route",
+        "b.date",
+        "bs.date",
+        "channel_trend.keys",
+        "channel_trend.setdefault",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "datetime.now",
+        "include_raw.split",
+        "int",
+        "isinstance",
+        "json.dumps",
+        "json.loads",
+        "jsonify",
+        "now_utc.isoformat",
+        "params.append",
+        "r.get",
+        "require_auth_role",
+        "safe_conn",
+        "set",
+        "slice_map.get",
+        "slice_map.setdefault",
+        "sorted",
+        "start_utc.isoformat",
+        "str",
+        "t.get",
+        "templates.append",
+        "timedelta",
+        "totals_row.get",
+        "trend_counts.keys",
+        "trend_counts.setdefault",
+        "val.isoformat"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "json",
+      "complexity_score": 28
+    },
+    {
+      "path": "/api/admin/appointments/<appt_id>/move",
+      "methods": [
+        "PATCH"
+      ],
+      "function_name": "move_card",
+      "line_number": 6564,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "ALLOWED_TRANSITIONS.get",
+        "NotFound",
+        "_MEM_APPTS.append",
+        "_RATE.get",
+        "_error",
+        "_ok",
+        "a.get",
+        "app.route",
+        "appt.get",
+        "appt.setdefault",
+        "appt_id.isdigit",
+        "audit",
+        "auth_payload.get",
+        "body.get",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "int",
+        "next",
+        "norm_status",
+        "print",
+        "rate_limit",
+        "request.get_json",
+        "require_auth_role",
+        "safe_conn",
+        "set",
+        "str",
+        "utcnow"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 30
+    },
+    {
+      "path": "/api/appointments/<appt_id>",
+      "methods": [
+        "GET",
+        "PATCH"
+      ],
+      "function_name": "appointment_handler",
+      "line_number": 6693,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "_resolve_seed_appt_id",
+        "app.route",
+        "get_appointment",
+        "patch_appointment"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 3
+    },
+    {
+      "path": "/api/admin/appointments/<appt_id>",
+      "methods": [
+        "GET",
+        "PATCH"
+      ],
+      "function_name": "admin_appointment_handler",
+      "line_number": 6703,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_resolve_seed_appt_id",
+        "app.route",
+        "get_appointment",
+        "patch_appointment",
+        "require_auth_role"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 3
+    },
+    {
+      "path": "/api/appointments/<appt_id>/services",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "function_name": "appointment_services",
+      "line_number": 6716,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "_MEM_SERVICES.append",
+        "_error",
+        "_resolve_seed_appt_id",
+        "a.get",
+        "any",
+        "app.route",
+        "body.get",
+        "conn.cursor",
+        "conn_probe.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "cur.fetchone",
+        "cur_probe.execute",
+        "cur_probe.fetchone",
+        "derived.get",
+        "fields.get",
+        "float",
+        "isinstance",
+        "jsonify",
+        "op.get",
+        "r.get",
+        "request.get_json",
+        "row_probe.get",
+        "s.get",
+        "safe_conn"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "json",
+      "complexity_score": 46
+    },
+    {
+      "path": "/api/appointments/<appt_id>/services/<service_id>",
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ],
+      "function_name": "appointment_service_detail",
+      "line_number": 6926,
+      "docstring": null,
+      "parameters": [
+        "appt_id",
+        "service_id"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "_error",
+        "_resolve_seed_appt_id",
+        "app.route",
+        "body.items",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "enumerate",
+        "float",
+        "jsonify",
+        "next",
+        "op.get",
+        "params.append",
+        "params.extend",
+        "request.get_json",
+        "row.get",
+        "s.get",
+        "safe_conn",
+        "set_clauses.append",
+        "total_row.get",
+        "updates.get",
+        "updates.items"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "json",
+      "complexity_score": 43
+    },
+    {
+      "path": "/api/appointments/<appt_id>/start",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "start_job",
+      "line_number": 7852,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "_ok",
+        "_resolve_seed_appt_id",
+        "_set_status",
+        "a.get",
+        "a.setdefault",
+        "app.route",
+        "require_or_maybe",
+        "safe_conn",
+        "utcnow"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 11
+    },
+    {
+      "path": "/api/appointments/<appt_id>/ready",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "ready_job",
+      "line_number": 7877,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "_ok",
+        "_resolve_seed_appt_id",
+        "_set_status",
+        "a.get",
+        "app.route",
+        "require_or_maybe",
+        "safe_conn"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 11
+    },
+    {
+      "path": "/api/appointments/<appt_id>/complete",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "complete_job",
+      "line_number": 7900,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "_ok",
+        "_resolve_seed_appt_id",
+        "_set_status",
+        "a.get",
+        "a.setdefault",
+        "app.route",
+        "require_or_maybe",
+        "safe_conn",
+        "utcnow"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 11
+    },
+    {
+      "path": "/api/admin/appointments",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "get_admin_appointments",
+      "line_number": 7928,
+      "docstring": "Returns a paginated list of appointments with filtering.",
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "BadRequest",
+        "_error",
+        "_norm_iso",
+        "_ok",
+        "_parse_dt",
+        "app.route",
+        "appt.get",
+        "args.get",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "datetime.fromisoformat",
+        "dt.isoformat",
+        "float",
+        "hasattr",
+        "int",
+        "iso.endswith",
+        "jsonify",
+        "len",
+        "norm.rsplit",
+        "norm.split",
+        "norm_status",
+        "params.append",
+        "params.extend",
+        "raw.strip",
+        "re.match",
+        "require_auth_role",
+        "safe_conn",
+        "str",
+        "where.append"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "json",
+      "complexity_score": 36
+    },
+    {
+      "path": "/api/admin/appointments",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "create_appointment",
+      "line_number": 8086,
+      "docstring": null,
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "AppointmentCreate",
+        "BadRequest",
+        "RuntimeError",
+        "_MEM_APPTS.append",
+        "_error",
+        "_ok",
+        "_req_id",
+        "a.get",
+        "app.route",
+        "appt_model.normalized_start",
+        "audit",
+        "body.get",
+        "body.keys",
+        "bool",
+        "cnt_row.get",
+        "conflicts.get",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "datetime.fromisoformat",
+        "env_resp.get_json",
+        "filtered.append",
+        "find_conflicts",
+        "float",
+        "getattr",
+        "int",
+        "isinstance",
+        "jsonify",
+        "len",
+        "list",
+        "locals",
+        "norm_status",
+        "op_row.get",
+        "print",
+        "request.get_json",
+        "require_auth_role",
+        "response_payload.keys",
+        "safe_conn",
+        "service_row.get",
+        "start_dt.isoformat",
+        "str",
+        "tech_conf_ids.append",
+        "traceback.format_exc",
+        "user.get",
+        "utcnow",
+        "uuid.UUID",
+        "v_conf.get",
+        "validate_appointment_payload",
+        "veh_conf_ids.append",
+        "veh_id_candidate.isdigit",
+        "vehicle_details.get",
+        "vehicle_row.get",
+        "vrow.get"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "json",
+      "complexity_score": 165
+    },
+    {
+      "path": "/api/admin/appointments/<appt_id>",
+      "methods": [
+        "DELETE"
+      ],
+      "function_name": "delete_appointment",
+      "line_number": 8964,
+      "docstring": "Deletes an appointment.\nCORRECTED: RBAC now allows Owner or Advisor.\nCORRECTED: Returns a proper empty 204 response.",
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "NotFound",
+        "_error",
+        "a.get",
+        "app.route",
+        "audit",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "len",
+        "log.warning",
+        "maybe_auth",
+        "require_auth_role",
+        "s.get",
+        "safe_conn",
+        "sql.Identifier",
+        "sql.SQL",
+        "user.get"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 13
+    },
+    {
+      "path": "/api/customers/<customer_id>/history",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "get_customer_history",
+      "line_number": 9029,
+      "docstring": "Get customer's appointment and payment history.\n\nTEMP DEV BYPASS: If the environment variable DEV_ALLOW_UNAUTH_HISTORY is set to '1',\nwe will NOT enforce auth (or we will soft-attempt and continue) to unblock local UI\ndevelopment when the frontend hasn't wired tokens yet. This must NEVER be enabled\nin production. Real fix: ensure frontend attaches the Advisor/Owner JWT.",
+      "parameters": [
+        "customer_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_ok",
+        "app.route",
+        "appt.get",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "cur.fetchone",
+        "customer_id.endswith",
+        "float",
+        "int",
+        "log.error",
+        "os.getenv",
+        "payments_flat.append",
+        "require_auth_role",
+        "safe_conn"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 22
+    },
+    {
+      "path": "/api/admin/service-operations",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "list_service_operations",
+      "line_number": 9127,
+      "docstring": "List active service operations.\n\nDefault shape: a flat JSON array of objects.\nLegacy shape: {\"service_operations\": [...]} when ?legacy=1 supplied.\nSupports simple substring search across name/category/keywords when q>=2.",
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_coerce",
+        "_error",
+        "app.route",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "data_str.encode",
+        "db_conn",
+        "float",
+        "hashlib.md5",
+        "if_none_match.strip",
+        "inspect.getsourcefile",
+        "int",
+        "jsonify",
+        "len",
+        "logging.getLogger",
+        "min",
+        "os.getenv",
+        "params.append",
+        "params.extend",
+        "require_auth_role",
+        "row.get",
+        "sorted",
+        "sql.append",
+        "sql_new.append",
+        "str",
+        "x.get"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "json",
+      "complexity_score": 39
+    },
+    {
+      "path": "/api/admin/service-operations",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "create_service_operation",
+      "line_number": 9357,
+      "docstring": "Create a new service operation.",
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_coerce_single",
+        "_error",
+        "allowed_fields.get",
+        "allowed_fields.items",
+        "allowed_fields.pop",
+        "app.route",
+        "body.get",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "db_conn",
+        "float",
+        "int",
+        "jsonify",
+        "len",
+        "re.sub",
+        "request.get_json",
+        "require_auth_role",
+        "row.get",
+        "str"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "json",
+      "complexity_score": 28
+    },
+    {
+      "path": "/api/admin/service-operations/<service_id>",
+      "methods": [
+        "PATCH"
+      ],
+      "function_name": "update_service_operation",
+      "line_number": 9545,
+      "docstring": "Update an existing service operation.",
+      "parameters": [
+        "service_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_coerce_single",
+        "_error",
+        "allowed_fields.items",
+        "app.route",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "db_conn",
+        "float",
+        "int",
+        "jsonify",
+        "request.get_json",
+        "require_auth_role",
+        "row.get",
+        "set_clauses.append",
+        "str",
+        "values.append"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "json",
+      "complexity_score": 31
+    },
+    {
+      "path": "/api/admin/service-operations/<service_id>",
+      "methods": [
+        "DELETE"
+      ],
+      "function_name": "delete_service_operation",
+      "line_number": 9688,
+      "docstring": "Soft delete a service operation by setting is_active=false.",
+      "parameters": [
+        "service_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "app.route",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "db_conn",
+        "jsonify",
+        "require_auth_role",
+        "str"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "json",
+      "complexity_score": 6
+    },
+    {
+      "path": "/api/admin/service-packages",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "list_service_packages",
+      "line_number": 9753,
+      "docstring": "List active service packages with child composition and price preview.\n\nResponse shape (flat JSON array):\n  [\n    {\n      \"id\": \"safety-inspection\",\n      \"name\": \"Safety Inspection\",\n      \"category\": \"INSPECTION\",\n      \"price_preview\": { \"sum_child_base_labor_rate\": 120.0 },\n      \"package_items\": [\n          {\"child_id\": \"brake-check\", \"name\": \"Brake Check\", \"qty\": 1, \"base_labor_rate\": 60.0, \"default_hours\": 0.5},\n          ...\n      ]\n    }, ...\n  ]\n\nNotes:\n  * Database column package_items.service_id is treated as package_id (legacy naming) \u2013 do NOT rename in a hot path migration; instead mapped here (Option B decision).\n  * price_preview currently sums child base labor rates * qty. Future: incorporate pricing rules / overrides.\n  * Provides weak ETag derived from package + child composition; 120s private cache.",
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "Response",
+        "_error",
+        "_fetch_children",
+        "app.route",
+        "c2.execute",
+        "c2.fetchall",
+        "c3.execute",
+        "c3.fetchall",
+        "ch.get",
+        "conn.cursor",
+        "conn.rollback",
+        "cur.execute",
+        "cur.fetchall",
+        "cur_chk.execute",
+        "cur_chk.fetchall",
+        "db_conn",
+        "digest_src.encode",
+        "fingerprint_parts.append",
+        "float",
+        "hashlib.sha1",
+        "int",
+        "items.append",
+        "jsonify",
+        "len",
+        "max",
+        "min",
+        "params.append",
+        "params.extend",
+        "payload.append",
+        "pkg_sql.append",
+        "r.get",
+        "require_auth_role",
+        "round",
+        "sorted"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "json",
+      "complexity_score": 15
+    },
+    {
+      "path": "/api/admin/invoices/<invoice_id>/add-package",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "add_package_to_invoice",
+      "line_number": 9915,
+      "docstring": "Expand a service package into invoice line items.\n\nBody: {\"packageId\": \"<id>\"}\nRules:\n  - Invoice must exist and not be VOID or PAID.\n  - Target service_operation must have is_package = TRUE.\n  - Children pulled from package_items ordered by sort_order, name.\n  - Pricing: sum child default_price (or 0) * qty -> base sum. If the package itself has a\n    non-null default_price > 0 and differs from child sum, proportionally scale child prices to match.\n    (Child precedence retained; scaling is a lossless reallocation under existing schema constraints.)\n  - Updates invoice totals (subtotal/total/amount_due) preserving amount_paid.\nReturns: { invoice: <updated>, added_line_items: [...], package_id, package_name, added_subtotal_cents }",
+      "parameters": [
+        "invoice_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_convert",
+        "_error",
+        "_jsonify_val",
+        "_ok",
+        "added_line_items.append",
+        "app.route",
+        "base_child_rows.append",
+        "body.get",
+        "ch.get",
+        "child_prices_cents.append",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "cur.fetchone",
+        "db_conn",
+        "enumerate",
+        "float",
+        "int",
+        "inv.get",
+        "isinstance",
+        "len",
+        "log.exception",
+        "max_pos_row.get",
+        "obj.items",
+        "pkg.get",
+        "request.get_json",
+        "require_auth_role",
+        "round",
+        "scaled.append",
+        "str",
+        "zip"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 32
+    },
+    {
+      "path": "/api/admin/reports/appointments.csv",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "export_appointments_csv",
+      "line_number": 10111,
+      "docstring": "Export appointments CSV.\nTests expect:\n  - Auth required (403 JSON error_code AUTH_REQUIRED)\n  - RBAC: Owner/Advisor/Accountant allowed; Technician forbidden (403 RBAC_FORBIDDEN)\n  - rate_limit key csv_export_<user_id>, 5 per hour (429 RATE_LIMITED)\n  - Query params: from=YYYY-MM-DD, to=YYYY-MM-DD, status=VALID_STATUS\n  - Invalid date => 400 INVALID_DATE_FORMAT; invalid status => 400 INVALID_STATUS\n  - CSV header columns (14): ID, Status, Start, End, Total Amount, Paid Amount,\n    Customer Name, Customer Email, Customer Phone, Vehicle Year, Vehicle Make,\n    Vehicle Model, Vehicle VIN, Services\n  - Content-Disposition attachment; filename=appointments_export.csv\n  - Empty dataset still returns header only (200)\n  - Audit log invoked on success with action CSV_EXPORT and details containing 'appointments'",
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "Response",
+        "RuntimeError",
+        "_parse_date",
+        "app.route",
+        "audit_log",
+        "buf.getvalue",
+        "conn.cursor",
+        "csv.writer",
+        "cur.execute",
+        "cur.fetchall",
+        "datetime.combine",
+        "datetime.strptime",
+        "db_conn",
+        "float",
+        "io.StringIO",
+        "jsonify",
+        "len",
+        "params.append",
+        "r.get",
+        "rate_limit",
+        "require_auth_role",
+        "sql.append",
+        "user.get",
+        "w.writerow"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "json",
+      "complexity_score": 28
+    },
+    {
+      "path": "/api/admin/reports/payments.csv",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "export_payments_csv",
+      "line_number": 10278,
+      "docstring": "Export payments CSV (tests expect 7 column header).",
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "Response",
+        "RuntimeError",
+        "app.route",
+        "audit_log",
+        "buf.getvalue",
+        "conn.cursor",
+        "csv.writer",
+        "cur.execute",
+        "cur.fetchall",
+        "db_conn",
+        "float",
+        "io.StringIO",
+        "jsonify",
+        "len",
+        "r.get",
+        "rate_limit",
+        "require_auth_role",
+        "user.get",
+        "w.writerow"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "json",
+      "complexity_score": 15
+    },
+    {
+      "path": "/",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "root",
+      "line_number": 10365,
+      "docstring": "Lists all available endpoints.",
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "jsonify",
+        "sorted"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "json",
+      "complexity_score": 1
+    },
+    {
+      "path": "/api/admin/dashboard/stats",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "admin_dashboard_stats",
+      "line_number": 10397,
+      "docstring": null,
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "app.route",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "db_conn",
+        "float",
+        "format_duration_hours",
+        "int",
+        "isinstance",
+        "jsonify",
+        "list",
+        "os.getenv",
+        "print",
+        "qval",
+        "require_auth_role",
+        "round",
+        "row.get",
+        "row.values",
+        "sc",
+        "shop_day_window"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "json",
+      "complexity_score": 19
+    },
+    {
+      "path": "/api/admin/customers/search",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "admin_search_customers",
+      "line_number": 10534,
+      "docstring": "Search customers/vehicles by free text with license plate as primary anchor.\n\nReturns a vehicle-centric list so the license plate is the visible source of truth\ntying a customer to a car.",
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "SORT_MAP.get",
+        "_error",
+        "_ok",
+        "app.route",
+        "bool",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "db_conn",
+        "dict",
+        "float",
+        "int",
+        "items.append",
+        "len",
+        "log.error",
+        "min",
+        "r.get",
+        "require_auth_role",
+        "str",
+        "traceback.format_exc"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 15
+    },
+    {
+      "path": "/api/admin/recent-customers",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "admin_recent_customers",
+      "line_number": 10697,
+      "docstring": "Return most recently serviced customers (latest appointment activity).\n\nDefinition (MVP): latest_appointment_at = greatest of appointment end_ts, start_ts, or created ordering surrogate.\nIncludes: basic customer fields, aggregated vehicles (distinct by vehicle id), latest appointment metadata.\nOptional limit query parameter (default 8, max 25).",
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_ok",
+        "app.route",
+        "bool",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "db_conn",
+        "float",
+        "int",
+        "max",
+        "min",
+        "r.get",
+        "recent.append",
+        "require_auth_role",
+        "str",
+        "v.get",
+        "vehicles.append"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 11
+    },
+    {
+      "path": "/api/admin/customers/<cust_id>",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "admin_customer_profile",
+      "line_number": 10838,
+      "docstring": "Return a comprehensive customer profile (legacy dashboard variant).\n\nQuery param include=appointmentDetails adds nested services/payments/messages\nfor each appointment. Without it, appointments are a lightweight list.",
+      "parameters": [
+        "cust_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_appt_row_to_obj",
+        "_error",
+        "_ok",
+        "app.route",
+        "bool",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "cur.fetchone",
+        "cust_id.endswith",
+        "customer_row.get",
+        "customer_since.isoformat",
+        "datetime.utcnow",
+        "float",
+        "include_raw.split",
+        "int",
+        "last_service.isoformat",
+        "last_service.replace",
+        "last_service_at.isoformat",
+        "last_service_at.replace",
+        "last_visit_at.isoformat",
+        "len",
+        "list",
+        "metrics_row.get",
+        "r.get",
+        "require_auth_role",
+        "round",
+        "safe_conn",
+        "set",
+        "sorted",
+        "t.strip",
+        "timedelta",
+        "v.get",
+        "vehicles.append"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 41
+    },
+    {
+      "path": "/api/admin/customers/<cust_id>/notes",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "get_customer_notes",
+      "line_number": 11234,
+      "docstring": "Get customer notes and interaction history.\n\nQuery Parameters:\n  limit (int, default 50, max 100)\n  offset (int, default 0)\n\nRBAC: Owner / Advisor / Accountant (Technician forbidden).",
+      "parameters": [
+        "cust_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_ok",
+        "app.route",
+        "auth_payload.get",
+        "bool",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "cur.fetchone",
+        "hasattr",
+        "int",
+        "notes.append",
+        "require_auth_role",
+        "row.get",
+        "safe_conn",
+        "str"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 22
+    },
+    {
+      "path": "/api/admin/customers/<cust_id>/notes",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "add_customer_note",
+      "line_number": 11377,
+      "docstring": "Add a customer note or interaction.\n\nBody JSON:\n  content (string, required): The note content\n  isAlert (boolean, optional): Whether this is an alert/important note\n\nRBAC: Owner / Advisor / Accountant (Technician forbidden).",
+      "parameters": [
+        "cust_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_ok",
+        "app.route",
+        "auth_payload.get",
+        "bool",
+        "conn.cursor",
+        "created_at.isoformat",
+        "cur.execute",
+        "cur.fetchone",
+        "datetime.utcnow",
+        "hasattr",
+        "int",
+        "len",
+        "payload.get",
+        "request.get_json",
+        "require_auth_role",
+        "safe_conn",
+        "str",
+        "time.time"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 14
+    },
+    {
+      "path": "/api/admin/customers/<cust_id>/profile",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "unified_customer_profile",
+      "line_number": 11500,
+      "docstring": "Return unified customer profile with stats, vehicles, and recent appointments.\n\nQuery Parameters:\n  limit_appointments (int, default 25, max 100)\n  vehicle_id (filter appointments to a single vehicle)\n  include_invoices (bool, default false) -> include inline invoice summary\n\nRBAC: Owner / Advisor / Accountant (Technician forbidden).\nMonetary values: invoice cents columns converted to float dollars with 2-dec precision.",
+      "parameters": [
+        "cust_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "ValueError",
+        "_err",
+        "_error",
+        "_strong_etag",
+        "a.get",
+        "any",
+        "app.route",
+        "auth_payload.get",
+        "base64.b64decode",
+        "base64.b64encode",
+        "bool",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "cur.fetchone",
+        "customer.get",
+        "datetime.fromisoformat",
+        "datetime.strptime",
+        "decoded.split",
+        "etag_for_comparison.replace",
+        "etag_for_comparison.startswith",
+        "float",
+        "int",
+        "jsonify",
+        "last.get",
+        "len",
+        "make_response",
+        "params.append",
+        "params.extend",
+        "parse_date",
+        "require_auth_role",
+        "round",
+        "safe_conn",
+        "stats_row.get",
+        "str",
+        "ts.isoformat",
+        "v.get",
+        "where_clauses.append"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "custom",
+      "complexity_score": 50
+    },
+    {
+      "path": "/api/admin/customers/<cust_id>/visits",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "admin_customer_visits",
+      "line_number": 12034,
+      "docstring": "Return up to 200 recent appointments for a customer (all statuses).",
+      "parameters": [
+        "cust_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_ok",
+        "_visits_rows_to_payload",
+        "app.route",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "db_conn",
+        "require_auth_role"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 2
+    },
+    {
+      "path": "/api/admin/vehicles/<license_plate>/visits",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "admin_vehicle_visits",
+      "line_number": 12081,
+      "docstring": "Return up to 200 recent appointments for a given license plate (case-insensitive).",
+      "parameters": [
+        "license_plate"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_ok",
+        "_visits_rows_to_payload",
+        "app.route",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "db_conn",
+        "require_auth_role"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 2
+    },
+    {
+      "path": "/api/admin/cars-on-premises",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "cars_on_premises",
+      "line_number": 12127,
+      "docstring": null,
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "app.route",
+        "jsonify",
+        "require_auth_role"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "json",
+      "complexity_score": 2
+    },
+    {
+      "path": "/api/admin/vehicles/<vehicle_id>/profile",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "vehicle_profile",
+      "line_number": 12154,
+      "docstring": "Return read-only vehicle profile: header, stats, timeline page.\n\nQuery params:\n  cursor: base64(\"<ISO>|<id>\") for pagination (exclusive, desc order)\n  from, to: YYYY-MM-DD date bounds (ignored if cursor present)\n  page_size: (default 10, max 50)\n  include_invoices: 'true' to embed invoice summary per row\nImplements weak ETag across related data surfaces; returns 304 when match.",
+      "parameters": [
+        "vehicle_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_lookup_cached_etag",
+        "_ok",
+        "app.route",
+        "compute_vehicle_profile_etag",
+        "conn.cursor",
+        "db_conn",
+        "fetch_timeline_page",
+        "fetch_vehicle_header",
+        "fetch_vehicle_stats",
+        "header.get",
+        "int",
+        "log.exception",
+        "make_response",
+        "min",
+        "q.get",
+        "require_auth_role",
+        "stats.get",
+        "str",
+        "timeline.get",
+        "vehicle_ownership_required"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "custom",
+      "complexity_score": 13
+    },
+    {
+      "path": "/admin/appointments/board",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "get_board_alias",
+      "line_number": 12260,
+      "docstring": null,
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "get_board"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/admin/dashboard/stats",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "admin_dashboard_stats_alias",
+      "line_number": 12266,
+      "docstring": null,
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "admin_dashboard_stats",
+        "app.route"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/admin/cars-on-premises",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "cars_on_premises_alias",
+      "line_number": 12272,
+      "docstring": null,
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "cars_on_premises"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/admin/appointments",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "list_appointments_alias",
+      "line_number": 12278,
+      "docstring": null,
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "get_admin_appointments"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/admin/appointments",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "create_appointment_alias",
+      "line_number": 12283,
+      "docstring": null,
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "create_appointment"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/appointments/<appt_id>",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "get_appointment_alias",
+      "line_number": 12289,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "get_appointment"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/appointments/<appt_id>",
+      "methods": [
+        "PATCH"
+      ],
+      "function_name": "patch_appointment_alias",
+      "line_number": 12294,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "patch_appointment"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/admin/appointments/<appt_id>",
+      "methods": [
+        "DELETE"
+      ],
+      "function_name": "delete_appointment_alias",
+      "line_number": 12300,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "delete_appointment"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/admin/appointments/<appt_id>/move",
+      "methods": [
+        "PATCH"
+      ],
+      "function_name": "move_appt_alias",
+      "line_number": 12306,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "move_card"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/customers/<cust_id>/history",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "customer_history_alias",
+      "line_number": 12312,
+      "docstring": null,
+      "parameters": [
+        "cust_id"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "get_customer_history"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/admin/customers/search",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "admin_search_customers_alias",
+      "line_number": 12318,
+      "docstring": null,
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "admin_search_customers",
+        "app.route"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/admin/customers/<cust_id>/visits",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "admin_customer_visits_alias",
+      "line_number": 12323,
+      "docstring": null,
+      "parameters": [
+        "cust_id"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "admin_customer_visits",
+        "app.route"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/admin/vehicles/<license_plate>/visits",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "admin_vehicle_visits_alias",
+      "line_number": 12328,
+      "docstring": null,
+      "parameters": [
+        "license_plate"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "admin_vehicle_visits",
+        "app.route"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/api/admin/appointments/today",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "today_appointments",
+      "line_number": 12334,
+      "docstring": null,
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "app.route",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "db_conn",
+        "jsonify",
+        "require_auth_role",
+        "shop_day_window"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "json",
+      "complexity_score": 1
+    },
+    {
+      "path": "/admin/appointments/today",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "today_appointments_alias",
+      "line_number": 12360,
+      "docstring": null,
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "today_appointments"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/appointments/<appt_id>/start",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "start_job_alias",
+      "line_number": 12366,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "start_job"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/appointments/<appt_id>/ready",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "ready_job_alias",
+      "line_number": 12371,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "ready_job"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/appointments/<appt_id>/complete",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "complete_job_alias",
+      "line_number": 12376,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "complete_job"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/api/appointments/<appt_id>/check-in",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "check_in",
+      "line_number": 12386,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "NotFound",
+        "_ok",
+        "_resolve_seed_appt_id",
+        "a.get",
+        "app.route",
+        "at.replace",
+        "at_dt.isoformat",
+        "audit",
+        "body.get",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "datetime.fromisoformat",
+        "db_conn",
+        "maybe_auth",
+        "os.getenv",
+        "request.get_json",
+        "require_auth_role",
+        "row.get",
+        "user.get",
+        "utcnow"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 12
+    },
+    {
+      "path": "/api/appointments/<appt_id>/check-out",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "check_out",
+      "line_number": 12442,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "NotFound",
+        "_ok",
+        "_resolve_seed_appt_id",
+        "a.get",
+        "app.route",
+        "at.replace",
+        "at_dt.isoformat",
+        "audit",
+        "body.get",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "datetime.fromisoformat",
+        "db_conn",
+        "maybe_auth",
+        "os.getenv",
+        "request.get_json",
+        "require_auth_role",
+        "row.get",
+        "user.get",
+        "utcnow"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except",
+        "raise"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 12
+    },
+    {
+      "path": "/appointments/<appt_id>/check-in",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "check_in_alias",
+      "line_number": 12498,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "check_in"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/appointments/<appt_id>/check-out",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "check_out_alias",
+      "line_number": 12503,
+      "docstring": null,
+      "parameters": [
+        "appt_id"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "check_out"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/health",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "health_check",
+      "line_number": 12552,
+      "docstring": "Basic health check endpoint for load balancer health checks.\n\nReturns 200 OK if the application is running and can handle requests.\nThis is a lightweight check that doesn't verify external dependencies.",
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "datetime.now",
+        "jsonify"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "json",
+      "complexity_score": 1
+    },
+    {
+      "path": "/ready",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "readiness_check",
+      "line_number": 12573,
+      "docstring": "Deep readiness check that verifies all critical dependencies.\n\nThis endpoint performs comprehensive checks including:\n- Database connectivity\n- Database query execution\n- Critical environment variables\n\nReturns 200 OK only when the service is fully ready to handle traffic.\nReturns 503 Service Unavailable if any critical dependency is unavailable.",
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "conn.close",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "datetime.now",
+        "db_conn",
+        "hasattr",
+        "jsonify",
+        "len",
+        "list",
+        "os.getenv",
+        "result.get",
+        "str"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "json",
+      "complexity_score": 11
+    },
+    {
+      "path": "/health/live",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "liveness_check",
+      "line_number": 12671,
+      "docstring": "Liveness check for container orchestration.\n\nThis endpoint is used by container orchestrators (ECS, Kubernetes) to determine\nif the container should be restarted. It performs minimal checks to avoid\nfalse positives that could cause unnecessary restarts.",
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "current_time.isoformat",
+        "datetime.now",
+        "jsonify",
+        "str"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "json",
+      "complexity_score": 2
+    },
+    {
+      "path": "/api/",
+      "methods": [
+        "OPTIONS"
+      ],
+      "function_name": "_cors_preflight",
+      "line_number": 12716,
+      "docstring": "Handle CORS preflight requests.\n\nSHIMMING: Skip if factory middleware is active (factory handles OPTIONS in middleware).",
+      "parameters": [
+        "path"
+      ],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "app.route",
+        "make_response"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "custom",
+      "complexity_score": 4
+    },
+    {
+      "path": "/api/csrf-token",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "get_csrf_token",
+      "line_number": 12754,
+      "docstring": null,
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "_ok",
+        "_os_mod_for_csrf.urandom",
+        "_secure_cookies_enabled",
+        "app.route",
+        "resp.set_cookie"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 2
+    },
+    {
+      "path": "/api/auth/request-password-reset",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "request_password_reset",
+      "line_number": 12812,
+      "docstring": "Request a password reset token. Always responds 204 (no user enumeration).",
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "_re.match",
+        "app.route",
+        "body.get",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "log.info",
+        "log.warning",
+        "r.get",
+        "rate_limit",
+        "request.get_json",
+        "rt.cleanup_expired_tokens",
+        "rt.create_reset_request",
+        "rt.get_user_by_email",
+        "safe_conn",
+        "user.get"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 21
+    },
+    {
+      "path": "/api/auth/reset-password",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "reset_password",
+      "line_number": 12882,
+      "docstring": "Reset password given a valid reset token. Returns 204 on success.",
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "_bcrypt_hash",
+        "_error",
+        "_re.match",
+        "app.route",
+        "body.get",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "len",
+        "r.get",
+        "rate_limit",
+        "request.get_json",
+        "rt.get_user_by_email",
+        "rt.mark_token_used",
+        "rt.validate_reset_token",
+        "safe_conn",
+        "str",
+        "user.get",
+        "validate_password_strength"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 24
+    },
+    {
+      "path": "/api/v1/test",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "test_v1",
+      "line_number": 12960,
+      "docstring": null,
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "_ok",
+        "app.route"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [],
+      "response_format": "unknown",
+      "complexity_score": 1
+    },
+    {
+      "path": "/customers/profile",
+      "methods": [
+        "GET",
+        "PUT",
+        "OPTIONS"
+      ],
+      "function_name": "legacy_customer_profile",
+      "line_number": 1192,
+      "docstring": null,
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "app.route",
+        "jwt.decode",
+        "len",
+        "log.exception",
+        "os.getenv",
+        "payload.get",
+        "unified_customer_profile"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 7
+    },
+    {
+      "path": "/api/admin/metrics/304-efficiency",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "metrics_304_efficiency",
+      "line_number": 1783,
+      "docstring": "Compute 304 efficiency for key cacheable GET routes over recent log buffer.\n\nSince we do not persist logs long-term yet, this derives percentages from the\nin-memory API_REQUEST_LOG_TEST_BUFFER (best-effort, bounded). Once a durable\nstore is available, replace this with a 7-day query. For now it provides\nimmediate feedback for development / CI.",
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "app.route",
+        "counts.items",
+        "int",
+        "jsonify",
+        "rec.get",
+        "require_auth_role",
+        "round"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "json",
+      "complexity_score": 15
+    },
+    {
+      "path": "/api/admin/customers/<cid>",
+      "methods": [
+        "PATCH"
+      ],
+      "function_name": "patch_customer",
+      "line_number": 2111,
+      "docstring": null,
+      "parameters": [
+        "cid"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_get_customer_row",
+        "_normalize_customer_patch_pr1",
+        "_ok",
+        "_strong_etag",
+        "_validate_customer_patch_pr1",
+        "app.route",
+        "bool",
+        "conn.cursor",
+        "cur.execute",
+        "db_conn",
+        "dict",
+        "effective.items",
+        "fields.items",
+        "int",
+        "json.dumps",
+        "params.append",
+        "payload.get",
+        "print",
+        "request.get_json",
+        "require_auth_role",
+        "row.get",
+        "row2.get",
+        "set_clauses.append",
+        "user.get"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 17
+    },
+    {
+      "path": "/api/admin/vehicles",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "create_vehicle",
+      "line_number": 2322,
+      "docstring": "Create a new vehicle for a customer - minimal test implementation.",
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_MCP_PLATE_MEM.add",
+        "_MCP_VIN_MEM.add",
+        "all",
+        "app.route",
+        "bool",
+        "columns.insert",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "data.get",
+        "datetime.utcnow",
+        "db_conn",
+        "int",
+        "isinstance",
+        "jsonify",
+        "len",
+        "request.get_json",
+        "require_auth_role",
+        "time.time",
+        "traceback.format_exc",
+        "tuple",
+        "type",
+        "values.insert"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "json",
+      "complexity_score": 40
+    },
+    {
+      "path": "/api/admin/vehicles/<vid>",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "get_vehicle_basic",
+      "line_number": 2669,
+      "docstring": null,
+      "parameters": [
+        "vid"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_get_vehicle_row",
+        "_ok",
+        "_strong_etag",
+        "app.route",
+        "conn.cursor",
+        "db_conn",
+        "int",
+        "require_auth_role",
+        "row.get"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 4
+    },
+    {
+      "path": "/api/admin/vehicles/<vid>",
+      "methods": [
+        "PATCH"
+      ],
+      "function_name": "patch_vehicle",
+      "line_number": 2714,
+      "docstring": null,
+      "parameters": [
+        "vid"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_get_vehicle_row",
+        "_normalize_vehicle_patch",
+        "_ok",
+        "_strong_etag",
+        "_validate_vehicle_patch",
+        "app.route",
+        "conn.cursor",
+        "cur.execute",
+        "db_conn",
+        "fields.items",
+        "fields.keys",
+        "fields.values",
+        "int",
+        "json.dumps",
+        "list",
+        "payload.get",
+        "request.get_json",
+        "require_auth_role",
+        "require_or_maybe",
+        "row.get",
+        "row2.get",
+        "user.get"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 17
+    },
+    {
+      "path": "/api/admin/vehicles/<vid>/transfer",
+      "methods": [
+        "POST"
+      ],
+      "function_name": "transfer_vehicle",
+      "line_number": 2867,
+      "docstring": "Transfer a vehicle to a different customer.\n\nBody parameters:\n  customer_id (required): ID of the customer to transfer the vehicle to\n\nResponses:\n  200 OK -> {\"success\": true, \"vehicle\": {...}}\n  400 if customer_id missing or invalid\n  403 if not authorized\n  404 if vehicle or customer not found",
+      "parameters": [
+        "vid"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_get_vehicle_row",
+        "_ok",
+        "app.route",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "db_conn",
+        "int",
+        "payload.get",
+        "request.get_json",
+        "require_auth_role",
+        "updated_vehicle.get",
+        "user.get",
+        "vehicle_row.get"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 11
+    },
+    {
+      "path": "/api/customers/lookup",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "customer_lookup_by_phone",
+      "line_number": 3000,
+      "docstring": "Lookup a customer by phone number for Quick Add Appointment feature.\n\nQuery parameters:\n  phone (required): phone number to lookup (will be normalized for search).\n\nResponses:\n  200 OK (Single Customer) -> {\"found\": true, \"multiple_matches\": false, \"customer\": {\"id\": \"123\", \"name\": \"John Doe\", \"email\": \"...\", \"vehicles\": [...]}}\n  200 OK (Multiple Customers) -> {\"found\": true, \"multiple_matches\": true, \"customers\": [...], \"customer\": null}\n  200 OK (Not Found) -> {\"found\": false, \"multiple_matches\": false, \"customer\": null}\n  400 if phone missing/blank\n\nPhase 2: Includes vehicles array in customer object\nPhase 3: Handles disambiguation when multiple customers share phone number\n  - multiple_matches: true indicates disambiguation required\n  - customers: array of potential matches with basic info + vehicle_count\n  - customer: null when multiple matches (disambiguation required)",
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "_normalize_phone",
+        "app.route",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "cur.fetchone",
+        "customer_list.append",
+        "jsonify",
+        "len",
+        "print",
+        "safe_conn",
+        "str",
+        "vehicles.append"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "json",
+      "complexity_score": 23
+    },
+    {
+      "path": "/api/admin/invoices",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "list_invoices",
+      "line_number": 3182,
+      "docstring": "Paginated invoice list with simple filters used in tests.\n\nQuery params:\n  page (int, default 1)\n  pageSize (int, default 20 <= 100)\n  customerId (int optional)\n  status (str optional exact match)\nResponse envelope: data { page, page_size, total_items, items: [ { id, customer_id, status, subtotal_cents, total_cents, amount_paid_cents, amount_due_cents } ] }",
+      "parameters": [],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_ok",
+        "_sql.SQL",
+        "app.route",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchall",
+        "cur.fetchone",
+        "customer_id.isdigit",
+        "hasattr",
+        "int",
+        "jsonify",
+        "len",
+        "max",
+        "os.getenv",
+        "params.append",
+        "require_auth_role",
+        "safe_conn",
+        "where.append"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "json",
+      "complexity_score": 18
+    },
+    {
+      "path": "/api/admin/invoices/<invoice_id>/estimate.pdf",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "invoice_estimate_pdf",
+      "line_number": 3289,
+      "docstring": null,
+      "parameters": [
+        "invoice_id"
+      ],
+      "auth_required": true,
+      "auth_type": "manual_check",
+      "dependencies": [
+        "_error",
+        "_imp.import_module",
+        "_simple_pdf",
+        "app.route",
+        "conn.close",
+        "conn.cursor",
+        "cur.execute",
+        "cur.fetchone",
+        "data.get",
+        "db_conn",
+        "getattr",
+        "int",
+        "inv.get",
+        "invsvc.fetch_invoice_details",
+        "isinstance",
+        "make_response",
+        "require_auth_role",
+        "row.get"
+      ],
+      "database_access": true,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "custom",
+      "complexity_score": 15
+    },
+    {
+      "path": "/api/debug/routes",
+      "methods": [
+        "GET"
+      ],
+      "function_name": "debug_list_routes",
+      "line_number": 11186,
+      "docstring": null,
+      "parameters": [],
+      "auth_required": false,
+      "auth_type": null,
+      "dependencies": [
+        "_error",
+        "_ok",
+        "app.route",
+        "list",
+        "routes.append",
+        "sorted"
+      ],
+      "database_access": false,
+      "external_apis": [],
+      "error_handling": [
+        "try-except"
+      ],
+      "response_format": "unknown",
+      "complexity_score": 4
+    }
+  ]
+}

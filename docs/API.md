@@ -119,6 +119,47 @@ _Query params:_ `from`, `to`, `status`, `techId`, `q`, `limit`, `cursor`
 }
 ```
 
+### GET `/api/appointments` *(mobile list view)*
+
+Used by the mobile surface and consumer apps. Requires `X-Tenant-Id` header that resolves to a tenant the caller may access.
+
+_Query params:_ `page` (default 1), `pageSize` (default 20, **max 100**), `status`, `from`, `to`, `customerId`
+
+**Behavior Notes**
+
+* `status` is case-insensitive but must map to one of `SCHEDULED`, `IN_PROGRESS`, `READY`, `COMPLETED`, `NO_SHOW`, `CANCELED`.
+* `from` / `to` accept ISO-8601 dates or datetimes; all timestamps are normalized to UTC and serialized with a `Z` suffix.
+* `totalAmountCents` is always an integer (money stored in cents, rounded half-up).
+* Results are deterministic: sorted by `startAt` ascending (nulls last), then `createdAt` descending, then `id`.
+
+**Response 200**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "items": [
+      {
+        "id": "apt-123",
+        "status": "SCHEDULED",
+        "title": "Brake pads",
+        "startAt": "2025-07-29T17:00:00Z",
+        "endAt": "2025-07-29T18:00:00Z",
+        "customerName": "Noah Bell",
+        "vehicleLabel": "2019 Honda HR-V",
+        "totalAmountCents": 25665
+      }
+    ],
+    "page": 1,
+    "pageSize": 20,
+    "nextCursor": null
+  },
+  "meta": {
+    "request_id": "req_01h9v1..."
+  }
+}
+```
+
 ### POST `/api/appointments`
 
 ```json
